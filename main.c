@@ -15,10 +15,14 @@
 #define FUNC_ARG_SIZE 8
 #define STMT_CAPACITY 16
 
-enum Error {
-    OK = 0,
-    ExpectToken,
-};
+#define TRUE 1
+#define FALSE 0
+#define EXTENSION "ka"
+
+
+/* ------------------------------------------ */
+/*            lexer tokens                    */
+/* ------------------------------------------ */
 
 enum Lexicon {
     NULLTOKEN,
@@ -140,20 +144,21 @@ enum Lexicon tokenize_char(char c) {
 }
 
 struct Token {
-    int start;
-    int end;
+    unsigned long start;
+    unsigned long end;
     enum Lexicon token;
 };
 
+
 int tokenize(char *line,  struct Token tokens[], int token_idx) {
     enum Lexicon complex_token = NULLTOKEN;
-    int complex_start = 0;
-    int ctr = 0;
+    unsigned long complex_start = 0;
+    unsigned long ctr = 0;
     int original = token_idx;
 
     enum Lexicon lexed;
 
-    for (int i=0; strlen(line) > i; i++) {
+    for (unsigned long i=0; strlen(line) > i; i++) {
         if (line[i] == 0) continue;
         lexed = tokenize_char(line[i]);
                 
@@ -221,25 +226,12 @@ int tokenize(char *line,  struct Token tokens[], int token_idx) {
     return ctr;
 }
 
-enum BinOperation {
-    // no operation
-    Nop,
-    // concat
-    Add,
-    // subtract
-    Sub
-};
 
-enum Tag {
-    Variable,
-    Literal
-};
 
-enum DataType {
-    Null,
-    Int,
-    MallocString,
-};
+/* ------------------------------------------ */
+/*            statement types                 */
+/* ------------------------------------------ */
+
 
 enum StatementType {
     Undefined,
@@ -264,21 +256,43 @@ enum StatementType {
     Return
 };
 
+
+struct Statement {
+    enum StatementType type;
+    void *internal_data;
+};
+
+
+/* ------------------------------------------ */
+/*            some kind of value              */
+/* ------------------------------------------ */
+
+enum Tag {
+    Variable,
+    Literal
+};
+
+enum DataType {
+    Null,
+    Int,
+    MallocString,
+};
+
 // variable OR literal
-struct BaseValue {
+struct Unit {
     void *data_ptr;
     enum Tag tag;
     enum DataType datatype;
 };
 
-void init_basevalue(struct BaseValue *v) {
+void init_unit(struct Unit *v) {
     v->tag=Literal;
     v->datatype=Null;
     v->data_ptr=0;
 }
 
-int basevalue_from_token(char *line, struct Token token, struct BaseValue *value) {
-    init_basevalue(value);
+int unit_from_token(char *line, struct Token token, struct Unit *value) {
+    init_unit(value);
     
     if (token.token == WORD) {
         value->tag = Variable;
@@ -307,10 +321,11 @@ int basevalue_from_token(char *line, struct Token token, struct BaseValue *value
     return 0;
 }
 
-struct Statement {
-    enum StatementType type;
-    void *internal_data;
-};
+
+/* ------------------------------------------ */
+/*            Block statement                 */
+/* ------------------------------------------ */
+
 
 struct BlockStatement {
     struct Statement *statements;
@@ -343,8 +358,14 @@ int is_block(struct Token tokens[], int nstmt) {
    return (tokens[nstmt].token == CLOSE_BRACK) && (tokens[0].token == OPEN_BRACE);
 }
 
+
+/* ------------------------------------------ */
+/*            return                          */
+/* ------------------------------------------ */
+
+
 struct ReturnStatement {
-    struct BaseValue value;
+    struct Unit value;
 };
 
 int is_return_statement(char *line, struct Token tokens[], int nstmt) {
@@ -356,9 +377,9 @@ int is_return_statement(char *line, struct Token tokens[], int nstmt) {
 }
 
 void construct_ret_statement(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
-    struct BaseValue var;
+    struct Unit var;
     struct ReturnStatement *ret_stmt = malloc(sizeof(struct ReturnStatement));
-    basevalue_from_token(line, tokens[1], &var);
+    unit_from_token(line, tokens[1], &var);
     stmt->internal_data=ret_stmt;
     stmt->type=Return;
 }
@@ -366,13 +387,175 @@ void construct_ret_statement(char *line, struct Token tokens[], int nstmt, struc
 struct DeclareStatement {
     int name_sz;
     char name[STR_STACK_SIZE];
-    struct BaseValue data;
+    struct Unit data;
 };
 
-// BinOp
+/* ------------------------------------------ */
+/*            Func call                       */
+/* ------------------------------------------ */
 
+struct FunctionCallExpr {
+    int name_sz;
+    int args_sz;
+
+    char *func_name;
+    struct Expression *args[FUNC_ARG_SIZE];
+};
+
+void init_func_call(struct FunctionCallExpr *fn) {
+    fn->name_sz = 0;
+    fn->args_sz = 0;
+    for (int i=0; FUNC_ARG_SIZE > i; i++){
+        //init_unit(fn->args[i]);
+        // TODO
+    }
+}
+
+// word open param ... close param
+int is_func_call(struct Token tokens[], int nstmt) {
+    
+    int flag = tokens[0].token == WORD
+    && tokens[1].token == PARAM_OPEN
+    && tokens[nstmt-2].token == PARAM_CLOSE;
+
+}
+
+int construct_func_call(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
+    struct FunctionCallExpr *fn_stmt = malloc(sizeof(struct FunctionCallExpr));
+    // open_param
+    long unsigned oparam_idx = 0;
+    long unsigned cparam_idx = 0;
+    
+    fn_stmt->name_sz = 0;
+    fn_stmt->args_sz = 0;
+
+    for (int i=0; FUNC_ARG_SIZE > i; i++){
+        //init_unit(&fn_stmt->args[i]);
+    }
+    
+    // setup name
+    fn_stmt->name_sz=tokens[0].end - tokens[0].start;
+
+    char *fname = malloc(fn_stmt->name_sz);
+    
+    strncpy(fname, tokens[0].start + line, fn_stmt->name_sz);
+    fn_stmt->func_name = fname;
+
+    
+    // no parameters
+    if (nstmt == 4) {
+        //printf("no parameters in '%s'", fn_stmt->func_name);
+        return 0;
+    }
+    
+    //TODO construc
+    //construct arguments
+    for (int i=2; nstmt-2 > i; i++) {
+        if (tokens[i].token == COMMA) continue;
+
+        struct Unit base = {
+            .datatype=Null,
+            .data_ptr=0,
+            .tag=Literal
+        };
+        
+        if (unit_from_token(line, tokens[i], &base) != 0) {
+            fprintf(stderr, "error in unit_from_token");
+            exit(1);
+        }
+        
+        if (fn_stmt->args_sz > FUNC_ARG_SIZE)
+            return -1;
+        
+        //fn_stmt->args[fn_stmt->args_sz] = base;
+        fn_stmt->args_sz += 1;
+    }
+    
+    stmt->internal_data=fn_stmt;
+    stmt->type=CallFunc;
+
+    return 0;
+}
+
+
+/* ------------------------------------------ */
+/*            expression                      */
+/* ------------------------------------------ */
+// anything that returns a value
+
+
+enum ExprType {
+    BinaryExpr,
+    Func,
+    Unit
+};
+
+struct Expression {
+    enum ExprType type;
+    struct Unit unit;
+    void *inner_data;
+    void *child_expr;
+};
+
+void init_expr(struct Expression *expr) {
+    expr->type=Unit;
+    init_unit(&expr->unit);
+}
+
+
+int parse_expressions(char *line,
+    struct Token tokens[],
+    unsigned long ntokens,
+    enum Lexicon delimiter[], // stop at
+    unsigned short delimiter_sz,
+    struct Expression *expr)
+{
+    unsigned long until = 0;
+    
+    for (unsigned long i=0; ntokens > i; i++) {
+        for (unsigned short delim_sz_i=0; delimiter_sz > delim_sz_i; delim_sz_i++) {
+            // if comma or param_close
+            if (tokens[i].token == delimiter[delim_sz_i]) {
+                
+            }
+        }
+    }
+}
+
+int parse_unitary_expr(
+    char *line,
+    struct Token tokens[],
+    unsigned long tokens_start,
+    unsigned long ntokens,
+    unsigned long nstmt)
+{
+    if (is_func_call(tokens, nstmt)) {
+        //parse_expressions()
+    }
+    
+    else if (nstmt == 1) {}
+}
+
+
+enum BinOperation {
+    // no operation
+    Nop,
+    // concat
+    Add,
+    // subtract
+    Sub
+};
+
+int parse_expr(char *line, struct Token tokens[], unsigned long nstmts, unsigned long  ntokens) {
+    // func call
+    // variable evaluation (a)
+    // binary evaluation 1 == 2
+    // 
+}
+
+//
 struct ExprStatement {
-    struct BaseValue base;
+    struct Unit base;
     enum BinOperation op;
     struct ExprStatement *other;
 };
@@ -380,28 +563,26 @@ struct ExprStatement {
 void init_expr_stmt(struct ExprStatement *expr) {
     expr->op=Nop;
     expr->other=0;
-    init_basevalue(&expr->base);
+    init_unit(&expr->base);
 }
 
-// 2 + 2
-
 int is_express_statement(struct Token tokens[], int nstmt) {
-    if (nstmt % 2 == 0)
-        return -1; 
+    if (nstmt-1 % 2 == 0)
+        return 0; 
     
-    for (int i=0; nstmt > i; i++) {        
-        if (tokens[1].token != SUB || tokens[1].token != ADD)
-            return -1;
+    for (int i=0; nstmt-1 > i; i++) {
+        if (tokens[i].token != SUB || tokens[i].token != ADD)
+            return 0;
     }
 
-    return 0;
+    return 1;
 }
 
 int inner_expr_stmt(char *line, struct Token tokens[], int nstmt, struct ExprStatement *ex_stmt){
     struct ExprStatement *expr = malloc(sizeof(struct ExprStatement));
     init_expr_stmt(expr);
     //free(expr->base.data_ptr);
-    basevalue_from_token(line, tokens[0], &expr->base);
+    unit_from_token(line, tokens[0], &expr->base);
     
     if (nstmt > 1) {
         if (tokens[1].token == ADD)
@@ -412,24 +593,29 @@ int inner_expr_stmt(char *line, struct Token tokens[], int nstmt, struct ExprSta
             return -1;
     
         struct ExprStatement *o_expr = malloc(sizeof(struct ExprStatement));
+        init_expr_stmt(o_expr);
+
         inner_expr_stmt(line, tokens+2, nstmt-2, o_expr);
         expr->other = o_expr;
         return 0;
     }
-
-    return (nstmt == 0)*-1;
+    return 0;
 }
 
 int construct_expr_stmt(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
     struct ExprStatement *expr = malloc(sizeof(struct ExprStatement));
+    
     init_expr_stmt(expr);
-
     inner_expr_stmt(line, tokens, nstmt, expr);
 
     stmt->internal_data=expr;
     stmt->type=Expression;
     return 0;
 }
+
+/* ------------------------------------------ */
+/*            Func def                        */
+/* ------------------------------------------ */
 
 struct FunctionDefinition {
     int name_sz;
@@ -467,6 +653,7 @@ int is_func_definition(char *line, struct Token tokens[], int nstmt) {
 }
 
 int construct_func_definition(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
+    printf("declaring func...\n");
     struct FunctionDefinition *proceedure = malloc(sizeof(struct FunctionDefinition));
     init_func_def(proceedure);
     strncpy(proceedure->func_name, (line + tokens[1].start), tokens[1].end);
@@ -490,70 +677,12 @@ int construct_func_definition(char *line, struct Token tokens[], int nstmt, stru
     return 0;
 }
 
-struct FunctionCall {
-    int name_sz;
-    int args_sz;
 
-    char *func_name;
-    struct BaseValue args[FUNC_ARG_SIZE];
-};
 
-void init_func_call(struct FunctionCall *fn) {
-    fn->name_sz = 0;
-    fn->args_sz = 0;
-    for (int i=0; FUNC_ARG_SIZE > i; i++){
-        init_basevalue(&fn->args[i]);
-    }
-}
 
-// word open param ... close param
-int is_func_call(struct Token tokens[], int nstmt) {
-    return tokens[0].token == WORD
-    && tokens[1].token == PARAM_OPEN
-    && tokens[nstmt].token == PARAM_CLOSE;
-}
-
-int construct_func_call(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
-    struct FunctionCall *fn_stmt = malloc(sizeof(struct FunctionCall));
-    fn_stmt->name_sz = 0;
-    fn_stmt->args_sz = 0;
-
-    for (int i=0; FUNC_ARG_SIZE > i; i++){
-        init_basevalue(&fn_stmt->args[i]);
-    }
-    
-    // setup name
-    fn_stmt->name_sz=tokens[0].end - tokens[0].start;
-    char *fname = malloc(fn_stmt->name_sz);
-    strncpy(fname, tokens[0].start + line, tokens[0].end);
-    fn_stmt->func_name = fname;
-
-    for (int i=1; nstmt-1 > i; i++) {
-        if (tokens[i].token == COMMA) continue;
-
-        struct BaseValue base = {
-            .datatype=Null,
-            .data_ptr=0,
-            .tag=Literal
-        };
-        
-        if (basevalue_from_token(line, tokens[i], &base) != 0) {
-            fprintf(stderr, "error in basevalue_from_token");
-            exit(1);
-        }
-        
-        if (fn_stmt->args_sz > FUNC_ARG_SIZE)
-            return -1;
-        
-        fn_stmt->args[fn_stmt->args_sz] = base;
-        fn_stmt->args_sz += 1;
-    }
-    
-    stmt->internal_data=fn_stmt;
-    stmt->type=CallFunc;
-
-    return 0;
-}
+/* ------------------------------------------ */
+/*            if statement                    */
+/* ------------------------------------------ */
 
 enum ConditionState {
     If,
@@ -605,9 +734,14 @@ int construct_condition_statement(char *line, struct Token tokens[], int nstmt, 
     return 0;
 }
 
+
+/* ------------------------------------------ */
+/*            declare variable                */
+/* ------------------------------------------ */
+
 // x = 200
 int is_declare_statement(struct Token tokens[], int ntokens) {
-    return ntokens == 3 
+    return ntokens == 4
     && tokens[0].token == WORD
     && tokens[1].token == EQUAL
     && (
@@ -619,10 +753,10 @@ int is_declare_statement(struct Token tokens[], int ntokens) {
 
 int construct_declare_statement(char *line, struct Token tokens[], struct Statement *stmt) {
     struct DeclareStatement *dec_stmt = malloc(sizeof(struct DeclareStatement));
-    struct BaseValue data;
+    struct Unit data;
     int name_len = 0;
     dec_stmt->name_sz = 0;
-    init_basevalue(&dec_stmt->data);
+    init_unit(&dec_stmt->data);
     
     for (int i=0; 3 > i; i++) {
         if (i == 1)
@@ -643,8 +777,8 @@ int construct_declare_statement(char *line, struct Token tokens[], struct Statem
 
         // copy identifier
         else if (i == 2) {
-            if (basevalue_from_token(line, tokens[i], &data) != 0) {
-                fprintf(stderr, "error in basevalue_from_token");
+            if (unit_from_token(line, tokens[i], &data) != 0) {
+                fprintf(stderr, "error in unit_from_token");
                 exit(1);
             }
             dec_stmt->data=data;
@@ -657,9 +791,19 @@ int construct_declare_statement(char *line, struct Token tokens[], struct Statem
 }
 
 
+/* ------------------------------------------ */
+/*            construct all statements        */
+/* ------------------------------------------ */
+
+
 int construct_statement(char *line, struct Token tokens[], long unsigned nstmt, struct BlockStatement *block) {
     // 2 + 2
     struct Statement new;
+    
+    for (int i=0; nstmt > i; i++) 
+        printf("[%s] ", ptoken(tokens[i].token));
+    printf("\n");
+    if (nstmt == 0) return -1;
 
     if (is_express_statement(tokens, nstmt))
         construct_expr_stmt(line, tokens, nstmt, &new);
@@ -691,43 +835,50 @@ int construct_statement(char *line, struct Token tokens[], long unsigned nstmt, 
         construct_statement(line, tokens + 1, nstmt, &new_block);
         new.type = Block;
         new.internal_data = &new_block;
-        
     }
     
     else if (is_return_statement(line, tokens, nstmt))
         construct_ret_statement(line, tokens, nstmt, &new);
 
-    else
+    else {
+        char *slice = malloc(tokens[nstmt].end - tokens[0].start);
+        strncpy(slice, (line + tokens[0].start), tokens[nstmt].end);
+
+        printf("cannot parse out raw data,\n```\n%s\n```\n", slice);
         return -1;
-    
+    }
     append_statement(block, new);
-
-
-    return -1;
+    return 0;
 }
 
 int assemble_ast(
     char *line,
     struct Token tokens[],
     long unsigned ntokens,
-    long unsigned *n_completed,
     struct BlockStatement *block)
 {
-    unsigned long last_stmt = 0;
-    for(long unsigned i=0; ntokens > i; i++) {
-        enum Lexicon token = tokens[i].token;
+    unsigned long last_stmt_idx = 0;
+    unsigned long statement_idx = 0;
 
-        if (token != SEMICOLON 
-            || token != PARAM_CLOSE
-            || token != CLOSE_BRACK)
-        {
-            if (construct_statement(line, tokens + last_stmt, i, block) != 0)
-                return -1;
-            
-            *n_completed = i;
-        }
-    }
+    while(ntokens > last_stmt_idx){
     
+        for(long unsigned i=last_stmt_idx; ntokens > i; i++) {
+            enum Lexicon token = tokens[i].token;
+
+            if (token == SEMICOLON )
+            {
+                statement_idx = i+1;
+                break;
+            }
+        }
+        printf("tokens: tokens[%d..%d] [%d] -- ", (int)last_stmt_idx, (int)statement_idx, (int)ntokens);
+        unsigned long slen = statement_idx-last_stmt_idx;
+
+        if (construct_statement(line, tokens + last_stmt_idx, slen, block) != 0)
+            return -1;
+        
+        last_stmt_idx = statement_idx;
+    }
     return 0;
 }
 
@@ -736,6 +887,7 @@ int parse(char *filepath) {
     FILE *fd;
     struct BlockStatement root;
     init_block(&root, STMT_CAPACITY*2);
+
     unsigned long n_completed = 0;
     int buf_sz = 2048;
     struct Token tokens[buf_sz];
@@ -776,7 +928,7 @@ int parse(char *filepath) {
         printf("----------------\n");
         printf("AST\n");
         printf("----------------\n");
-        assemble_ast(line, tokens, ntokens, &n_completed, &root);
+        assemble_ast(line, tokens, ntokens, &root);
 
         printf("\n");
         memset(line, 0, buf_sz);
@@ -790,8 +942,7 @@ int parse(char *filepath) {
 
 int main(int argc, char *argv[]) {
     if (argc > 1) {
-        parse(argv[1]);
-        return 0;
+        return parse(argv[1]);
     }
     else {
         printf("%s [file.%s]\n", argv[0], EXTENSION);
