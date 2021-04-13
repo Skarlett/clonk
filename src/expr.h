@@ -1,6 +1,8 @@
 #ifndef _HEADER__EXPR__
 #define _HEADER__EXPR__
 
+#define STR_STACK_SIZE 64
+#define STMT_CAPACITY 16
 #define FUNC_ARG_SIZE 8
 
 typedef enum Tag {

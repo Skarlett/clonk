@@ -1,31 +1,12 @@
-#include "lexer.h"
 #include <stdlib.h>
 #include <string.h>
-#define STR_STACK_SIZE 64
-#define STMT_CAPACITY 16
-#define FUNC_ARG_SIZE 8
+
+#include "lexer.h"
+#include "expr.h"
 
 /* ------------------------------------------ */
 /*            symbols & values                */
 /* ------------------------------------------ */
-
-enum Tag {
-    Variable,
-    Literal
-};
-
-enum DataType {
-    Null,
-    Int,
-    String,
-};
-
-// variable OR literal
-struct Symbol {
-    void *data_ptr;
-    enum Tag tag;
-    enum DataType datatype;
-};
 
 void init_unit(struct Symbol *v) {
     v->tag=Literal;
@@ -63,31 +44,12 @@ int unit_from_token(char *line, struct Token token, struct Symbol *value) {
     return 0;
 }
 
-enum ExprType {
-    UndefinedExpr,
-    UniExpr,
-    BinExpr,
-};
-
-struct Expr {
-    enum ExprType type;
-    // void wi
-    void *inner_data;
-};
 
 void init_expression(struct Expr *expr) {
     expr->type=UndefinedExpr;
     expr->inner_data=0;
 }
 
-
-struct FunctionCallExpr {
-    int name_sz;
-    int args_sz;
-
-    char *func_name; 
-    struct Expr *args[FUNC_ARG_SIZE];
-};
 
 void init_func_call(struct FunctionCallExpr *fn) {
     fn->name_sz = 0;
@@ -107,18 +69,6 @@ int is_func_call(struct Token tokens[], int nstmt) {
 /*             uniary expression              */
 /* ------------------------------------------ */
 // uniary expressions are either values, or function calls
-
-enum UniaryOperation {
-    UniaryOperationNop,
-    Call,
-    Value
-};
-
-struct UniaryExpr {
-    enum UniaryOperation op;
-    // Value or Call struct
-    void *inner;
-};
 
 void init_uni_expr_body(struct UniaryExpr *expr) {
     expr->op=UniaryOperationNop;
@@ -143,32 +93,6 @@ int unit_into_uniary(struct Symbol *val, struct UniaryExpr *expr) {
 /* ------------------------------------------ */
 // Combinations of uniary expressions
 
-enum BinaryOperation {
-    // no operation
-    BinaryOperationNop,
-    // math
-    Add,
-    Sub,
-    Multiply,
-    Divide,
-    Pow,
-    Modolus,
-    // cmp
-    IsEq,
-    Gt,
-    Lt,
-    GtEq,
-    LtEq,
-    // appendage
-    And,
-    Or,
-};
-
-struct BinaryExprBody {
-    enum BinaryOperation op;
-    struct Expr *left_val;
-    struct Expr *right_val;
-};
 
 void init_bin_expr_body(struct BinaryExprBody *expr) {
     expr->op=BinaryOperationNop;
