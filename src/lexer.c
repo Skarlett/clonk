@@ -2,13 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#define ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
-#define DIGITS "1234567890"
 /* ------------------------------------------ */
 /*            lexer tokens                    */
 /* ------------------------------------------ */
-
-
 
 const char * ptoken(enum Lexicon t) {
     if (t == INTEGER) return "integer";
@@ -87,14 +83,8 @@ enum Lexicon tokenize_char(char c) {
     return UNKNOWN;
 }
 
-struct Token {
-    unsigned long start;
-    unsigned long end;
-    enum Lexicon token;
-};
 
-
-int is_compound_token(enum Lexicon token) {
+int is_complex_token(enum Lexicon token) {
     return (
         token == DIGIT
         || token == CHAR
@@ -109,39 +99,39 @@ int is_compound_token(enum Lexicon token) {
     );
 }
 
-int set_compound_token(enum Lexicon token, enum Lexicon *compound_token) {
+int set_complex_token(enum Lexicon token, enum Lexicon *complex_token) {
     if (token == DIGIT) 
-        *compound_token = INTEGER;
+        *complex_token = INTEGER;
     
     else if (token == CHAR)
-        *compound_token = WORD;
+        *complex_token = WORD;
     
     else if (token == QUOTE)
-        *compound_token = STRING_LITERAL;
+        *complex_token = STRING_LITERAL;
     
     else if (token == EQUAL)
-        *compound_token = ISEQL;
+        *complex_token = ISEQL;
     
     // maybe these are bit shift operations
     // wel'll find out later
     else if (token == GT)
-        *compound_token = GTEQ;
+        *complex_token = GTEQ;
     
     else if (token == LT)
-        *compound_token = LTEQ;
+        *complex_token = LTEQ;
     // ----
 
     else if (token == ADD)
-        *compound_token = PLUSEQ;
+        *complex_token = PLUSEQ;
 
     else if (token == SUB)
-        *compound_token = MINUSEQ;
+        *complex_token = MINUSEQ;
     
     else if (token == AMPER)
-        *compound_token = AND;
+        *complex_token = AND;
 
     else if (token == PIPE)
-        *compound_token = OR;
+        *complex_token = OR;
 
     else
         return -1;
@@ -149,68 +139,68 @@ int set_compound_token(enum Lexicon token, enum Lexicon *compound_token) {
     return 0;
 }
 
-int continue_compound(enum Lexicon token, enum Lexicon compound_token) {
+int continue_complex(enum Lexicon token, enum Lexicon complex_token) {
     return (
-        compound_token == INTEGER && token == DIGIT 
-        || compound_token == WORD && token == CHAR
-        || compound_token == STRING_LITERAL && token != QUOTE
-        || compound_token == ISEQL && token == EQUAL
-        || compound_token == GTEQ && token == EQUAL
-        || compound_token == LTEQ && token == EQUAL
-        || compound_token == AND && token == AMPER
-        || compound_token == OR && token == PIPE 
-        || compound_token == PLUSEQ && token == EQUAL
-        || compound_token == MINUSEQ && token == EQUAL
+        complex_token == INTEGER && token == DIGIT 
+        || complex_token == WORD && token == CHAR
+        || complex_token == STRING_LITERAL && token != QUOTE
+        || complex_token == ISEQL && token == EQUAL
+        || complex_token == GTEQ && token == EQUAL
+        || complex_token == LTEQ && token == EQUAL
+        || complex_token == AND && token == AMPER
+        || complex_token == OR && token == PIPE 
+        || complex_token == PLUSEQ && token == EQUAL
+        || complex_token == MINUSEQ && token == EQUAL
     );
 }
 
-int is_operator_compound(enum Lexicon compound_token) {
+int is_operator_complex(enum Lexicon complex_token) {
     return (
-        compound_token == ISEQL 
-        || compound_token == GTEQ 
-        || compound_token == LTEQ
-        || compound_token == AND
-        || compound_token == OR
-        || compound_token == MINUSEQ
-        || compound_token == PLUSEQ
-        || compound_token == GT
-        || compound_token == LT
+        complex_token == ISEQL 
+        || complex_token == GTEQ 
+        || complex_token == LTEQ
+        || complex_token == AND
+        || complex_token == OR
+        || complex_token == MINUSEQ
+        || complex_token == PLUSEQ
+        || complex_token == GT
+        || complex_token == LT
     );
 }
 
-enum Lexicon invert_operator_token(enum Lexicon compound_token) {
-    if (compound_token == ISEQL) return EQUAL;
-    else if (compound_token == GTEQ) return GT;
-    else if (compound_token == LTEQ) return LT;
-    else if (compound_token == AND) return AMPER;
-    else if (compound_token == OR) return PIPE;
-    else if (compound_token == MINUSEQ) return SUB;
-    else if (compound_token == PLUSEQ) return ADD;
+enum Lexicon invert_operator_token(enum Lexicon complex_token) {
+    if (complex_token == ISEQL) return EQUAL;
+    else if (complex_token == GTEQ) return GT;
+    else if (complex_token == LTEQ) return LT;
+    else if (complex_token == AND) return AMPER;
+    else if (complex_token == OR) return PIPE;
+    else if (complex_token == MINUSEQ) return SUB;
+    else if (complex_token == PLUSEQ) return ADD;
     else return NULLTOKEN;
 }
 
 // ---
 // pub
-int is_cmp_operator(enum Lexicon compound_token) {
+int is_cmp_operator(enum Lexicon complex_token) {
     return (
-        compound_token == ISEQL 
-        || compound_token == GTEQ 
-        || compound_token == LTEQ
-        || compound_token == AND
-        || compound_token == OR
+        complex_token == ISEQL 
+        || complex_token == GTEQ 
+        || complex_token == LTEQ
+        || complex_token == AND
+        || complex_token == OR
     );
 }
 
-int is_bin_operator(enum Lexicon compound_token) {
-    return (compound_token == ISEQL 
-        || compound_token == GTEQ 
-        || compound_token == LTEQ
-        || compound_token == AND
-        || compound_token == OR
-        || compound_token == MINUSEQ
-        || compound_token == PLUSEQ
-        || compound_token == GT
-        || compound_token == LT);
+int is_bin_operator(enum Lexicon complex_token) {
+    return (complex_token == ISEQL 
+        || complex_token == GTEQ 
+        || complex_token == LTEQ
+        || complex_token == AND
+        || complex_token == OR
+        || complex_token == MINUSEQ
+        || complex_token == PLUSEQ
+        || complex_token == GT
+        || complex_token == LT);
 }
 
 
@@ -222,8 +212,8 @@ int is_data(enum Lexicon token) {
 }
 
 int tokenize(char *line,  struct Token tokens[], int token_idx) {
-    enum Lexicon compound_token = NULLTOKEN;
-    unsigned long compound_start = 0;
+    enum Lexicon complex_token = NULLTOKEN;
+    unsigned long complex_start = 0;
     unsigned long ctr = 0;
     int original = token_idx;
 
@@ -234,43 +224,43 @@ int tokenize(char *line,  struct Token tokens[], int token_idx) {
 
         lexed = tokenize_char(line[i]);
                 
-        if (compound_token == NULLTOKEN) {
-            if (is_compound_token(lexed))
+        if (complex_token == NULLTOKEN) {
+            if (is_complex_token(lexed))
             {
-                set_compound_token(lexed, &compound_token);             
-                compound_start = i;
+                set_complex_token(lexed, &complex_token);             
+                complex_start = i;
                 continue;
             }
         }
 
-        else if (continue_compound(lexed, compound_token))
+        else if (continue_complex(lexed, complex_token))
             continue;
         
         // a token that holds multiple unitary tokens in it, 
         // has broken sequence
-        else if (compound_token != NULLTOKEN) {
+        else if (complex_token != NULLTOKEN) {
             
             struct Token token = {
-                .start = compound_start,
+                .start = complex_start,
                 .end = i,
-                .token = compound_token
+                .token = complex_token
             };
 
             // check if its an operator, and that its lenth is 2
-            if (is_operator_compound(compound_token) && i-compound_start != 2 ) {
-                printf("compound start-i: %d\n", i-compound_start);
+            if (is_operator_complex(complex_token) && i-complex_start != 2 ) {
+                printf("complex start-i: %d\n", i-complex_start);
                 token.start = i-1;
                 token.end = i-1;
-                token.token = invert_operator_token(compound_token);
+                token.token = invert_operator_token(complex_token);
             }
             
-            compound_start = 0;
+            complex_start = 0;
             tokens[token_idx+ctr] = token;
             ctr += 1;
 
-            compound_token = NULLTOKEN;
+            complex_token = NULLTOKEN;
             // skip the extra quote token
-            if (compound_token == STRING_LITERAL) {
+            if (complex_token == STRING_LITERAL) {
                 continue;
             }
         }
@@ -282,18 +272,18 @@ int tokenize(char *line,  struct Token tokens[], int token_idx) {
                 .token = lexed
             };
 
-            compound_token = NULLTOKEN;
-            compound_start = 0;
+            complex_token = NULLTOKEN;
+            complex_start = 0;
             tokens[token_idx+ctr] = token;
             ctr += 1;
         }
     }
     
-    if (compound_token != NULLTOKEN) {
+    if (complex_token != NULLTOKEN) {
         struct Token token = {
-            .start = compound_start,
+            .start = complex_start,
             .end = strlen(line),
-            .token = compound_token
+            .token = complex_token
         };
         tokens[token_idx+ctr] = token;
         ctr += 1;
