@@ -1,5 +1,5 @@
-#ifndef HEADER_FILE
-#define HEADER_FILE
+#ifndef _HEADER__LEXER__
+#define _HEADER__LEXER__
 
 #include <stdio.h>
 #include <string.h>
@@ -285,6 +285,8 @@ int is_operator_compound(enum Lexicon compound_token) {
         || compound_token == OR
         || compound_token == MINUSEQ
         || compound_token == PLUSEQ
+        || compound_token == GT
+        || compound_token == LT
     );
 }
 
@@ -297,6 +299,38 @@ enum Lexicon invert_operator_token(enum Lexicon compound_token) {
     else if (compound_token == MINUSEQ) return SUB;
     else if (compound_token == PLUSEQ) return ADD;
     else return NULLTOKEN;
+}
+
+// ---
+// pub
+int is_cmp_operator(enum Lexicon compound_token) {
+    return (
+        compound_token == ISEQL 
+        || compound_token == GTEQ 
+        || compound_token == LTEQ
+        || compound_token == AND
+        || compound_token == OR
+    );
+}
+
+int is_bin_operator(enum Lexicon compound_token) {
+    return (compound_token == ISEQL 
+        || compound_token == GTEQ 
+        || compound_token == LTEQ
+        || compound_token == AND
+        || compound_token == OR
+        || compound_token == MINUSEQ
+        || compound_token == PLUSEQ
+        || compound_token == GT
+        || compound_token == LT);
+}
+
+
+int is_data(enum Lexicon token) {
+    return (token == WORD 
+        || token == INTEGER 
+        || token == STRING_LITERAL
+    );
 }
 
 int tokenize(char *line,  struct Token tokens[], int token_idx) {
