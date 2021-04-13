@@ -23,13 +23,13 @@ typedef struct Symbol {
     enum DataType datatype;
 } Symbol;
 
-void init_unit(struct Symbol *v);
+void init_symbol(struct Symbol *v);
 
-enum ExprType {
+typedef enum ExprType {
     UndefinedExpr,
     UniExpr,
     BinExpr,
-};
+} ExprType;
 
 typedef struct Expr {
     enum ExprType type;
