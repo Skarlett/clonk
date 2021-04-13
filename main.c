@@ -3,25 +3,23 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
 #include "lexer.h"
+#include "expr.h"
 
 #define TRUE 1
 #define FALSE 0
 #define EXTENSION "ka"
-
 
 #define STR_STACK_SIZE 64
 #define FUNC_ARG_SIZE 8
 #define STMT_CAPACITY 16
 
-#define TRUE 1
-#define FALSE 0
-#define EXTENSION "ka"
 
 
 
 /* ------------------------------------------ */
-/*            statement types                 */
+/*            Func call                       */
 /* ------------------------------------------ */
 
 
@@ -54,374 +52,10 @@ struct Statement {
 };
 
 
-/* ------------------------------------------ */
-/*            some kind of value              */
-/* ------------------------------------------ */
-
-enum Tag {
-    Variable,
-    Literal
-};
-
-enum DataType {
-    Null,
-    Int,
-    MallocString,
-};
-
-// variable OR literal
-struct Unit {
-    void *data_ptr;
-    enum Tag tag;
-    enum DataType datatype;
-};
-
-void init_unit(struct Unit *v) {
-    v->tag=Literal;
-    v->datatype=Null;
-    v->data_ptr=0;
-}
-
-int unit_from_token(char *line, struct Token token, struct Unit *value) {
-    init_unit(value);
-    
-    if (token.token == WORD) {
-        value->tag = Variable;
-    }
-
-    else if (token.token == INTEGER) {
-        value->tag = Literal;
-        value->datatype = Int;
-        value->data_ptr = strtol((line + token.start), NULL, 10);
-    }
-
-    else if (token.token == STRING_LITERAL) {
-        value->tag = Literal;
-        value->datatype = MallocString;
-
-        char *inner_data = calloc(STR_STACK_SIZE, sizeof(char));
-        for (int i; token.end > i; i++) {
-            inner_data[i] = (line + token.start)[i];
-        }
-        
-        value->data_ptr = inner_data;
-    }
-    else 
-        return -1;
-    
-    return 0;
-}
-
-
-/* ------------------------------------------ */
-/*            Block statement                 */
-/* ------------------------------------------ */
-
-
-struct BlockStatement {
-    struct Statement *statements;
-    unsigned long capacity;
-    unsigned long length;
-};
-
-void init_block(struct BlockStatement *block, unsigned long capacity) {
-    block->statements = malloc(sizeof(struct Statement)*capacity);
-    block->capacity=capacity;
-    block->length=0;
-}
-
-void append_statement(struct BlockStatement *block, struct Statement stmt) {
-    if (block->length >= block->capacity) {
-        block->capacity *= 2;
-        block->statements=realloc(block->statements, block->capacity);
-    }
-
-    block->length += 1;
-    block->statements[block->length] = stmt;
-}
-
-
-// loop where we collect into a block
-//
-
-// or we recurse into it (preferred)
-int is_block(struct Token tokens[], int nstmt) {
-   return (tokens[nstmt].token == CLOSE_BRACK) && (tokens[0].token == OPEN_BRACE);
-}
-
-
-/* ------------------------------------------ */
-/*            return                          */
-/* ------------------------------------------ */
-
-
-struct ReturnStatement {
-    struct Unit value;
-};
-
-int is_return_statement(char *line, struct Token tokens[], int nstmt) {
-    for (int i=0; 6 > i; i++)
-        if ((tokens[0].start + line)[i] != "return"[i])
-            return FALSE;
-    
-    return TRUE;
-}
-
-void construct_ret_statement(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
-    struct Unit var;
-    struct ReturnStatement *ret_stmt = malloc(sizeof(struct ReturnStatement));
-    unit_from_token(line, tokens[1], &var);
-    stmt->internal_data=ret_stmt;
-    stmt->type=Return;
-}
-
-struct DeclareStatement {
-    int name_sz;
-    char name[STR_STACK_SIZE];
-    struct Unit data;
-};
-
-/* ------------------------------------------ */
-/*            Func call                       */
-/* ------------------------------------------ */
-
-
-
-enum BinaryOperation {
-    // no operation
-    BinNop,
-    // concat
-    Add,
-    // subtract
-    Sub,
-
-    // Multiply,
-
-    // Divide,
-
-    // IsEq,
-
-    // IsGt,
-
-    // IsLt,
-
-    // And,
-
-    // Or,
-};
-
-struct BinOp {
-    enum BinaryOperation operator;
-    struct Unit left;
-    struct Unit right;
-};
-
-/* ------------------------------------------ */
-/*            expression                      */
-/* ------------------------------------------ */
-// anything that returns a value
-
-enum ExprType {
-    UndefinedExpr,
-    UniExpr,
-    BinExpr,
-};
-
-struct Expression {
-    enum ExprType type;
-    // void wi
-    void *inner_data;
-};
-
-void init_expression(struct Expression *expr) {
-    expr->type=UndefinedExpr;
-    expr->inner_data=0;
-}
-
-struct BinaryExprBody {
-    enum BinaryOperation op;
-    struct Expression *left_val;
-    struct Expression *right_val;
-};
-
-void init_bin_expr_body(struct BinaryExprBody *expr) {
-    expr->op=BinNop;
-    init_expression(expr->left_val);
-    init_expression(expr->right_val);
-}
-
-enum UniaryOperation {
-    UniNop,
-    Call,
-    Value
-};
-
-struct UniaryExprBody {
-    enum UniaryOperation op;
-    // Value or Call struct
-    void *inner;
-};
-
-void init_uni_expr_body(struct UniaryExprBody *expr) {
-    expr->op=UniNop;
-    expr->inner=0;
-}
-
-struct FunctionCallExpr {
-    int name_sz;
-    int args_sz;
-
-    char *func_name;
-    struct Expression args[FUNC_ARG_SIZE];
-};
-
-void init_func_call(struct FunctionCallExpr *fn) {
-    fn->name_sz = 0;
-    fn->args_sz = 0;
-    for (int i=0; FUNC_ARG_SIZE > i; i++){
-        init_expression(&fn->args[i]);
-    }
-}
-
-struct UnitExpr {
-    struct Unit unit;
-};
-
-int unit_into_uniary(struct Unit *val, struct Expression *expr) {
-    struct UniaryExprBody wrapper_expr;
-    init_uni_expr_body(&wrapper_expr);
-    
-    wrapper_expr.op=Value;
-    wrapper_expr.inner = val;
-    expr->type=UniExpr;
-}
-
-int is_func_call(struct Token tokens[], int nstmt) {
-    return tokens[0].token == WORD
-    && tokens[1].token == PARAM_OPEN
-    && tokens[nstmt-2].token == PARAM_CLOSE;
-}
-
-int parse_func_expressions(
-    char *line,
-    // start at expr
-    struct Token tokens[],
-    // how many tokens in total until end
-    unsigned long ntokens,
-    struct FunctionCallExpr *self
-){
-    if (ntokens == 0) return -1;
-
-
-    unsigned long last_expr = 0;
-    unsigned short expr_arr_idx = 0;
-    
-    while (ntokens > last_expr) {
-        unsigned long single_expr_idx = 0;
-        
-        for (unsigned long i=last_expr; ntokens > i; i++) {
-            // if comma or param_close
-            if (tokens[i].token == COMMA) {
-                single_expr_idx=i;
-                break;
-            }
-        }
-        struct Expression *item = &self->args[self->args_sz];
-        init_expression(item);
-        //construst_expr();
-        // 1 + foo(a(b)+1+2, c) + 2 + baz(),
-
-
-        last_expr += single_expr_idx;
-    }
-}
-
-
-int construct_expr(
-    char *line,
-    struct Token tokens[],
-    unsigned long  ntokens,
-    struct Expression *expr
-){
-
-    unsigned long last_expr = 0;
-
-    if (is_func_call(tokens, ntokens)) {
-        struct FunctionCallExpr *newfunc = malloc(sizeof(struct FunctionCallExpr));  
-        init_func_call(newfunc);
-        
-    
-        while (ntokens > last_expr) {
-            unsigned long single_expr_idx = 0;
-            
-            for (unsigned long i=last_expr; ntokens > i; i++) {
-                // if comma or param_close
-                if (tokens[i].token == COMMA) {
-                    single_expr_idx=i;
-                    break;
-                }
-            }
-            
-            struct Expression *item = &newfunc->args[newfunc->args_sz];
-            init_expression(item);
-            newfunc->args_sz += 1;
-
-
-            construct_expr(line, tokens + last_expr , single_expr_idx, item);
-
-            last_expr += single_expr_idx;
-        }
-        
-        expr->inner_data = newfunc;
-    }
-    struct Token* token;
-    if (last_expr > 0) {
-        token = tokens + last_expr + 1;
-    }
-    else {
-        token = &tokens[0];
-    }
-
-    // variable/unit
-    if (token->token == WORD
-        || token->token == INTEGER
-        || STRING_LITERAL) {
-        
-        struct Unit unit;
-        init_unit(&unit);
-        unit_from_token(line, tokens[0], &unit);
-        
-        struct Expression *n_expr = malloc(sizeof(struct Expression));
-        init_expression(n_expr);
-        
-        unit_into_uniary(&unit, n_expr->inner_data);
-    }
-
-    if (tokens[1].token == ADD || tokens[1].token == SUB) {
-            struct BinaryExprBody *body = malloc(sizeof(struct BinaryExprBody));
-            init_bin_expr_body(body);
-
-            struct Expression *left = malloc(sizeof(struct Expression));
-            struct Expression *right = malloc(sizeof(struct Expression));
-            init_expression(left);
-            init_expression(right);
-
-            if (tokens[1].token == ADD)
-                    body->op=Add;
-            else 
-                    body->op=Sub;                
-
-            construct_expr(line, tokens, 0, left);
-            body->left_val = left;
-            construct_expr(line, tokens + 2, ntokens, right);
-            body->left_val = right;
-    }
-}
-
 
 //
 // struct ExprStatement {
-//     struct Unit base;
+//     struct Symbol base;
 //     enum BinOperation op;
 //     struct ExprStatement *other;
 // };
@@ -480,6 +114,75 @@ int construct_expr(
 // }
 
 
+
+/* ------------------------------------------ */
+/*            Block statement                 */
+/* ------------------------------------------ */
+
+
+struct BlockStatement {
+    struct Statement *statements;
+    unsigned long capacity;
+    unsigned long length;
+};
+
+void init_block(struct BlockStatement *block, unsigned long capacity) {
+    block->statements = malloc(sizeof(struct Statement)*capacity);
+    block->capacity=capacity;
+    block->length=0;
+}
+
+void append_statement(struct BlockStatement *block, struct Statement stmt) {
+    if (block->length >= block->capacity) {
+        block->capacity *= 2;
+        block->statements=realloc(block->statements, block->capacity);
+    }
+
+    block->length += 1;
+    block->statements[block->length] = stmt;
+}
+
+
+// loop where we collect into a block
+//
+
+// or we recurse into it (preferred)
+int is_block(struct Token tokens[], int nstmt) {
+   return (tokens[nstmt].token == CLOSE_BRACK) && (tokens[0].token == OPEN_BRACE);
+}
+
+
+/* ------------------------------------------ */
+/*            return                          */
+/* ------------------------------------------ */
+
+
+struct ReturnStatement {
+    struct Symbol value;
+};
+
+int is_return_statement(char *line, struct Token tokens[], int nstmt) {
+    for (int i=0; 6 > i; i++)
+        if ((tokens[0].start + line)[i] != "return"[i])
+            return FALSE;
+    
+    return TRUE;
+}
+
+void construct_ret_statement(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
+    struct Symbol var;
+    struct ReturnStatement *ret_stmt = malloc(sizeof(struct ReturnStatement));
+    unit_from_token(line, tokens[1], &var);
+    stmt->internal_data=ret_stmt;
+    stmt->type=Return;
+}
+
+struct DeclareStatement {
+    int name_sz;
+    char name[STR_STACK_SIZE];
+    struct Symbol data;
+};
+
 // word open param [expression, ...] close param
 
 int construct_func_call(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
@@ -536,7 +239,7 @@ int construct_func_call(char *line, struct Token tokens[], int nstmt, struct Sta
     for (int i=2; nstmt-2 > i; i++) {
         if (tokens[i].token == COMMA) continue;
 
-        struct Unit base = {
+        struct Symbol base = {
             .datatype=Null,
             .data_ptr=0,
             .tag=Literal
@@ -699,7 +402,7 @@ int is_declare_statement(struct Token tokens[], int ntokens) {
 
 int construct_declare_statement(char *line, struct Token tokens[], struct Statement *stmt) {
     struct DeclareStatement *dec_stmt = malloc(sizeof(struct DeclareStatement));
-    struct Unit data;
+    struct Symbol data;
     int name_len = 0;
     dec_stmt->name_sz = 0;
     init_unit(&dec_stmt->data);
