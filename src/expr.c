@@ -8,14 +8,14 @@
 /*            symbols & values                */
 /* ------------------------------------------ */
 
-void init_unit(struct Symbol *v) {
+void init_symbol(struct Symbol *v) {
     v->tag=Literal;
     v->datatype=Null;
     v->data_ptr=0;
 }
 
 int unit_from_token(char *line, struct Token token, struct Symbol *value) {
-    init_unit(value);
+    init_symbol(value);
     
     if (token.token == WORD) {
         value->tag = Variable;
@@ -55,7 +55,7 @@ void init_func_call(struct FunctionCallExpr *fn) {
     fn->name_sz = 0;
     fn->args_sz = 0;
     for (int i=0; FUNC_ARG_SIZE > i; i++){
-        init_expression(&fn->args[i]);
+        init_expression(fn->args[i]);
     }
 }
 
@@ -129,7 +129,7 @@ int construct_expr(
                 }
             }
             
-            struct Expr *item = &newfunc->args[newfunc->args_sz];
+            struct Expr *item = newfunc->args[newfunc->args_sz];
             init_expression(item);
             newfunc->args_sz += 1;
 
@@ -185,14 +185,14 @@ int construct_expr(
     else if (is_data(tokens[idx].token)) {
         
         struct Symbol unit;
-        init_unit(&unit);
+        init_symbol(&unit);
         unit_from_token(line, tokens[0], &unit);
         
         struct Expr *n_expr = malloc(sizeof(struct Expr));
         init_expression(n_expr);
-        
         unit_into_uniary(&unit, n_expr->inner_data);
     }
+    return 0;
 }
 
 
