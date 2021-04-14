@@ -211,7 +211,7 @@ int is_data(enum Lexicon token) {
     );
 }
 
-int tokenize(char *line,  struct Token tokens[], int token_idx) {
+int tokenize(char *line,  struct Token tokens[], size_t token_idx) {
     enum Lexicon complex_token = NULLTOKEN;
     unsigned long complex_start = 0;
     unsigned long ctr = 0;
@@ -248,7 +248,7 @@ int tokenize(char *line,  struct Token tokens[], int token_idx) {
 
             // check if its an operator, and that its lenth is 2
             if (is_operator_complex(complex_token) && i-complex_start != 2 ) {
-                printf("complex start-i: %d\n", i-complex_start);
+                printf("complex start-i: %d\n", (int)(i-complex_start));
                 token.start = i-1;
                 token.end = i-1;
                 token.token = invert_operator_token(complex_token);

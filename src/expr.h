@@ -19,11 +19,11 @@ typedef enum DataType {
 // variable OR literal
 typedef struct Symbol {
     void *data_ptr;
-    enum Tag tag;
-    enum DataType datatype;
+    Tag tag;
+    DataType datatype;
 } Symbol;
 
-void init_symbol(struct Symbol *v);
+void init_symbol(Symbol *v);
 
 typedef enum ExprType {
     UndefinedExpr,
@@ -32,7 +32,7 @@ typedef enum ExprType {
 } ExprType;
 
 typedef struct Expr {
-    enum ExprType type;
+    ExprType type;
     // void wi
     void *inner_data;
 } Expr;
@@ -45,7 +45,7 @@ typedef struct FunctionCallExpr {
     int args_sz;
 
     char *func_name; 
-    struct Expr *args[FUNC_ARG_SIZE];
+    Expr *args[FUNC_ARG_SIZE];
 } FunctionCallExpr;
 
 int unit_from_token(char *line, struct Token token, struct Symbol *value);

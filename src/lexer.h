@@ -1,6 +1,7 @@
 #ifndef _HEADER__LEXER__
 #define _HEADER__LEXER__
 
+#include <stdlib.h>
 #define ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
 #define DIGITS "1234567890"
 
@@ -135,5 +136,5 @@ const char * ptoken(enum Lexicon t);
 int is_cmp_operator(enum Lexicon compound_token);
 int is_bin_operator(enum Lexicon compound_token);
 int is_data(enum Lexicon token);
-int tokenize(char *line,  struct Token tokens[], int token_idx);
+int tokenize(char *line,  struct Token tokens[], size_t token_idx);
 #endif
