@@ -7,69 +7,76 @@
 /* ------------------------------------------ */
 
 const char * ptoken(enum Lexicon t) {
-    if (t == INTEGER) return "integer";
-    else if (t == WORD) return "word";
-    else if (t == NULLTOKEN) return "nulltoken";
-    else if (t == WHITESPACE) return "whitespace";
-    else if (t == OPEN_BRACE) return "brack_open";
-    else if (t == CLOSE_BRACK) return "brack_close";
-    else if (t == PARAM_OPEN) return "param_open";
-    else if (t == PARAM_CLOSE) return "param_close";
-    else if (t == COMMA) return "comma";
-    else if (t == DIGIT) return "digit";
-    else if (t == QUOTE) return "quote";
-    else if (t == EQUAL) return "eq";
-    else if (t == ADD) return "add";
-    else if (t == MUL) return "multiply";
-    else if (t == DIV) return "divide";
-    else if (t == GT) return "greater than";
-    else if (t == LT) return "less than";
-    else if (t == ISEQL) return "is eq";
-    else if (t == GTEQ) return "greater than or eq";
-    else if (t == LTEQ) return "less than or eq";
-    else if (t == POW) return "exponent";
-    else if (t == PLUSEQ) return "plus eq";
-    else if (t == MINUSEQ) return "minus eq";
-    else if (t == MOD) return "modolus";
-    else if (t == SUB) return "sub";
-    else if (t == SEMICOLON) return "semi-colon";
-    else if (t == SPECIAL_CHAR) return "special_char";
-    else if (t == CHAR) return "char";
-    else if (t == STRING_LITERAL) return "str_literal";
-    else if (t == UNKNOWN) return "unknown token";
-    else if (t == AMPER) return "&";
-    else if (t == PIPE) return "pipe";
-    else if (t == AND) return "and";
-    else if (t == OR) return "or";
-    else return "PTOKEN_ERROR_UNKNOWN_TOKEN";
+    switch (t) {
+        case INTEGER: return "integer";
+        case WORD: return "word";
+        case NULLTOKEN: return "nulltoken";
+        case WHITESPACE: return "whitespace";
+        case OPEN_BRACE: return "brack_open";
+        case CLOSE_BRACE: return "brack_close";
+        case PARAM_OPEN: return "param_open";
+        case PARAM_CLOSE: return "param_close";
+        case COMMA: return "comma";
+        case DIGIT: return "digit";
+        case QUOTE: return "quote";
+        case EQUAL: return "eq";
+        case ADD: return "add";
+        case MUL: return "multiply";
+        case DIV: return "divide";
+        case GT: return "greater than";
+        case LT: return "less than";
+        case ISEQL: return "is eq";
+        case GTEQ: return "greater than or eq";
+        case LTEQ: return "less than or eq";
+        case POW: return "exponent";
+        case PLUSEQ: return "plus eq";
+        case MINUSEQ: return "minus eq";
+        case MOD: return "modolus";
+        case SUB: return "sub";
+        case SEMICOLON: return "semi-colon";
+        case SPECIAL_CHAR: return "special_char";
+        case CHAR: return "char";
+        case STRING_LITERAL: return "str_literal";
+        case UNKNOWN: return "unknown token";
+        case AMPER: return "&";
+        case PIPE: return "pipe";
+        case AND: return "and";
+        case OR: return "or";
+        default: return "PTOKEN_ERROR_UNKNOWN_TOKEN";
+    };
 }
 
 
 enum Lexicon tokenize_char(char c) {
-    if (' ' == c
-        || c == '\n'
-        || c == '\r'
-        || c == '\t' )
-        return WHITESPACE;
-    else if (c == '=')  return EQUAL;
-    else if (c == '"')  return QUOTE;
-    else if (c == '{')  return OPEN_BRACE;
-    else if (c == '}')  return CLOSE_BRACK;
-    else if (c == '(')  return PARAM_OPEN;
-    else if (c == ')')  return PARAM_CLOSE;
-    else if (c == ';')  return SEMICOLON;
-    else if (c == ',')  return COMMA;
-    else if (c == '+')  return ADD;
-    else if (c == '-')  return SUB;
-    else if (c == '*')  return MUL;
-    else if (c == '^')  return POW;
-    else if (c == '/')  return DIV;
-    else if (c == '>')  return GT;
-    else if (c == '<')  return LT;
-    else if (c == '&')  return AMPER;
-    else if (c == '|')  return PIPE;
-    else if (c == '%')  return MOD;
 
+    switch (c) {
+        case ' ': return WHITESPACE;
+        case '\n': return WHITESPACE;
+        case '\t': return WHITESPACE;
+        case '\r': return WHITESPACE;
+        
+        case '/':  return DIV;
+        case '=':  return EQUAL;
+        case '"':  return QUOTE;
+        case '{':  return OPEN_BRACE;
+        case '}':  return CLOSE_BRACE;
+        case '(':  return PARAM_OPEN;
+        case ')':  return PARAM_CLOSE;
+        case ';':  return SEMICOLON;
+        case ',':  return COMMA;
+        case '+':  return ADD;
+        case '-':  return SUB;
+        case '*':  return MUL;
+        case '^':  return POW;
+        case '>':  return GT;
+        case '<':  return LT;
+        case '&':  return AMPER;
+        case '|':  return PIPE;
+        case '%':  return MOD;
+        default :  break;
+    }
+
+    
     for (int i = 0; sizeof(DIGITS) > i; i++) {
         if (c == DIGITS[i])
             return DIGIT;
@@ -100,41 +107,49 @@ int is_complex_token(enum Lexicon token) {
 }
 
 int set_complex_token(enum Lexicon token, enum Lexicon *complex_token) {
-    if (token == DIGIT) 
-        *complex_token = INTEGER;
-    
-    else if (token == CHAR)
-        *complex_token = WORD;
-    
-    else if (token == QUOTE)
-        *complex_token = STRING_LITERAL;
-    
-    else if (token == EQUAL)
-        *complex_token = ISEQL;
-    
-    // maybe these are bit shift operations
-    // wel'll find out later
-    else if (token == GT)
-        *complex_token = GTEQ;
-    
-    else if (token == LT)
-        *complex_token = LTEQ;
-    // ----
+    switch (token) {
+        case DIGIT: 
+            *complex_token = INTEGER;
+            break;
+        
+        case CHAR:
+            *complex_token = WORD;
+            break;
 
-    else if (token == ADD)
-        *complex_token = PLUSEQ;
+        case QUOTE:
+            *complex_token = STRING_LITERAL;
+            break;
 
-    else if (token == SUB)
-        *complex_token = MINUSEQ;
-    
-    else if (token == AMPER)
-        *complex_token = AND;
+        case EQUAL:
+            *complex_token = ISEQL;
+            break;
 
-    else if (token == PIPE)
-        *complex_token = OR;
+        case GT:
+            *complex_token = GTEQ;
+            break;
+        
+        case LT:
+            *complex_token = LTEQ;
+            break;
+        
+        case ADD:
+            *complex_token = PLUSEQ;
+            break;
+        
+        case SUB:
+            *complex_token = MINUSEQ;
+            break;
+        
+        case AMPER:
+            *complex_token = AND;
+            break;
+        
+        case PIPE:
+            *complex_token = OR;
+            break;
 
-    else
-        return -1;
+        default: return -1;
+    }
     
     return 0;
 }
@@ -169,14 +184,31 @@ int is_operator_complex(enum Lexicon complex_token) {
 }
 
 enum Lexicon invert_operator_token(enum Lexicon complex_token) {
-    if (complex_token == ISEQL) return EQUAL;
-    else if (complex_token == GTEQ) return GT;
-    else if (complex_token == LTEQ) return LT;
-    else if (complex_token == AND) return AMPER;
-    else if (complex_token == OR) return PIPE;
-    else if (complex_token == MINUSEQ) return SUB;
-    else if (complex_token == PLUSEQ) return ADD;
-    else return NULLTOKEN;
+    switch (complex_token) {
+        case ISEQL:
+            return EQUAL;
+
+        case GTEQ:
+            return GT;
+
+        case LTEQ:
+            return LTEQ;
+
+        case AND:
+            return AMPER;
+
+        case OR:
+            return PIPE;
+
+        case MINUSEQ:
+            return SUB;
+
+        case PLUSEQ:
+            return ADD;
+            
+        default:
+            return NULLTOKEN;
+    }
 }
 
 // ---
@@ -236,7 +268,7 @@ int tokenize(char *line,  struct Token tokens[], size_t token_idx) {
         else if (continue_complex(lexed, complex_token))
             continue;
         
-        // a token that holds multiple unitary tokens in it, 
+        // a token that holds multiple tokens in it, 
         // has broken sequence
         else if (complex_token != NULLTOKEN) {
             

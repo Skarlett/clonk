@@ -3,560 +3,140 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
-#include "lexer.h"
-#include "expr.h"
+#include "core/lexer.h"
+#include "core/expr.h"
+#include "core/ast.h"
+#include "core/common.h"
 
-#define TRUE 1
-#define FALSE 0
-#define EXTENSION "ka"
 
-#define STR_STACK_SIZE 64
-#define FUNC_ARG_SIZE 8
-#define STMT_CAPACITY 16
+#define HELP_TEXT \
+    "\t -h | brings up this help menu\n" \
+    "\t -V | print version\n" \
+    "\t -c | runs a string\n" \
+    "\t -a | prints ast\n" \
+    "\t -l | prints token stream\n"
+   
 
-// dumb rewrite of xmalloc
-void * xmalloc(size_t size) {
-  void *p;
-
-  p = malloc(size);
-  if (p == NULL) {
-    printf ("Not enough memory [%d bytes]\n", (int)size);
-    exit(1);
-  }
-  return p;
+void print_help(char *name) {
+    printf("usage: %s [file]\nversion: %s\n\n", name, VERSION);
+    printf("%s\n", HELP_TEXT);
 }
-/* ------------------------------------------ */
-/*            Func call                       */
-/* ------------------------------------------ */
 
-
-enum StatementType {
-    Undefined,
-
-    // define function (named block)
-    Define,
-    
-    // declare var
-    Declare,
-
-    //Math Expression (with variables)
-    // or function calls,
-    // + all variables evaluate into expressions
-    Expression,
-
-    // conditional block 
-    Condition,
-
-    Block,
-
-    Return
-};
-
-
-struct Statement {
-    enum StatementType type;
-    void *internal_data;
-};
-
-
-
-//
-// struct ExprStatement {
-//     struct Symbol base;
-//     enum BinOperation op;
-//     struct ExprStatement *other;
+// /* ------------------------------------------ */
+// /*            Func call                       */
+// /* ------------------------------------------ */
+// enum Action {
+//     NullCommand,
+//     Repl,
+//     RunFile,
+//     RunString,
+//     PrintTokenStream,
+//     PrintAST,
+//     //HelpMenu,
+//     //PrintVersion,
 // };
 
-// void init_expr_stmt(struct ExprStatement *expr) {
-//     expr->op=Nop;
-//     expr->other=0;
-//     init_symbol(&expr->base);
-// }
 
-// int is_express_statement(struct Token tokens[], int nstmt) {
-//     if (nstmt-1 % 2 == 0)
-//         return 0; 
-    
-//     for (int i=0; nstmt-1 > i; i++) {
-//         if (tokens[i].token != SUB || tokens[i].token != ADD)
-//             return 0;
-//     }
-
-//     return 1;
-// }
-
-// int inner_expr_stmt(char *line, struct Token tokens[], int nstmt, struct ExprStatement *ex_stmt){
-//     struct ExprStatement *expr = xmalloc(sizeof(struct ExprStatement));
-//     init_expr_stmt(expr);
-//     //free(expr->base.data_ptr);
-//     unit_from_token(line, tokens[0], &expr->base);
-    
-//     if (nstmt > 1) {
-//         if (tokens[1].token == ADD)
-//             expr->op=Add;
-//         else if (tokens[1].token == SUB)
-//             expr->op=Sub;
-//         else
-//             return -1;
-    
-//         struct ExprStatement *o_expr = xmalloc(sizeof(struct ExprStatement));
-//         init_expr_stmt(o_expr);
-
-//         inner_expr_stmt(line, tokens+2, nstmt-2, o_expr);
-//         expr->other = o_expr;
-//         return 0;
-//     }
-//     return 0;
-// }
-
-// int construct_expr_stmt(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
-//     struct ExprStatement *expr = xmalloc(sizeof(struct ExprStatement));
-    
-//     init_expr_stmt(expr);
-//     inner_expr_stmt(line, tokens, nstmt, expr);
-
-//     stmt->internal_data=expr;
-//     stmt->type=Expression;
-//     return 0;
-// }
-
-
-
-/* ------------------------------------------ */
-/*            Block statement                 */
-/* ------------------------------------------ */
-
-
-struct BlockStatement {
-    struct Statement *statements;
-    size_t capacity;
-    size_t length;
+enum RunType {
+    RunTypeUndefined,
+    CommandString,
+    FileInput
 };
 
-void init_block(struct BlockStatement *block, size_t capacity) {
-    block->statements = xmalloc(sizeof(struct Statement)*capacity);
-    block->capacity=capacity;
-    block->length=0;
-}
-
-void append_statement(struct BlockStatement *block, struct Statement stmt) {
-    if (block->length >= block->capacity) {
-        block->capacity *= 2;
-        block->statements=realloc(block->statements, block->capacity);
-    }
-
-    block->length += 1;
-    block->statements[block->length] = stmt;
-}
-
-
-// loop where we collect into a block
-//
-
-// or we recurse into it (preferred)
-int is_block(struct Token tokens[], int nstmt) {
-   return (tokens[nstmt].token == CLOSE_BRACK) && (tokens[0].token == OPEN_BRACE);
-}
-
-
-/* ------------------------------------------ */
-/*            return                          */
-/* ------------------------------------------ */
-
-
-struct ReturnStatement {
-    Expr value;
+struct Opts {
+    int print_ast;
+    int print_tokens;
+    enum RunType type;
+    char *run;
 };
 
-int is_return_statement(char *line, struct Token tokens[], int nstmt) {
-    for (int i=0; 6 > i; i++)
-        if ((tokens[0].start + line)[i] != "return"[i])
-            return FALSE;
-    
-    return TRUE;
+void init_opts(struct Opts *opts) {
+    opts->print_ast=0;
+    opts->print_tokens=0;
+    opts->type=RunTypeUndefined;
+    opts->run = NULL;
 }
 
-void construct_ret_statement(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
-    Expr var;
-    struct ReturnStatement *ret_stmt = xmalloc(sizeof(struct ReturnStatement));
-
-    construct_expr(line, tokens + 2, nstmt, &var);
-    ret_stmt->value=var;
-    stmt->internal_data=ret_stmt;
-    stmt->type=Return;
-}
-
-struct DeclareStatement {
-    int name_sz;
-    char name[STR_STACK_SIZE];
-    struct Symbol data;
-};
-
-// word open param [expression, ...] close param
-
-int construct_func_call(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
-    struct FunctionCallExpr *fn_stmt = xmalloc(sizeof(struct FunctionCallExpr));
-    // open_param
-    size_t oparam_idx = 0;
-    size_t cparam_idx = 0;
-    
-    fn_stmt->name_sz = 0;
-    fn_stmt->args_sz = 0;
-
-    for (int i=0; FUNC_ARG_SIZE > i; i++){
-        //init_symbol(&fn_stmt->args[i]);
-    }
-    
-    // setup name
-    fn_stmt->name_sz=tokens[0].end - tokens[0].start;
-
-    char *fname = xmalloc(fn_stmt->name_sz);
-    
-    strncpy(fname, tokens[0].start + line, fn_stmt->name_sz);
-    fn_stmt->func_name = fname;
-
-    
-    // no parameters
-    if (nstmt == 4) {
-        //printf("no parameters in '%s'", fn_stmt->func_name);
+int access_chk(int argc, int i, char *argv[], struct Opts *opts) {
+    if (argc > i) {
+        opts->run = argv[i+1];
         return 0;
     }
-    size_t last_expr = 2;
-
-    while (nstmt-2 > last_expr) {
-        size_t expr_idx = 0;
-
-        for (int i=last_expr; nstmt-1 > i; i++) {
-            if (tokens[i].token == COMMA) {
-                expr_idx = i;
-                break;
-            }
-        }
-
-        if (expr_idx == 1) {
-
-        }
-
-        else if (is_func_call(tokens + last_expr, expr_idx)) {
-
-        }
-
-        //parse_expression(line, tokens + las);
+    else {
+        printf("expected token to follow");
+        exit(1);
     }
-    //TODO construc
-    //construct arguments
-    for (int i=2; nstmt-2 > i; i++) {
-        if (tokens[i].token == COMMA) continue;
+    return -1;
+}
 
-        struct Symbol base = {
-            .datatype=Null,
-            .data_ptr=0,
-            .tag=Literal
-        };
-        
-        if (unit_from_token(line, tokens[i], &base) != 0) {
-            fprintf(stderr, "error in unit_from_token");
+void setup_opts(int argc, char *argv[], struct Opts *opts) {
+    int skip = 0;
+
+    for (int i=1; argc > i; i++) {
+        if (skip > 0) {
+            skip -= 1;
+            continue;
+        }
+
+        else if (strcmp(argv[i], "-V") == 0) {
+            printf("%s\n", VERSION);
+            exit(0);
+        }
+
+        else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            print_help(argv[0]);
+            printf("\n");
+            exit(0);
+        }
+
+        else if (strcmp(argv[i], "-l") == 0) {
+            opts->print_tokens=1;
+        }
+
+        else if (strcmp(argv[i], "-a") == 0) {
+            opts->print_tokens=1;
+        }
+
+        else if (strcmp(argv[i], "-c") == 0) {
+            access_chk(argc, i, argv, opts);
+            skip = 1;
+        }
+
+        else if(access(argv[i], F_OK) == 0) {
+            access_chk(argc, i, argv, opts);
+            skip = 1;
+        }
+
+        else {
+            printf("unknown option '%s'\n", argv[i]);
             exit(1);
         }
-        
-        if (fn_stmt->args_sz > FUNC_ARG_SIZE)
-            return -1;
-        
-        //fn_stmt->args[fn_stmt->args_sz] = base;
-        fn_stmt->args_sz += 1;
-    }
-    
-    stmt->internal_data=fn_stmt;
-    //stmt->type=CallFunc;
-
-    return 0;
-}
-/* ------------------------------------------ */
-/*            Func def                        */
-/* ------------------------------------------ */
-
-struct FunctionDefinition {
-    size_t name_sz;
-    size_t param_sz;
-
-    char func_name[STR_STACK_SIZE];
-    char parameters[FUNC_ARG_SIZE];
-};
-
-void init_func_def(struct FunctionDefinition *fn) {
-    struct BlockStatement body;
-    init_block(&body, STMT_CAPACITY);
-
-    fn->name_sz = 0;
-    fn->param_sz = 0;
-
-    for (int i=0; FUNC_ARG_SIZE > i; i++){
-        fn->parameters[i] = 0;
     }
 }
 
-// word('def') word open_param ... close_param
-int is_func_definition(char *line, struct Token tokens[], size_t nstmt) {
-    if (tokens[0].token == WORD) {
-        for (int i=0; 3 > i; i++)
-            if ((line + tokens[0].start)[i] != "def"[i]) 
-                return 0;
-        
-
-        return tokens[1].token == WORD  
-                && tokens[2].token == PARAM_OPEN
-                && tokens[nstmt].token == PARAM_CLOSE;
-    } else
-        return 0;
-}
-
-int construct_func_definition(char *line, struct Token tokens[], size_t nstmt, struct Statement *stmt) {
-    printf("declaring func...\n");
-    struct FunctionDefinition *proceedure = xmalloc(sizeof(struct FunctionDefinition));
-    init_func_def(proceedure);
-    strncpy(proceedure->func_name, (line + tokens[1].start), tokens[1].end);
-    
-
-    for (size_t i=2; nstmt-1 > i; i++) {
-        if (tokens[i].token == COMMA) continue;
-        char *parameter = xmalloc(tokens[i].end - tokens[i].start);
-        strncpy(parameter, line + tokens[i].start, tokens[i].end);
-
-        if (proceedure->param_sz > FUNC_ARG_SIZE)
-            return -1;
-        
-        //proceedure->parameters[proceedure->param_sz] = parameter;
-        proceedure->param_sz += 1;
-    }
-
-    stmt->internal_data = proceedure;
-    stmt->type = Define;
-
-    return 0;
-}
 
 
-
-
-/* ------------------------------------------ */
-/*            if statement                    */
-/* ------------------------------------------ */
-
-enum ConditionState {
-    If,
-    Elif,
-    Else
-};
-
-// struct ConditionStatement {
-//     struct ExprStatement expr;
-//     enum ConditionState state;
-// //    struct BlockStatement if_true;
-// //    struct BlockStatement if_false;
-// };
-
-// void init_condition_stmt(struct ConditionStatement *stmt) {
-//     struct BlockStatement block;
-//     stmt->state=If;
-//     init_expr_stmt(&stmt->expr);
-// }
-
-// // word('if') open param expr close param
-// int is_conditional_definition(char *line, struct Token tokens[], int nstmt) {
-//     char keyword[4];
-//     memset(keyword, 0, 4);
-
-//     for (int i=0; 4 > i; i++) {
-//         keyword[i] = (line + tokens[0].start)[i];
-//     }
-    
-//     return tokens[0].token == WORD
-//     && (strcmp(keyword, "if")
-//         || strcmp(keyword, "elif")
-//         || strcmp(keyword, "else"))
-//     && tokens[1].token == PARAM_OPEN
-//     && tokens[nstmt].token == PARAM_CLOSE;
-// }
-
-
-// int construct_condition_statement(char *line, struct Token tokens[], int nstmt, struct Statement *stmt) {
-//     struct ConditionStatement *condition_stmt = xmalloc(sizeof(struct ConditionStatement));
-//     init_condition_stmt(condition_stmt);
-
-//     struct Statement *expr_stmt = xmalloc(sizeof(struct Statement));
-//     construct_expr_stmt(line, tokens+2, nstmt-1, expr_stmt);
-
-//     stmt->internal_data = condition_stmt;
-//     stmt->type = Condition;
-
-//     return 0;
-// }
-
-
-/* ------------------------------------------ */
-/*            declare variable                */
-/* ------------------------------------------ */
-
-// x = 200
-int is_declare_statement(struct Token tokens[], int ntokens) {
-    return ntokens == 4
-    && tokens[0].token == WORD
-    && tokens[1].token == EQUAL
-    && (
-        tokens[2].token == STRING_LITERAL
-        || tokens[2].token == INTEGER
-        || tokens[2].token == WORD
-    );
-}
-
-int construct_declare_statement(char *line, struct Token tokens[], struct Statement *stmt) {
-    struct DeclareStatement *dec_stmt = xmalloc(sizeof(struct DeclareStatement));
-    struct Symbol data;
-    int name_len = 0;
-    dec_stmt->name_sz = 0;
-    init_symbol(&dec_stmt->data);
-    
-    for (int i=0; 3 > i; i++) {
-        if (i == 1)
-            continue;
-
-        else if (i == 0 && tokens[i].token != WORD)
-            return -1;
-
-        else if (i==0) {
-            char *slice = (line + tokens[i].start);
-
-            int c=0;
-            for(;tokens[i].end > c ;c++)
-                dec_stmt->name[c] = slice[c];
-            
-            dec_stmt->name_sz=c;
-        }
-
-        // copy identifier
-        else if (i == 2) {
-            if (unit_from_token(line, tokens[i], &data) != 0) {
-                fprintf(stderr, "error in unit_from_token");
-                exit(1);
-            }
-            dec_stmt->data=data;
-        }
-    }
-    // poo, more heap allocations
-    stmt->internal_data = dec_stmt;
-    stmt->type = Declare;
-    return 0;
-}
-
-
-/* ------------------------------------------ */
-/*            construct all statements        */
-/* ------------------------------------------ */
-
-
-int construct_statement(char *line, struct Token tokens[], size_t nstmt, struct BlockStatement *block) {
-    // 2 + 2
-    struct Statement new;
-    
-    for (int i=0; nstmt > i; i++) 
-        printf("[%s] ", ptoken(tokens[i].token));
-    printf("\n");
-    if (line == 0) return 0;
-    if (nstmt == 0) return -1;
-
-    // if (is_express_statement(tokens, nstmt))
-    //     construct_expr_stmt(line, tokens, nstmt, &new);
-    
-    // declare var
-    else if (is_declare_statement(tokens, nstmt))
-        construct_declare_statement(line, tokens, &new);
-   
-    // return statement
-    else if (is_return_statement(line, tokens, nstmt))
-        construct_ret_statement(line, tokens, nstmt, &new);
-
-    // foo( ... )
-    else if (is_func_call(tokens, nstmt)) 
-        construct_func_call(line, tokens, nstmt, &new);
-    
-    // def foo((T),*)
-    else if (is_func_definition(line, tokens, nstmt)) {
-        //*expects_next = Block;
-        construct_func_definition(line, tokens, nstmt, &new);
-    }
-
-    // // if ( expr )
-    // else if (is_conditional_definition(line, tokens, nstmt)) {
-    //     //*expects_next = Block;
-    //     construct_condition_statement(line, tokens, nstmt, &new);
-    // }
-    
-    else if (tokens[0].token == OPEN_BRACE) {
-        struct BlockStatement new_block;
-        init_block(&new_block, STMT_CAPACITY);
-        
-        construct_statement(line, tokens + 1, nstmt, &new_block);
-        new.type = Block;
-        new.internal_data = &new_block;
-    }
-    
-
-    else {
-        char *slice = xmalloc(tokens[nstmt].end - tokens[0].start);
-        strncpy(slice, (line + tokens[0].start), tokens[nstmt].end);
-
-        printf("cannot parse out raw data ,\n```\n%s\n```\n", slice);
-        return -1;
-    }
-    append_statement(block, new);
-    return 0;
-}
-
-int assemble_ast(
-    char *line,
-    struct Token tokens[],
-    size_t ntokens,
-    struct BlockStatement *block)
-{
-    size_t last_stmt_idx = 0;
-    size_t statement_idx = 0;
-
-    while(ntokens > last_stmt_idx){
-        for(size_t i=last_stmt_idx; ntokens > i; i++) {
-            enum Lexicon token = tokens[i].token;
-
-            if (token == SEMICOLON )
-            {
-                statement_idx = i+1;
-                break;
-            }
-        }
-        printf("tokens: tokens[%d..%d] [%d] -- ", (int)last_stmt_idx, (int)statement_idx, (int)ntokens);
-        size_t slen = statement_idx-last_stmt_idx;
-
-        if (construct_statement(line, tokens + last_stmt_idx, slen, block) != 0)
-            return -1;
-        
-        last_stmt_idx = statement_idx;
-    }
-    return 0;
-}
-
-
-int parse(char *filepath) {
+int parse(struct Opts *opts) {
     FILE *fd;
-    struct BlockStatement root;
+    
+    struct BlockStatement root, *last, *current;
+    current=&root;
+    last=&root;
     init_block(&root, STMT_CAPACITY*2);
+
+
+    struct Token tokens[2048];
 
     size_t n_completed = 0;
     size_t buf_sz = 2048;
-    struct Token tokens[buf_sz];
     size_t token_n = 0;
+
     char line[buf_sz];
     memset(line, 0, buf_sz);
     
-    if ((fd = fopen(filepath, "r")) == NULL) {
+    if ((fd = fopen(opts->run, "r")) == NULL) {
         perror("Error! opening file");
         exit(1);
     }
@@ -579,7 +159,6 @@ int parse(char *filepath) {
         }
 
         size_t ntokens = tokenize(line, tokens, token_n);
-        
         printf("token stream: ");
         for (size_t i=0; ntokens > i; i++) {
             printf("[%s(%d,%d)] ", ptoken(tokens[i].token), (int)tokens[i].start, (int)tokens[i].end);
@@ -602,11 +181,22 @@ int parse(char *filepath) {
 
 
 int main(int argc, char *argv[]) {
-    if (argc > 1) {
-        return parse(argv[1]);
+    struct Opts opts;
+    struct Token tokens[2048];
+    struct BlockStatement root, current;
+
+    if (argc == 1) {
+        print_help(argv[0]);
+        return 0;
     }
-    else {
-        printf("%s [file.%s]\n", argv[0], EXTENSION);
+
+    init_opts(&opts);
+    setup_opts(argc, argv, &opts);
+
+    if (opts.run==0) {
+        printf("bad arguments\n");
         return 1;
     }
+
+    return parse(&opts);
 }
