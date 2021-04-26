@@ -25,3 +25,9 @@ void synthesize(BlockStatement *block) {
 
 // ! `block` + `return`
 
+// `int` += `int`
+
+// `int` + `int`
+
+// `string` += `string`
+

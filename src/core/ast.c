@@ -7,20 +7,6 @@
 #include "expr.h"
 #include "ast.h"
 
-int construct_expr_stmt(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
-    ExprStatement *expr_stmt = xmalloc(sizeof(ExprStatement));
-    Expr *expr = xmalloc(sizeof(ExprStatement));
-    expr_stmt->expr=expr;
-    init_expression(expr);
-    
-    if (construct_expr(line, tokens, nstmt, expr) != 0)
-        return -1;
-    
-    stmt->internal_data=expr_stmt;
-    stmt->type=Expression;
-    return 0;
-}
-
 
 
 /* ------------------------------------------ */
@@ -29,19 +15,15 @@ int construct_expr_stmt(char *line, Token tokens[], size_t nstmt, Statement *stm
 
 
 void init_block(BlockStatement *block, size_t capacity) {
-    block->statements = xmalloc(sizeof(Statement)*capacity);
+    memset(block->statements, 0, STMT_CAPACITY);
     block->capacity=capacity;
     block->length=0;
 }
 
 void append_statement(BlockStatement *block, Statement *stmt) {
-    if (block->length >= block->capacity) {
-        block->capacity *= 2;
-        block->statements=realloc(block->statements, block->capacity);
-    }
-
-    block->length += 1;
+    // TODO Dynamic sizing
     block->statements[block->length] = stmt;
+    block->length += 1;
 }
 
 
@@ -65,7 +47,7 @@ int is_return_statement(char *line, Token tokens[], size_t nstmt) {
     return TRUE;
 }
 
-void construct_ret_statement(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
+int construct_ret_statement(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
     Expr var;
     ReturnStatement *ret_stmt = xmalloc(sizeof(ReturnStatement));
 
@@ -73,6 +55,7 @@ void construct_ret_statement(char *line, Token tokens[], size_t nstmt, Statement
     ret_stmt->value=var;
     stmt->internal_data=ret_stmt;
     stmt->type=Return;
+    return 0;
 }
 
 
@@ -132,6 +115,18 @@ int construct_func_definition(char *line, Token tokens[], size_t nstmt, Statemen
 }
 
 
+int construct_expr_stmt(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
+    ExprStatement *expr_stmt = xmalloc(sizeof(ExprStatement));
+    init_expression(&expr_stmt->expr);
+    
+    if (construct_expr(line, tokens, nstmt, &expr_stmt->expr) != 0)
+        return -1;
+    
+    stmt->internal_data=expr_stmt;
+    stmt->type=Expression;
+    return 0;
+}
+
 
 
 /* ------------------------------------------ */
@@ -163,6 +158,7 @@ int is_conditional_definition(char *line, Token tokens[], size_t nstmt) {
 
 int construct_conditional(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
     ConditionalStatement *con_stmt = xmalloc(sizeof(ConditionalStatement));
+    
     stmt->type=Condition;
     stmt->internal_data=con_stmt;
     init_condition_stmt(con_stmt);
@@ -180,7 +176,7 @@ int construct_conditional(char *line, Token tokens[], size_t nstmt, Statement *s
     else return -1;
     
     return 0;
-    //con_stmt->state
+    
 }
 
 /* ------------------------------------------ */
@@ -206,6 +202,7 @@ int construct_declare_statement(char *line, Token tokens[], size_t nstmt, Statem
         strncpy(dec_stmt->name, line + tokens[0].start, dec_stmt->name_sz);
     }
 
+    dec_stmt->data=expr;
     stmt->internal_data = dec_stmt;
     stmt->type = Declare;
     return 0;
@@ -226,80 +223,6 @@ const char * pstmt_type(Statement *stmt) {
     }
 }
 
-int pnode(Statement *stmt, short unsigned indent){
-    tab_print(indent);
-
-    printf("type: %s\n", pstmt_type(stmt));
-    tab_print(indent);
-    
-    if (stmt->type == Undefined) return -1;
-    
-    else if(stmt->type == Define) {
-        FunctionDefinition *data = stmt->internal_data;
-        
-        printf("name: %s\n", data->func_name);
-        tab_print(indent);
-        printf("parameters: [");
-
-        for (int i=0; data->param_sz > i; i++) {
-            printf("%s", data->parameters[i]);
-            if (i != data->param_sz-1)
-                printf(", ");
-        }
-        printf("];\n");
-    }
-    
-    else if(stmt->type == Declare) {
-        DeclareStatement *data = stmt->internal_data;
-        printf("name: %s\n", data->name);
-        tab_print(indent);
-        printf("expression: {\n");
-        tab_print(indent);
-        print_expr(&data->data, indent+1);
-        tab_print(indent);
-        printf("}\n");
-        tab_print(indent);
-    }
-    
-    else if(stmt->type == Expression) {    
-        ExprStatement *expr_stmt = stmt->internal_data;
-        print_expr(expr_stmt->expr, indent);
-    }
-
-    else if(stmt->type == Block) {
-        BlockStatement *data = stmt->internal_data;
-        tab_print(indent);
-        printf("{\n");
-        for (size_t i=0; data->length > i; i++) {
-            pnode(data->statements[i], indent+1);
-        }
-        tab_print(indent);
-        printf("}\n");
-    }
-
-    else if(stmt->type == Condition) {
-        ConditionalStatement *data = stmt->internal_data;
-        tab_print(indent);
-        printf("expr: {\n");
-        print_expr(&data->expr, indent+1);
-        tab_print(indent);
-        printf("}\n");
-
-        tab_print(indent);
-    }
-    
-    else if(stmt->type == Return) {
-        ReturnStatement *data = stmt->internal_data;
-        if (print_expr(&data->value, indent) != 0) {
-            return -1;
-        }
-    }
-    
-    return 0;
-    
-}
-
-
 /* ------------------------------------------ */
 /*            construct all statements        */
 /* ------------------------------------------ */
@@ -307,7 +230,7 @@ int pnode(Statement *stmt, short unsigned indent){
 
 int construct_statement(char *line, Token tokens[], size_t nstmt, BlockStatement *block) {
     // 2 + 2
-    Statement *stmt = malloc(sizeof(Statement));
+    Statement *stmt = xmalloc(sizeof(Statement));
     stmt->internal_data=0;
     stmt->type=Undefined;
    
@@ -315,29 +238,41 @@ int construct_statement(char *line, Token tokens[], size_t nstmt, BlockStatement
     if (nstmt == 0) return -1;
 
     // declare var
-    else if (is_declare_statement(tokens, nstmt))
-        construct_declare_statement(line, tokens, nstmt, stmt);
-   
+    else if (is_declare_statement(tokens, nstmt)) {
+        if (construct_declare_statement(line, tokens, nstmt, stmt) != 0) {
+            printf("error in declare var");
+        }
+    }
+
     // return statement
-    else if (is_return_statement(line, tokens, nstmt))
-        construct_ret_statement(line, tokens, nstmt, stmt);
+    else if (is_return_statement(line, tokens, nstmt)) {
+        if (construct_ret_statement(line, tokens, nstmt, stmt) != 0) {
+            printf("error in ret def");
+        }
+    }
     
     // def foo((T),*)
     else if (is_func_definition(line, tokens, nstmt)) {
         //*expects_next = Block;
-        construct_func_definition(line, tokens, nstmt, stmt);
+        if (construct_func_definition(line, tokens, nstmt, stmt) != 0) {
+            printf("error in func def\n");
+        }
     }
     
     //  if ( expr )
     else if (is_conditional_definition(line, tokens, nstmt)) {
         //*expects_next = Block;
-        construct_conditional(line, tokens, nstmt, stmt);
+        if (construct_conditional(line, tokens, nstmt, stmt) != 0) {
+            printf("error in conditional def\n");
+        }
     }
     
     // func();
     // a == b;
     else if (is_expr(line, tokens, nstmt)) {
-        construct_expr_stmt(line, tokens, nstmt, stmt);
+        if (construct_expr_stmt(line, tokens, nstmt, stmt) != 0) {
+            printf("error in expr def\n");
+        }
     }
 
     else {
@@ -347,6 +282,12 @@ int construct_statement(char *line, Token tokens[], size_t nstmt, BlockStatement
         printf("cannot parse out raw data ,\n```\n%s\n```\n", slice);
         return -1;
     }
+
+    if (stmt->type == Undefined || stmt->internal_data == 0) {
+        printf("bad stuff happened");
+        exit(1);
+    }
+
     append_statement(block, stmt);
     return 0;
 }
@@ -401,3 +342,88 @@ int assemble_ast(
     }
     return 0;
 }
+
+
+
+int pnode(Statement *stmt, short unsigned indent){
+    tab_print(indent);
+
+    printf("type: %s\n", pstmt_type(stmt));
+    tab_print(indent);
+    
+    if (stmt->type == Undefined) return -1;
+    
+    else if(stmt->type == Define) {
+        FunctionDefinition *data = stmt->internal_data;
+        
+        printf("name: %s\n", data->func_name);
+        tab_print(indent);
+        printf("parameters: [");
+
+        for (int i=0; data->param_sz > i; i++) {
+            printf("%s", data->parameters[i]);
+            if (i != data->param_sz-1)
+                printf(", ");
+        }
+        printf("];\n");
+    }
+    
+    else if(stmt->type == Declare) {
+        DeclareStatement *data = stmt->internal_data;
+        printf("name: %s\n", data->name);
+        tab_print(indent);
+        printf("expression: {\n");
+        tab_print(indent);
+        print_expr(&data->data, indent+1);
+        tab_print(indent);
+        printf("}\n");
+        tab_print(indent);
+    }
+    
+    else if(stmt->type == Expression) {    
+        ExprStatement *expr_stmt = stmt->internal_data;
+        print_expr(&expr_stmt->expr, indent);
+    }
+
+    else if(stmt->type == Block) {
+        BlockStatement *data = stmt->internal_data;
+        tab_print(indent);
+        printf("{\n");
+        for (size_t i=0; data->length > i; i++) {
+            pnode(data->statements[i], indent+1);
+        }
+        tab_print(indent);
+        printf("}\n");
+    }
+
+    else if(stmt->type == Condition) {
+        ConditionalStatement *data = stmt->internal_data;
+        tab_print(indent);
+        printf("expr: {\n");
+        print_expr(&data->expr, indent+1);
+        tab_print(indent);
+        printf("}\n");
+
+        tab_print(indent);
+    }
+    
+    else if(stmt->type == Return) {
+        ReturnStatement *data = stmt->internal_data;
+        if (print_expr(&data->value, indent) != 0) {
+            return -1;
+        }
+    }
+    
+    return 0;    
+}
+
+
+void print_ast(BlockStatement *tree, short unsigned indent) {
+    for (int i=0; tree->length > i; i++) {
+        if (tree->statements[i]->type == Block)
+            print_ast(tree->statements[i]->internal_data, indent+1);
+        else
+            pnode(tree->statements[i], indent);
+    }
+}
+

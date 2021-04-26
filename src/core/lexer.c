@@ -236,8 +236,25 @@ int is_bin_operator(enum Lexicon complex_token) {
 }
 
 
+int is_keyword(char *line, Token t) {
+    char *keywords[4] = {"if", "elif", "return", "else"};
+    for (int i=0; 4 > i; i++) {
+        if (strncmp(t.start+line, keywords[i], strlen(keywords[i])) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+
+int is_symbol(char *line, Token token) {
+    return (token.token == WORD
+        && !is_keyword(line, token)
+    );
+}
+
+
 int is_data(enum Lexicon token) {
-    return (token == WORD 
+    return (token == WORD
         || token == INTEGER 
         || token == STRING_LITERAL
     );

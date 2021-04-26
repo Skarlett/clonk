@@ -27,9 +27,9 @@ typedef struct Symbol {
 void init_symbol(Symbol *v);
 
 typedef enum ExprType {
-    UndefinedExpr,
-    UniExpr,
-    BinExpr,
+    UndefinedExprT,
+    UniExprT,
+    BinExprT,
 } ExprType;
 
 typedef struct Expr {
@@ -60,17 +60,17 @@ typedef enum UniaryOperation {
     Value
 } UniaryOperation;
 
-typedef struct UniaryExpr {
+typedef struct UniExpr {
     enum UniaryOperation op;
 
     // Value or Call struct
     void *inner;
-} UniaryExpr;
+} UniExpr;
 
-int init_uni_expr_body(struct UniaryExpr *expr);
-int unit_into_uniary(struct Symbol *val, struct UniaryExpr *expr);
+int init_uni_expr_body(struct UniExpr *expr);
+int unit_into_uniary(struct Symbol *val, struct UniExpr *expr);
 
-typedef enum BinaryOperation {
+typedef enum BinOp {
     // no operation
     BinaryOperationNop,
     // math
@@ -89,15 +89,15 @@ typedef enum BinaryOperation {
     // appendage
     And,
     Or,
-} BinaryOperation;
+} BinOp;
 
-typedef struct BinaryExprBody {
-    enum BinaryOperation op;
-    struct Expr *left_val;
-    struct Expr *right_val;
-} BinaryExprBody;
+typedef struct BinExpr {
+    enum BinOp op;
+    struct Expr left_val;
+    struct Expr right_val;
+} BinExpr;
 
-void init_bin_expr_body(struct BinaryExprBody *expr);
+void init_bin_expr_body(struct BinExpr *expr);
 /* ------------------------------------------ */
 /*             generic expression struct      */
 /* ------------------------------------------ */
