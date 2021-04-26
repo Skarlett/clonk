@@ -6,7 +6,7 @@
 #include "common.h"
 #include "expr.h"
 
-#define STMT_CAPACITY 16
+#define STMT_CAPACITY 255
 enum StatementType {
     Undefined,
 
@@ -30,11 +30,15 @@ enum StatementType {
 };
 
 
+typedef struct Statement {
+    enum StatementType type;
+    void *internal_data;
+} Statement;
+
 typedef struct BlockStatement {
-    // struct BlockStatement *parent;
-    struct Statement **statements;
     size_t capacity;
     size_t length;
+    struct Statement *statements[STMT_CAPACITY];
 } BlockStatement;
 void init_block(struct BlockStatement *block, size_t capacity);
 void append_statement(BlockStatement *block, struct Statement *stmt);
@@ -45,7 +49,7 @@ typedef struct ReturnStatement {
     Expr value;
 } ReturnStatement;
 int is_return_statement(char *line, struct Token tokens[], size_t nstmt);
-void construct_ret_statement(char *line, struct Token tokens[], size_t nstmt, struct Statement *stmt);
+int construct_ret_statement(char *line, struct Token tokens[], size_t nstmt, struct Statement *stmt);
 
 typedef struct FunctionDefinition {
     size_t name_sz;
@@ -57,16 +61,6 @@ typedef struct FunctionDefinition {
 void init_func_def(struct FunctionDefinition *fn);
 int is_func_definition(char *line, struct Token tokens[], size_t nstmt);
 int construct_func_definition(char *line, struct Token tokens[], size_t nstmt, struct Statement *stmt);
-
-
-typedef struct Statement {
-    enum StatementType type;
-    void *internal_data;
-} Statement;
-
-//int construct_statement(char *line, struct Token tokens[], size_t nstmt, struct BlockStatement *block);
-int assemble_ast(char *line, Token tokens[], size_t ntokens, BlockStatement *block);
-
 
 
 
@@ -94,12 +88,18 @@ void init_condition_stmt(struct ConditionalStatement *stmt);
 
 
 typedef struct ExprStatement {
-    Expr *expr;
+    Expr expr;
 } ExprStatement;
 
 
 
-const char * pstmt_type(struct Statement *stmt);
-int pnode(struct Statement *stmt, short unsigned indent);
+const char * pstmt_type(Statement *stmt);
+int pnode(Statement *stmt, short unsigned indent);
+void print_ast(BlockStatement *tree, short unsigned indent);
+
+
+//int construct_statement(char *line, struct Token tokens[], size_t nstmt, struct BlockStatement *block);
+int assemble_ast(char *line, Token tokens[], size_t ntokens, BlockStatement *block);
+
 
 #endif

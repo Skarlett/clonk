@@ -121,9 +121,7 @@ void setup_opts(int argc, char *argv[], struct Opts *opts) {
 int parse(struct Opts *opts) {
     FILE *fd;
     
-    struct BlockStatement root, *last, *current;
-    current=&root;
-    last=&root;
+    struct BlockStatement root;
     init_block(&root, STMT_CAPACITY*2);
 
 
@@ -163,19 +161,21 @@ int parse(struct Opts *opts) {
         for (size_t i=0; ntokens > i; i++) {
             printf("[%s(%d,%d)] ", ptoken(tokens[i].token), (int)tokens[i].start, (int)tokens[i].end);
         }
-        
         printf("\n\n");
-        printf("----------------\n");
-        printf("AST\n");
-        printf("----------------\n");
+        
         assemble_ast(line, tokens, ntokens, &root);
-
-        printf("\n");
         memset(line, 0, buf_sz);
+        
         n_completed = 0;
     }
-
     fclose(fd);    
+    
+    
+    printf("\n\n");
+    printf("----------------\n");
+    printf("AST\n");
+    printf("----------------\n");
+    print_ast(&root, 0);
     return 0;
 }
 

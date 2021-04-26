@@ -10,13 +10,13 @@
 /*            symbols & values                */
 /* ------------------------------------------ */
 
-void init_symbol(struct Symbol *v) {
+void init_symbol(Symbol *v) {
     v->tag=Literal;
     v->datatype=Null;
     v->data_ptr=0;
 }
 
-int symbol_from_token(char *line, struct Token token, struct Symbol *value) {
+int symbol_from_token(char *line, Token token, Symbol *value) {
     init_symbol(value);
     
     if (token.token == WORD) {
@@ -47,19 +47,19 @@ int symbol_from_token(char *line, struct Token token, struct Symbol *value) {
 }
 
 
-void init_expression(struct Expr *expr) {
-    expr->type=UndefinedExpr;
+void init_expression(Expr *expr) {
+    expr->type=UndefinedExprT;
     expr->inner_data=0;
 }
 
-void init_func_call(struct FunctionCallExpr *fn) {
+void init_func_call(FunctionCallExpr *fn) {
     fn->name_sz = 0;
     fn->args_sz = 0;
     for (int i=0; FUNC_ARG_SIZE > i; i++)
         init_expression(fn->args[i]);
 }
 
-int is_func_call(struct Token tokens[], int nstmt) {
+int is_func_call(Token tokens[], int nstmt) {
     return tokens[0].token == WORD
     && tokens[1].token == PARAM_OPEN
     && tokens[nstmt-2].token == PARAM_CLOSE;
@@ -70,26 +70,8 @@ int is_func_call(struct Token tokens[], int nstmt) {
 /* ------------------------------------------ */
 // uniary expressions are either values, or function calls
 
-int init_uni_expr_body(UniaryExpr *expr) {
-    expr->op=UniaryOperationNop;
-    expr->inner=0;
-    return 0;
-}
 
-int uniary_from_symbol(Symbol *val, UniaryExpr *expr) {
-    if (!(val != 0 && expr == 0))
-        return -1;
 
-    init_uni_expr_body(expr);
-    expr->op=Value;
-
-    Symbol *p = malloc(sizeof(Symbol));
-    memcpy(p, val, sizeof(Symbol));
-
-    expr->inner = p;
-    
-    return 0;
-}
 
 
 /* ------------------------------------------ */
@@ -107,7 +89,7 @@ int uniary_from_symbol(Symbol *val, UniaryExpr *expr) {
 
 int is_expr(
     char *line,
-    struct Token tokens[],
+    Token tokens[],
     size_t ntokens)
 {   
     if (is_func_call(tokens, ntokens))
@@ -115,23 +97,43 @@ int is_expr(
 
     return is_data(tokens[0].token);
 }
-
+int binop_from_token(enum Lexicon t){
+    switch (t) {
+        case ADD: return Add;
+        case SUB: return Sub;
+        case MUL: return Multiply;
+        case DIV: return Divide;
+        case MOD: return Modolus;
+        case POW: return Pow;
+        case AND: return And;
+        case OR: return Or;
+        case ISEQL: return IsEq;
+        case GTEQ: return GtEq;
+        case LTEQ: return LtEq;
+        case LT: return Lt;
+        case GT: return Gt;
+        default: return BinaryOperationNop;
+    }
+}
 
 int construct_expr(
     char *line,
-    struct Token tokens[],
+    Token tokens[],
     size_t  ntokens,
-    struct Expr *expr
+    Expr *expr
 ){
     size_t last_expr = 0;
     // function calls will have multiple expressions inside of them
     // WORD([expression, ..])
     // where each parameter will be evaulated as an expression
-
+    expr->type=UniExprT;
+    
     if (is_func_call(tokens, ntokens)) {
+        UniExpr *uni = xmalloc(sizeof(UniExpr));
+        FunctionCallExpr *fncall = xmalloc(sizeof(FunctionCallExpr));
+
         int end_func_flag = 0;
-        FunctionCallExpr *newfunc = malloc(sizeof(struct FunctionCallExpr));  
-        init_func_call(newfunc);
+        init_func_call(fncall);
         
         while (ntokens > last_expr || end_func_flag) {
             size_t single_expr_idx = 0;
@@ -148,99 +150,68 @@ int construct_expr(
                 }
             }
             
-            Expr *item = newfunc->args[newfunc->args_sz];
+            Expr *item = fncall->args[fncall->args_sz];
             init_expression(item);
-            newfunc->args_sz += 1;
+            construct_expr(line, tokens + last_expr, single_expr_idx, item);
 
-            construct_expr(line, tokens + last_expr , single_expr_idx, item);
-
+            fncall->args_sz += 1;
             last_expr += single_expr_idx;
         }
-        
-        expr->inner_data = newfunc;
-    }
-
-    size_t idx = 0;
-    if (last_expr > 0)
-        idx = last_expr;
-    
-    // 
-    if (is_bin_operator(tokens[idx+1].token)) {
-            BinaryExprBody *body = xmalloc(sizeof(BinaryExprBody));
-            body->left_val = xmalloc(sizeof(Expr));
-            body->right_val = xmalloc(sizeof(Expr));
-
-            init_expression(body->left_val);
-            init_expression(body->left_val);
-
-            enum Lexicon lexed = tokens[idx+1].token;
-
-            switch (lexed) {
-                case ADD:
-                    body->op=Add;
-                    break;
-                case SUB:
-                    body->op=Sub;
-                    break;
-                case MUL:
-                    body->op=Multiply;
-                    break;
-                case DIV:
-                    body->op=Divide;
-                    break;
-                case MOD:
-                    body->op=Modolus;
-                    break;
-                case POW:
-                    body->op=Pow;
-                    break;
-                case AND:
-                    body->op=And;
-                    break;
-                case OR:
-                    body->op=Or;
-                    break;
-                default: return -1;
-            }
-
-            construct_expr(line, tokens + idx, ntokens, body->left_val);
-            construct_expr(line, tokens + idx + 2, ntokens, body->right_val);
+        uni->op=Call;
+        uni->inner = fncall;
+        expr->inner_data = uni;
+        expr->type = UniExprT;
     }
 
     // variable/unit
-    else if (is_data(tokens[idx].token)) {
-        Symbol unit;
-        Expr *n_expr = xmalloc(sizeof(Expr));
-        UniaryExpr *uni = xmalloc(sizeof(Expr));
+    else if (is_data(tokens[0].token)) {
+        Symbol *unit = xmalloc(sizeof(Symbol));
+        UniExpr *uni = xmalloc(sizeof(UniExpr));
+        uni->inner=0;
         
         // token into Unit/Symbol
-        init_symbol(&unit);
-        symbol_from_token(line, tokens[0], &unit);
-
-        // Init an expression
-        init_expression(n_expr);
+        init_symbol(unit);
+        symbol_from_token(line, tokens[0], unit);
         
-        // Init uniary value expression
-        init_uni_expr_body(uni);
-        
-        // set up pointers
-        n_expr->inner_data = uni;
-        uni=0;
-
-        // finally construct
-        uniary_from_symbol(&unit, n_expr->inner_data);
+        uni->inner = unit;
+        uni->op=Value;
+        expr->type=UniExprT;
+        expr->inner_data=uni;
     }
 
     else {
-        return 1;
+        return -1;
+    }
+
+    // look ahead for bin operation
+    // ============================
+    // the reason for the use of `last_expr` here, is so that
+    // if do run across a **function**,
+    // we try the next token, otherwise
+    // it will be 0+1
+    if (is_bin_operator(tokens[last_expr+1].token)) {
+            BinExpr *body = xmalloc(sizeof(BinExpr));
+            Expr rhs;
+            init_expression(&rhs);
+
+            body->left_val = *expr;
+            body->right_val=rhs;
+
+            body->op=binop_from_token(tokens[last_expr+1].token);
+
+            if (construct_expr(line, tokens + last_expr + 2, ntokens, &body->right_val) != 0)
+                return -1;
+            
+            expr->inner_data=body;
+            expr->type=BinExprT;
     }
 
     return 0;
 }
 
 
-void set_uni_expr(struct Expr *expr, struct UniaryExpr *uni) {
-    expr->type=UniExpr;
+void set_uni_expr(struct Expr *expr, struct UniExpr *uni) {
+    expr->type=UniExprT;
     expr->inner_data=uni;
 }
 
@@ -254,9 +225,21 @@ const char * print_datatype(enum DataType t) {
             return "undefined";
     }
 }
+const char * print_expr_t(enum ExprType t) {
+    switch (t) {
+        case UniExprT:
+            return "uniary";
+        case BinExprT:
+            return "binary";
+        case UndefinedExprT:
+            return "null";
+        default: 
+            return "undefined";
+    }
+}
 
 
-const char * print_bin_operator(enum BinaryOperation t) {
+const char * print_bin_operator(enum BinOp t) {
     switch (t) {
         case Add:
             return "addition";
@@ -294,9 +277,9 @@ const char * print_symbol_type(enum Tag t) {
 
 int print_expr(Expr *expr, short unsigned indent){
     tab_print(indent);
-    
-    if (expr->type == UniExpr) {
-        struct UniaryExpr *uni = expr->inner_data;
+    printf("at %p [%s]\n", expr->inner_data, print_expr_t(expr->type));
+    if (expr->type == UniExprT) {
+        struct UniExpr *uni = expr->inner_data;
 
         if (uni->op == Value) {
                 struct Symbol *symbol = uni->inner;
@@ -335,13 +318,13 @@ int print_expr(Expr *expr, short unsigned indent){
         }
     }
 
-    else if (expr->type == BinExpr) {
-        struct BinaryExprBody *bin = expr->inner_data;
+    else if (expr->type == BinExprT) {
+        struct BinExpr *bin = expr->inner_data;
         printf("type: bin-op expr\n");
         tab_print(indent);
         printf("left: {\n");
         tab_print(indent+1);
-        print_expr(bin->left_val, indent+1);
+        print_expr(&bin->left_val, indent+1);
         printf("}\n");
 
         tab_print(indent);
@@ -350,7 +333,7 @@ int print_expr(Expr *expr, short unsigned indent){
 
         printf("right: {\n");
         tab_print(indent+1);
-        print_expr(bin->left_val, indent+1);
+        print_expr(&bin->left_val, indent+1);
         printf("}\n");
         tab_print(indent);
     }
