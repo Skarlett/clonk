@@ -16,7 +16,7 @@ typedef enum Lexicon {
     OPEN_BRACE,
     
     // }
-    CLOSE_BRACK,
+    CLOSE_BRACE,
     
     // (
     PARAM_OPEN,
@@ -128,7 +128,7 @@ enum Lexicon tokenize_char(char c);
 int is_complex_token(enum Lexicon token);
 int set_complex_token(enum Lexicon token, enum Lexicon *compound_token);
 int continue_complex(enum Lexicon token, enum Lexicon compound_token);
-int is_operator_compound(enum Lexicon compound_token);
+int is_operator_complex(enum Lexicon compound_token);
 enum Lexicon invert_operator_token(enum Lexicon compound_token);
 
 

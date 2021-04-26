@@ -2,10 +2,11 @@
 #define _HEADER__EXPR__
 
 #define STR_STACK_SIZE 64
-#define STMT_CAPACITY 16
 #define FUNC_ARG_SIZE 8
+#include <stdlib.h>
 
 typedef enum Tag {
+    NullTag,
     Variable,
     Literal
 } Tag;
@@ -36,9 +37,9 @@ typedef struct Expr {
     // void wi
     void *inner_data;
 } Expr;
-
+int print_expr(Expr *expr, short unsigned indent);
 void init_expression(struct Expr *expr);
-
+int is_expr(char *line, struct Token tokens[], size_t ntokens);
 
 typedef struct FunctionCallExpr {
     int name_sz;
@@ -61,11 +62,12 @@ typedef enum UniaryOperation {
 
 typedef struct UniaryExpr {
     enum UniaryOperation op;
+
     // Value or Call struct
     void *inner;
 } UniaryExpr;
 
-void init_uni_expr_body(struct UniaryExpr *expr);
+int init_uni_expr_body(struct UniaryExpr *expr);
 int unit_into_uniary(struct Symbol *val, struct UniaryExpr *expr);
 
 typedef enum BinaryOperation {
