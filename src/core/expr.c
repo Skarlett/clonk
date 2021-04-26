@@ -257,6 +257,16 @@ const char * print_bin_operator(enum BinOp t) {
             return "and";
         case Or:
             return "or";
+        case GtEq:
+            return "gteq";
+        case Gt:
+            return "gt";
+        case Lt:
+            return "lt";
+        case LtEq:
+            return "lteq";
+        case IsEq:
+            return "iseq";
         default:
             return "unknown";
     }
@@ -277,20 +287,17 @@ const char * print_symbol_type(enum Tag t) {
 
 int print_expr(Expr *expr, short unsigned indent){
     tab_print(indent);
-    printf("at %p [%s]\n", expr->inner_data, print_expr_t(expr->type));
+    printf("type: %s\n", print_expr_t(expr->type));
+
     if (expr->type == UniExprT) {
         struct UniExpr *uni = expr->inner_data;
 
         if (uni->op == Value) {
                 struct Symbol *symbol = uni->inner;
-                printf("{\n");
-                tab_print(indent+1);
-                printf("symbol type: %s\n", print_symbol_type(symbol->tag));
-                tab_print(indent+1);
-                printf("datatype: %s\n", print_datatype(symbol->datatype));
-                tab_print(indent+1);
-                printf("}\n");
                 tab_print(indent);
+                printf("symbol type: %s\n", print_symbol_type(symbol->tag));
+                tab_print(indent);
+                printf("datatype: %s\n", print_datatype(symbol->datatype));
         }
         else if (uni->op == Call) {
                 struct FunctionCallExpr *fncall = uni->inner;
@@ -320,21 +327,18 @@ int print_expr(Expr *expr, short unsigned indent){
 
     else if (expr->type == BinExprT) {
         struct BinExpr *bin = expr->inner_data;
-        printf("type: bin-op expr\n");
-        tab_print(indent);
-        printf("left: {\n");
-        tab_print(indent+1);
-        print_expr(&bin->left_val, indent+1);
-        printf("}\n");
 
         tab_print(indent);
         printf("operator: %s\n", print_bin_operator(bin->op));
         tab_print(indent);
 
-        printf("right: {\n");
-        tab_print(indent+1);
+        tab_print(indent);
+        printf("left:\n");
         print_expr(&bin->left_val, indent+1);
-        printf("}\n");
+
+        printf("right:\n");
+        tab_print(indent);
+        print_expr(&bin->left_val, indent+1);
         tab_print(indent);
     }
 

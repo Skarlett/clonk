@@ -30,6 +30,6 @@ void * xmalloc(size_t size) {
 
 
 void tab_print(short unsigned indent) {
-    for (short unsigned i=0; indent > i; i++)
-            printf("\t");
+    for (short unsigned i=0; indent*2 > i; i++)
+            printf("  ");
 }
