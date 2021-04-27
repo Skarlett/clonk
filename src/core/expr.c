@@ -17,10 +17,9 @@ void init_symbol(Symbol *v) {
 }
 
 int symbol_from_token(char *line, Token token, Symbol *value) {
-    init_symbol(value);
-    
     if (token.token == WORD) {
         value->tag = Variable;
+        value->datatype=Null;
     }
 
     else if (token.token == INTEGER) {
@@ -40,6 +39,7 @@ int symbol_from_token(char *line, Token token, Symbol *value) {
         
         value->data_ptr = inner_data;
     }
+
     else 
         return -1;
     
@@ -97,6 +97,7 @@ int is_expr(
 
     return is_data(tokens[0].token);
 }
+
 int binop_from_token(enum Lexicon t){
     switch (t) {
         case ADD: return Add;
@@ -332,14 +333,17 @@ int print_expr(Expr *expr, short unsigned indent){
         printf("operator: %s\n", print_bin_operator(bin->op));
         tab_print(indent);
 
-        tab_print(indent);
-        printf("left:\n");
+        
+        printf("left: {\n");
         print_expr(&bin->left_val, indent+1);
+        tab_print(indent);
+        printf("},\n");
 
-        printf("right:\n");
         tab_print(indent);
-        print_expr(&bin->left_val, indent+1);
+        printf("right: {\n");
+        print_expr(&bin->right_val, indent+1);
         tab_print(indent);
+        printf("}\n");
     }
 
     else {

@@ -175,7 +175,7 @@ int parse(struct Opts *opts) {
     printf("----------------\n");
     printf("AST\n");
     printf("----------------\n");
-    print_ast(&root, 0);
+    print_ast(&root);
     return 0;
 }
 

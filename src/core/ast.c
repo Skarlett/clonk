@@ -322,6 +322,7 @@ int assemble_ast(
                 // TODO: we have to deal with partial loads eventually
                 // god only knows how we'll restore the child
                 // as the current block
+                
                 assemble_ast(line, tokens + i + 1, ntokens, child);
                 append_statement(block, child_stmt);
             }
@@ -347,10 +348,13 @@ int assemble_ast(
 
 int pnode(Statement *stmt, short unsigned indent){
     tab_print(indent);
-
-    printf("type: %s\n", pstmt_type(stmt));
+    printf("{\n");
+    indent++;
     tab_print(indent);
-    
+    printf("statement type: %s\n", pstmt_type(stmt));
+    tab_print(indent);
+    printf("data: {\n");
+    indent++;
     if (stmt->type == Undefined) return -1;
     
     else if(stmt->type == Define) {
@@ -370,43 +374,28 @@ int pnode(Statement *stmt, short unsigned indent){
     
     else if(stmt->type == Declare) {
         DeclareStatement *data = stmt->internal_data;
+        tab_print(indent);
         printf("name: %s\n", data->name);
         tab_print(indent);
         printf("expression: {\n");
-        tab_print(indent);
         print_expr(&data->data, indent+1);
         tab_print(indent);
         printf("}\n");
-        tab_print(indent);
     }
     
-    else if(stmt->type == Expression) {    
-        ExprStatement *expr_stmt = stmt->internal_data;
-        print_expr(&expr_stmt->expr, indent);
-    }
-
-    else if(stmt->type == Block) {
-        BlockStatement *data = stmt->internal_data;
-        tab_print(indent);
-        printf("{\n");
-        for (size_t i=0; data->length > i; i++) {
-            pnode(data->statements[i], indent+1);
-        }
-        tab_print(indent);
-        printf("}\n");
-    }
 
     else if(stmt->type == Condition) {
         ConditionalStatement *data = stmt->internal_data;
         tab_print(indent);
         printf("expr: {\n");
-        print_expr(&data->expr, indent+1);
+        print_expr(&data->expr, indent);
         tab_print(indent);
         printf("}\n");
 
         tab_print(indent);
     }
-    
+
+
     else if(stmt->type == Return) {
         ReturnStatement *data = stmt->internal_data;
         if (print_expr(&data->value, indent) != 0) {
@@ -414,16 +403,41 @@ int pnode(Statement *stmt, short unsigned indent){
         }
     }
     
+    else if(stmt->type == Expression) {    
+        ExprStatement *expr_stmt = stmt->internal_data;
+        print_expr(&expr_stmt->expr, indent);
+    }
+
+    tab_print(indent-1); 
+    printf("}\n");
+    tab_print(indent-2);
+    printf("}\n");
     return 0;    
 }
 
 
-void print_ast(BlockStatement *tree, short unsigned indent) {
+void print_ast_block(BlockStatement *tree, short unsigned indent) {
+    printf("[\n");
     for (int i=0; tree->length > i; i++) {
         if (tree->statements[i]->type == Block)
-            print_ast(tree->statements[i]->internal_data, indent+1);
+            print_ast_block(tree->statements[i]->internal_data, indent+1);
         else
             pnode(tree->statements[i], indent);
     }
+    printf("]\n");
 }
 
+
+
+void print_ast(BlockStatement *tree) {
+    short unsigned indent = 1;
+    printf("{\n");
+    
+    for (int i=0; tree->length > i; i++) {
+        if (tree->statements[i]->type == Block)
+            print_ast_block(tree->statements[i]->internal_data, indent+1);
+        else
+            pnode(tree->statements[i], indent);
+    }
+    printf("}\n");
+}

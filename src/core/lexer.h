@@ -84,13 +84,16 @@ typedef enum Lexicon {
     // ;
     SEMICOLON,
 
+    // _
+    UNDERSCORE,
+
     // a-zA-Z
     CHAR,
 
     // 0-9
     DIGIT,
   
-    // ~!@#$%^&*_+=-`
+    // ~!@#$%^&*+=-`
     SPECIAL_CHAR,
 
     // ,
