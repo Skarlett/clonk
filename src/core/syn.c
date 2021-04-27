@@ -1,3 +1,5 @@
+
+
 //synthesizer
 // maintains sanity by constructing some rules
 // in which the interpreter expects
@@ -25,9 +27,9 @@ void synthesize(BlockStatement *block) {
 
 // ! `block` + `return`
 
-// `int` += `int`
+// `int` `(* | + | - )`= `int`
 
-// `int` + `int`
+// `int` `(* | + | - | ^ | % | / | `|` | & )` `int`
 
 // `string` += `string`
 
