@@ -33,3 +33,6 @@ void synthesize(BlockStatement *block) {
 
 // `string` += `string`
 
+// `string` `( + | * )` `string`
+
+// `string` `( + | * )` `string`

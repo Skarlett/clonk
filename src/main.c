@@ -163,7 +163,8 @@ int parse(struct Opts *opts) {
         }
         printf("\n\n");
         
-        assemble_ast(line, tokens, ntokens, &root);
+        int trap = 0;
+        assemble_ast(line, tokens, ntokens, &root, &trap);
         memset(line, 0, buf_sz);
         
         n_completed = 0;
