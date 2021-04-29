@@ -11,33 +11,35 @@
 /* ------------------------------------------ */
 
 void init_symbol(Symbol *v) {
-    v->tag=Literal;
-    v->datatype=Null;
+    v->tag=NullTag;
     v->data_ptr=0;
 }
 
 int symbol_from_token(char *line, Token token, Symbol *value) {
     if (token.token == WORD) {
-        value->tag = Variable;
-        value->datatype=Null;
+        Variable *var = xmalloc(sizeof(Variable));
+        value->tag = VariableTag;
+        value->data_ptr = var;
+        strncpy(var->word, line + token.start, token.end - token.start);
     }
 
-    else if (token.token == INTEGER) {
-        value->tag = Literal;
-        value->datatype = Int;
-        value->data_ptr = strtol((line + token.start), NULL, 10);
-    }
-
-    else if (token.token == STRING_LITERAL) {
-        value->tag = Literal;
-        value->datatype = String;
-
-        char *inner_data = calloc(STR_STACK_SIZE, sizeof(char));
-        for (int i; token.end > i; i++) {
-            inner_data[i] = (line + token.start)[i];
-        }
+    else if (
+        token.token == INTEGER
+        || token.token == STRING_LITERAL
+    ) {
+        Value *val = xmalloc(sizeof(Value));
+        value->tag = ValueTag;
+        value->data_ptr=val;
         
-        value->data_ptr = inner_data;
+        if (token.token == INTEGER) {
+            val->datatype = IntT;
+            val->data_ptr = strtoll((line + token.start), NULL, 10);
+        }
+        else {
+            val->datatype = StringT;
+            val->data_ptr = calloc(token.end - token.start + 1, sizeof(char));
+            strncpy(val->data_ptr, line + token.start, token.end - token.start);
+        }
     }
 
     else 
@@ -175,7 +177,7 @@ int construct_expr(
         symbol_from_token(line, tokens[0], unit);
         
         uni->inner = unit;
-        uni->op=Value;
+        uni->op=UniValue;
         expr->type=UniExprT;
         expr->inner_data=uni;
     }
@@ -218,10 +220,12 @@ void set_uni_expr(struct Expr *expr, struct UniExpr *uni) {
 
 const char * print_datatype(enum DataType t) {
     switch (t) {
-        case String:
+        case StringT:
             return "string";
-        case Int:
+        case IntT:
             return "integer";
+        case NullT:
+            return "null";
         default: 
             return "undefined";
     }
@@ -277,9 +281,9 @@ const char * print_symbol_type(enum Tag t) {
     switch (t) {
         case NullTag:
             return "NullTag";
-        case Variable:
+        case VariableTag:
             return "Variable";
-        case Literal:
+        case ValueTag:
             return "Literal";
         default: 
             return "undefined";
@@ -293,12 +297,31 @@ int print_expr(Expr *expr, short unsigned indent){
     if (expr->type == UniExprT) {
         struct UniExpr *uni = expr->inner_data;
 
-        if (uni->op == Value) {
+        if (uni->op == UniValue) {
                 struct Symbol *symbol = uni->inner;
                 tab_print(indent);
                 printf("symbol type: %s\n", print_symbol_type(symbol->tag));
                 tab_print(indent);
-                printf("datatype: %s\n", print_datatype(symbol->datatype));
+                if (symbol->tag == VariableTag) {
+                    printf("symbol name: %s\n", (char *)symbol->data_ptr);
+                }
+                else if (symbol->tag == ValueTag) {
+                    Value *val = symbol->data_ptr;
+                    printf("symbol val: ");
+                    if (val->datatype == IntT)
+                        printf("%lld\n", (long long)val->data_ptr);
+                    else if (val->datatype == StringT)
+                        printf("\"%s\"\n", (char *)val->data_ptr);
+                    else if (val->datatype == NullT) {
+                        printf("null\n");
+                    }
+                    else {
+                        printf("undefined\n");
+                    }
+                }
+                else {
+                    printf("error: got unexpected tag");
+                }
         }
         else if (uni->op == Call) {
                 struct FunctionCallExpr *fncall = uni->inner;

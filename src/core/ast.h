@@ -99,7 +99,7 @@ void print_ast(BlockStatement *tree);
 void print_ast_block(BlockStatement *tree, short unsigned indent);
 
 //int construct_statement(char *line, struct Token tokens[], size_t nstmt, struct BlockStatement *block);
-int assemble_ast(char *line, Token tokens[], size_t ntokens, BlockStatement *block);
+size_t assemble_ast(char *line, Token tokens[], size_t ntokens, BlockStatement *block, int *trap);
 
 
 #endif

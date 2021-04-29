@@ -1,28 +1,41 @@
 #ifndef _HEADER__EXPR__
 #define _HEADER__EXPR__
 
-#define STR_STACK_SIZE 64
+#define STR_STACK_SIZE 32
 #define FUNC_ARG_SIZE 8
 #include <stdlib.h>
 
 typedef enum Tag {
     NullTag,
-    Variable,
-    Literal
+    VariableTag,
+    ValueTag
 } Tag;
 
 typedef enum DataType {
-    Null,
-    Int,
-    String,
+    NullT,
+    IntT,
+    StringT,
 } DataType;
+
+
+// variable OR literal
+typedef struct Value {
+    void *data_ptr;
+    DataType datatype;
+} Value;
+
+// variable OR literal
+typedef struct Variable {
+    char word[STR_STACK_SIZE];
+} Variable;
 
 // variable OR literal
 typedef struct Symbol {
     void *data_ptr;
+    // variable or 
     Tag tag;
-    DataType datatype;
 } Symbol;
+
 
 void init_symbol(Symbol *v);
 
@@ -57,7 +70,7 @@ int is_func_call(struct Token tokens[], int nstmt);
 typedef enum UniaryOperation {
     UniaryOperationNop,
     Call,
-    Value
+    UniValue
 } UniaryOperation;
 
 typedef struct UniExpr {

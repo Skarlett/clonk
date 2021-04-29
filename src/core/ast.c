@@ -153,17 +153,19 @@ int is_conditional_definition(char *line, Token tokens[], size_t nstmt) {
         || strcmp(keyword, "elif") == 0
         || strcmp(keyword, "else") == 0)
     && tokens[1].token == PARAM_OPEN
-    && tokens[nstmt].token == PARAM_CLOSE;
+    && tokens[nstmt-1].token == PARAM_CLOSE;
 }
 
 int construct_conditional(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
     ConditionalStatement *con_stmt = xmalloc(sizeof(ConditionalStatement));
-    
+    Expr expr;
+    char keyword[4];
+
+    init_expression(&expr);
+
     stmt->type=Condition;
     stmt->internal_data=con_stmt;
-    init_condition_stmt(con_stmt);
     
-    char keyword[4];
     memset(keyword, 0, 4);
 
     for (int i=0; 4 > i; i++) {
@@ -174,7 +176,10 @@ int construct_conditional(char *line, Token tokens[], size_t nstmt, Statement *s
     else if (strcmp(keyword, "elif") == 0) con_stmt->state=Elif;
     else if (strcmp(keyword, "else") == 0) con_stmt->state=Else;
     else return -1;
+
+    construct_expr(line, tokens + 2, nstmt, &expr);
     
+    con_stmt->expr=expr;
     return 0;
     
 }
@@ -235,14 +240,7 @@ int construct_statement(char *line, Token tokens[], size_t nstmt, BlockStatement
     stmt->type=Undefined;
    
     if (line == 0) return 0;
-    if (nstmt == 0) return -1;
-
-    // declare var
-    else if (is_declare_statement(tokens, nstmt)) {
-        if (construct_declare_statement(line, tokens, nstmt, stmt) != 0) {
-            printf("error in declare var");
-        }
-    }
+    else if (nstmt == 0) return -1;
 
     // return statement
     else if (is_return_statement(line, tokens, nstmt)) {
@@ -251,19 +249,27 @@ int construct_statement(char *line, Token tokens[], size_t nstmt, BlockStatement
         }
     }
     
-    // def foo((T),*)
-    else if (is_func_definition(line, tokens, nstmt)) {
-        //*expects_next = Block;
-        if (construct_func_definition(line, tokens, nstmt, stmt) != 0) {
-            printf("error in func def\n");
-        }
-    }
-    
     //  if ( expr )
     else if (is_conditional_definition(line, tokens, nstmt)) {
         //*expects_next = Block;
         if (construct_conditional(line, tokens, nstmt, stmt) != 0) {
             printf("error in conditional def\n");
+        }
+    }
+
+    // declare var
+    else if (is_declare_statement(tokens, nstmt)) {
+        if (construct_declare_statement(line, tokens, nstmt, stmt) != 0) {
+            printf("error in declare var");
+        }
+    }
+
+
+    // def foo((T),*)
+    else if (is_func_definition(line, tokens, nstmt)) {
+        //*expects_next = Block;
+        if (construct_func_definition(line, tokens, nstmt, stmt) != 0) {
+            printf("error in func def\n");
         }
     }
     
@@ -292,59 +298,84 @@ int construct_statement(char *line, Token tokens[], size_t nstmt, BlockStatement
     return 0;
 }
 
+// returns the number of tokens consumed
 
-int assemble_ast(
+size_t assemble_ast(
     char *line,
     Token tokens[],
     size_t ntokens,
-    BlockStatement *block
+    BlockStatement *block,
+    int *trap
 ){
-    size_t last_stmt_idx = 0, statement_idx = 0;
-    
-    while(ntokens > statement_idx){
-        
-        for(size_t i=last_stmt_idx; ntokens > i; i++) {
-            enum Lexicon token = tokens[i].token;
+    Statement *child = NULL;
+    size_t 
+        last_stmt_idx = 0,
+        statement_idx = 0,
+        ctr = 0,
+        skip = 0;
 
-            if (token == SEMICOLON )
+
+    while(ntokens > statement_idx){
+        for(size_t i=last_stmt_idx; ntokens > i; i++) {
+            
+            enum Lexicon token = tokens[i].token;
+            if (skip > 0) {
+                skip -= 1;
+                last_stmt_idx += 1;
+                continue;
+            }
+
+            else if (token == SEMICOLON )
             {
                 statement_idx = i+1;
                 break;
             }
 
             else if (token == OPEN_BRACE) {
-                BlockStatement *child = xmalloc(sizeof(BlockStatement));
-                Statement *child_stmt = xmalloc(sizeof(Statement));
-                //current = child;
-                child_stmt->type=Block;
-                child_stmt->internal_data=child;
-                init_block(child, STMT_CAPACITY);
+                BlockStatement *child_block = xmalloc(sizeof(BlockStatement));
+                child = xmalloc(sizeof(Statement));
+                child->type = Block;
+                child->internal_data = child_block;
+                init_block(child_block, STMT_CAPACITY);
                 // TODO: we have to deal with partial loads eventually
                 // god only knows how we'll restore the child
                 // as the current block
+                //--------------------------------------
+                *trap += 1;
+                skip += assemble_ast(line, tokens + i + 1, ntokens, child_block, trap) + 2;
+                *trap -= 1;
+                if (*trap == -101)
+                    return ctr;
                 
-                assemble_ast(line, tokens + i + 1, ntokens, child);
-                append_statement(block, child_stmt);
+                statement_idx = i;
+                break;
             }
 
-            else if (token == CLOSE_BRACE) return 0;
+            else if (token == CLOSE_BRACE) return ctr+1;
+            
+            ctr++;
         }
 
-        printf("statement: tokens[%d..%d] [%d] --  ", (int)last_stmt_idx, (int)statement_idx, (int)ntokens);
+        printf("statement: tokens[%d..%d] [%d] [%d] --  ", (int)last_stmt_idx, (int)statement_idx, (int)ntokens, *trap);
         size_t slen = statement_idx-last_stmt_idx;
+        
+        
         for (int i=0; slen > i; i++) 
             printf("[%s] ", ptoken((tokens + last_stmt_idx)[i].token));
         printf("\n");
 
         if (construct_statement(line, tokens + last_stmt_idx, slen, block) != 0)
-            return -1;
+            return 0;
         
+        if (child != 0) {
+            append_statement(block, child);
+            child = NULL;
+        }
+
         last_stmt_idx = statement_idx;
     }
-    return 0;
+    return ctr;
 }
-
-
 
 int pnode(Statement *stmt, short unsigned indent){
     tab_print(indent);
@@ -388,11 +419,10 @@ int pnode(Statement *stmt, short unsigned indent){
         ConditionalStatement *data = stmt->internal_data;
         tab_print(indent);
         printf("expr: {\n");
-        print_expr(&data->expr, indent);
+        print_expr(&data->expr, indent+1);
         tab_print(indent);
         printf("}\n");
 
-        tab_print(indent);
     }
 
 
@@ -417,27 +447,35 @@ int pnode(Statement *stmt, short unsigned indent){
 
 
 void print_ast_block(BlockStatement *tree, short unsigned indent) {
-    printf("[\n");
+    //printf("[\n");
+    tab_print(indent);
+    printf("{[\n");
     for (int i=0; tree->length > i; i++) {
-        if (tree->statements[i]->type == Block)
+        if (tree->statements[i]->type == Block) {
             print_ast_block(tree->statements[i]->internal_data, indent+1);
+        }
         else
-            pnode(tree->statements[i], indent);
+            pnode(tree->statements[i], indent+1);
     }
-    printf("]\n");
+    tab_print(indent);
+    printf("]}\n");
+    
+    //printf("]\n");
 }
 
 
 
 void print_ast(BlockStatement *tree) {
     short unsigned indent = 1;
-    printf("{\n");
+    printf("{[\n");
     
     for (int i=0; tree->length > i; i++) {
-        if (tree->statements[i]->type == Block)
-            print_ast_block(tree->statements[i]->internal_data, indent+1);
+        if (tree->statements[i]->type == Block) {
+        
+            print_ast_block(tree->statements[i]->internal_data, indent);
+        }
         else
             pnode(tree->statements[i], indent);
     }
-    printf("}\n");
+    printf("]}\n");
 }
