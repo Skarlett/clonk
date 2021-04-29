@@ -441,9 +441,11 @@ int pnode(Statement *stmt, short unsigned indent){
     tab_print(indent-1); 
     printf("}\n");
     tab_print(indent-2);
-    printf("}\n");
+    printf("}");
     return 0;    
 }
+
+
 
 
 void print_ast_block(BlockStatement *tree, short unsigned indent) {
@@ -451,15 +453,18 @@ void print_ast_block(BlockStatement *tree, short unsigned indent) {
     tab_print(indent);
     printf("{[\n");
     for (int i=0; tree->length > i; i++) {
-        if (tree->statements[i]->type == Block) {
+        if (tree->statements[i]->type == Block)
             print_ast_block(tree->statements[i]->internal_data, indent+1);
-        }
-        else
+        
+        else 
             pnode(tree->statements[i], indent+1);
+        
+        if (tree->length-1 != i)
+            putc(',', stdout);
+        putc('\n', stdout);
     }
     tab_print(indent);
-    printf("]}\n");
-    
+    printf("]}");
     //printf("]\n");
 }
 
@@ -470,12 +475,15 @@ void print_ast(BlockStatement *tree) {
     printf("{[\n");
     
     for (int i=0; tree->length > i; i++) {
-        if (tree->statements[i]->type == Block) {
-        
+        if (tree->statements[i]->type == Block) 
             print_ast_block(tree->statements[i]->internal_data, indent);
-        }
+        
         else
             pnode(tree->statements[i], indent);
+        
+        if (tree->length-1 != i)
+            putc(',', stdout);
+        putc('\n', stdout);
     }
     printf("]}\n");
 }
