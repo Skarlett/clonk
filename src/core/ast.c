@@ -342,7 +342,7 @@ size_t assemble_ast(
                 // as the current block
                 //--------------------------------------
                 *trap += 1;
-                skip += assemble_ast(line, tokens + i + 1, ntokens, child_block, trap) + 2;
+                skip += assemble_ast(line, tokens + i + 1, ntokens, child_block, trap) + 1;
                 *trap -= 1;
                 if (*trap == -101)
                     return ctr;
@@ -356,7 +356,7 @@ size_t assemble_ast(
             ctr++;
         }
 
-        printf("statement: tokens[%d..%d] [%d] [%d] --  ", (int)last_stmt_idx, (int)statement_idx, (int)ntokens, *trap);
+        printf("statement: tokens[%d..%d] [%d] [%d] (%d) --  ", (int)last_stmt_idx, (int)statement_idx, (int)ntokens, *trap, skip);
         size_t slen = statement_idx-last_stmt_idx;
         
         
@@ -444,8 +444,6 @@ int pnode(Statement *stmt, short unsigned indent){
     printf("}");
     return 0;    
 }
-
-
 
 
 void print_ast_block(BlockStatement *tree, short unsigned indent) {
