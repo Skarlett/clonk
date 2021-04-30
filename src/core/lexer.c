@@ -300,7 +300,6 @@ int tokenize(char *line,  struct Token tokens[], size_t token_idx) {
 
             // check if its an operator, and that its lenth is 2
             if (is_operator_complex(complex_token) && i-complex_start != 2 ) {
-                printf("complex start-i: %d\n", (int)(i-complex_start));
                 token.start = i-1;
                 token.end = i-1;
                 token.token = invert_operator_token(complex_token);
