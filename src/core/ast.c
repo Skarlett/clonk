@@ -356,7 +356,7 @@ size_t assemble_ast(
             ctr++;
         }
 
-        printf("statement: tokens[%d..%d] [%d] [%d] (%d) --  ", (int)last_stmt_idx, (int)statement_idx, (int)ntokens, *trap, skip);
+        printf("statement: tokens[%d..%d] [total: %d] [depth: %d] (skip: %d) --  ", (int)last_stmt_idx, (int)statement_idx, (int)ntokens, *trap, skip);
         size_t slen = statement_idx-last_stmt_idx;
         
         
@@ -375,6 +375,13 @@ size_t assemble_ast(
         last_stmt_idx = statement_idx;
     }
     return ctr;
+}
+char * pcondition_state(enum ConditionState c) {
+    switch(c) {
+        case If: return "if";
+        case Elif: return "elif";
+        case Else: return "else";
+    }
 }
 
 int pnode(Statement *stmt, short unsigned indent){
@@ -417,6 +424,8 @@ int pnode(Statement *stmt, short unsigned indent){
 
     else if(stmt->type == Condition) {
         ConditionalStatement *data = stmt->internal_data;
+        tab_print(indent);
+        printf("keyword: %s\n", pcondition_state(data->state));
         tab_print(indent);
         printf("expr: {\n");
         print_expr(&data->expr, indent+1);
