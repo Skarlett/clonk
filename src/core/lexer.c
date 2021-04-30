@@ -188,29 +188,14 @@ int is_operator_complex(enum Lexicon complex_token) {
 
 enum Lexicon invert_operator_token(enum Lexicon complex_token) {
     switch (complex_token) {
-        case ISEQL:
-            return EQUAL;
-
-        case GTEQ:
-            return GT;
-
-        case LTEQ:
-            return LTEQ;
-
-        case AND:
-            return AMPER;
-
-        case OR:
-            return PIPE;
-
-        case MINUSEQ:
-            return SUB;
-
-        case PLUSEQ:
-            return ADD;
-            
-        default:
-            return NULLTOKEN;
+        case ISEQL: return EQUAL;
+        case GTEQ: return GT;
+        case LTEQ: return LT;
+        case AND: return AMPER;
+        case OR: return PIPE;
+        case MINUSEQ: return SUB;
+        case PLUSEQ: return ADD;
+        default: return NULLTOKEN;
     }
 }
 
