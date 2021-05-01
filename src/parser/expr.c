@@ -4,7 +4,7 @@
 
 #include "lexer.h"
 #include "expr.h"
-#include "common.h"
+#include "../common.h"
 
 /* ------------------------------------------ */
 /*            symbols & values                */
@@ -66,28 +66,6 @@ int is_func_call(Token tokens[], int nstmt) {
     && tokens[1].token == PARAM_OPEN
     && tokens[nstmt-2].token == PARAM_CLOSE;
 }
-
-/* ------------------------------------------ */
-/*             uniary expression              */
-/* ------------------------------------------ */
-// uniary expressions are either values, or function calls
-
-
-
-
-
-/* ------------------------------------------ */
-/*             binary expression              */
-/* ------------------------------------------ */
-// Combinations of uniary expressions
-
-
-/* ------------------------------------------ */
-/*             generic expression struct      */
-/* ------------------------------------------ */
-// orchestrate symbols/values into expressions...
-
-
 
 int is_expr(
     char *line,

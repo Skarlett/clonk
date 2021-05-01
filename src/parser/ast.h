@@ -2,8 +2,10 @@
 #ifndef _HEADER__AST__
 #define _HEADER__AST__
 #include <stdlib.h>
+
+#include "../common.h"
+
 #include "lexer.h"
-#include "common.h"
 #include "expr.h"
 
 #define STMT_CAPACITY 255

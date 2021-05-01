@@ -5,10 +5,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "core/lexer.h"
-#include "core/expr.h"
-#include "core/ast.h"
-#include "core/common.h"
+#include "parser/lexer.h"
+#include "parser/expr.h"
+#include "parser/ast.h"
+#include "productions/syn.h"
+#include "common.h"
 
 
 #define HELP_TEXT \
@@ -158,8 +159,8 @@ int parse(struct Opts *opts) {
 
         size_t ntokens = tokenize(line, tokens, token_n);
         printf("token stream: ");
-        for (size_t i=0; ntokens > i; i++) {
-            printf("[%s(%d,%d)] ", ptoken(tokens[i].token), (int)tokens[i].start, (int)tokens[i].end);
+        for (size_t p_i=0; ntokens > p_i; p_i++) {
+            printf("[%s(%d,%d)] ", ptoken(tokens[p_i].token), (int)tokens[p_i].start, (int)tokens[p_i].end);
         }
         printf("\n\n");
         
@@ -176,6 +177,7 @@ int parse(struct Opts *opts) {
     printf("----------------\n");
     printf("AST\n");
     printf("----------------\n");
+    synthesize(&root);
     print_ast(&root);
     return 0;
 }

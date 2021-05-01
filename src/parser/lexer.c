@@ -12,8 +12,8 @@ const char * ptoken(enum Lexicon t) {
         case WORD: return "word";
         case NULLTOKEN: return "nulltoken";
         case WHITESPACE: return "whitespace";
-        case OPEN_BRACE: return "brack_open";
-        case CLOSE_BRACE: return "brack_close";
+        case OPEN_BRACE: return "brace_open";
+        case CLOSE_BRACE: return "brace_close";
         case PARAM_OPEN: return "param_open";
         case PARAM_CLOSE: return "param_close";
         case COMMA: return "comma";
@@ -79,13 +79,13 @@ enum Lexicon tokenize_char(char c) {
     }
 
     
-    for (int i = 0; sizeof(DIGITS) > i; i++) {
-        if (c == DIGITS[i])
+    for (int d_i = 0; sizeof(DIGITS) > d_i; d_i++) {
+        if (c == DIGITS[d_i])
             return DIGIT;
     }
 
-    for (int i = 0; sizeof(ALPHABET) > i; i++) {
-        if (c == ALPHABET[i])
+    for (int a_i = 0; sizeof(ALPHABET) > a_i; a_i++) {
+        if (c == ALPHABET[a_i])
             return CHAR;
     }
 

@@ -5,9 +5,9 @@
 // in which the interpreter expects
 
 #include <stdlib.h>
-#include "lexer.h"
-#include "expr.h"
-#include "ast.h"
+#include "../parser/lexer.h"
+#include "../parser/expr.h"
+#include "../parser/ast.h"
 
 int synthesize_block(BlockStatement *block, int ret_allowed){
     for (size_t i=0; block->length > i; i++) {
@@ -29,6 +29,7 @@ int synthesize_block(BlockStatement *block, int ret_allowed){
         else if (block->statements[i]->type == Return && !ret_allowed)
             return -1; 
     }
+    return 0;
 }
 
 int synthesize(BlockStatement *block) {
