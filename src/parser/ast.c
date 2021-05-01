@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "lexer.h"
-#include "common.h"
+#include "../common.h"
 #include "expr.h"
 #include "ast.h"
 
@@ -352,7 +352,6 @@ size_t assemble_ast(
             }
 
             else if (token == CLOSE_BRACE) return ctr+1;
-            
             ctr++;
         }
 
@@ -360,8 +359,8 @@ size_t assemble_ast(
         size_t slen = statement_idx-last_stmt_idx;
         
         
-        for (int i=0; slen > i; i++) 
-            printf("[%s] ", ptoken((tokens + last_stmt_idx)[i].token));
+        for (size_t p_i=0; slen > p_i; p_i++) 
+            printf("[%s] ", ptoken((tokens + last_stmt_idx)[p_i].token));
         printf("\n");
 
         if (construct_statement(line, tokens + last_stmt_idx, slen, block) != 0)
@@ -421,7 +420,6 @@ int pnode(Statement *stmt, short unsigned indent){
         printf("}\n");
     }
     
-
     else if(stmt->type == Condition) {
         ConditionalStatement *data = stmt->internal_data;
         tab_print(indent);
@@ -433,7 +431,6 @@ int pnode(Statement *stmt, short unsigned indent){
         printf("}\n");
 
     }
-
 
     else if(stmt->type == Return) {
         ReturnStatement *data = stmt->internal_data;
@@ -462,7 +459,6 @@ void print_ast_block(BlockStatement *tree, short unsigned indent) {
     for (int i=0; tree->length > i; i++) {
         if (tree->statements[i]->type == Block)
             print_ast_block(tree->statements[i]->internal_data, indent+1);
-        
         else 
             pnode(tree->statements[i], indent+1);
         
@@ -484,7 +480,6 @@ void print_ast(BlockStatement *tree) {
     for (int i=0; tree->length > i; i++) {
         if (tree->statements[i]->type == Block) 
             print_ast_block(tree->statements[i]->internal_data, indent);
-        
         else
             pnode(tree->statements[i], indent);
         

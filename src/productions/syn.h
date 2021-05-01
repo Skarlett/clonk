@@ -1,6 +1,7 @@
 #ifndef _HEADER__SYN__
 #define _HEADER__SYN__
-#include "ast.h"
+
+#include "../parser/ast.h"
 
 void synthesize(BlockStatement *block);
 
