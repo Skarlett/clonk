@@ -8,7 +8,8 @@
 typedef enum Tag {
     NullTag,
     VariableTag,
-    ValueTag
+    ValueTag,
+    //Variable,
 } Tag;
 
 typedef enum DataType {
