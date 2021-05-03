@@ -176,12 +176,9 @@ int construct_conditional(char *line, Token tokens[], size_t nstmt, Statement *s
     else if (strcmp(keyword, "elif") == 0) con_stmt->state=Elif;
     else if (strcmp(keyword, "else") == 0) con_stmt->state=Else;
     else return -1;
-    return 0;
-
     construct_expr(line, tokens + 2, nstmt, &expr);
-    
     con_stmt->expr=expr;
-    
+    return 0;
 }
 
 /* ------------------------------------------ */
