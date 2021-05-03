@@ -176,11 +176,11 @@ int construct_conditional(char *line, Token tokens[], size_t nstmt, Statement *s
     else if (strcmp(keyword, "elif") == 0) con_stmt->state=Elif;
     else if (strcmp(keyword, "else") == 0) con_stmt->state=Else;
     else return -1;
+    return 0;
 
     construct_expr(line, tokens + 2, nstmt, &expr);
     
     con_stmt->expr=expr;
-    return 0;
     
 }
 
@@ -429,7 +429,6 @@ int pnode(Statement *stmt, short unsigned indent){
         print_expr(&data->expr, indent+1);
         tab_print(indent);
         printf("}\n");
-
     }
 
     else if(stmt->type == Return) {
@@ -448,12 +447,10 @@ int pnode(Statement *stmt, short unsigned indent){
     printf("}\n");
     tab_print(indent-2);
     printf("}");
-    return 0;    
+    return 0;
 }
 
-
 void print_ast_block(BlockStatement *tree, short unsigned indent) {
-    //printf("[\n");
     tab_print(indent);
     printf("{[\n");
     for (int i=0; tree->length > i; i++) {
@@ -468,7 +465,6 @@ void print_ast_block(BlockStatement *tree, short unsigned indent) {
     }
     tab_print(indent);
     printf("]}");
-    //printf("]\n");
 }
 
 
