@@ -1,11 +1,5 @@
 # Source, Executable, Includes, Library Defines
-INCL  = src/common.h \
-		src/parser/lexer.h \
-		src/parser/expr.h \
-		src/parser/ast.h \
-		src/productions/syn.h \
-		src/common.h
-
+INCL  = 
 SRC   = src/main.c \
 		src/common.c \
 		src/parser/lexer.c \
@@ -21,12 +15,8 @@ CC	  = /usr/bin/clang
 CFLAGS  = -ansi -pedantic -Wall -O2
 LIBPATH = -L.
 LDFLAGS = -o $(EXE) $(LIBPATH) $(LIBS)
-CFDEBUG = -ansi -pedantic -DDEBUG $(LDFLAGS)
+CFDEBUG = -ansi -pedantic -DDEBUG -ggdb $(LDFLAGS)
 RM	  = /bin/rm -f
-
-# compile under C99
-ccflags-y := -std=c99
-
 
 # Compile and Assemble C Source Files into Object Files
 %.o: %.c
