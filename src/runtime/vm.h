@@ -24,9 +24,13 @@ enum Opcode {
     i32Mul,
     i32Modolus,
     i32Pow,
-
+    // short cuts
+    i32Square,
+    i32Inc,
+    i32Dec,
     // StrConst,
     // StrIsEq,
+    StrCmp,
 
     Store,
     GStore,
@@ -37,7 +41,10 @@ enum Opcode {
     Goto,
     GotoT,
     GotoF,
-
+    
+    Call,
+    
+    Drop,
     Pop,
     
     Halt,
@@ -47,15 +54,15 @@ enum Opcode {
 };
 
 typedef struct VMRegisters {
-    size_t ip; // instruction ptr
-    size_t sp; // stack ptr
-    size_t fp; // frame ptr
-    size_t rp; // return addr
+    u_int64_t ip; // instruction ptr
+    u_int64_t sp; // stack ptr
+    u_int64_t fp; // frame ptr
+    u_int64_t rp; // return addr
     
-    size_t rax;
-    size_t rbx;
-    size_t rcx;
-    size_t rdx;
+    u_int64_t rax;
+    u_int64_t rbx;
+    u_int64_t rcx;
+    u_int64_t rdx;
 
 
     short trace;
@@ -71,25 +78,25 @@ typedef struct VM {
     // okay, so the reason we're choosing `int` as our size default size,
     // is so that we don't have to deal with down/up casting types
     char *stack;
-    size_t stack_len;
-    size_t stack_capacity;
+    u_int64_t stack_len;
+    u_int64_t stack_capacity;
 
     char *code;
-    size_t code_len;
-    size_t code_capacity;
+    u_int64_t code_len;
+    u_int64_t code_capacity;
 
     char *heap;
-    size_t heap_len;
-    size_t heap_capacity;
-    size_t heap_sz;
+    u_int64_t heap_len;
+    u_int64_t heap_capacity;
+    u_int64_t heap_sz;
 
 } VM;
 
 void init_vm(VM *vm,
-    size_t stack_sz,
-    size_t heap_sz,
-    size_t code_sz,
-    size_t i32_const_sz    
+    u_int64_t stack_sz,
+    u_int64_t heap_sz,
+    u_int64_t code_sz,
+    u_int64_t i32_const_sz    
 );
 
 void run_instruction(enum Opcode op, VM *vm);

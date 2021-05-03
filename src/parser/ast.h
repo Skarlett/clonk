@@ -42,6 +42,7 @@ typedef struct BlockStatement {
     size_t length;
     struct Statement *statements[STMT_CAPACITY];
 } BlockStatement;
+
 void init_block(struct BlockStatement *block, size_t capacity);
 void append_statement(BlockStatement *block, struct Statement *stmt);
 int is_block(struct Token tokens[], size_t nstmt);

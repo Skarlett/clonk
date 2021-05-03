@@ -3,15 +3,16 @@
 #include "string.h"
 #include "vm.h"
 #include "../common.h"
+
 #include <bits/stdint-intn.h>
 #include <stdint.h>
 #include <sys/types.h>
 
 void init_vm(VM *vm,
-    size_t stack_sz,
-    size_t heap_sz,
-    size_t code_sz,
-    size_t i32_const_sz    
+    u_int64_t stack_sz,
+    u_int64_t heap_sz,
+    u_int64_t code_sz,
+    u_int64_t i32_const_sz    
 ){
     vm->registers.fp=0;
     vm->registers.sp=0;
@@ -49,7 +50,7 @@ void run_instruction(enum Opcode op, VM *vm) {
             
             memcpy(
                 vm->stack + vm->registers.sp - sizeof(int32_t), 
-                (int32_t *)(vm->registers.rax + vm->registers.rbx),
+                (void *)((int32_t)vm->registers.rax + (int32_t)vm->registers.rbx),
                 sizeof(int32_t)
             );
 
@@ -62,7 +63,7 @@ void run_instruction(enum Opcode op, VM *vm) {
             
             memcpy(
                 vm->stack + vm->registers.sp - sizeof(int32_t), 
-                (int32_t *)(vm->registers.rax / vm->registers.rbx),
+                (int32_t *)((int32_t)vm->registers.rax / (int32_t)vm->registers.rbx),
                 sizeof(int32_t)
             );
 
@@ -75,7 +76,7 @@ void run_instruction(enum Opcode op, VM *vm) {
             
             memcpy(
                 vm->stack + vm->registers.sp - sizeof(int32_t), 
-                (int32_t *)(vm->registers.rax - vm->registers.rbx),
+                (int32_t *)((int32_t)vm->registers.rax - (int32_t)vm->registers.rbx),
                 sizeof(int32_t)
             );
 
@@ -88,7 +89,7 @@ void run_instruction(enum Opcode op, VM *vm) {
             
             memcpy(
                 vm->stack + vm->registers.sp - sizeof(int32_t), 
-                (int32_t *)(vm->registers.rax ^ vm->registers.rbx),
+                (int32_t *)((int32_t)vm->registers.rax ^ (int32_t)vm->registers.rbx),
                 sizeof(int32_t)
             );
 
@@ -115,9 +116,10 @@ void run_instruction(enum Opcode op, VM *vm) {
             vm->registers.rax=(int32_t)*(vm->stack + vm->registers.sp);
             vm->registers.rbx=(int32_t)*(vm->stack + vm->registers.sp - sizeof(int32_t));
             
+
             memcpy(
                 vm->stack + vm->registers.sp - sizeof(int32_t), 
-                (int32_t *)(vm->registers.rax % vm->registers.rbx),
+                (int32_t *)((int32_t)vm->registers.rax % (int32_t)vm->registers.rbx),
                 sizeof(int32_t)
             );
 
@@ -130,8 +132,9 @@ void run_instruction(enum Opcode op, VM *vm) {
         // 0
         // [1]
         case i32Gt:
-            vm->registers.rax=(int32_t)*(vm->stack + vm->registers.sp);
-            vm->registers.rbx=(int32_t)*(vm->stack + vm->registers.sp - sizeof(int32_t));
+            // store top staclitem
+            vm->registers.rax = (int32_t)*(vm->stack + vm->registers.sp);
+            vm->registers.rbx = (int32_t)*(vm->stack + vm->registers.sp - sizeof(int32_t));
             vm->registers.sp -= sizeof(int32_t)*2;
             vm->code[vm->registers.sp++] = (char)(vm->registers.rax > vm->registers.rbx);
             break;
@@ -158,8 +161,8 @@ void run_instruction(enum Opcode op, VM *vm) {
             break;
 
         case i32LtEq:
-            vm->registers.rax=(int32_t)*(vm->stack + vm->registers.sp);
-            vm->registers.rbx=(int32_t)*(vm->stack + vm->registers.sp - sizeof(int32_t));
+            vm->registers.rax = (int32_t)*(vm->stack + vm->registers.sp);
+            vm->registers.rbx = (int32_t)*(vm->stack + vm->registers.sp - sizeof(int32_t));
             vm->registers.sp -= sizeof(int32_t)*2;
             vm->code[vm->registers.sp++] = (char)(vm->registers.rax <= vm->registers.rbx);
             break;
@@ -176,25 +179,39 @@ void run_instruction(enum Opcode op, VM *vm) {
             printf("print ret unimplemented\n");
             break;
 
-        case Goto: // expects i64
-            vm->registers.ip = vm->stack[vm->registers.sp];
-            vm->registers.sp--;
+        case Goto: // expects u64
+            vm->registers.ip = (u_int64_t)*(vm->code + vm->registers.ip + sizeof(Goto));
             break;
         
         // addr
         // 1
         case GotoT:
-            if (vm->stack[vm->registers.sp] == 1) {
-                vm->registers.sp--;
-                vm->registers.ip = vm->stack[vm->registers.sp];
-            }
+            // flag
+            vm->registers.rax = (char)*(vm->code + vm->registers.ip + sizeof(GotoT));
+            
+            if (vm->registers.rax > 0)
+                vm->registers.ip = (u_int64_t)*(vm->code + vm->registers.ip + sizeof(GotoT) + sizeof(char));
+            else
+                vm->registers.ip += sizeof(GotoT) + sizeof(char) + sizeof(u_int64_t);
+            break;
+                    
+        case GotoF:
+            vm->registers.rax = (char)*(vm->code + vm->registers.ip + sizeof(GotoT));
+            
+            if (vm->registers.rax > 0)
+                vm->registers.ip = (u_int64_t)*(vm->code + vm->registers.ip + sizeof(GotoT) + sizeof(char));
+            else
+                vm->registers.ip += sizeof(GotoT) + sizeof(char) + sizeof(u_int64_t);
             break;
         
-        case GotoF:
-            if (vm->stack[vm->registers.sp] == 0) {
-                vm->registers.sp--;
-                vm->registers.ip = vm->stack[vm->registers.sp];
-            }
+        case i32Inc:
+            vm->registers.rax=(u_int32_t *)&vm->stack[vm->registers.sp];
+            vm->registers.rax += 1;
+            break;
+        
+        case i32Dec:
+            vm->registers.rax=(u_int32_t *)&vm->stack[vm->registers.sp];
+            vm->registers.rax -= 1;
             break;
         
         case ISANop:
@@ -265,7 +282,7 @@ void run_vm(VM *vm) {
         run_instruction(opcode, vm);
         
         if (vm->registers.trace > 0)
-            printf("%d\t%s", vm->registers.ip, popcode(opcode));
+            printf("%lu%s", vm->registers.ip, popcode(opcode));
             
         vm->registers.ip++;
     }
