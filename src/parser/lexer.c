@@ -43,6 +43,7 @@ const char * ptoken(enum Lexicon t) {
         case AND: return "and";
         case OR: return "or";
         case UNDERSCORE: return "underscore";
+        case NOT: return "exclaimation";
         default: return "PTOKEN_ERROR_UNKNOWN_TOKEN";
     };
 }
@@ -75,6 +76,7 @@ enum Lexicon tokenize_char(char c) {
         case '|':  return PIPE;
         case '%':  return MOD;
         case '_':  return UNDERSCORE;
+        case '!':  return NOT;
         default :  break;
     }
 
@@ -99,6 +101,7 @@ int is_complex_token(enum Lexicon token) {
         || token == CHAR
         || token == QUOTE
         || token == EQUAL
+        || token == NOT
         || token == GT
         || token == LT
         || token == ADD
@@ -146,6 +149,11 @@ int set_complex_token(enum Lexicon token, enum Lexicon *complex_token) {
             *complex_token = AND;
             break;
         
+        case NOT:
+            *complex_token = ISNEQL;
+            break;
+        
+
         case PIPE:
             *complex_token = OR;
             break;

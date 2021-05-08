@@ -24,6 +24,9 @@ typedef enum Lexicon {
     // )
     PARAM_CLOSE,
 
+    // !
+    NOT,
+
     // +
     ADD,
     
@@ -65,6 +68,9 @@ typedef enum Lexicon {
 
     // ==
     ISEQL,
+
+    // !=
+    ISNEQL,
     
     // &
     AMPER,
