@@ -125,6 +125,7 @@ int construct_expr(
                     single_expr_idx=i;
                     break;
                 }
+
                 else if (tokens[i].token == PARAM_CLOSE) {
                     end_func_flag = 1;
                     break;
@@ -138,7 +139,7 @@ int construct_expr(
             fncall->args_sz += 1;
             last_expr += single_expr_idx;
         }
-        uni->op=Call;
+        uni->op=UniCall;
         uni->inner = fncall;
         expr->inner_data = uni;
         expr->type = UniExprT;
@@ -158,6 +159,9 @@ int construct_expr(
         uni->op=UniValue;
         expr->type=UniExprT;
         expr->inner_data=uni;
+    }
+    else if (tokens[0].token == PARAM_OPEN) {
+
     }
 
     else {
@@ -301,7 +305,7 @@ int print_expr(Expr *expr, short unsigned indent){
                     printf("error: got unexpected tag");
                 }
         }
-        else if (uni->op == Call) {
+        else if (uni->op == UniCall) {
                 struct FunctionCallExpr *fncall = uni->inner;
                 printf("{\n");
                 tab_print(indent+1);
