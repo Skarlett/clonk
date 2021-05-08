@@ -55,6 +55,10 @@ int print_expr(Expr *expr, short unsigned indent);
 void init_expression(struct Expr *expr);
 int is_expr(char *line, struct Token tokens[], size_t ntokens);
 
+
+// TODO Note
+// All of our pointing structures would be better defined as unions
+
 typedef struct FunctionCallExpr {
     int name_sz;
     int args_sz;
@@ -70,7 +74,7 @@ int is_func_call(struct Token tokens[], int nstmt);
 
 typedef enum UniaryOperation {
     UniaryOperationNop,
-    Call,
+    UniCall,
     UniValue
 } UniaryOperation;
 
