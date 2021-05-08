@@ -54,16 +54,21 @@ enum Opcode {
 };
 
 typedef struct VMRegisters {
-    u_int64_t ip; // instruction ptr
-    u_int64_t sp; // stack ptr
-    u_int64_t fp; // frame ptr
-    u_int64_t rp; // return addr
+    u_int64_t rip; // instruction ptr
+    u_int64_t rsp; // stack ptr
+    u_int64_t rbp; // stack base ptr (ebp + esp = stack frame)
     
+
+    // caller saves these
+    // NOTE: eax will be used as the return proceedure
     u_int64_t rax;
     u_int64_t rbx;
     u_int64_t rcx;
-    u_int64_t rdx;
 
+    // callee saves these
+    u_int64_t rdx;
+    u_int64_t rsi;
+    u_int64_t rdi;
 
     short trace;
     short trace_operand;
@@ -71,7 +76,7 @@ typedef struct VMRegisters {
     char trap; // trap for error [0-255]
 } VMRegisters;
 
-
+ 
 typedef struct VM {
     VMRegisters registers;
     
@@ -96,7 +101,7 @@ void init_vm(VM *vm,
     u_int64_t stack_sz,
     u_int64_t heap_sz,
     u_int64_t code_sz,
-    u_int64_t i32_const_sz    
+    u_int64_t i32_const_sz
 );
 
 void run_instruction(enum Opcode op, VM *vm);
