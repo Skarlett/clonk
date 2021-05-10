@@ -77,6 +77,7 @@ int binop_from_token(enum Lexicon t){
         case AND: return And;
         case OR: return Or;
         case ISEQL: return IsEq;
+        case ISNEQL: return NotEq;
         case GTEQ: return GtEq;
         case LTEQ: return LtEq;
         case LT: return Lt;
@@ -234,6 +235,8 @@ const char * print_bin_operator(enum BinOp t) {
             return "lteq";
         case IsEq:
             return "iseq";
+        case NotEq:
+            return "noteq";
         default:
             return "unknown";
     }

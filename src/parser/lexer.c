@@ -27,6 +27,7 @@ const char * ptoken(enum Lexicon t) {
         case GT: return "greater than";
         case LT: return "less than";
         case ISEQL: return "is eq";
+        case ISNEQL: return "not eq";
         case GTEQ: return "greater than or eq";
         case LTEQ: return "less than or eq";
         case POW: return "exponent";
@@ -46,7 +47,6 @@ const char * ptoken(enum Lexicon t) {
         case UNDERSCORE: return "underscore";
         case NOT: return "exclaimation";
         case POUND: return "pound";
-        //case NOT: return "exclaimation";
         case COMMENT: return "comment";
         default: return "PTOKEN_ERROR_UNKNOWN_TOKEN";
     };
@@ -124,6 +124,10 @@ int set_complex_token(enum Lexicon token, enum Lexicon *complex_token) {
             *complex_token = INTEGER;
             break;
         
+        case NOT: 
+            *complex_token = ISNEQL;
+            break;
+
         case CHAR:
             *complex_token = WORD;
             break;
@@ -156,10 +160,6 @@ int set_complex_token(enum Lexicon token, enum Lexicon *complex_token) {
             *complex_token = AND;
             break;
         
-        case NOT:
-            *complex_token = ISNEQL;
-            break;
-         
          case POUND:
             *complex_token = COMMENT;
             break;
@@ -188,16 +188,26 @@ int continue_complex(enum Lexicon token, enum Lexicon complex_token) {
         // ---
         
         // String literal
+        // "..."
         || complex_token == STRING_LITERAL && token != QUOTE
-
         // operators 
+        // !=
+        || complex_token == ISNEQL && token == EQUAL
+        // ==
         || complex_token == ISEQL && token == EQUAL
+        // >=
         || complex_token == GTEQ && token == EQUAL
+        // <=
         || complex_token == LTEQ && token == EQUAL
+        // &&
         || complex_token == AND && token == AMPER
+        // ||
         || complex_token == OR && token == PIPE 
+        // +=
         || complex_token == PLUSEQ && token == EQUAL
+        // -=
         || complex_token == MINUSEQ && token == EQUAL
+        // # ... \n
         || complex_token == COMMENT && token != NEWLINE
     );
 }
@@ -226,13 +236,15 @@ enum Lexicon invert_operator_token(enum Lexicon complex_token) {
         case OR: return PIPE;
         case MINUSEQ: return SUB;
         case PLUSEQ: return ADD;
+        case ISNEQL: return NOT;
         default: return NULLTOKEN;
     }
 }
 
 int is_cmp_operator(enum Lexicon complex_token) {
     return (
-        complex_token == ISEQL 
+        complex_token == ISEQL
+        || complex_token == ISNEQL  
         || complex_token == GTEQ 
         || complex_token == LTEQ
         || complex_token == AND
@@ -242,7 +254,8 @@ int is_cmp_operator(enum Lexicon complex_token) {
 
 // is this token a binary operator?
 int is_bin_operator(enum Lexicon complex_token) {
-    return (complex_token == ISEQL 
+    return (complex_token == ISEQL
+        || complex_token == ISNEQL 
         || complex_token == GTEQ 
         || complex_token == LTEQ
         || complex_token == AND
