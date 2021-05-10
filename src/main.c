@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 
 #include "parser/lexer.h"
@@ -15,40 +16,18 @@
 #define HELP_TEXT \
     "\t -h | brings up this help menu\n" \
     "\t -V | print version\n" \
-    "\t -c | runs a string\n" \
     "\t -a | prints ast\n" \
-    "\t -l | prints token stream\n"
+    "\t -t | prints token stream\n"
    
 
 void print_help(char *name) {
-    printf("usage: %s [file]\nversion: %s\n\n", name, VERSION);
+    printf("usage: %s [opts] [file]\nversion: %s\n\n", name, VERSION);
     printf("%s\n", HELP_TEXT);
 }
 
-// /* ------------------------------------------ */
-// /*            Func call                       */
-// /* ------------------------------------------ */
-// enum Action {
-//     NullCommand,
-//     Repl,
-//     RunFile,
-//     RunString,
-//     PrintTokenStream,
-//     PrintAST,
-//     //HelpMenu,
-//     //PrintVersion,
-// };
-
-
-enum RunType {
-    RunTypeUndefined,
-    CommandString,
-    FileInput
-};
-
 struct Opts {
-    int print_ast;
-    int print_tokens;
+    uint_fast8_t print_ast;
+    uint_fast8_t print_tokens;
 };
 
 void init_opts(struct Opts *opts) {
