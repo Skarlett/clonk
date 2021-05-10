@@ -45,7 +45,7 @@ const char * ptoken(enum Lexicon t) {
         case AND: return "and";
         case OR: return "or";
         case UNDERSCORE: return "underscore";
-        case NOT: return "exclaimation";
+        case NOT: return "not";
         case POUND: return "pound";
         case COMMENT: return "comment";
         default: return "PTOKEN_ERROR_UNKNOWN_TOKEN";
@@ -334,9 +334,8 @@ int tokenize(char *line,  struct Token tokens[], size_t token_idx) {
         // we have finished the second round of tokenizing
         else if (complex_token != NULLTOKEN) {
             // P
-            if (complex_token != COMMENT) {
-                int start=complex_start, end=i, len=end-complex_start;
-    
+            if (complex_token != COMMENT) { 
+
                 struct Token token = {
                     .start = complex_start,
                     .end = i,
@@ -356,6 +355,13 @@ int tokenize(char *line,  struct Token tokens[], size_t token_idx) {
                 tokens[token_idx+ctr] = token;
                 ctr += 1;
 
+                if (is_complex_token(lexed)) // Could this start a second round of tokenizing?
+                {
+                        // Oh it can.
+                    set_complex_token(lexed, &complex_token); 
+                    complex_start = i;
+                    continue;
+                }
                 // skip the extra quote token
                 // if (complex_token == STRING_LITERAL) {
                 //     continue;
@@ -363,7 +369,7 @@ int tokenize(char *line,  struct Token tokens[], size_t token_idx) {
 
             }
             complex_token = NULLTOKEN;
-            continue;
+            //continue;
         }
 
         if (lexed != WHITESPACE && lexed != NEWLINE) {

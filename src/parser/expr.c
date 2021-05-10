@@ -60,10 +60,12 @@ int is_expr(
     Token tokens[],
     size_t ntokens)
 {   
-    if (is_func_call(tokens, ntokens))
-        return TRUE;
-
-    return is_data(tokens[0].token);
+    return (
+        tokens[0].token == NOT
+        // || tokens[0].token == OPEN_PARAM
+        || is_data(tokens[0].token)
+        || is_func_call(tokens, ntokens)
+    );
 }
 
 int binop_from_token(enum Lexicon t){
@@ -98,7 +100,39 @@ int construct_expr(
     // where each parameter will be evaulated as an expression
     expr->type=UniExprT;
     
-    if (is_func_call(tokens, ntokens)) {
+    if (tokens[0].token == PARAM_OPEN) {
+
+    }
+
+    else if (tokens[0].token == NOT) {
+        // 0 is false
+        struct Expr  
+            *rhs = xmalloc(sizeof(struct Expr)),
+            *lhs = xmalloc(sizeof(struct Expr));
+        
+        lhs->type = UniExprT;
+        lhs->inner.uni.op = UniValue;
+        lhs->inner.uni.interal_data.symbol.tag=ValueTag;
+        lhs->inner.uni.interal_data.symbol.inner.value.type=IntT;
+        lhs->inner.uni.interal_data.symbol.inner.value.data.integer=0;
+
+        expr->inner.bin.op = IsEq;
+        expr->inner.bin.lhs = lhs;
+        expr->inner.bin.rhs = rhs;
+        expr->type = BinExprT;
+
+        construct_expr(line, tokens + 1, ntokens, rhs);
+    }
+    
+    // variable/unit
+    else if (is_data(tokens[0].token)) {
+        symbol_from_token(line, tokens[0], &expr->inner.uni.interal_data.symbol);
+        
+        expr->inner.uni.op=UniValue;
+        expr->type=UniExprT;
+    }
+    
+    else if (is_func_call(tokens, ntokens)) {
         //UniExpr *uni = xmalloc(sizeof(UniExpr));
         //FunctionCallExpr *fncall = xmalloc(sizeof(FunctionCallExpr));
 
@@ -133,18 +167,7 @@ int construct_expr(
         expr->inner.uni.op=UniCall;
         expr->type = UniExprT;
     }
-
-    // variable/unit
-    else if (is_data(tokens[0].token)) {
-        symbol_from_token(line, tokens[0], &expr->inner.uni.interal_data.symbol);
-        
-        expr->inner.uni.op=UniValue;
-        expr->type=UniExprT;
-    }
-    else if (tokens[0].token == PARAM_OPEN) {
-
-    }
-
+    
     else {
         return -1;
     }
@@ -155,7 +178,7 @@ int construct_expr(
     // if do run across a **function**,
     // we try the next token, otherwise
     // it will be 0+1
-    if (is_bin_operator(tokens[last_expr+1].token)) {
+    if (is_bin_operator(tokens[last_expr+1].token) ) {
             //struct Expr *parent = xmalloc(sizeof(Expr));
             
             struct Expr  
