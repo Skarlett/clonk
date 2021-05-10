@@ -47,6 +47,7 @@ typedef enum BinOp {
     Modolus,
     // cmp
     IsEq,
+    NotEq,
     Gt,
     Lt,
     GtEq,
