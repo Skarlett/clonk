@@ -383,6 +383,7 @@ char * pcondition_state(enum ConditionState c) {
         case If: return "if";
         case Elif: return "elif";
         case Else: return "else";
+        default: return "UNKNOWN CONDITION";
     }
 }
 
