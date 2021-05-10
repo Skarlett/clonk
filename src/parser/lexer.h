@@ -11,6 +11,11 @@ typedef enum Lexicon {
     
     // Ignore token (whitespace, newline, carriage return)
     WHITESPACE,
+    
+    NEWLINE,
+
+    // Ignore token (whitespace, newline, carriage return)
+    COMMENT,
 
     // {
     OPEN_BRACE,
@@ -92,6 +97,9 @@ typedef enum Lexicon {
 
     // _
     UNDERSCORE,
+
+    // #
+    POUND,
 
     // a-zA-Z
     CHAR,
