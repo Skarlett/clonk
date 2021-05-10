@@ -48,11 +48,12 @@ int is_return_statement(char *line, Token tokens[], size_t nstmt) {
 }
 
 int construct_ret_statement(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
-    Expr var;
+    Expr *expr = malloc(sizeof(Expr));
+
     ReturnStatement *ret_stmt = xmalloc(sizeof(ReturnStatement));
 
-    construct_expr(line, tokens + 2, nstmt, &var);
-    ret_stmt->value=var;
+    construct_expr(line, tokens + 2, nstmt, expr);
+    ret_stmt->value=expr;
     stmt->internal_data=ret_stmt;
     stmt->type=Return;
     return 0;
@@ -117,11 +118,12 @@ int construct_func_definition(char *line, Token tokens[], size_t nstmt, Statemen
 
 int construct_expr_stmt(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
     ExprStatement *expr_stmt = xmalloc(sizeof(ExprStatement));
-    init_expression(&expr_stmt->expr);
+    Expr *expr = xmalloc(sizeof(Expr));
     
-    if (construct_expr(line, tokens, nstmt, &expr_stmt->expr) != 0)
+    if (construct_expr(line, tokens, nstmt, expr) != 0)
         return -1;
     
+    expr_stmt->expr=expr;
     stmt->internal_data=expr_stmt;
     stmt->type=Expression;
     return 0;
@@ -136,7 +138,6 @@ int construct_expr_stmt(char *line, Token tokens[], size_t nstmt, Statement *stm
 void init_condition_stmt(ConditionalStatement *stmt) {
     BlockStatement block;
     stmt->state=If;
-    init_expression(&stmt->expr);
 }
 
 // word('if') open param expr close param
@@ -158,14 +159,13 @@ int is_conditional_definition(char *line, Token tokens[], size_t nstmt) {
 
 int construct_conditional(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
     ConditionalStatement *con_stmt = xmalloc(sizeof(ConditionalStatement));
-    Expr expr;
+    Expr *expr = malloc(sizeof(Expr));
     char keyword[4];
-
-    init_expression(&expr);
 
     stmt->type=Condition;
     stmt->internal_data=con_stmt;
-    
+    con_stmt->expr=expr;
+
     memset(keyword, 0, 4);
 
     for (int i=0; 4 > i; i++) {
@@ -176,8 +176,8 @@ int construct_conditional(char *line, Token tokens[], size_t nstmt, Statement *s
     else if (strcmp(keyword, "elif") == 0) con_stmt->state=Elif;
     else if (strcmp(keyword, "else") == 0) con_stmt->state=Else;
     else return -1;
-    construct_expr(line, tokens + 2, nstmt, &expr);
-    con_stmt->expr=expr;
+    
+    construct_expr(line, tokens + 2, nstmt, expr);
     return 0;
 }
 
@@ -194,11 +194,11 @@ int is_declare_statement(Token tokens[], int ntokens) {
 }
 
 int construct_declare_statement(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
-    Expr expr;
+    Expr *expr = xmalloc(sizeof(Expr));
     DeclareStatement *dec_stmt = xmalloc(sizeof(DeclareStatement));
     
     dec_stmt->name_sz = tokens[0].end - tokens[0].start;
-    construct_expr(line, tokens + 2,  nstmt, &expr);
+    construct_expr(line, tokens + 2,  nstmt, expr);
 
     if (STR_STACK_SIZE >= dec_stmt->name_sz) {
         strncpy(dec_stmt->name, line + tokens[0].start, dec_stmt->name_sz);
@@ -302,7 +302,7 @@ size_t assemble_ast(
     Token tokens[],
     size_t ntokens,
     BlockStatement *block,
-    int *trap
+    int *depth
 ){
     Statement *child = NULL;
     size_t 
@@ -338,11 +338,17 @@ size_t assemble_ast(
                 // god only knows how we'll restore the child
                 // as the current block
                 //--------------------------------------
-                *trap += 1;
-                skip += assemble_ast(line, tokens + i + 1, ntokens, child_block, trap) + 1;
-                *trap -= 1;
-                if (*trap == -101)
-                    return ctr;
+                *depth += 1;
+                // this function will go on and look ahead
+                // so when we get `skip` it will be how many 
+                // tokens it seeked ahead, and constructed.
+                //---
+                // the depth parameter is being used
+                // as a way to pass an error up the chain
+                skip += assemble_ast(line, tokens + i + 1, ntokens, child_block, depth) + 1;
+                *depth -= 1;
+                // if (*depth == -101)
+                //     return ctr;
                 
                 statement_idx = i;
                 break;
@@ -352,7 +358,7 @@ size_t assemble_ast(
             ctr++;
         }
 
-        printf("statement: tokens[%d..%d] [total: %d] [depth: %d] (skip: %d) --  ", (int)last_stmt_idx, (int)statement_idx, (int)ntokens, *trap, skip);
+        printf("statement: tokens[%d..%d] [total: %d] [depth: %d] (skip: %d) --  ", (int)last_stmt_idx, (int)statement_idx, (int)ntokens, *depth, skip);
         size_t slen = statement_idx-last_stmt_idx;
         
         
@@ -412,7 +418,7 @@ int pnode(Statement *stmt, short unsigned indent){
         printf("name: %s\n", data->name);
         tab_print(indent);
         printf("expression: {\n");
-        print_expr(&data->data, indent+1);
+        print_expr(data->data, indent+1);
         tab_print(indent);
         printf("}\n");
     }
@@ -423,21 +429,21 @@ int pnode(Statement *stmt, short unsigned indent){
         printf("keyword: %s\n", pcondition_state(data->state));
         tab_print(indent);
         printf("expr: {\n");
-        print_expr(&data->expr, indent+1);
+        print_expr(data->expr, indent+1);
         tab_print(indent);
         printf("}\n");
     }
 
     else if(stmt->type == Return) {
         ReturnStatement *data = stmt->internal_data;
-        if (print_expr(&data->value, indent) != 0) {
+        if (print_expr(data->value, indent) != 0) {
             return -1;
         }
     }
     
     else if(stmt->type == Expression) {    
         ExprStatement *expr_stmt = stmt->internal_data;
-        print_expr(&expr_stmt->expr, indent);
+        print_expr(expr_stmt->expr, indent);
     }
 
     tab_print(indent-1); 

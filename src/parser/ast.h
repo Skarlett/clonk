@@ -49,7 +49,7 @@ int is_block(struct Token tokens[], size_t nstmt);
 
 
 typedef struct ReturnStatement {
-    Expr value;
+    Expr * value;
 } ReturnStatement;
 int is_return_statement(char *line, struct Token tokens[], size_t nstmt);
 int construct_ret_statement(char *line, struct Token tokens[], size_t nstmt, struct Statement *stmt);
@@ -61,6 +61,7 @@ typedef struct FunctionDefinition {
     char func_name[STR_STACK_SIZE];
     char *parameters[FUNC_ARG_SIZE];
 } FunctionDefinition;
+
 void init_func_def(struct FunctionDefinition *fn);
 int is_func_definition(char *line, struct Token tokens[], size_t nstmt);
 int construct_func_definition(char *line, struct Token tokens[], size_t nstmt, struct Statement *stmt);
@@ -69,7 +70,7 @@ int construct_func_definition(char *line, struct Token tokens[], size_t nstmt, s
 
 
 typedef struct DeclareStatement {
-    Expr data;
+    Expr *data;
     size_t name_sz;
     char name[STR_STACK_SIZE];
 } DeclareStatement;
@@ -83,7 +84,7 @@ enum ConditionState {
 };
 
 typedef struct ConditionalStatement {
-    Expr expr;
+    Expr *expr;
     enum ConditionState state;
 } ConditionalStatement;
 int is_conditional_definition(char *line, struct Token tokens[], size_t nstmt);
@@ -91,7 +92,7 @@ void init_condition_stmt(struct ConditionalStatement *stmt);
 
 
 typedef struct ExprStatement {
-    Expr expr;
+    Expr *expr;
 } ExprStatement;
 
 
