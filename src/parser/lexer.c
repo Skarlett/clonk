@@ -214,7 +214,8 @@ int continue_complex(enum Lexicon token, enum Lexicon complex_token) {
 
 int is_operator_complex(enum Lexicon complex_token) {
     return (
-        complex_token == ISEQL 
+        complex_token == ISEQL
+        || complex_token == ISNEQL 
         || complex_token == GTEQ 
         || complex_token == LTEQ
         || complex_token == AND
@@ -334,28 +335,35 @@ int tokenize(char *line,  struct Token tokens[], size_t token_idx) {
         else if (complex_token != NULLTOKEN) {
             // P
             if (complex_token != COMMENT) {
+                int start=complex_start, end=i, len=end-complex_start;
+    
                 struct Token token = {
                     .start = complex_start,
                     .end = i,
                     .token = complex_token
                 };
                 
+
                 // check if its an operator, and that its lenth is 2
+                // if not - down grade the operator from its compound version
                 if (is_operator_complex(complex_token) && i-complex_start != 2 ) {
                     token.start = i-1;
                     token.end = i-1;
                     token.token = invert_operator_token(complex_token);
                 }
+
                 
                 tokens[token_idx+ctr] = token;
                 ctr += 1;
 
                 // skip the extra quote token
-                if (complex_token == STRING_LITERAL) {
-                    continue;
-                }
+                // if (complex_token == STRING_LITERAL) {
+                //     continue;
+                // }
+
             }
             complex_token = NULLTOKEN;
+            continue;
         }
 
         if (lexed != WHITESPACE && lexed != NEWLINE) {
