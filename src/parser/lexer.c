@@ -228,7 +228,15 @@ int is_bin_operator(enum Lexicon complex_token) {
         || complex_token == MINUSEQ
         || complex_token == PLUSEQ
         || complex_token == GT
-        || complex_token == LT);
+        || complex_token == LT
+        || complex_token == ADD
+        || complex_token == SUB
+        || complex_token == MUL
+        || complex_token == POW
+        || complex_token == NOT
+        || complex_token == MOD
+        || complex_token == DIV
+    );
 }
 
 
