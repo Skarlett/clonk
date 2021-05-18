@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 
 #include "parser/lexer.h"
@@ -15,61 +16,23 @@
 #define HELP_TEXT \
     "\t -h | brings up this help menu\n" \
     "\t -V | print version\n" \
-    "\t -c | runs a string\n" \
     "\t -a | prints ast\n" \
-    "\t -l | prints token stream\n"
+    "\t -t | prints token stream\n"
    
 
 void print_help(char *name) {
-    printf("usage: %s [file]\nversion: %s\n\n", name, VERSION);
+    printf("usage: %s [opts] [file]\nversion: %s\n\n", name, VERSION);
     printf("%s\n", HELP_TEXT);
 }
 
-// /* ------------------------------------------ */
-// /*            Func call                       */
-// /* ------------------------------------------ */
-// enum Action {
-//     NullCommand,
-//     Repl,
-//     RunFile,
-//     RunString,
-//     PrintTokenStream,
-//     PrintAST,
-//     //HelpMenu,
-//     //PrintVersion,
-// };
-
-
-enum RunType {
-    RunTypeUndefined,
-    CommandString,
-    FileInput
-};
-
 struct Opts {
-    int print_ast;
-    int print_tokens;
-    enum RunType type;
-    char *run;
+    uint_fast8_t print_ast;
+    uint_fast8_t print_tokens;
 };
 
 void init_opts(struct Opts *opts) {
     opts->print_ast=0;
     opts->print_tokens=0;
-    opts->type=RunTypeUndefined;
-    opts->run = NULL;
-}
-
-int access_chk(int argc, int i, char *argv[], struct Opts *opts) {
-    if (argc > i) {
-        opts->run = argv[i+1];
-        return 0;
-    }
-    else {
-        printf("expected token to follow");
-        exit(1);
-    }
-    return -1;
 }
 
 void setup_opts(int argc, char *argv[], struct Opts *opts) {
@@ -92,34 +55,19 @@ void setup_opts(int argc, char *argv[], struct Opts *opts) {
             exit(0);
         }
 
-        else if (strcmp(argv[i], "-l") == 0) {
+        else if (strcmp(argv[i], "-t") == 0) {
             opts->print_tokens=1;
         }
 
         else if (strcmp(argv[i], "-a") == 0) {
-            opts->print_tokens=1;
-        }
-
-        else if (strcmp(argv[i], "-c") == 0) {
-            access_chk(argc, i, argv, opts);
-            skip = 1;
-        }
-
-        else if(access(argv[i], F_OK) == 0) {
-            access_chk(argc, i, argv, opts);
-            skip = 1;
-        }
-
-        else {
-            printf("unknown option '%s'\n", argv[i]);
-            exit(1);
+            opts->print_ast=1;
         }
     }
 }
 
 
 
-int parse(struct Opts *opts) {
+int parse(char * fp, struct Opts *opts) {
     FILE *fd;
     
     struct BlockStatement root;
@@ -135,7 +83,7 @@ int parse(struct Opts *opts) {
     char line[buf_sz];
     memset(line, 0, buf_sz);
     
-    if ((fd = fopen(opts->run, "r")) == NULL) {
+    if ((fd = fopen(fp, "r")) == NULL) {
         perror("Error! opening file");
         exit(1);
     }
@@ -158,12 +106,14 @@ int parse(struct Opts *opts) {
         }
 
         size_t ntokens = tokenize(line, tokens, token_n);
-        printf("token stream: ");
-        for (size_t p_i=0; ntokens > p_i; p_i++) {
-            printf("[%s(%d,%d)] ", ptoken(tokens[p_i].token), (int)tokens[p_i].start, (int)tokens[p_i].end);
+        if (opts->print_tokens == 1) {
+            printf("token stream: ");
+            for (size_t p_i=0; ntokens > p_i; p_i++) {
+                printf("[%s(%d,%d)] ", ptoken(tokens[p_i].token), (int)tokens[p_i].start, (int)tokens[p_i].end);
+            }
+            printf("\n\n");
         }
-        printf("\n\n");
-        
+
         int trap = 0;
         assemble_ast(line, tokens, ntokens, &root, &trap);
         memset(line, 0, buf_sz);
@@ -171,19 +121,19 @@ int parse(struct Opts *opts) {
         n_completed = 0;
     }
     fclose(fd);    
-    
-    
-    printf("\n\n");
-    printf("----------------\n");
-    printf("AST\n");
-    printf("----------------\n");
     synthesize(&root);
-    print_ast(&root);
+    if (opts->print_ast == 1) {    
+        printf("\n\n");
+        printf("----------------\n");
+        printf("AST\n");
+        printf("----------------\n");
+        print_ast(&root);
+    }
     return 0;
 }
 
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     struct Opts opts;
     struct Token tokens[2048];
     struct BlockStatement root, current;
@@ -196,10 +146,12 @@ int main(int argc, char *argv[]) {
     init_opts(&opts);
     setup_opts(argc, argv, &opts);
 
-    if (opts.run==0) {
-        printf("bad arguments\n");
-        return 1;
-    }
 
-    return parse(&opts);
+    if(access(argv[argc-1], F_OK) == 0)
+        return parse(argv[argc-1], &opts);
+    
+
+    printf("bad arguments\n");
+    return 1;
+
 }

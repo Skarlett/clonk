@@ -12,6 +12,7 @@ const char * ptoken(enum Lexicon t) {
         case WORD: return "word";
         case NULLTOKEN: return "nulltoken";
         case WHITESPACE: return "whitespace";
+        case NEWLINE: return "newline";
         case OPEN_BRACE: return "brace_open";
         case CLOSE_BRACE: return "brace_close";
         case PARAM_OPEN: return "param_open";
@@ -26,6 +27,7 @@ const char * ptoken(enum Lexicon t) {
         case GT: return "greater than";
         case LT: return "less than";
         case ISEQL: return "is eq";
+        case ISNEQL: return "not eq";
         case GTEQ: return "greater than or eq";
         case LTEQ: return "less than or eq";
         case POW: return "exponent";
@@ -43,7 +45,9 @@ const char * ptoken(enum Lexicon t) {
         case AND: return "and";
         case OR: return "or";
         case UNDERSCORE: return "underscore";
-        case NOT: return "exclaimation";
+        case NOT: return "not";
+        case POUND: return "pound";
+        case COMMENT: return "comment";
         default: return "PTOKEN_ERROR_UNKNOWN_TOKEN";
     };
 }
@@ -53,7 +57,7 @@ enum Lexicon tokenize_char(char c) {
 
     switch (c) {
         case ' ': return WHITESPACE;
-        case '\n': return WHITESPACE;
+        case '\n': return NEWLINE;
         case '\t': return WHITESPACE;
         case '\r': return WHITESPACE;
         
@@ -77,7 +81,9 @@ enum Lexicon tokenize_char(char c) {
         case '%':  return MOD;
         case '_':  return UNDERSCORE;
         case '!':  return NOT;
+        case '#':  return POUND;
         default :  break;
+        
     }
 
     
@@ -108,6 +114,7 @@ int is_complex_token(enum Lexicon token) {
         || token == SUB
         || token == AMPER
         || token == PIPE
+        || token == POUND
     );
 }
 
@@ -117,6 +124,10 @@ int set_complex_token(enum Lexicon token, enum Lexicon *complex_token) {
             *complex_token = INTEGER;
             break;
         
+        case NOT: 
+            *complex_token = ISNEQL;
+            break;
+
         case CHAR:
             *complex_token = WORD;
             break;
@@ -149,10 +160,9 @@ int set_complex_token(enum Lexicon token, enum Lexicon *complex_token) {
             *complex_token = AND;
             break;
         
-        case NOT:
-            *complex_token = ISNEQL;
+         case POUND:
+            *complex_token = COMMENT;
             break;
-        
 
         case PIPE:
             *complex_token = OR;
@@ -164,25 +174,48 @@ int set_complex_token(enum Lexicon token, enum Lexicon *complex_token) {
     return 0;
 }
 
+// Returns a boolean if complex_token should continue consuming
+// tokens
 int continue_complex(enum Lexicon token, enum Lexicon complex_token) {
     return (
+        // Integer
         complex_token == INTEGER && token == DIGIT 
+        
+        // Variables
         || complex_token == WORD && token == CHAR
         || complex_token == WORD && token == UNDERSCORE
+        || complex_token == WORD && token == INTEGER
+        // ---
+        
+        // String literal
+        // "..."
         || complex_token == STRING_LITERAL && token != QUOTE
+        // operators 
+        // !=
+        || complex_token == ISNEQL && token == EQUAL
+        // ==
         || complex_token == ISEQL && token == EQUAL
+        // >=
         || complex_token == GTEQ && token == EQUAL
+        // <=
         || complex_token == LTEQ && token == EQUAL
+        // &&
         || complex_token == AND && token == AMPER
+        // ||
         || complex_token == OR && token == PIPE 
+        // +=
         || complex_token == PLUSEQ && token == EQUAL
+        // -=
         || complex_token == MINUSEQ && token == EQUAL
+        // # ... \n
+        || complex_token == COMMENT && token != NEWLINE
     );
 }
 
 int is_operator_complex(enum Lexicon complex_token) {
     return (
-        complex_token == ISEQL 
+        complex_token == ISEQL
+        || complex_token == ISNEQL 
         || complex_token == GTEQ 
         || complex_token == LTEQ
         || complex_token == AND
@@ -196,6 +229,7 @@ int is_operator_complex(enum Lexicon complex_token) {
 
 enum Lexicon invert_operator_token(enum Lexicon complex_token) {
     switch (complex_token) {
+        case COMMENT: return POUND;
         case ISEQL: return EQUAL;
         case GTEQ: return GT;
         case LTEQ: return LT;
@@ -203,15 +237,15 @@ enum Lexicon invert_operator_token(enum Lexicon complex_token) {
         case OR: return PIPE;
         case MINUSEQ: return SUB;
         case PLUSEQ: return ADD;
+        case ISNEQL: return NOT;
         default: return NULLTOKEN;
     }
 }
 
-// ---
-// pub
 int is_cmp_operator(enum Lexicon complex_token) {
     return (
-        complex_token == ISEQL 
+        complex_token == ISEQL
+        || complex_token == ISNEQL  
         || complex_token == GTEQ 
         || complex_token == LTEQ
         || complex_token == AND
@@ -219,8 +253,10 @@ int is_cmp_operator(enum Lexicon complex_token) {
     );
 }
 
+// is this token a binary operator?
 int is_bin_operator(enum Lexicon complex_token) {
-    return (complex_token == ISEQL 
+    return (complex_token == ISEQL
+        || complex_token == ISNEQL 
         || complex_token == GTEQ 
         || complex_token == LTEQ
         || complex_token == AND
@@ -228,7 +264,15 @@ int is_bin_operator(enum Lexicon complex_token) {
         || complex_token == MINUSEQ
         || complex_token == PLUSEQ
         || complex_token == GT
-        || complex_token == LT);
+        || complex_token == LT
+        || complex_token == ADD
+        || complex_token == SUB
+        || complex_token == MUL
+        || complex_token == POW
+        || complex_token == NOT
+        || complex_token == MOD
+        || complex_token == DIV
+    );
 }
 
 
@@ -267,49 +311,68 @@ int tokenize(char *line,  struct Token tokens[], size_t token_idx) {
     for (unsigned long i=0; strlen(line) > i; i++) {
         if (line[i] == 0) continue;
 
+        // first round of tokenizing
         lexed = tokenize_char(line[i]);
-                
-        if (complex_token == NULLTOKEN) {
-            if (is_complex_token(lexed))
+        
+        // are we inside a second round of tokenizing ?
+        if (complex_token == NULLTOKEN) { // We are not
+            
+            if (is_complex_token(lexed)) // Could this start a second round of tokenizing?
             {
-                set_complex_token(lexed, &complex_token);             
+                // Oh it can.
+                set_complex_token(lexed, &complex_token); 
                 complex_start = i;
                 continue;
             }
         }
 
+        // continue collasping tokens into one token (second round of tokenizing)
         else if (continue_complex(lexed, complex_token))
             continue;
         
-        // a token that holds multiple tokens in it, 
-        // has broken sequence
+
+        // we have finished the second round of tokenizing
         else if (complex_token != NULLTOKEN) {
-            
-            struct Token token = {
-                .start = complex_start,
-                .end = i,
-                .token = complex_token
-            };
+            // P
+            if (complex_token != COMMENT) { 
 
-            // check if its an operator, and that its lenth is 2
-            if (is_operator_complex(complex_token) && i-complex_start != 2 ) {
-                token.start = i-1;
-                token.end = i-1;
-                token.token = invert_operator_token(complex_token);
+                struct Token token = {
+                    .start = complex_start,
+                    .end = i,
+                    .token = complex_token
+                };
+                
+
+                // check if its an operator, and that its lenth is 2
+                // if not - down grade the operator from its compound version
+                if (is_operator_complex(complex_token) && i-complex_start != 2 ) {
+                    token.start = i-1;
+                    token.end = i-1;
+                    token.token = invert_operator_token(complex_token);
+                }
+
+                
+                tokens[token_idx+ctr] = token;
+                ctr += 1;
+
+                if (is_complex_token(lexed)) // Could this start a second round of tokenizing?
+                {
+                        // Oh it can.
+                    set_complex_token(lexed, &complex_token); 
+                    complex_start = i;
+                    continue;
+                }
+                // skip the extra quote token
+                // if (complex_token == STRING_LITERAL) {
+                //     continue;
+                // }
+
             }
-            
-            complex_start = 0;
-            tokens[token_idx+ctr] = token;
-            ctr += 1;
-
             complex_token = NULLTOKEN;
-            // skip the extra quote token
-            if (complex_token == STRING_LITERAL) {
-                continue;
-            }
+            //continue;
         }
 
-        if (lexed != WHITESPACE) {
+        if (lexed != WHITESPACE && lexed != NEWLINE) {
             struct Token token = {
                 .start = i,
                 .end = i,

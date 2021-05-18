@@ -9,7 +9,7 @@ SRC   = src/main.c \
 
 OBJ	= $(SRC:.c=.o)
 LIBS =
-EXE	= moolicious
+EXE	= clonky
 # Compiler, Linker Defines
 CC	  = /usr/bin/clang
 CFLAGS  = -ansi -pedantic -Wall -O2
