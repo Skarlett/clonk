@@ -1,5 +1,5 @@
 
-// define a fonk (Function)
+# define a fonk (Function)
 def foo() {
     return "clonk";
 }
