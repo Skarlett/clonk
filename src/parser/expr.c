@@ -135,24 +135,14 @@ int construct_expr_inner(
         *ncomsumed += 1;
         construct_expr_inner(line, tokens+1, ntokens, ncomsumed, expr);
         if (ncomsumed > 0)
+          // -1 for closed_param
+          // -1 for index correction
           last_expr = *ncomsumed-2;
     }
 
-    // else if (tokens[1].token == PARAM_CLOSE) {
-    //     *ncomsumed += 1;
-    //     construct_expr_inner(line, tokens+2, ntokens, ncomsumed, expr);
-    //     expr->depth -= 1;
-    //     // last_expr needs to point
-    //     // to the past param
-    //     last_expr = *ncomsumed;
-    // }
 
     else if (is_func_call(tokens, ntokens)) {
-        //UniExpr *uni = xmalloc(sizeof(UniExpr));
-        //FunctionCallExpr *fncall = xmalloc(sizeof(FunctionCallExpr));
-
         int end_func_flag = 0;
-        //init_func_call(fncall);
         
         while (ntokens > last_expr || end_func_flag) {
             size_t single_expr_idx = 0;
