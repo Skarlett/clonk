@@ -134,12 +134,13 @@ int construct_expr_inner(
         expr->depth += 1;
         *ncomsumed += 1;
         construct_expr_inner(line, tokens+1, ntokens, ncomsumed, expr);
-        last_expr = *ncomsumed;
+        if (ncomsumed > 0)
+          last_expr = *ncomsumed-2;
     }
 
-    // else if (tokens[0].token == PARAM_CLOSE) {
+    // else if (tokens[1].token == PARAM_CLOSE) {
     //     *ncomsumed += 1;
-    //     construct_expr_inner(line, tokens+1, ntokens, ncomsumed, expr);
+    //     construct_expr_inner(line, tokens+2, ntokens, ncomsumed, expr);
     //     expr->depth -= 1;
     //     // last_expr needs to point
     //     // to the past param
