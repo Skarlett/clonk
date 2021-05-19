@@ -62,7 +62,7 @@ int is_expr(
 {   
     return (
         tokens[0].token == NOT
-        // || tokens[0].token == OPEN_PARAM
+        || tokens[0].token == PARAM_OPEN
         || is_data(tokens[0].token)
         || is_func_call(tokens, ntokens)
     );
@@ -88,10 +88,11 @@ int binop_from_token(enum Lexicon t){
     }
 }
 
-int construct_expr(
+int construct_expr_inner(
     char *line,
     Token tokens[],
     size_t  ntokens,
+    size_t *ncomsumed,
     Expr *expr
 ){
     size_t last_expr = 0;
@@ -99,12 +100,9 @@ int construct_expr(
     // WORD([expression, ..])
     // where each parameter will be evaulated as an expression
     expr->type=UniExprT;
-    
-    if (tokens[0].token == PARAM_OPEN) {
 
-    }
-
-    else if (tokens[0].token == NOT) {
+    if (tokens[0].token == NOT) {
+        *ncomsumed += 1;
         // 0 is false
         struct Expr  
             *rhs = xmalloc(sizeof(struct Expr)),
@@ -121,17 +119,33 @@ int construct_expr(
         expr->inner.bin.rhs = rhs;
         expr->type = BinExprT;
 
-        construct_expr(line, tokens + 1, ntokens, rhs);
+        construct_expr_inner(line, tokens + 1, ntokens, ncomsumed, rhs);
     }
     
     // variable/unit
     else if (is_data(tokens[0].token)) {
         symbol_from_token(line, tokens[0], &expr->inner.uni.interal_data.symbol);
-        
+        *ncomsumed += 1;
         expr->inner.uni.op=UniValue;
         expr->type=UniExprT;
     }
     
+    else if (tokens[0].token == PARAM_OPEN) {
+        expr->depth += 1;
+        *ncomsumed += 1;
+        construct_expr_inner(line, tokens+1, ntokens, ncomsumed, expr);
+        last_expr = *ncomsumed;
+    }
+
+    // else if (tokens[0].token == PARAM_CLOSE) {
+    //     *ncomsumed += 1;
+    //     construct_expr_inner(line, tokens+1, ntokens, ncomsumed, expr);
+    //     expr->depth -= 1;
+    //     // last_expr needs to point
+    //     // to the past param
+    //     last_expr = *ncomsumed;
+    // }
+
     else if (is_func_call(tokens, ntokens)) {
         //UniExpr *uni = xmalloc(sizeof(UniExpr));
         //FunctionCallExpr *fncall = xmalloc(sizeof(FunctionCallExpr));
@@ -144,6 +158,7 @@ int construct_expr(
             
             for (size_t i=last_expr; ntokens > i; i++) {
                 // if comma or param_close
+                ncomsumed += 1;
                 if (tokens[i].token == COMMA) {
                     single_expr_idx=i;
                     break;
@@ -180,7 +195,7 @@ int construct_expr(
     // it will be 0+1
     if (is_bin_operator(tokens[last_expr+1].token) ) {
             //struct Expr *parent = xmalloc(sizeof(Expr));
-            
+            *ncomsumed += 1;
             struct Expr  
                 *rhs = xmalloc(sizeof(struct Expr)),
                 *lhs = xmalloc(sizeof(struct Expr));
@@ -189,12 +204,13 @@ int construct_expr(
             // expression into the left hand side (lhs)
             memcpy(lhs, expr, sizeof(struct Expr));
             memset(expr, 0, sizeof(struct Expr)); // for redundency
-
+            
+            rhs->depth=lhs->depth;
             expr->inner.bin.lhs = lhs;
             expr->inner.bin.rhs = rhs;
             expr->inner.bin.op=binop_from_token(tokens[last_expr+1].token);
 
-            if (construct_expr(line, tokens + last_expr + 2, ntokens, expr->inner.bin.rhs) != 0)
+            if (construct_expr_inner(line, tokens + last_expr + 2, ntokens, ncomsumed, expr->inner.bin.rhs) != 0)
                 return -1;
             
             
@@ -203,6 +219,18 @@ int construct_expr(
 
     return 0;
 }
+
+
+int construct_expr(
+    char *line,
+    Token tokens[],
+    size_t  ntokens,
+    Expr *expr
+){ 
+    size_t nconsumed = 0;
+    return construct_expr_inner(line, tokens, ntokens, &nconsumed, expr);
+}
+
 
 const char * print_datatype(enum DataType t) {
     switch (t) {
@@ -281,6 +309,8 @@ const char * print_symbol_type(enum Tag t) {
 int print_expr(Expr *expr, short unsigned indent){
     tab_print(indent);
     printf("type: %s\n", print_expr_t(expr->type));
+    tab_print(indent);
+    printf("depth: %d\n", expr->depth);
 
     if (expr->type == UniExprT) {
         //struct UniExpr *uni = expr->inner_data;

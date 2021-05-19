@@ -97,6 +97,8 @@ int is_func_call(struct Token tokens[], int nstmt);
 
 typedef struct Expr {
     enum ExprType type;
+    uint32_t depth;
+    
     union {
         struct {
             enum UniaryOperation op;
