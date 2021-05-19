@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,7 +15,7 @@
 /* ------------------------------------------ */
 
 
-void init_block(BlockStatement *block, size_t capacity) {
+void init_block(BlockStatement *block, uint32_t capacity) {
     memset(block->statements, 0, STMT_CAPACITY);
     block->capacity=capacity;
     block->length=0;
@@ -31,7 +32,7 @@ void append_statement(BlockStatement *block, Statement *stmt) {
 //
 
 // or we recurse into it (preferred)
-int is_block(Token tokens[], size_t nstmt) {
+int is_block(Token tokens[], uint32_t nstmt) {
    return (tokens[nstmt].token == CLOSE_BRACE) && (tokens[0].token == OPEN_BRACE);
 }
 
@@ -39,7 +40,7 @@ int is_block(Token tokens[], size_t nstmt) {
 /*            return                          */
 /* ------------------------------------------ */
 
-int is_return_statement(char *line, Token tokens[], size_t nstmt) {
+int is_return_statement(char *line, Token tokens[], uint32_t nstmt) {
     for (int i=0; 6 > i; i++)
         if ((tokens[0].start + line)[i] != "return"[i])
             return FALSE;
@@ -47,7 +48,7 @@ int is_return_statement(char *line, Token tokens[], size_t nstmt) {
     return TRUE;
 }
 
-int construct_ret_statement(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
+int construct_ret_statement(char *line, Token tokens[], uint32_t nstmt, Statement *stmt) {
     Expr *expr = malloc(sizeof(Expr));
 
     ReturnStatement *ret_stmt = xmalloc(sizeof(ReturnStatement));
@@ -76,7 +77,7 @@ void init_func_def(FunctionDefinition *fn) {
 }
 
 // word('def') word open_param ... close_param
-int is_func_definition(char *line, Token tokens[], size_t nstmt) {
+int is_func_definition(char *line, Token tokens[], uint32_t nstmt) {
     if (tokens[0].token == WORD) {
         for (int i=0; 3 > i; i++)
             if ((line + tokens[0].start)[i] != "def"[i]) 
@@ -90,14 +91,14 @@ int is_func_definition(char *line, Token tokens[], size_t nstmt) {
         return 0;
 }
 
-int construct_func_definition(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
+int construct_func_definition(char *line, Token tokens[], uint32_t nstmt, Statement *stmt) {
     printf("declaring func...\n");
     FunctionDefinition *proceedure = xmalloc(sizeof(FunctionDefinition));
     init_func_def(proceedure);
     strncpy(proceedure->func_name, (line + tokens[1].start), tokens[1].end);
     
 
-    for (size_t i=2; nstmt-1 > i; i++) {
+    for (uint32_t i=2; nstmt-1 > i; i++) {
         if (tokens[i].token == COMMA) continue;
         char *parameter = xmalloc(tokens[i].end - tokens[i].start);
         strncpy(parameter, line + tokens[i].start, tokens[i].end);
@@ -116,7 +117,7 @@ int construct_func_definition(char *line, Token tokens[], size_t nstmt, Statemen
 }
 
 
-int construct_expr_stmt(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
+int construct_expr_stmt(char *line, Token tokens[], uint32_t nstmt, Statement *stmt) {
     ExprStatement *expr_stmt = xmalloc(sizeof(ExprStatement));
     Expr *expr = xmalloc(sizeof(Expr));
     
@@ -141,7 +142,7 @@ void init_condition_stmt(ConditionalStatement *stmt) {
 }
 
 // word('if') open param expr close param
-int is_conditional_definition(char *line, Token tokens[], size_t nstmt) {
+int is_conditional_definition(char *line, Token tokens[], uint32_t nstmt) {
     char keyword[4];
     memset(keyword, 0, 4);
 
@@ -157,7 +158,7 @@ int is_conditional_definition(char *line, Token tokens[], size_t nstmt) {
     && tokens[nstmt-1].token == PARAM_CLOSE;
 }
 
-int construct_conditional(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
+int construct_conditional(char *line, Token tokens[], uint32_t nstmt, Statement *stmt) {
     ConditionalStatement *con_stmt = xmalloc(sizeof(ConditionalStatement));
     Expr *expr = malloc(sizeof(Expr));
     char keyword[4];
@@ -193,7 +194,7 @@ int is_declare_statement(Token tokens[], int ntokens) {
 
 }
 
-int construct_declare_statement(char *line, Token tokens[], size_t nstmt, Statement *stmt) {
+int construct_declare_statement(char *line, Token tokens[], uint32_t nstmt, Statement *stmt) {
     Expr *expr = xmalloc(sizeof(Expr));
     DeclareStatement *dec_stmt = xmalloc(sizeof(DeclareStatement));
     
@@ -230,7 +231,7 @@ const char * pstmt_type(Statement *stmt) {
 /* ------------------------------------------ */
 
 
-int construct_statement(char *line, Token tokens[], size_t nstmt, BlockStatement *block) {
+int construct_statement(char *line, Token tokens[], uint32_t nstmt, BlockStatement *block) {
     // 2 + 2
     Statement *stmt = xmalloc(sizeof(Statement));
     stmt->internal_data=0;
@@ -297,15 +298,15 @@ int construct_statement(char *line, Token tokens[], size_t nstmt, BlockStatement
 
 // returns the number of tokens consumed
 
-size_t assemble_ast(
+uint32_t assemble_ast(
     char *line,
     Token tokens[],
-    size_t ntokens,
+    uint32_t ntokens,
     BlockStatement *block,
     int *depth
 ){
     Statement *child = NULL;
-    size_t 
+    uint32_t 
         last_stmt_idx = 0,
         statement_idx = 0,
         ctr = 0,
@@ -313,7 +314,7 @@ size_t assemble_ast(
 
 
     while(ntokens > statement_idx){
-        for(size_t i=last_stmt_idx; ntokens > i; i++) {
+        for(uint32_t i=last_stmt_idx; ntokens > i; i++) {
             
             enum Lexicon token = tokens[i].token;
             if (skip > 0) {
@@ -359,10 +360,10 @@ size_t assemble_ast(
         }
 
         printf("statement: tokens[%d..%d] [total: %d] [depth: %d] (skip: %d) --  ", (int)last_stmt_idx, (int)statement_idx, (int)ntokens, *depth, skip);
-        size_t slen = statement_idx-last_stmt_idx;
+        uint32_t slen = statement_idx-last_stmt_idx;
         
         
-        for (size_t p_i=0; slen > p_i; p_i++) 
+        for (uint32_t p_i=0; slen > p_i; p_i++) 
             printf("[%s] ", ptoken((tokens + last_stmt_idx)[p_i].token));
         printf("\n");
 
