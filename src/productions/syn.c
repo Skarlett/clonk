@@ -61,7 +61,7 @@ int synthesize_block(BlockStatement *block, int ret_allowed){
             if (block->statements[i++]->type != Block) {
                 printf(
                     "`%s` requires a block to fllow its declaration\n",
-                    pstmt_type(block->statements[i]->type)
+                    pstmt_type(block->statements[i])
                 );
                 return -1;
             }
