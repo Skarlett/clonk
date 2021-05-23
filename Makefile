@@ -11,7 +11,7 @@ OBJ	= $(SRC:.c=.o)
 LIBS =
 EXE	= clonky
 # Compiler, Linker Defines
-CC	  = /usr/bin/clang
+CC	  = clang
 CFLAGS  = -ansi -pedantic -Wall -O2
 LIBPATH = -L.
 LDFLAGS = -o $(EXE) $(LIBPATH) $(LIBS)
