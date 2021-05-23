@@ -92,19 +92,20 @@ int construct_expr_inner(
     char *line,
     Token tokens[],
     size_t  ntokens,
-    size_t *ncomsumed,
     size_t *depth,
     Expr *expr
 ){
-    size_t last_expr = 0;
+    size_t last_expr = 0,
+           consumed = 0,
+           temp = 0;
+
     // function calls will have multiple expressions inside of them
     // WORD([expression, ..])
     // where each parameter will be evaulated as an expression
     expr->type=UniExprT;
 
     if (tokens[0].token == NOT) {
-        //*ncomsumed += 1;
-        // 0 is false
+        consumed += 1; // for NOT
         struct Expr  
             *rhs = xmalloc(sizeof(struct Expr)),
             *lhs = xmalloc(sizeof(struct Expr));
@@ -119,26 +120,32 @@ int construct_expr_inner(
         expr->inner.bin.lhs = lhs;
         expr->inner.bin.rhs = rhs;
         expr->type = BinExprT;
+        
 
-        construct_expr_inner(line, tokens + 1, ntokens, ncomsumed, depth, rhs);
+        if ((temp = construct_expr_inner(line, tokens+1, ntokens, depth, expr) == -1))
+            return -1;
+
+        consumed += temp;
+        temp = 0;
     }
     
     // variable/unit
     else if (is_data(tokens[0].token)) {
+        consumed += 1; // word/value 
         symbol_from_token(line, tokens[0], &expr->inner.uni.interal_data.symbol);
-        //*ncomsumed += 1;
         expr->inner.uni.op=UniValue;
         expr->type=UniExprT;
     }
     
     else if (tokens[0].token == PARAM_OPEN) {
+        consumed += 1; // open_param
         *depth += 1;
-        //*ncomsumed += 1;
-        construct_expr_inner(line, tokens+1, ntokens, ncomsumed, depth, expr);
-        //if (ncomsumed > 0)
-          // -1 for closed_param
-          // -1 for index correction
-          //last_expr = *ncomsumed-2;
+        if ((temp = construct_expr_inner(line, tokens+1, ntokens, depth, expr)) == -1)
+            return -1;
+        consumed += temp;
+        temp = 0;
+        consumed += 1; // closed_param
+        last_expr = consumed;
         *depth -= 1;
     }
 
@@ -151,7 +158,6 @@ int construct_expr_inner(
             
             for (size_t i=last_expr; ntokens > i; i++) {
                 // if comma or param_close
-                ncomsumed += 1;
                 if (tokens[i].token == COMMA) {
                     single_expr_idx=i;
                     break;
@@ -164,7 +170,7 @@ int construct_expr_inner(
             }
             
             struct Expr *item = expr->inner.uni.interal_data.fncall.args[expr->inner.uni.interal_data.fncall.args_length];
-            construct_expr_inner(line, tokens + last_expr, single_expr_idx, ncomsumed, depth, item);
+            construct_expr_inner(line, tokens + last_expr, single_expr_idx, depth, item);
 
             // TODO
             // check for overflow
@@ -186,9 +192,9 @@ int construct_expr_inner(
     // if do run across a **function**,
     // we try the next token, otherwise
     // it will be 0+1
+    printf("last_expr: %d\n", last_expr);
     if (is_bin_operator(tokens[last_expr+1].token) ) {
             //struct Expr *parent = xmalloc(sizeof(Expr));
-            //*ncomsumed += 1;
             struct Expr  
                 *rhs = xmalloc(sizeof(struct Expr)),
                 *lhs = xmalloc(sizeof(struct Expr));
@@ -206,14 +212,14 @@ int construct_expr_inner(
             expr->inner.bin.rhs = rhs;
             expr->inner.bin.op=binop_from_token(tokens[last_expr+1].token);
 
-            if (construct_expr_inner(line, tokens + last_expr + 2, ntokens, ncomsumed, depth, expr->inner.bin.rhs) != 0)
+            if ((temp = construct_expr_inner(line, tokens + last_expr + 2, ntokens, depth, expr->inner.bin.rhs)) == -1)
                 return -1;
-            
+            consumed += temp;
             
             expr->type=BinExprT;
     }
 
-    return 0;
+    return consumed;
 }
 
 
@@ -225,7 +231,9 @@ int construct_expr(
 ){ 
     size_t nconsumed = 0;
     size_t depth = 0;
-    return construct_expr_inner(line, tokens, ntokens, &nconsumed, &depth, expr);
+    if (construct_expr_inner(line, tokens, ntokens, &depth, expr) != -1)
+        return 0;
+    return -1;
 }
 
 
@@ -244,7 +252,7 @@ const char * print_datatype(enum DataType t) {
 const char * print_expr_t(enum ExprType t) {
     switch (t) {
         case UniExprT:
-            return "uniary";
+            return "unitary";
         case BinExprT:
             return "binary";
         case UndefinedExprT:
