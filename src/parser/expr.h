@@ -27,11 +27,11 @@ typedef enum ExprType {
 } ExprType;
 
 
-typedef enum UniaryOperation {
+typedef enum UnitaryOperation {
     UniaryOperationNop,
     UniCall,
     UniValue
-} UniaryOperation;
+} UnitaryOperation;
 
 
 
@@ -101,7 +101,7 @@ typedef struct Expr {
     
     union {
         struct {
-            enum UniaryOperation op;
+            enum UnitaryOperation op;
             union {
                 struct Symbol symbol;
                 struct {
@@ -132,4 +132,5 @@ int construct_expr(char *line, struct Token tokens[], unsigned long  ntokens, st
 int print_expr(Expr *expr, short unsigned indent);
 void init_expression(struct Expr *expr);
 int is_expr(char *line, struct Token tokens[], size_t ntokens);
+void ptree(Expr *expr);
 #endif

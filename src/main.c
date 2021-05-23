@@ -17,7 +17,8 @@
     "\t -h | brings up this help menu\n" \
     "\t -V | print version\n" \
     "\t -a | prints ast\n" \
-    "\t -t | prints token stream\n"
+    "\t -t | prints token stream\n" \
+    "\t --extree | prints expression tree in a simplier format"
    
 
 void print_help(char *name) {
@@ -27,11 +28,13 @@ void print_help(char *name) {
 
 struct Opts {
     uint_fast8_t print_ast;
+    uint_fast8_t print_expr_tree;
     uint_fast8_t print_tokens;
 };
 
 void init_opts(struct Opts *opts) {
     opts->print_ast=0;
+    opts->print_expr_tree=0;
     opts->print_tokens=0;
 }
 
@@ -62,6 +65,10 @@ void setup_opts(int argc, char *argv[], struct Opts *opts) {
         else if (strcmp(argv[i], "-a") == 0) {
             opts->print_ast=1;
         }
+        else if (strcmp(argv[i], "--extree") == 0) {
+            opts->print_expr_tree=1;
+        }
+        
     }
 }
 
@@ -129,6 +136,20 @@ int parse(char * fp, struct Opts *opts) {
         printf("----------------\n");
         print_ast(&root);
     }
+
+    if (opts->print_expr_tree == 1) {
+        if (root.statements[0]->type == Expression) {
+            printf("\n\n");
+            printf("----------------\n");
+            printf("Expr Tree\n");
+            printf("----------------\n");
+            ptree(((ExprStatement *)root.statements[0]->internal_data)->expr);
+        
+        }
+        else
+            printf("\n Expects first statement to be an expression for --extree");
+    }
+
     return 0;
 }
 

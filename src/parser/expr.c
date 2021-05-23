@@ -238,14 +238,10 @@ int construct_expr(
 
 const char * print_datatype(enum DataType t) {
     switch (t) {
-        case StringT:
-            return "string";
-        case IntT:
-            return "integer";
-        case NullT:
-            return "null";
-        default: 
-            return "undefined";
+        case StringT: return "string";
+        case IntT: return "integer";
+        case NullT: return "null";
+        default: return "undefined";
     }
 }
 const char * print_expr_t(enum ExprType t) {
@@ -274,6 +270,25 @@ const char * print_bin_operator(enum BinOp t) {
         case LtEq: return "lteq";
         case IsEq: return "iseq";
         case NotEq: return "noteq";
+        default: return "unknown";
+    }
+}
+const char * p_bin_operator_sym(enum BinOp t) {
+    switch (t) {
+        case Add: return "+";
+        case Sub: return "-";
+        case Multiply: return "*";
+        case Divide: return "/";
+        case Modolus: return "\%";
+        case Pow: return "^";
+        case And: return "&&";
+        case Or: return "||";
+        case GtEq: return "<=";
+        case Gt: return "<";
+        case Lt: return ">";
+        case LtEq: return ">=";
+        case IsEq: return "==";
+        case NotEq: return "!=";
         default: return "unknown";
     }
 }
@@ -361,7 +376,7 @@ int print_expr(Expr *expr, short unsigned indent){
         //struct BinExpr *bin = ;
 
         tab_print(indent);
-        printf("operator: %s\n", print_bin_operator(expr->inner.bin.op));
+        printf("operator: %s (%s)\n", p_bin_operator_sym(expr->inner.bin.op), print_bin_operator(expr->inner.bin.op));
         tab_print(indent);
 
         
@@ -385,4 +400,52 @@ int print_expr(Expr *expr, short unsigned indent){
     }
 
     return 0;
+}
+
+#define tb "├"
+#define rb "─"
+#define fb "└"
+
+void small_tab(short unsigned indent) {
+    for (int i = 0; indent > i; i++) 
+        printf("  ");
+}
+
+void ptree_inner(Expr *expr, short unsigned indent){
+    if (expr->type == BinExprT) {
+        printf("%s\n", p_bin_operator_sym(expr->inner.bin.op));
+        small_tab(indent);
+        printf("├─");
+        ptree_inner(expr->inner.bin.lhs, indent+1);
+        printf("\n");
+        small_tab(indent);
+        printf("└─");
+        ptree_inner(expr->inner.bin.rhs, indent+1);
+        
+    }
+    else if (expr->type == UniExprT) {
+        if (expr->inner.uni.op == UniValue) {
+            if (expr->inner.uni.interal_data.symbol.tag == ValueTag) {
+                if (expr->inner.uni.interal_data.symbol.inner.value.type == IntT) {
+                    printf("%d", expr->inner.uni.interal_data.symbol.inner.value.data.integer);
+                }
+                else if (expr->inner.uni.interal_data.symbol.inner.value.type == StringT) {
+                    printf("STR");
+                }
+            }
+            else if (expr->inner.uni.interal_data.symbol.tag == VariableTag) {
+                printf("%s", expr->inner.uni.interal_data.symbol.inner.variable);
+            }
+        }
+
+        else if (expr->inner.uni.op == UniCall) {
+            printf("FCALLS UNSUPPORTED");
+        }
+    }
+}
+
+
+void ptree(Expr *expr) {
+    ptree_inner(expr, 0);
+    printf("\n");
 }
