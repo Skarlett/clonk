@@ -192,7 +192,7 @@ int construct_expr_inner(
     // if do run across a **function**,
     // we try the next token, otherwise
     // it will be 0+1
-    printf("last_expr: %d\n", last_expr);
+    //printf("last_expr: %d\n", last_expr);
     if (is_bin_operator(tokens[last_expr+1].token) ) {
             //struct Expr *parent = xmalloc(sizeof(Expr));
             struct Expr  
