@@ -22,11 +22,15 @@ int synthesize_expr(Expr *expr) {
         return -1;
 
     else if (expr->type == BinExprT) {
-        if (synthesize_expr(expr->inner.bin.lhs) == -1
+        // lhs.depth == rhs.depth
+        if (expr->depth != expr->inner.bin.lhs->depth)
+            expr->depth =  expr->inner.bin.lhs->depth;
+         
+         if (synthesize_expr(expr->inner.bin.lhs) == -1
             || synthesize_expr(expr->inner.bin.rhs) == -1
-            || expr->inner.bin.op != BinaryOperationNop) {
+            || expr->inner.bin.op != BinaryOperationNop)
             return -1;
-        }
+        
     }
 
     return 0;
@@ -48,11 +52,26 @@ int synthesize_block(BlockStatement *block, int ret_allowed){
             if (synthesize_expr(((ConditionalStatement *)block->statements[i]->internal_data)->expr) == -1)
                 return -1;
         }
+        
+        else if (block->statements[i]->type == Expression) {
+            if (synthesize_expr(((ExprStatement *)block->statements[i]->internal_data)->expr) == -1)
+                return -1;
+        }
+        
+        else if (block->statements[i]->type == Declare) {
+            if (synthesize_expr(((DeclareStatement *)block->statements[i]->internal_data)->data) == -1)
+                return -1;
+        }
 
         // return wasn't allowed there
-        else if (block->statements[i]->type == Return && !ret_allowed) {
-            printf("ret not allowed outside of function body");
-            return -1;
+        else if (block->statements[i]->type == Return) {
+            if (!ret_allowed) {
+                printf("ret not allowed outside of function body");
+                return -1;
+            }
+
+            if (synthesize_expr(((ReturnStatement *)block->statements[i]->internal_data)->value) == -1)
+                return -1;
         }
 
         // `conditional`  + `block`
