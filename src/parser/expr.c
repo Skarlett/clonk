@@ -122,7 +122,7 @@ int construct_expr_inner(
         expr->type = BinExprT;
         
 
-        if ((temp = construct_expr_inner(line, tokens+1, ntokens, depth, expr) == -1))
+        if ((temp = construct_expr_inner(line, tokens+1, ntokens, depth, rhs) == -1))
             return -1;
         consumed += temp;
         temp = 0;
