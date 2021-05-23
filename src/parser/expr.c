@@ -124,7 +124,6 @@ int construct_expr_inner(
 
         if ((temp = construct_expr_inner(line, tokens+1, ntokens, depth, expr) == -1))
             return -1;
-
         consumed += temp;
         temp = 0;
     }
@@ -251,63 +250,40 @@ const char * print_datatype(enum DataType t) {
 }
 const char * print_expr_t(enum ExprType t) {
     switch (t) {
-        case UniExprT:
-            return "unitary";
-        case BinExprT:
-            return "binary";
-        case UndefinedExprT:
-            return "null";
-        default: 
-            return "undefined";
+        case UniExprT: return "unitary";
+        case BinExprT: return "binary";
+        case UndefinedExprT: return "null";
+        default: return "undefined";
     }
 }
 
 
 const char * print_bin_operator(enum BinOp t) {
     switch (t) {
-        case Add:
-            return "addition";
-        case Sub:
-            return "subtract";
-        case Multiply:
-            return "multiply";
-        case Divide:
-            return "divide";
-        case Modolus:
-            return "modolus";
-        case Pow:
-            return "power";
-        case And:
-            return "and";
-        case Or:
-            return "or";
-        case GtEq:
-            return "gteq";
-        case Gt:
-            return "gt";
-        case Lt:
-            return "lt";
-        case LtEq:
-            return "lteq";
-        case IsEq:
-            return "iseq";
-        case NotEq:
-            return "noteq";
-        default:
-            return "unknown";
+        case Add: return "addition";
+        case Sub: return "subtract";
+        case Multiply: return "multiply";
+        case Divide: return "divide";
+        case Modolus: return "modolus";
+        case Pow: return "power";
+        case And: return "and";
+        case Or: return "or";
+        case GtEq: return "gteq";
+        case Gt: return "gt";
+        case Lt: return "lt";
+        case LtEq: return "lteq";
+        case IsEq: return "iseq";
+        case NotEq: return "noteq";
+        default: return "unknown";
     }
 }
 
 const char * print_symbol_type(enum Tag t) {
     switch (t) {
-        case NullTag:
-            return "NullTag";
-        case VariableTag:
-            return "Variable";
-        case ValueTag:
-            return "Literal";
-        default: 
-            return "undefined";
+        case NullTag: return "NullTag";
+        case VariableTag: return "Variable";
+        case ValueTag: return "Literal";
+        default: return "undefined";
     }
 }
 
