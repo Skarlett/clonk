@@ -133,4 +133,5 @@ int print_expr(Expr *expr, short unsigned indent);
 void init_expression(struct Expr *expr);
 int is_expr(char *line, struct Token tokens[], size_t ntokens);
 void ptree(Expr *expr);
+size_t expr_len(Expr *expr);
 #endif

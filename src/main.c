@@ -138,16 +138,19 @@ int parse(char * fp, struct Opts *opts) {
     }
 
     if (opts->print_expr_tree == 1) {
-        if (root.statements[0]->type == Expression) {
-            printf("\n\n");
-            printf("----------------\n");
-            printf("Expr Tree\n");
-            printf("----------------\n");
-            ptree(((ExprStatement *)root.statements[0]->internal_data)->expr);
+        printf("\n\n");
+        printf("----------------\n");
+        printf("Expr Tree\n");
+        printf("----------------\n");
         
+        for (int i=0; root.length > i; i++) {
+            if (root.statements[i]->type == Expression) {
+                printf("statement: %d\n", i+1);
+                printf("length: %lu\n", expr_len(((ExprStatement *)root.statements[i]->internal_data)->expr));
+                ptree(((ExprStatement *)root.statements[i]->internal_data)->expr);
+            }
         }
-        else
-            printf("\n Expects first statement to be an expression for --extree");
+        
     }
 
     return 0;

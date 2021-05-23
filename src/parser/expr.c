@@ -235,6 +235,18 @@ int construct_expr(
     return -1;
 }
 
+size_t expr_len_inner(Expr *expr, size_t current) {
+    if (expr->type==BinExprT) {
+        current = expr_len_inner(expr->inner.bin.rhs, current+1);
+    }
+    return current;
+}
+
+
+size_t expr_len(Expr *expr) {
+    return expr_len_inner(expr, 1);
+}
+
 
 const char * print_datatype(enum DataType t) {
     switch (t) {
