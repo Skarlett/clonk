@@ -93,6 +93,7 @@ int construct_expr_inner(
     Token tokens[],
     size_t  ntokens,
     size_t *ncomsumed,
+    size_t *depth,
     Expr *expr
 ){
     size_t last_expr = 0;
@@ -102,7 +103,7 @@ int construct_expr_inner(
     expr->type=UniExprT;
 
     if (tokens[0].token == NOT) {
-        *ncomsumed += 1;
+        //*ncomsumed += 1;
         // 0 is false
         struct Expr  
             *rhs = xmalloc(sizeof(struct Expr)),
@@ -119,25 +120,26 @@ int construct_expr_inner(
         expr->inner.bin.rhs = rhs;
         expr->type = BinExprT;
 
-        construct_expr_inner(line, tokens + 1, ntokens, ncomsumed, rhs);
+        construct_expr_inner(line, tokens + 1, ntokens, ncomsumed, depth, rhs);
     }
     
     // variable/unit
     else if (is_data(tokens[0].token)) {
         symbol_from_token(line, tokens[0], &expr->inner.uni.interal_data.symbol);
-        *ncomsumed += 1;
+        //*ncomsumed += 1;
         expr->inner.uni.op=UniValue;
         expr->type=UniExprT;
     }
     
     else if (tokens[0].token == PARAM_OPEN) {
-        expr->depth += 1;
-        *ncomsumed += 1;
-        construct_expr_inner(line, tokens+1, ntokens, ncomsumed, expr);
-        if (ncomsumed > 0)
+        *depth += 1;
+        //*ncomsumed += 1;
+        construct_expr_inner(line, tokens+1, ntokens, ncomsumed, depth, expr);
+        //if (ncomsumed > 0)
           // -1 for closed_param
           // -1 for index correction
-          last_expr = *ncomsumed-2;
+          //last_expr = *ncomsumed-2;
+        *depth -= 1;
     }
 
 
@@ -162,7 +164,7 @@ int construct_expr_inner(
             }
             
             struct Expr *item = expr->inner.uni.interal_data.fncall.args[expr->inner.uni.interal_data.fncall.args_length];
-            construct_expr(line, tokens + last_expr, single_expr_idx, item);
+            construct_expr_inner(line, tokens + last_expr, single_expr_idx, ncomsumed, depth, item);
 
             // TODO
             // check for overflow
@@ -186,7 +188,7 @@ int construct_expr_inner(
     // it will be 0+1
     if (is_bin_operator(tokens[last_expr+1].token) ) {
             //struct Expr *parent = xmalloc(sizeof(Expr));
-            *ncomsumed += 1;
+            //*ncomsumed += 1;
             struct Expr  
                 *rhs = xmalloc(sizeof(struct Expr)),
                 *lhs = xmalloc(sizeof(struct Expr));
@@ -196,12 +198,15 @@ int construct_expr_inner(
             memcpy(lhs, expr, sizeof(struct Expr));
             memset(expr, 0, sizeof(struct Expr)); // for redundency
             
-            rhs->depth=lhs->depth;
+            rhs->depth=*depth;
+            lhs->depth=*depth;
+            expr->depth=*depth;
+
             expr->inner.bin.lhs = lhs;
             expr->inner.bin.rhs = rhs;
             expr->inner.bin.op=binop_from_token(tokens[last_expr+1].token);
 
-            if (construct_expr_inner(line, tokens + last_expr + 2, ntokens, ncomsumed, expr->inner.bin.rhs) != 0)
+            if (construct_expr_inner(line, tokens + last_expr + 2, ntokens, ncomsumed, depth, expr->inner.bin.rhs) != 0)
                 return -1;
             
             
@@ -219,7 +224,8 @@ int construct_expr(
     Expr *expr
 ){ 
     size_t nconsumed = 0;
-    return construct_expr_inner(line, tokens, ntokens, &nconsumed, expr);
+    size_t depth = 0;
+    return construct_expr_inner(line, tokens, ntokens, &nconsumed, &depth, expr);
 }
 
 
