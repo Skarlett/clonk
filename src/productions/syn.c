@@ -23,14 +23,14 @@ int synthesize_expr(Expr *expr) {
 
     else if (expr->type == BinExprT) {
         // lhs.depth == rhs.depth
-        if (expr->depth != expr->inner.bin.lhs->depth)
-            expr->depth =  expr->inner.bin.lhs->depth;
-         
          if (synthesize_expr(expr->inner.bin.lhs) == -1
             || synthesize_expr(expr->inner.bin.rhs) == -1
-            || expr->inner.bin.op != BinaryOperationNop)
+            || expr->inner.bin.op == BinaryOperationNop)
             return -1;
         
+        if (expr->inner.bin.lhs->depth == expr->inner.bin.rhs->depth
+            && expr->depth != expr->inner.bin.lhs->depth)
+            expr->depth =  expr->inner.bin.lhs->depth;
     }
 
     return 0;
@@ -57,7 +57,7 @@ int synthesize_block(BlockStatement *block, int ret_allowed){
             if (synthesize_expr(((ExprStatement *)block->statements[i]->internal_data)->expr) == -1)
                 return -1;
         }
-        
+
         else if (block->statements[i]->type == Declare) {
             if (synthesize_expr(((DeclareStatement *)block->statements[i]->internal_data)->data) == -1)
                 return -1;
