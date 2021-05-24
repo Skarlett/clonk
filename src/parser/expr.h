@@ -34,7 +34,6 @@ typedef enum UnitaryOperation {
 } UnitaryOperation;
 
 
-
 typedef enum BinOp {
     // no operation
     BinaryOperationNop,
@@ -56,13 +55,6 @@ typedef enum BinOp {
     And,
     Or,
 } BinOp;
-
-
-void init_bin_expr_body(struct BinExpr *expr);
-/* ------------------------------------------ */
-/*             generic expression struct      */
-/* ------------------------------------------ */
-// orchestrate symbols/values into expressions...
 
 
 typedef struct InteralString { 
@@ -93,7 +85,6 @@ typedef struct Symbol {
 
 int symbol_from_token(char *line, struct Token token, struct Symbol *value);
 int is_func_call(struct Token tokens[], int nstmt);
-
 
 typedef struct Expr {
     enum ExprType type;
@@ -129,9 +120,6 @@ typedef struct Expr {
 
 int construct_expr(char *line, struct Token tokens[], unsigned long  ntokens, struct Expr *expr);
 
-int print_expr(Expr *expr, short unsigned indent);
-void init_expression(struct Expr *expr);
 int is_expr(char *line, struct Token tokens[], size_t ntokens);
-void ptree(Expr *expr);
 size_t expr_len(Expr *expr);
 #endif
