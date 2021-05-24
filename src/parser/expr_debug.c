@@ -104,9 +104,8 @@ int print_expr(Expr *expr, short unsigned indent){
                         default: 
                             printf("error: got unexpected datatype");
                             break;
-                        }
-
-                        break;
+                    }
+                    break;
                     
                     default:
                         printf("error: got unexpected tag");
@@ -116,24 +115,26 @@ int print_expr(Expr *expr, short unsigned indent){
         
 
         else if (expr->inner.uni.op == UniCall) {
-                // tab_print(indent);
-                // printf("{\n");
-                tab_print(indent);
-                printf("function call: %s\n", expr->inner.uni.interal_data.fncall.func_name);
-                tab_print(indent);
-                printf("parameters: {\n");                
-                for (int i=0; expr->inner.uni.interal_data.fncall.args_length > i; i++){
-                    print_expr(expr->inner.uni.interal_data.fncall.args[i], indent+1);
-                    if (expr->inner.uni.interal_data.fncall.args_length-1 != i) {
-                        printf(",");
-                    }
+            // tab_print(indent);
+            // printf("{\n");
+            tab_print(indent);
+            printf("function call: %s\n", expr->inner.uni.interal_data.fncall.func_name);
+            tab_print(indent);
+            printf("parameters: [\n");                
+            for (int i=0; expr->inner.uni.interal_data.fncall.args_length > i; i++){
+                tab_print(indent+1);
+                printf("{\n");
+                print_expr(expr->inner.uni.interal_data.fncall.args[i], indent+2);
+                tab_print(indent+1);
+                printf("}");
+                if (expr->inner.uni.interal_data.fncall.args_length-1 != i) {
+                    printf(",");
                 }
-                tab_print(indent);
-                printf("}\n");
-                //tab_print(indent);
-            
+                printf("\n");
+            }
+            tab_print(indent);
+            printf("]}\n");
         }
-        
     }
 
     else if (expr->type == BinExprT) {
@@ -205,7 +206,17 @@ void ptree_inner(Expr *expr, short unsigned indent){
         }
 
         else if (expr->inner.uni.op == UniCall) {
-            printf("FCALLS UNSUPPORTED");
+            printf("%s(..)\n", expr->inner.uni.interal_data.fncall.func_name);
+            small_tab(indent);
+            for (int i=0; expr->inner.uni.interal_data.fncall.args_length > i; i++) {
+                if (i+1 == expr->inner.uni.interal_data.fncall.args_length)
+                    printf("└─");
+                else printf("├─");
+                ptree_inner(expr->inner.uni.interal_data.fncall.args[i], indent+1);
+                printf("\n");
+                small_tab(indent);
+            }
+            //printf("FCALLS UNSUPPORTED");
         }
     }
 }
