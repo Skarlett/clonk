@@ -194,15 +194,13 @@ int construct_expr_inner(
     // if do run across a **function**,
     // we try the next token, otherwise
     // it will be 0+1
-    
-    
-    // if (tokens[last_expr+1].token == PARAM_CLOSE && ntokens > last_expr) {
-    //     last_expr++;
-    //     consumed++;
-    // }
-
-    if (last_expr != 0 && tokens[last_expr].token != PARAM_CLOSE) {
-        printf("misplaced, points at [%s]\n", ptoken(tokens[last_expr].token));
+    if (last_expr != 0 && !is_bin_operator(tokens[last_expr+1].token)) {
+        printf("misplaced, points at [%s]\n", ptoken(tokens[last_expr+1].token));
+        
+        // NOTE: I have no fucking idea why this works.
+        // I just noticed a pattern where it would usually be off by
+        // the same amount of `depth`
+        last_expr -= *depth;
     }
     // --- last_expr should always point at PARAM_CLOSE
     printf("last_expr: %d\n", last_expr);
