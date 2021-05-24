@@ -128,14 +128,6 @@ int construct_expr_inner(
         temp = 0;
     }
     
-    // variable/unit
-    else if (is_data(tokens[0].token)) {
-        *consumed += 1; // word/value 
-        symbol_from_token(line, tokens[0], &expr->inner.uni.interal_data.symbol);
-        expr->inner.uni.op=UniValue;
-        expr->type=UniExprT;
-    }
-    
     else if (tokens[0].token == PARAM_OPEN) {
         // TODO
         // our consume is off target when placed with nested `((expr))` definitions
@@ -154,11 +146,20 @@ int construct_expr_inner(
 
     else if (is_func_call(tokens, ntokens)) {
         int end_func_flag = 0;
-        
-        while (ntokens > last_expr || end_func_flag) {
+        //last_expr += 2;
+        char *name = malloc(tokens[0].end - tokens[0].start);
+        expr->inner.uni.interal_data.fncall.func_name = name;
+        memcpy(name, line + tokens[0].start, tokens[0].end - tokens[0].start);
+
+        expr->inner.uni.interal_data.fncall.args = malloc(sizeof(struct Expr *) * 8);
+        expr->inner.uni.interal_data.fncall.args_capacity = 7;
+
+        while (ntokens > last_expr) {
+            if (end_func_flag) break;
             size_t single_expr_idx = 0;
             
             for (size_t i=last_expr; ntokens > i; i++) {
+                if (end_func_flag) break;
                 // if comma or param_close
                 if (tokens[i].token == COMMA) {
                     single_expr_idx=i;
@@ -170,20 +171,29 @@ int construct_expr_inner(
                     break;
                 }
             }
+            struct Expr *item = malloc(sizeof(struct Expr));
+            expr->inner.uni.interal_data.fncall.args[expr->inner.uni.interal_data.fncall.args_length] = item;
             
-            struct Expr *item = expr->inner.uni.interal_data.fncall.args[expr->inner.uni.interal_data.fncall.args_length];
-            construct_expr_inner(line, tokens + last_expr, single_expr_idx, depth, consumed, item);
+            if (construct_expr_inner(line, tokens + 2 + last_expr, single_expr_idx, depth, consumed, item) == -1) {
+                return -1;
+            }
 
             // TODO
             // check for overflow
             expr->inner.uni.interal_data.fncall.args_length += 1;
-
             last_expr += single_expr_idx;
         }
         expr->inner.uni.op=UniCall;
         expr->type = UniExprT;
     }
-    
+        // variable/unit
+    else if (is_data(tokens[0].token)) {
+        *consumed += 1; // word/value 
+        symbol_from_token(line, tokens[0], &expr->inner.uni.interal_data.symbol);
+        expr->inner.uni.op=UniValue;
+        expr->type=UniExprT;
+    }
+
     else {
         return -1;
     }
