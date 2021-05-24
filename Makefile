@@ -4,6 +4,7 @@ SRC   = src/main.c \
 		src/common.c \
 		src/parser/lexer.c \
 		src/parser/expr.c \
+		src/parser/expr_debug.c \
 		src/parser/ast.c \
 		src/productions/syn.c
 
