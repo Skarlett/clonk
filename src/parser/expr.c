@@ -51,8 +51,7 @@ int symbol_from_token(char *line, Token token, Symbol *value) {
 
 int is_func_call(Token tokens[], int nstmt) {
     return tokens[0].token == WORD
-    && tokens[1].token == PARAM_OPEN
-    && tokens[nstmt-2].token == PARAM_CLOSE;
+    && tokens[1].token == PARAM_OPEN;
 }
 
 int is_expr(
@@ -146,14 +145,14 @@ int construct_expr_inner(
 
     else if (is_func_call(tokens, ntokens)) {
         int end_func_flag = 0;
-        //last_expr += 2;
         char *name = malloc(tokens[0].end - tokens[0].start);
         expr->inner.uni.interal_data.fncall.func_name = name;
         memcpy(name, line + tokens[0].start, tokens[0].end - tokens[0].start);
 
         expr->inner.uni.interal_data.fncall.args = malloc(sizeof(struct Expr *) * 8);
         expr->inner.uni.interal_data.fncall.args_capacity = 7;
-
+        
+        last_expr=2;
         while (ntokens > last_expr) {
             if (end_func_flag) break;
             size_t single_expr_idx = 0;
@@ -174,14 +173,14 @@ int construct_expr_inner(
             struct Expr *item = malloc(sizeof(struct Expr));
             expr->inner.uni.interal_data.fncall.args[expr->inner.uni.interal_data.fncall.args_length] = item;
             
-            if (construct_expr_inner(line, tokens + 2 + last_expr, single_expr_idx, depth, consumed, item) == -1) {
+            if (construct_expr_inner(line, tokens + last_expr, single_expr_idx, depth, consumed, item) == -1) {
                 return -1;
             }
 
             // TODO
             // check for overflow
             expr->inner.uni.interal_data.fncall.args_length += 1;
-            last_expr += single_expr_idx;
+            last_expr = single_expr_idx+1;
         }
         expr->inner.uni.op=UniCall;
         expr->type = UniExprT;
@@ -192,6 +191,10 @@ int construct_expr_inner(
         symbol_from_token(line, tokens[0], &expr->inner.uni.interal_data.symbol);
         expr->inner.uni.op=UniValue;
         expr->type=UniExprT;
+    }
+
+    else if (tokens[0].token == PARAM_CLOSE || SEMICOLON) {
+        return 0;
     }
 
     else {
