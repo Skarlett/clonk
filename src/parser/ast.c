@@ -7,6 +7,7 @@
 #include "../common.h"
 #include "expr.h"
 #include "ast.h"
+#include "expr_debug.h"
 
 
 
