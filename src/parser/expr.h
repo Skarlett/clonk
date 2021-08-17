@@ -11,19 +11,19 @@
 typedef enum Tag {
     NullTag,
     VariableTag,
-    ValueTag,
+    ValueTag
 } Tag;
 
 typedef enum DataType {
     NullT,
     IntT,
-    StringT,
+    StringT
 } DataType;
 
 typedef enum ExprType {
     UndefinedExprT,
     UniExprT,
-    BinExprT,
+    BinExprT
 } ExprType;
 
 
@@ -35,25 +35,25 @@ typedef enum UnitaryOperation {
 
 
 typedef enum BinOp {
-    // no operation
+    /* no operation */
     BinaryOperationNop,
-    // math
+    /* math */
     Add,
     Sub,
     Multiply,
     Divide,
     Pow,
     Modolus,
-    // cmp
+    /* cmp */
     IsEq,
     NotEq,
     Gt,
     Lt,
     GtEq,
     LtEq,
-    // appendage
+    /* appendage */
     And,
-    Or,
+    Or
 } BinOp;
 
 
@@ -86,6 +86,10 @@ typedef struct Symbol {
 int symbol_from_token(char *line, struct Token token, struct Symbol *value);
 int is_func_call(struct Token tokens[], int nstmt);
 
+/*
+It seemed like a good idea using Unions as opaque types at the time. 
+I woefully regret this now.
+*/
 typedef struct Expr {
     enum ExprType type;
     uint32_t depth;
@@ -120,6 +124,7 @@ typedef struct Expr {
 
 int construct_expr(char *line, struct Token tokens[], unsigned long  ntokens, struct Expr *expr);
 
+int cmpexpr(struct Expr *a, struct Expr *b);
 int is_expr(char *line, struct Token tokens[], size_t ntokens);
 size_t expr_len(Expr *expr);
 #endif
