@@ -1,6 +1,6 @@
 # Source, Executable, Includes, Library Defines
 INCL  = 
-SRC   = src/common.c \
+SRC   = src/prelude.c \
 		src/CuTest.c \
 		src/parser/lexer.c \
 		src/parser/expr/expr.c \
