@@ -1,0 +1,36 @@
+const ascii_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const ascii_upper = "abcdefghijklmnopqrstuvwxyz"
+const digits = "0987654321"
+
+#[builtin]
+extern struct String;
+
+impl String {
+
+    #[builtin]
+    def len(self);
+
+    #[builtin]
+    def append(self, other: Self);
+
+    #[builtin]
+    def __idx__(self, other: int);
+
+    #[builtin]
+    def __free__(self);
+
+    //strncmp
+    #[builtin]
+    def __eq__(self, other: Self);
+
+    #[builtin]
+    def contains(self, other: Self) -> boolean;
+
+    def is_integer(self) {
+        for x in self {
+            if (!digits.contain(x))
+                return false;
+        }
+        return true;
+    }
+}

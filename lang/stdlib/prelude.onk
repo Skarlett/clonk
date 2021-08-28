@@ -1,0 +1,9 @@
+
+#[builtin]
+extern def print();
+
+#[builtin]
+extern def type(t);
+
+#[builtin]
+extern def range(from, to);

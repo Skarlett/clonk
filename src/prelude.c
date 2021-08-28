@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+
 // dumb rewrite of xmalloc
 void * xmalloc(size_t size) {
   void *p;
@@ -12,7 +13,7 @@ void * xmalloc(size_t size) {
   return p;
 }
 
-// // dumb rewrite of
+// dumb rewrite of
 // void * xrealloc(void *ptr, size_t size) {
 //   void *tmp;
 //   if (ptr != 0) {

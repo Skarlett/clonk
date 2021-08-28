@@ -4,19 +4,18 @@
 #include <string.h>
 
 #include "lexer.h"
-#include "../common.h"
-#include "expr.h"
+#include "../prelude.h"
+#include "../CuTest.h"
+
+#include "expr/expr.h"
+#include "expr/debug.h"
+#include "expr/helpers.h"
+
 #include "ast.h"
-#include "expr_debug.h"
-
-
-
 /* ------------------------------------------ */
 /*            Block statement                 */
 /* ------------------------------------------ */
-
-
-void init_block(BlockStatement *block, uint32_t capacity) {
+void init_block(BlockStatement *block, u32 capacity) {
     memset(block->statements, 0, STMT_CAPACITY);
     block->capacity=capacity;
     block->length=0;
@@ -33,15 +32,15 @@ void append_statement(BlockStatement *block, Statement *stmt) {
 //
 
 // or we recurse into it (preferred)
-int is_block(Token tokens[], uint32_t nstmt) {
-   return (tokens[nstmt].token == CLOSE_BRACE) && (tokens[0].token == OPEN_BRACE);
+int is_block(Token tokens[], u32 nstmt) {
+   return (tokens[nstmt].token == BRACE_CLOSE) && (tokens[0].token == BRACE_OPEN);
 }
 
 /* ------------------------------------------ */
 /*            return                          */
 /* ------------------------------------------ */
 
-int is_return_statement(char *line, Token tokens[], uint32_t nstmt) {
+int is_return_statement(char *line, Token tokens[], u32 nstmt) {
     for (int i=0; 6 > i; i++)
         if ((tokens[0].start + line)[i] != "return"[i])
             return FALSE;
@@ -274,11 +273,11 @@ int construct_statement(char *line, Token tokens[], uint32_t nstmt, BlockStateme
     
     // func();
     // a == b;
-    else if (is_expr(line, tokens, nstmt)) {
-        if (construct_expr_stmt(line, tokens, nstmt, stmt) != 0) {
-            printf("error in expr def\n");
-        }
-    }
+    // else if (is_expr(line, tokens, nstmt)) {
+    //     if (construct_expr_stmt(line, tokens, nstmt, stmt) != 0) {
+    //         printf("error in expr def\n");
+    //     }
+    // }
 
     else {
         char *slice = xmalloc(tokens[nstmt].end - tokens[0].start);
@@ -330,7 +329,7 @@ uint32_t assemble_ast(
                 break;
             }
 
-            else if (token == OPEN_BRACE) {
+            else if (token == BRACE_OPEN) {
                 BlockStatement *child_block = xmalloc(sizeof(BlockStatement));
                 child = xmalloc(sizeof(Statement));
                 child->type = Block;
@@ -356,7 +355,7 @@ uint32_t assemble_ast(
                 break;
             }
 
-            else if (token == CLOSE_BRACE) return ctr+1;
+            else if (token == BRACE_CLOSE) return ctr+1;
             ctr++;
         }
 
@@ -472,8 +471,6 @@ void print_ast_block(BlockStatement *tree, short unsigned indent) {
     tab_print(indent);
     printf("]}");
 }
-
-
 
 void print_ast(BlockStatement *tree) {
     short unsigned indent = 1;

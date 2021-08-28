@@ -1,0 +1,417 @@
+#include "../prelude.h"
+#include "../parser/lexer.h"
+
+
+int __check_tokens(struct Token tokens[], enum Lexicon *lexicon, usize len){
+    for (int i=0; len > i; i++) {
+        if (tokens[i].token != lexicon[i]) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+
+void __test__basic_perthensis(CuTest* tc)
+{
+    usize tokens_sz[] = {5, 7, 7, 9, 9, 11, 13};
+
+    struct Token tokens[16];
+    char msg[1028];
+
+    usize ntokens;
+
+    static char * line[] =  {
+        "(1 + 2)",        // 5
+        "(1 + 2) + 3",    // 7
+        "1 + (2 + 3)",    // 7
+        "(1 + (2 + 3))",        // 9
+        "((1 + 2) + 3)",         // 9,
+        "(1 + 2) + (3 + 4)",     // 10,
+        "((1 + 2) + (3 + 4))",   // 12,
+        0
+    };
+    
+    static enum Lexicon check_list[][16] = {
+        {PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE},
+        {PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, INTEGER},
+        {INTEGER, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE},
+        {PARAM_OPEN, INTEGER, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, PARAM_CLOSE},
+        {PARAM_OPEN, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, INTEGER, PARAM_CLOSE},
+        {PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE},
+        {PARAM_OPEN, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, PARAM_CLOSE}
+    };
+
+    for (int i=0; 6 > i; i++) {
+        ntokens = tokenize(line[i], tokens, 0);
+
+        sprintf(msg,"Expected <%ld>, got <%ld> | * %s *", tokens_sz[i], ntokens, line[i]);        
+        CuAssert(tc, msg, ntokens == tokens_sz[i]);
+        memset(msg, 0, 63);
+
+        sprintf(msg,"Expected <%ld>, got <%ld> | * %s *", tokens_sz[i], ntokens, line[i]);
+
+        char got[512];
+        char expected[512];
+        char token_buf[24];
+
+        int offset_got = 0;
+        int offset_expected = 0;
+        int tmp = 0;
+
+        // Setup error messages for tests
+        for (int j = 0; tokens_sz[i] > j; j++) {
+            sprintf(&token_buf, "%s ", ptoken(tokens[j].token));
+            tmp = strlen(ptoken(tokens[j].token)) + 1;
+            strncpy(got + offset_got, &token_buf, tmp);
+            offset_got += tmp;
+
+            memset(&token_buf, 24, 0);
+
+            sprintf(&token_buf, "%s ", ptoken(check_list[i][j]));
+            tmp = strlen(ptoken(tokens[j].token)) + 1;
+            strncpy(expected + offset_expected, &token_buf, tmp);
+            offset_expected += tmp;
+            memset(&token_buf, 24, 0);
+
+        }
+
+        sprintf(msg,"Expected [%s], got [%s] | * %s *", expected, got, line[i]);        
+        CuAssert(tc, msg, __check_tokens(tokens, &check_list[i], tokens_sz[i])==0);
+    }
+}
+
+void __test__collapse_integer(CuTest* tc)
+{ 
+    struct Token tokens[16];
+
+    usize i = tokenize("1234", tokens, 0);
+    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, tokens[0].token == INTEGER);
+    CuAssertTrue(tc, tokens[0].start == 0);
+    CuAssertTrue(tc, tokens[0].end == 3);
+
+
+    i = tokenize("1", tokens, 0);
+    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, tokens[0].token == INTEGER);
+    CuAssertTrue(tc, tokens[0].start == 0);
+    CuAssertTrue(tc, tokens[0].end == 0);
+    
+    i = tokenize(" 1 ", tokens, 0);
+    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, tokens[0].token == INTEGER);
+    CuAssertTrue(tc, tokens[0].start == 1);
+    CuAssertTrue(tc, tokens[0].end == 1);
+}
+
+void __test__destroy_whitespace(CuTest* tc)
+{
+    struct Token tokens[16];
+    usize i = tokenize("  1234  ", tokens, 0);
+    CuAssertTrue(tc, tokens[0].start == 2);
+    CuAssertTrue(tc, tokens[0].end == 5);
+    CuAssertTrue(tc, tokens[0].token == INTEGER);
+    CuAssertTrue(tc, i == 1);
+}
+
+void __test__destroy_comment(CuTest* tc)
+{
+    struct Token tokens[16];
+    usize i = tokenize("1234 # a very long comment", tokens, 0);
+    CuAssertTrue(tc, tokens[0].token == INTEGER);
+    CuAssertTrue(tc, tokens[0].start == 0);
+    CuAssertTrue(tc, tokens[0].end == 3);
+    CuAssertTrue(tc, i == 1);
+}
+
+void __test__collapse_string(CuTest* tc)
+{
+    struct Token tokens[16];
+    usize i = tokenize("\"1234\"", tokens, 0);
+    CuAssertTrue(tc, tokens[0].start == 0);
+    CuAssertTrue(tc, tokens[0].end == 5);
+    CuAssertTrue(tc, tokens[0].token == STRING_LITERAL);
+    CuAssertTrue(tc, i == 1);
+
+}
+
+void __test__fails_on_partial_string(CuTest* tc)
+{
+    struct Token tokens[16];
+    int i = tokenize("\"1234", tokens, 0);
+    CuAssertTrue(tc, i == -1);
+}
+
+void __test__num_var(CuTest* tc)
+{
+    struct Token tokens[16];
+    usize i = tokenize("5a", tokens, 0);
+    CuAssertTrue(tc, i == 2);
+    CuAssertTrue(tc, tokens[0].token == INTEGER);
+    CuAssertTrue(tc, tokens[1].token == WORD);
+    
+}
+
+void __test__collapse_word(CuTest* tc)
+{
+    struct Token tokens[16];
+    usize i = tokenize("abc", tokens, 0);
+    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, tokens[0].token == WORD);
+    CuAssertTrue(tc, tokens[0].start == 0);
+    CuAssertTrue(tc, tokens[0].end == 2);
+
+    i = tokenize("a", tokens, 0);
+    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, tokens[0].token == WORD);
+    CuAssertTrue(tc, tokens[0].start == 0);
+    CuAssertTrue(tc, tokens[0].end == 0);
+
+    i = tokenize(" a ", tokens, 0);
+    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, tokens[0].token == WORD);
+    CuAssertTrue(tc, tokens[0].start == 1);
+    CuAssertTrue(tc, tokens[0].end == 1);
+
+    i = tokenize("a1_", tokens, 0);
+    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, tokens[0].token == WORD);
+    CuAssertTrue(tc, tokens[0].start == 0);
+    CuAssertTrue(tc, tokens[0].end == 2);
+
+    i = tokenize("_1a", tokens, 0);
+    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, tokens[0].token == WORD);
+    CuAssertTrue(tc, tokens[0].start == 0);
+    CuAssertTrue(tc, tokens[0].end == 2);
+
+    i = tokenize("1_a", tokens, 0);
+    CuAssertTrue(tc, i == 2);
+    CuAssertTrue(tc, tokens[0].token == INTEGER);
+    CuAssertTrue(tc, tokens[0].start == 0);
+    CuAssertTrue(tc, tokens[0].end == 0);
+    
+    CuAssertTrue(tc, tokens[1].token == WORD);
+    CuAssertTrue(tc, tokens[1].start == 1);
+    CuAssertTrue(tc, tokens[1].end == 2);
+
+}
+
+void __test__collapse_operator(CuTest* tc)
+{
+    
+    usize sz;
+    struct Token tokens[16];
+    static enum Lexicon answers[] = {
+        LTEQ,
+        GTEQ,
+        ISEQL,
+        ISNEQL,
+
+        PLUSEQ,
+        MINUSEQ,
+        AND,
+        OR
+    };
+
+    static char * line[] =  {
+        "<=",
+        ">=",
+        "==",
+        "!=",
+        "+=",
+        "-=",
+        "&&",
+        "||",
+        0
+    };
+
+    char msg[64];
+    for (int i=0; 8 > i; i++) {
+        sz = tokenize(line[i], tokens, 0);
+        CuAssertTrue(tc, sz == 1);
+        CuAssertTrue(tc, tokens[0].end == 1);
+        CuAssertTrue(tc, tokens[0].start == 0);
+        
+        sprintf(msg, "expected <%s>, got <%s>", ptoken(answers[i]), ptoken(tokens[0].token));
+
+        CuAssert(tc, msg, tokens[0].token == answers[i]);
+        memset(msg, 64, 0);
+    }
+}
+
+void __test__position(CuTest* tc)
+{
+    struct Token tokens[16];
+    usize i = tokenize("1234 + 1234", tokens, 0);
+    CuAssertTrue(tc, i == 3);
+    CuAssertTrue(tc, tokens[0].start == 0);
+    CuAssertTrue(tc, tokens[0].end == 3);
+    CuAssertTrue(tc, tokens[0].token == INTEGER);
+
+    CuAssertTrue(tc, tokens[1].start == 5);
+    CuAssertTrue(tc, tokens[1].end == 6);
+    CuAssertTrue(tc, tokens[1].token == ADD);
+
+    CuAssertTrue(tc, tokens[2].start == 8);
+    CuAssertTrue(tc, tokens[2].end == 11);
+    CuAssertTrue(tc, tokens[2].token == INTEGER);
+}
+
+void __test__fails_on_utf(CuTest* tc)
+{
+    struct Token tokens[2];
+    char buf[2] = {0xC3, 0xff};
+    usize i = tokenize(&buf, tokens, 0);
+    CuAssertTrue(tc, i == -1);
+}
+
+void __test__oversized_bin_ops(CuTest* tc)
+{
+    usize sz;
+    struct Token tokens[16];
+    char msg[1024];
+
+    char * token_name;
+    int msg_cursor = 10, j=0;
+    static int sizes[] = {
+        2, 2, 2, 2,
+        2, 2, 2, 2,
+        2, 2, 2, 3,
+        3, 2, 2, 2,
+        2, 2, 2
+    };
+    static enum Lexicon answers[][4] = {
+        {LTEQ, EQUAL}, {GTEQ, EQUAL}, {ISEQL, LT}, {ISEQL, GT}, 
+        {GTEQ, EQUAL}, {LTEQ, EQUAL}, {ISEQL, EQUAL}, {ISNEQL, EQUAL},
+        {ISEQL, NOT}, {ADD, PLUSEQ}, {SUB, MINUSEQ}, {EQUAL, ADD, ADD},
+        {EQUAL, SUB, SUB}, {PLUSEQ, EQUAL}, {MINUSEQ, EQUAL}, {ISEQL, ADD}, 
+        {ISEQL, SUB}, {AND, AMPER}, {OR, PIPE}
+    };
+
+    static char * line[] =  {
+        "<==", ">==", "==<", "==>",
+        ">==", "<==", "===", "!==",
+        "==!", "++=", "--=", "=++",
+        "=--", "+==", "-==", "==+",
+        "==-", "&&&", "|||", 0
+    };
+   
+    for (int i=0; 19 > i; i++) {
+        sz = tokenize(line[i], tokens, 0);
+    
+        sprintf(msg, "failed on %d (size: %d)", i, sz);
+        if (__check_tokens(tokens, &answers[i], sz) != 0) {
+            printf("got: ");
+            for (int j=0; sz > j; j++) {
+                printf("[%s] ", ptoken(tokens[j].token));
+            }
+            printf("\n");
+
+            printf("expected: ");
+            for (j=0; sz > j; j++) {
+                printf("[%s] ", ptoken(answers[i][j]));
+            }
+            printf("\n");
+        }
+
+        CuAssert(tc, msg, sizes[i] == sz);
+        CuAssert(tc, msg, __check_tokens(tokens, &answers[i], sz) == 0);
+        memset(msg, 1024, 0);
+    }
+}
+
+void __test__derive_keywords(CuTest* tc)
+{
+    usize sz;
+    struct Token tokens[16];
+    static enum Lexicon answers[] = {
+        IF,
+        ELSE,
+        FUNC_DEF,
+        IMPL,
+        EXTERN,
+        RETURN,
+        IMPORT,
+        CONST,
+        STATIC,
+        AND,
+        OR
+    };
+
+    static char * line[] =  {
+        "if",
+        "else",
+        "def",
+        "impl",
+        "extern",
+        "return",
+        "import",
+        "const",
+        "static",
+        "and",
+        "or",
+        0
+    };
+    
+    char msg[64];
+    for (int i=0; 11 > i; i++) {
+        sz = tokenize(line[i], tokens, 0);
+        CuAssertTrue(tc, sz == 1);
+        sprintf(msg, "expected <%s>, got <%s>", ptoken(answers[i]), ptoken(tokens[0].token));
+
+        CuAssert(tc, msg, tokens[0].token == answers[i]);
+        memset(msg, 64, 0);
+    }
+}
+
+void __test__correct_tokenization(CuTest* tc)
+{
+    usize sz;
+    struct Token tokens[32];
+    static enum Lexicon answers[] = {
+        BRACKET_OPEN, BRACKET_CLOSE, 
+        BRACE_OPEN, BRACE_CLOSE,
+        PARAM_OPEN, PARAM_CLOSE,
+        NOT, ADD, SUB,
+        GT, LT, MUL,
+        DIV, POW, MOD,
+        EQUAL, AMPER, PIPE,
+        COLON, SEMICOLON,
+        WORD, INTEGER, WORD,
+        COMMA
+    };
+
+    static char * line = "[]{}()!+- ><*/^%=&|:;_ 5a,";
+    char msg[64];
+    sz = tokenize(line, tokens, 0);
+
+    CuAssertTrue(tc, sz == 24);
+
+    for (int i=0; sz > i; i++) {
+        sprintf(msg, "expected <%s>, got <%s> [%d]", ptoken(answers[i]), ptoken(tokens[0].token), i);
+
+        CuAssert(tc, msg, tokens[i].token == answers[i]);
+        memset(msg, 64, 0);
+    }
+}
+CuSuite* LexerUnitTestSuite(void) {
+	CuSuite* suite = CuSuiteNew();
+    //SUITE_ADD_TEST(suite, __test__precendence_ordering);
+	SUITE_ADD_TEST(suite, __test__fails_on_utf);
+    SUITE_ADD_TEST(suite, __test__collapse_integer);
+    SUITE_ADD_TEST(suite, __test__num_var);
+    SUITE_ADD_TEST(suite, __test__fails_on_partial_string);
+    SUITE_ADD_TEST(suite, __test__oversized_bin_ops);
+	SUITE_ADD_TEST(suite, __test__destroy_whitespace);
+    SUITE_ADD_TEST(suite, __test__destroy_comment);
+	SUITE_ADD_TEST(suite, __test__collapse_string);
+    SUITE_ADD_TEST(suite, __test__collapse_word);
+    SUITE_ADD_TEST(suite, __test__collapse_operator);
+    SUITE_ADD_TEST(suite, __test__basic_perthensis);
+    SUITE_ADD_TEST(suite, __test__derive_keywords);
+
+    SUITE_ADD_TEST(suite, __test__correct_tokenization);
+    return suite;
+}

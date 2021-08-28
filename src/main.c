@@ -7,10 +7,11 @@
 #include <unistd.h>
 
 #include "parser/lexer.h"
-#include "parser/expr.h"
+#include "parser/expr/expr.h"
+#include "parser/expr/debug.h"
 #include "parser/ast.h"
-#include "productions/syn.h"
-#include "common.h"
+#include "parser/synthetize.h"
+#include "prelude.h"
 
 
 #define HELP_TEXT \
@@ -127,8 +128,11 @@ int parse(char * fp, struct Opts *opts) {
         
         n_completed = 0;
     }
-    fclose(fd);    
-    synthesize(&root);
+    fclose(fd);
+    
+    if (synthesize(&root) == -1) {
+        printf("synth failed");
+    }
     if (opts->print_ast == 1) {    
         printf("\n\n");
         printf("----------------\n");
@@ -142,12 +146,14 @@ int parse(char * fp, struct Opts *opts) {
         printf("----------------\n");
         printf("Expr Tree\n");
         printf("----------------\n");
-        
+        ExprStatement *temp;
         for (int i=0; root.length > i; i++) {
+            temp=((ExprStatement *)root.statements[i]->internal_data);
             if (root.statements[i]->type == Expression) {
                 printf("statement: %d\n", i+1);
-                printf("length: %lu\n", expr_len(((ExprStatement *)root.statements[i]->internal_data)->expr));
-                ptree(((ExprStatement *)root.statements[i]->internal_data)->expr);
+                printf("length: %lu\n", expr_len(temp->expr));
+                ptree(temp->expr);
+                printf("----------------\n");
             }
         }
         

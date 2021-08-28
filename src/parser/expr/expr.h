@@ -7,17 +7,21 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <stdlib.h>
+#include "../lexer.h"
 
 typedef enum Tag {
+    UndefinedTag,
     NullTag,
     VariableTag,
     ValueTag
 } Tag;
 
 typedef enum DataType {
+    UndefinedDataType,
     NullT,
     IntT,
-    StringT
+    StringT,
+    BoolT
 } DataType;
 
 typedef enum ExprType {
@@ -26,17 +30,15 @@ typedef enum ExprType {
     BinExprT
 } ExprType;
 
-
 typedef enum UnitaryOperation {
-    UniaryOperationNop,
+    UniOpNop,
     UniCall,
     UniValue
 } UnitaryOperation;
 
-
 typedef enum BinOp {
     /* no operation */
-    BinaryOperationNop,
+    BinOpNop,
     /* math */
     Add,
     Sub,
@@ -56,6 +58,15 @@ typedef enum BinOp {
     Or
 } BinOp;
 
+typedef enum AssignmentOp {
+    /* no operation */
+    AssignmentNop,
+    Eq,
+    EqAdd,
+    EqSub
+    /* cmp */
+} AssignmentOp;
+
 
 typedef struct InteralString { 
     uint32_t capacity;
@@ -67,7 +78,8 @@ typedef struct InteralString {
 typedef struct InternalData {
     enum DataType type;
     union {
-        int32_t integer;
+        uint8_t boolean;
+        int64_t integer;
         struct InteralString string;
     } data;
 } InternalData;
@@ -75,7 +87,7 @@ typedef struct InternalData {
 
 typedef struct Symbol {
     Tag tag;
-    
+    // flags const,static,dyn,ro,rw,rwx
     union {
         char * variable;
         struct InternalData value;
@@ -84,7 +96,6 @@ typedef struct Symbol {
 
 
 int symbol_from_token(char *line, struct Token token, struct Symbol *value);
-int is_func_call(struct Token tokens[], int nstmt);
 
 /*
 It seemed like a good idea using Unions as opaque types at the time. 
@@ -92,7 +103,6 @@ I woefully regret this now.
 */
 typedef struct Expr {
     enum ExprType type;
-    uint32_t depth;
     
     union {
         struct {
@@ -122,9 +132,7 @@ typedef struct Expr {
     } inner;
 } Expr;
 
+int is_func_call(struct Token tokens[], int nstmt);
 int construct_expr(char *line, struct Token tokens[], unsigned long  ntokens, struct Expr *expr);
 
-int cmpexpr(struct Expr *a, struct Expr *b);
-int is_expr(char *line, struct Token tokens[], size_t ntokens);
-size_t expr_len(Expr *expr);
 #endif

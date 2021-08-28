@@ -13,24 +13,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "../parser/lexer.h"
-#include "../parser/expr.h"
+#include "../parser/expr/expr.h"
 #include "../parser/ast.h"
-#include "syn.h"
+#include "synthetize.h"
 
 int synthesize_expr(Expr *expr) {
     if (expr->type == UndefinedExprT)
         return -1;
 
     else if (expr->type == BinExprT) {
-        // lhs.depth == rhs.depth
          if (synthesize_expr(expr->inner.bin.lhs) == -1
             || synthesize_expr(expr->inner.bin.rhs) == -1
-            || expr->inner.bin.op == BinaryOperationNop)
+            || expr->inner.bin.op == BinOpNop)
             return -1;
-        
-        if (expr->inner.bin.lhs->depth == expr->inner.bin.rhs->depth
-            && expr->depth != expr->inner.bin.lhs->depth)
-            expr->depth =  expr->inner.bin.lhs->depth;
+       
     }
 
     return 0;

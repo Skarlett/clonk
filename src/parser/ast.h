@@ -3,10 +3,10 @@
 #define _HEADER__AST__
 #include <stdlib.h>
 
-#include "../common.h"
+#include "../prelude.h"
 
 #include "lexer.h"
-#include "expr.h"
+#include "expr/expr.h"
 
 #define STMT_CAPACITY 255
 enum StatementType {
@@ -94,7 +94,6 @@ void init_condition_stmt(struct ConditionalStatement *stmt);
 typedef struct ExprStatement {
     Expr *expr;
 } ExprStatement;
-
 
 
 const char * pstmt_type(Statement *stmt);
