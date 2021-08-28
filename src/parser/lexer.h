@@ -1,12 +1,15 @@
 #ifndef _HEADER__LEXER__
 #define _HEADER__LEXER__
 
+#include "../CuTest.h"
 #include <stdlib.h>
+
 #define ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
 #define DIGITS "1234567890"
 
-
 typedef enum Lexicon {
+    UNDEFINED,
+
     NULLTOKEN,
     
     // Ignore token (whitespace, newline, carriage return)
@@ -17,11 +20,17 @@ typedef enum Lexicon {
     // Ignore token (whitespace, newline, carriage return)
     COMMENT,
 
+    // [
+    BRACKET_OPEN,
+
+    // ]
+    BRACKET_CLOSE,
+
     // {
-    OPEN_BRACE,
+    BRACE_OPEN,
     
     // }
-    CLOSE_BRACE,
+    BRACE_CLOSE,
     
     // (
     PARAM_OPEN,
@@ -101,12 +110,19 @@ typedef enum Lexicon {
     // #
     POUND,
 
+    // :
+    COLON,
+
+    // @
+    ATSYM,
+
     // a-zA-Z
     CHAR,
 
     // 0-9
     DIGIT,
-  
+    
+    // ??
     // ~!@#$%^&*+=-`
     SPECIAL_CHAR,
 
@@ -122,7 +138,7 @@ typedef enum Lexicon {
     // 20392
     INTEGER,
 
-    // [CHARACTER, ..] WHITESAPCE|SEMICOLON
+    // [CHARACTER, ..] WHITESPACE|SEMICOLON
     // something
     WORD,
 
@@ -130,8 +146,41 @@ typedef enum Lexicon {
     // something
     STRING_LITERAL,
 
+    // static
+    STATIC,
+    // const
+    CONST,
 
-    UNKNOWN,
+    // return
+    RETURN,
+    
+    // extern
+    EXTERN,
+    
+    // as
+    AS,
+    
+    // if
+    IF,
+
+    // else
+    ELSE,
+
+    // def
+    FUNC_DEF,
+
+    //import
+    IMPORT,
+
+    //impl
+    IMPL,
+    
+    // this is a 'pretend' token used 
+    // internally by expression
+    // and should never been seen in the token stream
+    FNMASK,
+
+    UNKNOWN
 } Lexicon;
 
 typedef struct Token {
@@ -142,12 +191,12 @@ typedef struct Token {
 
 
 enum Lexicon tokenize_char(char c);
-int is_complex_token(enum Lexicon token);
-int set_complex_token(enum Lexicon token, enum Lexicon *compound_token);
-int continue_complex(enum Lexicon token, enum Lexicon compound_token);
-int is_operator_complex(enum Lexicon compound_token);
-enum Lexicon invert_operator_token(enum Lexicon compound_token);
+int can_upgrade_token(enum Lexicon token);
+int set_compound_token(enum Lexicon *compound_token, enum Lexicon token);
 
+int is_operator_complex(enum Lexicon compound_token);
+enum Lexicon invert_brace_type(enum Lexicon token);
+enum Lexicon invert_operator_token(enum Lexicon compound_token);
 
 const char * ptoken(enum Lexicon t);
 int is_cmp_operator(enum Lexicon compound_token);

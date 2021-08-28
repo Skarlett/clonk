@@ -1,4 +1,6 @@
-#include "ast.h"
+#include <stdio.h>
+
+#include "../ast.h"
 #include "expr.h"
 
 const char * print_datatype(enum DataType t) {
@@ -44,7 +46,7 @@ const char * p_bin_operator_sym(enum BinOp t) {
         case Sub: return "-";
         case Multiply: return "*";
         case Divide: return "/";
-        case Modolus: return "\%";
+        case Modolus: return "%";
         case Pow: return "^";
         case And: return "&&";
         case Or: return "||";
@@ -71,7 +73,6 @@ int print_expr(Expr *expr, short unsigned indent){
     tab_print(indent);
     printf("type: %s\n", print_expr_t(expr->type));
     tab_print(indent);
-    printf("depth: %d\n", expr->depth);
 
     if (expr->type == UniExprT) {
         //struct UniExpr *uni = expr->inner_data;
@@ -115,8 +116,6 @@ int print_expr(Expr *expr, short unsigned indent){
         
 
         else if (expr->inner.uni.op == UniCall) {
-            // tab_print(indent);
-            // printf("{\n");
             tab_print(indent);
             printf("function call: %s\n", expr->inner.uni.interal_data.fncall.func_name);
             tab_print(indent);
@@ -138,8 +137,6 @@ int print_expr(Expr *expr, short unsigned indent){
     }
 
     else if (expr->type == BinExprT) {
-        //struct BinExpr *bin = ;
-
         tab_print(indent);
         printf("operator: %s (%s)\n", p_bin_operator_sym(expr->inner.bin.op), print_bin_operator(expr->inner.bin.op));
         tab_print(indent);
@@ -180,7 +177,6 @@ void ptree_inner(Expr *expr, short unsigned indent){
     if (expr->type == BinExprT) {
         printf("%s ", p_bin_operator_sym(expr->inner.bin.op));
         tab_print(5-indent);
-        printf("\t(%d) \n", expr->depth);
         small_tab(indent);
         printf("├─");
         ptree_inner(expr->inner.bin.lhs, indent+1);
@@ -221,6 +217,16 @@ void ptree_inner(Expr *expr, short unsigned indent){
     }
 }
 
+
+void draw_token_error_at(char * line, struct Token *token) {
+    printf("'%s'\n", line);
+    printf("-");
+    for (int i = 0; token->start > i; i++) {
+        printf("-");
+    }
+    
+    printf("^\n");
+}
 
 void ptree(Expr *expr) {
     ptree_inner(expr, 0);

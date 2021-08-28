@@ -1,22 +1,24 @@
 # Source, Executable, Includes, Library Defines
 INCL  = 
-SRC   = src/main.c \
-		src/common.c \
+SRC   = src/common.c \
+		src/CuTest.c \
 		src/parser/lexer.c \
-		src/parser/expr.c \
-		src/parser/expr_debug.c \
+		src/parser/expr/expr.c \
+		src/parser/expr/debug.c \
+		src/parser/expr/builder.c \
+		src/parser/expr/helpers.c \
 		src/parser/ast.c \
-		src/productions/syn.c
+		src/parser/synthetize.c
 
 OBJ	= $(SRC:.c=.o)
 LIBS =
 EXE	= clonky
 # Compiler, Linker Defines
 CC	  = clang
-CFLAGS  = -ansi -pedantic -Wall -O2
+CFLAGS  = -ansi -pedantic -Wall -O2 $(LDFLAGS)
 LIBPATH = -L.
 LDFLAGS = -o $(EXE) $(LIBPATH) $(LIBS)
-CFDEBUG = -ansi -pedantic -DDEBUG -ggdb $(LDFLAGS)
+CFDEBUG = -ansi -pedantic -Wall -DDEBUG -Wcomment -ggdb -DINCLUDE_TESTS $(LDFLAGS)
 RM	  = /bin/rm -f
 
 # Compile and Assemble C Source Files into Object Files
@@ -32,7 +34,11 @@ $(OBJ): $(INCL)
 
 # Create a gdb/dbx Capable Executable with DEBUG flags turned on
 debug:
-	   $(CC) $(CFDEBUG) $(SRC)
+	   $(CC) $(CFDEBUG) src/main.c $(SRC)
+
+# Create a gdb/dbx Capable Executable with DEBUG flags turned on
+test:
+	   $(CC) $(CFDEBUG) src/AllTests.c src/tests/lexer_tests.c src/tests/expr_tests.c $(SRC)
 
 # Clean Up Objects, Exectuables, Dumps out of source directory
 clean:
