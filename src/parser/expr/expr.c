@@ -197,24 +197,25 @@ int create_fnmasks(
         else if (making_mask && input[i].token == PARAM_CLOSE) {
             span += 1;
             parathesis_ctr -= 1;
-        }
-
-        else if (making_mask && parathesis_ctr == 0) {
-            // we've successfully minted a new FNMASK token
-            *masks_ctr += 1;
-            *output_ctr += 1;
-
-            if (*masks_ctr >= masks_sz || *output_ctr >= output_sz)
-                return -1;
             
-            masks[(*masks_ctr)-1].start = starts_at;
-            masks[(*masks_ctr)-1].end = starts_at+span;
-            masks[(*masks_ctr)-1].token = FNMASK; 
+            if(parathesis_ctr == 0)
+            {
+                // we've successfully minted a new FNMASK token
+                *masks_ctr += 1;
+                *output_ctr += 1;
 
-            output[(*output_ctr)-1] = &masks[(*masks_ctr)-1];
-            starts_at=0;
-            making_mask=0;
-            span=0;
+                if (*masks_ctr >= masks_sz || *output_ctr >= output_sz)
+                    return -1;
+                
+                masks[(*masks_ctr)-1].start = starts_at;
+                masks[(*masks_ctr)-1].end = starts_at+span;
+                masks[(*masks_ctr)-1].token = FNMASK; 
+
+                output[(*output_ctr)-1] = &masks[(*masks_ctr)-1];
+                starts_at=0;
+                making_mask=0;
+                span=0;
+            }
         }
 
         else if (input[i].token == WORD
