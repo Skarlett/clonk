@@ -35,6 +35,7 @@ enum Lexicon tokenize_char(char c) {
         case '!':  return NOT;
         case '#':  return POUND;
         case '@':  return ATSYM;
+        case '.':  return DOT;
         default :  break;
     }
 
@@ -72,6 +73,7 @@ int can_upgrade_token(enum Lexicon token) {
         token == DIGIT
         || token == CHAR
         || token == UNDERSCORE
+        || token == COLON
         || token == QUOTE
         || token == EQUAL
         || token == NOT
@@ -135,6 +137,10 @@ int set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
             *compound_token = COMMENT;
             break;
 
+        case COLON:
+            *compound_token = DCOLON;
+            break;
+
         case PIPE:
             *compound_token = OR;
             break;
@@ -149,7 +155,7 @@ int set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
  Returns a boolean if compound_token should continue consuming
  tokens
 */
-int continue_compound_token(enum Lexicon token, enum Lexicon compound_token, u64 span_size) {
+int continue_compound_token(enum Lexicon token, enum Lexicon compound_token, unsigned int span_size) {
     return (
         // Integer
         (compound_token == INTEGER && token == DIGIT) 
@@ -180,6 +186,8 @@ int continue_compound_token(enum Lexicon token, enum Lexicon compound_token, u64
         || (compound_token == PLUSEQ && token == EQUAL && 1 > span_size)
             // -=
         || (compound_token == MINUSEQ && token == EQUAL && 1 > span_size)
+            // ::
+        || (compound_token == DCOLON && token == COLON && 1 > span_size)
             // # ... \n
         || (compound_token == COMMENT && token != NEWLINE)
     );
@@ -263,11 +271,11 @@ int tokenize(char *line,  struct Token tokens[], usize token_idx) {
     
     uint8_t operator_ctr = 0;
 
-    u64 start_at = 0;
-    u64 span_size = 0;
+    uint64_t start_at = 0;
+    uint64_t span_size = 0;
     int new_tokens = 0;
 
-    for (u64 i=0; strlen(line) > i; i++)
+    for (uint64_t i=0; strlen(line) > i; i++)
     {
         if (line[i] == 0) continue;
         else if (is_utf(line[i])) return -1;
