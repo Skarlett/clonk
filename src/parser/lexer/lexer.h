@@ -106,6 +106,13 @@ typedef enum Lexicon {
     // _
     UNDERSCORE,
 
+    // .
+    DOT,
+
+    // ::
+    // double colon
+    DCOLON,
+
     // #
     POUND,
 
