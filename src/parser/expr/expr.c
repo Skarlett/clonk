@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
@@ -7,7 +8,13 @@
 #include "debug.h"
 #include "expr.h"
 
+#include "../lexer/helpers.h"
+#include "../lexer/lexer.h"
 #include "../../prelude.h"
+
+#define WORKING_BUF_SZ 128
+#define QUEUE_BUF_SZ 256
+#define OPERATOR_BUF_SZ 64
 
 
 // int construct_fn_call(char *line, Token tokens[], Expr *expr, int last_expr, int ntokens, int *depth, int *consumed)
@@ -69,28 +76,47 @@
 //     expr->type = UniExprT;
 // }
 
+enum Associativity {
+    NONASSOC,
+    RASSOC,
+    LASSOC
+};
+
+enum Associativity get_assoc(int8_t precedence) {
+    if (7 > precedence > 4)
+        return RASSOC;
+    else if(5 > precedence > 1)
+        return LASSOC;
+    
+    return NONASSOC;
+}
+
+#define END_PRECEDENCE 127
 /*
     precendense table:
-      ") ] }"   : 5
-      "/ * ^ %" : 3
-      "+ -"     : 2
-      "!= == >= > <= < && ||": 1
-      "( [ {"   : 0
+      ") ] }"   : 127 non-assoc
+      "^"       : 5 right-assoc (2 ^ 2 ^ 2) -> (2 ^ (2 ^ 2))
+      "/ * %"   : 4 left-assoc  (4 / 2 * 2) -> ((4 / 2) * 2)
+      "+ -"     : 3 l
+      "!= == >= > <= < && ||": 1 l/r ?
+      "( [ {"   : 0 non-assoc
 */
-int op_precedence(enum Lexicon token) {
+int8_t op_precedence(enum Lexicon token) {
     if (token == PARAM_CLOSE 
         || token == BRACE_CLOSE 
         || token == BRACKET_CLOSE)
+        return END_PRECEDENCE;
+    
+    if (token == POW)
         return 5;
-   
+
     else if (token == MUL 
         || token == DIV
-        || token == MOD
-        || token == POW)
-        return 3;
+        || token == MOD)
+        return 4;
 
     else if (token == ADD || token == SUB)
-        return 2;
+        return 3;
     
     else if (token == ISEQL
         || token == ISNEQL
@@ -111,45 +137,7 @@ int op_precedence(enum Lexicon token) {
 }
 
 /*
-push on the top of the stack
-*/
-int push_stack_lifo(struct Token *stack[], struct Token *token, size_t *ctr, size_t stack_sz) {
-    if (*ctr >= stack_sz)
-        return -1;
-
-    *ctr+=1;
-    stack[*ctr-1] = token;
-    return 0;
-}
-
-/*
-pop off the top of the stack
-*/
-const struct Token* pop_stack_lifo(
-    struct Token *stack[],
-    struct Token *token,
-    size_t *ctr,
-    size_t stack_sz
-) {
-    struct Token *hdlr;
-
-    if (*ctr >= stack_sz && *ctr >= 1)
-        return NULL;
-    
-    hdlr = stack[*ctr-1];
-    *ctr -= 1;
-
-    return hdlr;
-}
-
-int is_closing_brace(enum Lexicon token) {
-    return (token == PARAM_CLOSE 
-    || token == BRACE_CLOSE  
-    || token == BRACKET_CLOSE);
-}
-
-/*
-    this function creates a duplicate version of `input[]`, 
+    creates a duplicate version of `input[]`, 
     but replaces sequences of tokens which represent a function call
     (`[WORD] [PARAM_OPEN] ... [PARAM_CLOSE]`) into a single token with
     the type defined as `FNMASK`.
@@ -189,12 +177,12 @@ int create_fnmasks(
     
     for (size_t i=0; expr_size > i; i++)
     {        
-        if (making_mask && input[i].token == PARAM_OPEN) {
+        if (making_mask && input[i].type == PARAM_OPEN) {
             span += 1;
             parathesis_ctr += 1;
         }
 
-        else if (making_mask && input[i].token == PARAM_CLOSE) {
+        else if (making_mask && input[i].type == PARAM_CLOSE) {
             span += 1;
             parathesis_ctr -= 1;
             
@@ -209,7 +197,7 @@ int create_fnmasks(
                 
                 masks[(*masks_ctr)-1].start = starts_at;
                 masks[(*masks_ctr)-1].end = starts_at+span;
-                masks[(*masks_ctr)-1].token = FNMASK; 
+                masks[(*masks_ctr)-1].type = FNMASK; 
 
                 output[(*output_ctr)-1] = &masks[(*masks_ctr)-1];
                 starts_at=0;
@@ -218,8 +206,8 @@ int create_fnmasks(
             }
         }
 
-        else if (input[i].token == WORD
-            && input[i+1].token == PARAM_OPEN
+        else if (input[i].type == WORD
+            && input[i+1].type == PARAM_OPEN
             && parathesis_ctr == 0){
             starts_at=i;
             making_mask=1;
@@ -244,7 +232,7 @@ int create_fnmasks(
             
         masks[(*masks_ctr)-1].start = starts_at;
         masks[(*masks_ctr)-1].end = starts_at+span;
-        masks[(*masks_ctr)-1].token = FNMASK; 
+        masks[(*masks_ctr)-1].type = FNMASK; 
         output[(*output_ctr)-1] = &masks[(*masks_ctr)-1];
     }
 
@@ -253,17 +241,51 @@ int create_fnmasks(
 
 
 /*
+    Eval masks are a similar concept to the FNMASK, except consider the following.
+    `"foo().length" will not parse `[FNMASK, DOT, WORD]`
+    They will contain both all of the following tokens.
+
+                  "foo().length"
+    FNMASK         ----^
+    COMPOSITE      -----------^
+*/
+
+int create_composite_tokens(
+    struct Token *tokens[],
+    usize ntokens
+){
+    usize starts_at = 0;
+    usize span = 0;
+
+    for (usize i=0; ntokens > i; i++) {
+        if (tokens[i]->type == FNMASK
+            || tokens[i]->type == WORD
+            || tokens[i]->type == DOT
+            || tokens[i]->type == DCOLON
+            //|| tokens[i]->type == NOT
+        ){
+        //        if ()
+        }
+
+        else {
+            
+        }
+    }
+}
+
+/*
   Shunting yard expression parsing algorthim 
   https://en.wikipedia.org/wiki/Shunting-yard_algorithm
   --------------
   takes a token stream, and two extra buffers, and converts an infix expression
   into a postfix expression.
 
-  tokens*[]
+  *tokens[]
     token stream - expects the token stream `*output[]` from `
   
   *queue[]
-    references tokens inside of `tokens[]`, but sorted for postfix
+    references tokens inside of `tokens[]`,
+    but annotated in postfix (reverse polish notation)
 
   *mask[]
     `*queue[]` may also refer to tokens inside this buffer.
@@ -299,7 +321,9 @@ int construct_postfix_queue(
 
     for (size_t i = 0; expr_size > i; i++)
     {
-        if (is_data(tokens[i]->token) || tokens[i]->token == FNMASK)
+        if (is_data(tokens[i]->type) 
+            || tokens[i]->type == FNMASK
+            || tokens[i]->type == NOT)
         {
             if (*queue_ctr >= queue_sz)
                 return -1;
@@ -308,14 +332,19 @@ int construct_postfix_queue(
             queue[(*queue_ctr) - 1] = &tokens[i];
             continue;
         }
+        
+        /*
+            every other operation is left-to-right accoicated
+            except for the night operator
+        */
 
-        else if (is_bin_operator(tokens[i]->token))
+        else if (is_bin_operator(tokens[i]->type))
         {
             /*
                 since this is a operator, 
                 we need to set precedense for their operands.
             */
-            precedense = op_precedence(tokens[i]->token);
+            precedense = op_precedence(tokens[i]->type);
 
             /* unrecongized token */
             if (precedense == -1)
@@ -341,9 +370,10 @@ int construct_postfix_queue(
                     finally, we push all of the operators we popped off 
                     in reverse order.
                 */
+                // this section smells funny
                 for (int j = 0; operators_ctr > j; j++)
                 {
-                    if (operators[operators_ctr - 1]->token != invert_brace_type(tokens[i]->token))
+                    if (operators[operators_ctr - 1]->type != invert_brace_type(tokens[i]->type))
                     {
                         if (*queue_ctr >= queue_sz)
                             return -1;
@@ -355,10 +385,11 @@ int construct_postfix_queue(
                         operators_ctr -= 1;
                         break;
                     }
+
                     working_buf_ctr += 1;
                     working_buf[working_buf_ctr - 1] = operators[operators_ctr - 1];
                     
-                    if (operators_ctr == 0 || op_precedence(working_buf[working_buf_ctr - 1]->token) == 0)
+                    if (operators_ctr == 0 || op_precedence(working_buf[working_buf_ctr - 1]->type) == 0)
                     {
                         operators_ctr -= 1;
                         break;
@@ -368,8 +399,9 @@ int construct_postfix_queue(
                 }
             }
         }
+
+        else {}
     }
-    
 
     /*
     NOTE:
@@ -379,7 +411,7 @@ int construct_postfix_queue(
     for (size_t k = 0; temp > k; k++)
     {
         /*any remaining params/brackets/braces are unclosed if reached here*/
-        if (op_precedence(operators[operators_ctr - 1]) == 5)
+        if (op_precedence(operators[operators_ctr - 1]) == END_PRECEDENCE)
             return -1;
         
         *queue_ctr += 1;
@@ -389,21 +421,35 @@ int construct_postfix_queue(
     return 0;
 }
 
-int construct_expr(char *line, struct Token tokens[], unsigned long  ntokens, struct Expr *expr) {
-    struct Token *output[512];
+int construct_expr(char *line, struct Token tokens[], usize ntokens, struct Expr *expr) {
+    struct Token *masked_tokens[512];
     struct Token *queue[512];
     struct Token masks[32];
+    struct Token *working_buf[128];
     size_t masks_ctr = 0;
-    size_t output_ctr = 0;
+    size_t masked_tokens_ctr = 0;
     size_t queue_ctr = 0;
 
-    /*
-        duplicate `tokens` into `*output[]`
-        and creates compound tokens
-        for function calls    
-    */
+    if (!is_balanced(tokens, ntokens))
+        return -1;
+    
     if (create_fnmasks(
-        output, 512, &output_ctr,
+        masked_tokens, 512, &masked_tokens_ctr,
+        tokens, ntokens,
+        masks, 32, &masks_ctr) == -1)
+        return -1;
+    
+
+    if (tokens[0].type == NOT) {
+        
+    }
+
+    else if (is_fncall(tokens)) {}
+    else if (is_data(tokens[0].type)) {}
+    else if (tokens[0].type == DOT) {}
+
+    if (create_fnmasks(
+        masked_tokens, 512, &masked_tokens_ctr,
         tokens, ntokens,
         masks, 32, &masks_ctr) == -1)
         return -1;
@@ -412,8 +458,15 @@ int construct_expr(char *line, struct Token tokens[], unsigned long  ntokens, st
         reorders `*output[]` according to PEMDAS
         into the buffer `*queue[]`
     */
-    if (construct_postfix_queue(output, output_ctr, queue, 512, &queue_ctr) == -1)
+    if (construct_postfix_queue(masked_tokens, masked_tokens_ctr, queue, 512, &queue_ctr) == -1)
         return -1;
+
+
+    
+    // for (int i=0; queue_ctr > i; i++) {
+    //     else if (is_data(queue[i])) {}
+    //     if (is_bin_operator(queue[i]) {}
+    // }
 
     /*todo: create expr tree*/
 }

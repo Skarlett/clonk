@@ -1,40 +1,37 @@
-#ifndef _HEADER__EXPR__
-#define _HEADER__EXPR__
 
-#define STR_STACK_SIZE 32
-#define FUNC_ARG_SIZE 8
+#ifndef _HEADER_EXPR__
+#define _HEADER_EXPR__
 
 #include <stdint.h>
-#include <sys/types.h>
-#include <stdlib.h>
-#include "../lexer.h"
-
-typedef enum Tag {
-    UndefinedTag,
-    NullTag,
-    VariableTag,
-    ValueTag
-} Tag;
-
-typedef enum DataType {
-    UndefinedDataType,
-    NullT,
-    IntT,
-    StringT,
-    BoolT
-} DataType;
+#include "../prelude.h"
 
 typedef enum ExprType {
     UndefinedExprT,
-    UniExprT,
-    BinExprT
-} ExprType;
+    
+    // variable names
+    // x
+    // foo.max
+    // std::int::MAX
+    SymExprT,
 
-typedef enum UnitaryOperation {
-    UniOpNop,
-    UniCall,
-    UniValue
-} UnitaryOperation;
+    // Literal datatype
+    // [1, 2, 3] | list
+    // "asdasd"
+    // 100
+    LiteralExprT,
+
+    // x(a, ...)
+    FnCallExprT,
+
+    // Chain of evaluation
+    // foo(x.map(f)).length
+    // FnCall -> Symbol
+    LinkedExprT,
+    
+    // binary operation
+    // 1 + 2 * foo.max - size_of(list)
+    BinaryExprT
+} ExprType;
 
 typedef enum BinOp {
     /* no operation */
@@ -58,81 +55,75 @@ typedef enum BinOp {
     Or
 } BinOp;
 
-typedef enum AssignmentOp {
-    /* no operation */
-    AssignmentNop,
-    Eq,
-    EqAdd,
-    EqSub
-    /* cmp */
-} AssignmentOp;
-
-
-typedef struct InteralString { 
-    uint32_t capacity;
-    uint32_t length;
+struct String { 
+    usize capacity;
+    usize length;
     char * ptr;
-} InteralString;
+};
 
+struct List { 
+    usize capacity;
+    usize length;
+    struct Expr *ptr;
+};
 
-typedef struct InternalData {
+enum DataType {
+    UndefT,
+    IntT,
+    StringT,
+    BoolT,
+    ListT,
+    StructT,
+    NullT
+};
+
+struct ConstData {
     enum DataType type;
     union {
+        isize integer;
+        struct String string;
         uint8_t boolean;
-        int64_t integer;
-        struct InteralString string;
-    } data;
-} InternalData;
+        struct List list;
+    } literal;
+};
 
-
-typedef struct Symbol {
-    Tag tag;
-    // flags const,static,dyn,ro,rw,rwx
-    union {
-        char * variable;
-        struct InternalData value;
-    } inner;
-} Symbol;
-
-
-int symbol_from_token(char *line, struct Token token, struct Symbol *value);
+struct FnCall {
+    enum DataType returns;
+    char * func_name; 
+    uint8_t name_capacity;
+    uint8_t name_length;
+    uint8_t args_capacity;
+    uint8_t args_length;
+    struct Expr * args;
+};
 
 /*
-It seemed like a good idea using Unions as opaque types at the time. 
-I woefully regret this now.
+    `head` should always contain a valid reference to an Expr
+    `tail` will contain a valid reference, or a null pointer
 */
-typedef struct Expr {
+struct LinkedExpr {
+    struct Expr *head;
+    struct Expr *tail;
+};
+
+struct BinExpr {
+    enum BinOp op;
+    struct Expr *lhs;
+    struct Expr *rhs;
+    enum DataType returns;
+};
+
+struct Expr {
     enum ExprType type;
-    
+    enum DataType datatype;
+
     union {
-        struct {
-            enum UnitaryOperation op;
-            union {
-                struct Symbol symbol;
-                struct {
-                        char *func_name; 
-                        uint16_t name_capacity;
-                        uint16_t name_length;
-
-                        uint16_t args_capacity;
-                        uint16_t args_length;
-                        struct Expr **args;
-
-                } fncall;
-            } interal_data;
-
-        } uni;
-
-        struct {
-            enum BinOp op;
-            struct Expr *lhs;
-            struct Expr *rhs;
-        } bin;
-
+        char * symbol;
+        struct ConstData value;
+        struct FnCall fncall;
+        struct BinExpr bin;
     } inner;
-} Expr;
+};
 
-int is_func_call(struct Token tokens[], int nstmt);
-int construct_expr(char *line, struct Token tokens[], unsigned long  ntokens, struct Expr *expr);
 
 #endif
