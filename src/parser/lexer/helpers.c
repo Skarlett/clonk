@@ -1,5 +1,5 @@
 #include "lexer.h"
-#include "../prelude.h"
+#include "../../prelude.h"
 #define BRACE_BUFFER_SZ 256
 
 const char * ptoken(enum Lexicon t) {
@@ -34,9 +34,7 @@ const char * ptoken(enum Lexicon t) {
         case SUB: return "sub";
         case COLON: return "colon";
         case SEMICOLON: return "semi-colon";
-        case SPECIAL_CHAR: return "special_char";
         case STRING_LITERAL: return "str_literal";
-        case UNKNOWN: return "unknown token";
         case AMPER: return "&";
         case PIPE: return "pipe";
         case AND: return "and";
@@ -62,7 +60,77 @@ const char * ptoken(enum Lexicon t) {
     };
 }
 
-inline enum Lexicon invert_brace_type(enum Lexicon token) {
+
+int8_t is_close_brace(enum Lexicon token) {
+    return (token == PARAM_CLOSE 
+    || token == BRACE_CLOSE  
+    || token == BRACKET_CLOSE);
+}
+
+int8_t is_open_brace(enum Lexicon token) {
+    return (token == PARAM_OPEN 
+    || token == BRACE_OPEN  
+    || token == BRACKET_OPEN);
+}
+
+int8_t is_data(enum Lexicon token) {
+    return (token == WORD
+        || token == INTEGER 
+        || token == STRING_LITERAL
+    );
+}
+
+int8_t is_fncall(struct Token tokens[], usize ntokens) {
+    return ntokens > 1 
+        && tokens[0].type == WORD 
+        || tokens[1].type == PARAM_OPEN;
+}
+
+int8_t is_cmp_operator(enum Lexicon compound_token) {
+    return (
+        compound_token == ISEQL
+        || compound_token == ISNEQL  
+        || compound_token == GTEQ 
+        || compound_token == LTEQ
+        || compound_token == AND
+        || compound_token == OR
+    );
+}
+
+int8_t is_assignment_operator(enum Lexicon compound_token) {
+    return (
+        compound_token == EQUAL
+        || compound_token == MINUSEQ
+        || compound_token == PLUSEQ
+    );
+}
+
+// is this token a binary operator?
+int8_t is_bin_operator(enum Lexicon compound_token) {
+    return (compound_token == ISEQL
+        || compound_token == ISNEQL 
+        || compound_token == GTEQ 
+        || compound_token == LTEQ
+        || compound_token == AND
+        || compound_token == OR
+        || compound_token == GT
+        || compound_token == LT
+        || compound_token == ADD
+        || compound_token == SUB
+        || compound_token == MUL
+        || compound_token == POW
+        || compound_token == NOT
+        || compound_token == MOD
+        || compound_token == DIV
+    );
+}
+
+
+int8_t is_utf(char ch) {
+    return ((unsigned char)ch >= 0x80);
+}
+
+enum Lexicon invert_brace_type(enum Lexicon token) {
     switch (token) {
         case PARAM_OPEN: return PARAM_CLOSE;
         case PARAM_CLOSE: return PARAM_OPEN;
@@ -70,7 +138,7 @@ inline enum Lexicon invert_brace_type(enum Lexicon token) {
         case BRACE_CLOSE: return BRACE_OPEN;
         case BRACKET_CLOSE: return BRACKET_OPEN;
         case BRACKET_OPEN: return BRACKET_CLOSE;
-        default: return UNKNOWN;
+        default: return UNDEFINED;
     }
 }
 
@@ -112,8 +180,8 @@ int8_t is_balanced(struct Token tokens[], usize ntokens) {
     uint16_t braces_ctr = 0;
     int8_t ret;
 
-    for (int i=0; ntokens > i; i++){
-        ret = inner_balance(braces, &braces_ctr, tokens[i].token);
+    for (usize i=0; ntokens > i; i++){
+        ret = inner_balance(braces, &braces_ctr, tokens[i].type);
         if (ret == -1)
             return -1;
         else if (ret == 0)
@@ -129,14 +197,14 @@ int8_t is_balanced(struct Token tokens[], usize ntokens) {
     an expression can be unbalanced 
     if there is a nonmatching `[` / `(` / `{` character
 */
-int8_t is_balanced_by_ref(struct Token *tokens[], size_t ntokens) {
+int8_t is_balanced_by_ref(struct Token *tokens[], usize ntokens) {
     enum Lexicon braces[BRACE_BUFFER_SZ];
     uint16_t braces_ctr = 0;
 
     int8_t ret;
     
-    for (int i=0; ntokens > i; i++){
-        ret = inner_balance(braces, &braces_ctr, tokens[i]->token);
+    for (usize i=0; ntokens > i; i++){
+        ret = inner_balance(braces, &braces_ctr, tokens[i]->type);
         if (ret == -1)
             return -1;
         else if (ret == 0)
@@ -158,72 +226,4 @@ int8_t is_keyword(enum Lexicon token) {
     }
     
     return 0;
-}
-
-
-inline int8_t is_close_brace(enum Lexicon token) {
-    return (token == PARAM_CLOSE 
-    || token == BRACE_CLOSE  
-    || token == BRACKET_CLOSE);
-}
-
-inline int8_t is_open_brace(enum Lexicon token) {
-    return (token == PARAM_OPEN 
-    || token == BRACE_OPEN  
-    || token == BRACKET_OPEN);
-}
-
-inline int8_t is_data(enum Lexicon token) {
-    return (token == WORD
-        || token == INTEGER 
-        || token == STRING_LITERAL
-    );
-}
-
-inline int8_t is_fncall(struct Token tokens[], usize ntokens) {
-    return tokens[0].token == WORD || tokens[1].token == PARAM_OPEN;
-}
-
-inline int8_t is_cmp_operator(enum Lexicon compound_token) {
-    return (
-        compound_token == ISEQL
-        || compound_token == ISNEQL  
-        || compound_token == GTEQ 
-        || compound_token == LTEQ
-        || compound_token == AND
-        || compound_token == OR
-    );
-}
-
-inline int8_t is_assignment_operator(enum Lexicon compound_token) {
-    return (
-        compound_token == EQUAL
-        || compound_token == MINUSEQ
-        || compound_token == PLUSEQ
-    );
-}
-
-// is this token a binary operator?
-inline int8_t is_bin_operator(enum Lexicon compound_token) {
-    return (compound_token == ISEQL
-        || compound_token == ISNEQL 
-        || compound_token == GTEQ 
-        || compound_token == LTEQ
-        || compound_token == AND
-        || compound_token == OR
-        || compound_token == GT
-        || compound_token == LT
-        || compound_token == ADD
-        || compound_token == SUB
-        || compound_token == MUL
-        || compound_token == POW
-        || compound_token == NOT
-        || compound_token == MOD
-        || compound_token == DIV
-    );
-}
-
-
-inline int8_t is_utf(char ch) {
-    return ((unsigned char)ch >= 0x80);
 }

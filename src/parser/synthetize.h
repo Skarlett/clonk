@@ -3,6 +3,6 @@
 
 #include "../parser/ast.h"
 
-int synthesize(BlockStatement *block);
+//int synthesize(BlockStatement *block);
 
 #endif

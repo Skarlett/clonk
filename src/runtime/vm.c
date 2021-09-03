@@ -2,7 +2,7 @@
 #include "stdio.h"
 #include "string.h"
 #include "vm.h"
-#include "../common.h"
+#include "../prelude.h"
 
 #include <bits/stdint-intn.h>
 #include <stdint.h>

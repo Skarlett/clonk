@@ -2,6 +2,7 @@
 #define _HEADER__EXPR_DBG__
 
 #include "expr.h"
+#include "../lexer/lexer.h"
 
 //void ptree(struct Expr *expr);
 void draw_token_error_at(char * line, struct Token *token);

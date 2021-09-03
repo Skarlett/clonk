@@ -116,9 +116,9 @@ inline int is_expr(
     usize ntokens)
 {   
     return (
-        tokens[0].token == NOT
-        || tokens[0].token == PARAM_OPEN
-        || is_data(tokens[0].token)
+        tokens[0].type == NOT
+        || tokens[0].type == PARAM_OPEN
+        || is_data(tokens[0].type)
         //|| is_func_call(tokens, ntokens)
     );
 }

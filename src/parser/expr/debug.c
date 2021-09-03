@@ -1,8 +1,7 @@
 #include <stdio.h>
 
-#include "../ast.h"
-#include "expr.h"
 #include "../lexer/lexer.h"
+#include "expr.h"
 
 const char * print_datatype(enum DataType t) {
     switch (t) {
@@ -212,7 +211,7 @@ void draw_token_error_at(char * line, struct Token *token) {
     printf("^\n");
 }
 
-void ptree(struct Expr *expr) {
-    ptree_inner(expr, 0);
-    printf("\n");
-}
+// void ptree(struct Expr *expr) {
+//     ptree_inner(expr, 0);
+//     printf("\n");
+// }
