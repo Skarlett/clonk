@@ -2,13 +2,19 @@
 #define _HEADER__LEXER__
 
 #include <stdlib.h>
+#include <stdint.h>
+#include "../../prelude.h"
+#include "../error.h"
 
 #define ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
 #define DIGITS "1234567890"
 
-typedef enum Lexicon {
+enum Lexicon {
     UNDEFINED,
-
+    
+    // End of file token
+    EOFT,
+    
     NULLTOKEN,
     
     // Ignore token (whitespace, newline, carriage return)
@@ -128,10 +134,6 @@ typedef enum Lexicon {
     // 0-9
     DIGIT,
     
-    // ??
-    // ~!@#$%^&*+=-`
-    SPECIAL_CHAR,
-
     // ,
     COMMA,
     //********* START OF COMPLEX TOKENS ********
@@ -181,19 +183,50 @@ typedef enum Lexicon {
     //impl
     IMPL,
     
-    // this is a 'pretend' token used 
-    // internally by expression
-    // and should never been seen in the token stream
+    /*
+        this is a 'pretend' token used 
+        internally by expression
+        and should never been seen in the token stream
+    */
     FNMASK,
+    COMPOSITE
 
-    UNKNOWN
-} Lexicon;
+    
+};
 
+/*
+    Tokens reference symbols derived from the 
+    source code given to the interpreter.
+    the following fields correlate with the following,
+    except when `type` is equal to FNMASK, or COMPOSITE.
+    
+    `start` correlates to the starting position the token inside the source code string.
+    The position is directly indexable against its source (char *line).
+
+    `end` correlates to the ending position of the token inside the source code string.
+    The position is directly indexable against its source (char *line). 
+
+    `type` defines what kind of token it is.
+
+    In the case of `type` being of FNMASK or COMPOSITE:
+        `start` correlates to the starting position of the token instead the token array.
+        The position is directly indexable against its source (tokens[]).
+
+        `end` correlates to the ending position of the token instead the token array.
+        The position is directly indexable against its source (tokens[]).
+    
+*/
 typedef struct Token {
-    unsigned long start;
-    unsigned long end;
-    enum Lexicon token;
+    usize start;
+    usize end;
+    enum Lexicon type;
 } Token;
 
-int tokenize(char *line,  struct Token tokens[], size_t token_idx);
+int8_t tokenize(
+    char *line,
+    struct Token tokens[],
+    usize *token_ctr,
+    struct CompileTimeError *error
+);
+
 #endif

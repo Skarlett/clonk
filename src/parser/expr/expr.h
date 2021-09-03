@@ -3,7 +3,7 @@
 #define _HEADER_EXPR__
 
 #include <stdint.h>
-#include "../prelude.h"
+#include "../../prelude.h"
 
 typedef enum ExprType {
     UndefinedExprT,

@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#include "parser/lexer.h"
+#include "parser/lexer/lexer.h"
 #include "parser/expr/expr.h"
 #include "parser/expr/debug.h"
 #include "parser/ast.h"
@@ -113,11 +113,11 @@ int parse(char * fp, struct Opts *opts) {
             break;
         }
 
-        size_t ntokens = tokenize(line, tokens, token_n);
+        size_t ntokens = tokenize(line, tokens[token_n], ctr, error);
         if (opts->print_tokens == 1) {
             printf("token stream: ");
             for (size_t p_i=0; ntokens > p_i; p_i++) {
-                printf("[%s(%d,%d)] ", ptoken(tokens[p_i].token), (int)tokens[p_i].start, (int)tokens[p_i].end);
+                printf("[%s(%d,%d)] ", ptoken(tokens[p_i].type), (int)tokens[p_i].start, (int)tokens[p_i].end);
             }
             printf("\n\n");
         }
