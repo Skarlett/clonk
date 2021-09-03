@@ -76,7 +76,6 @@ int8_t can_upgrade_token(enum Lexicon token) {
         token == DIGIT
         || token == CHAR
         || token == UNDERSCORE
-        || token == COLON
         || token == QUOTE
         || token == EQUAL
         || token == NOT
@@ -140,10 +139,6 @@ int8_t set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
             *compound_token = COMMENT;
             break;
 
-        case COLON:
-            *compound_token = DCOLON;
-            break;
-
         case PIPE:
             *compound_token = OR;
             break;
@@ -189,8 +184,6 @@ int8_t continue_compound_token(enum Lexicon token, enum Lexicon compound_token, 
         || (compound_token == PLUSEQ && token == EQUAL && 1 > span_size)
             // -=
         || (compound_token == MINUSEQ && token == EQUAL && 1 > span_size)
-            // ::
-        || (compound_token == DCOLON && token == COLON && 1 > span_size)
             // # ... \n
         || (compound_token == COMMENT && token != NEWLINE)
     );
@@ -273,9 +266,10 @@ int8_t tokenize(
     usize *token_ctr,
     struct CompileTimeError *error
 ){
+    struct Token token;
+
     enum Lexicon lexed = UNDEFINED, 
         compound_token = UNDEFINED;
-    struct Token token;
     
     uint8_t operator_ctr = 0;
 
@@ -375,6 +369,6 @@ int8_t tokenize(
         tokens[new_tokens] = token;
         new_tokens += 1;
     }
-
+    *token_ctr += new_tokens;
     return 0;
 }

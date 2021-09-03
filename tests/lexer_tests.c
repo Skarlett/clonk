@@ -176,7 +176,7 @@ void __test__collapse_word(CuTest* tc)
     CuAssertTrue(tc, tokens[0].end == 0);
     i=0;
 
-    CuAssertTrue(tc, tokenize("  a  ", tokens, &i, NULL) == 0);
+    CuAssertTrue(tc, tokenize(" a ", tokens, &i, NULL) == 0);
     CuAssertTrue(tc, i == 1);
     CuAssertTrue(tc, tokens[0].type == WORD);
     CuAssertTrue(tc, tokens[0].start == 1);
@@ -273,9 +273,7 @@ void __test__fails_on_utf(CuTest* tc)
     struct Token tokens[2];
     char buf[2] = {0xC3, 0xff};
     usize i=0;    
-    CuAssertTrue(tc, tokenize(&buf, tokens, &i, NULL) == 0);
-
-    CuAssertTrue(tc, i == -1);
+    CuAssertTrue(tc, tokenize(&buf, tokens, &i, NULL) == -1);
 }
 
 void __test__oversized_bin_ops(CuTest* tc)
@@ -310,7 +308,7 @@ void __test__oversized_bin_ops(CuTest* tc)
     };
    
     for (int i=0; 19 > i; i++) {
-        CuAssertTrue(tc, tokenize(line[i], tokens, &i, NULL) == 0);
+        CuAssertTrue(tc, tokenize(line[i], tokens, &sz, NULL) == 0);
     
         sprintf(msg, "failed on %d (size: %d)", i, sz);
         if (__check_tokens(tokens, &answers[i], sz) != 0) {
@@ -329,6 +327,7 @@ void __test__oversized_bin_ops(CuTest* tc)
 
         CuAssert(tc, msg, sizes[i] == sz);
         CuAssert(tc, msg, __check_tokens(tokens, &answers[i], sz) == 0);
+        sz=0;
         memset(msg, 1024, 0);
     }
 }
@@ -375,6 +374,7 @@ void __test__derive_keywords(CuTest* tc)
 
         CuAssert(tc, msg, tokens[0].type == answers[i]);
         memset(msg, 64, 0);
+        sz=0;
     }
 }
 
@@ -394,15 +394,15 @@ void __test__correct_tokenization(CuTest* tc)
         COMMA
     };
 
-    usize sz=0;
+    usize sz=0, temp=0;
     struct Token tokens[32];
     char msg[64];
     
     CuAssertTrue(tc, tokenize(line, tokens, &sz, NULL) == 0);
     CuAssertTrue(tc, sz == 24);
-
+    
     for (usize i=0; sz > i; i++) {
-        sprintf(msg, "expected <%s>, got <%s> [%d]", ptoken(answers[i]), ptoken(tokens[0].type), i);
+        sprintf(msg, "expected <%s>, got <%s> [%d]", ptoken(answers[i]), ptoken(tokens[i].type), i);
 
         CuAssert(tc, msg, tokens[i].type == answers[i]);
         memset(msg, 64, 0);

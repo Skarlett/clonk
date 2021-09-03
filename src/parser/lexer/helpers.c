@@ -55,7 +55,7 @@ const char * ptoken(enum Lexicon t) {
         case IMPORT: return "'import'";
         case EXTERN: return "'extern'";
         case COMMENT: return "comment";
-
+        case UNDEFINED: return "undef";
         default: return "PTOKEN_ERROR_UNKNOWN_TOKEN";
     };
 }
