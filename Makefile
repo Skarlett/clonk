@@ -1,14 +1,18 @@
 # Source, Executable, Includes, Library Defines
 INCL  = 
 SRC   = src/prelude.c \
-		src/CuTest.c \
-		src/parser/lexer.c \
+		src/parser/lexer/lexer.c \
+		src/parser/lexer/helpers.c \
 		src/parser/expr/expr.c \
 		src/parser/expr/debug.c \
-		src/parser/expr/builder.c \
-		src/parser/expr/helpers.c \
 		src/parser/ast.c \
 		src/parser/synthetize.c
+
+TESTS = tests/CuTest.c \
+		tests/lexer_tests.c \
+		tests/lexer_helpers.c \
+		tests/common.c \
+		tests/expr_tests.c
 
 OBJ	= $(SRC:.c=.o)
 LIBS =
@@ -38,7 +42,7 @@ debug:
 
 # Create a gdb/dbx Capable Executable with DEBUG flags turned on
 test:
-	   $(CC) $(CFDEBUG) src/AllTests.c src/tests/lexer_tests.c src/tests/expr_tests.c $(SRC)
+	   $(CC) $(CFDEBUG) tests/run_tests.c $(TESTS) $(SRC)
 
 # Clean Up Objects, Exectuables, Dumps out of source directory
 clean:
