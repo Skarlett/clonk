@@ -115,10 +115,6 @@ enum Lexicon {
     // .
     DOT,
 
-    // ::
-    // double colon
-    DCOLON,
-
     // #
     POUND,
 

@@ -3,8 +3,8 @@
 #include "CuTest.h"
 
 CuSuite* LexerUnitTestSuite();
-CuSuite* ExprUnitTestSuite();
-CuSuite* LexerHelpersUnitTestSuite();
+//CuSuite* ExprUnitTestSuite();
+//CuSuite* LexerHelpersUnitTestSuite();
 
 void RunAllTests(void)
 {
@@ -12,8 +12,8 @@ void RunAllTests(void)
 	CuSuite* suite = CuSuiteNew();
 
 	CuSuiteAddSuite(suite, LexerUnitTestSuite());
-	CuSuiteAddSuite(suite, LexerHelpersUnitTestSuite());
-	CuSuiteAddSuite(suite, ExprUnitTestSuite());
+//	CuSuiteAddSuite(suite, LexerHelpersUnitTestSuite());
+//	CuSuiteAddSuite(suite, ExprUnitTestSuite());
 
 	CuSuiteRun(suite);
 	CuSuiteSummary(suite, output);
