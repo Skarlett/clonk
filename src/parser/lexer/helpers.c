@@ -149,17 +149,21 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
     if (is_close_brace(current)) {
         inverted = invert_brace_type(current);
 
-        if (*tokens_ctr <= 0 || inverted == -1)
+        if (inverted == -1)
             return -1;
         
-        if (tokens[(*tokens_ctr)-1] == inverted)
+        /* 
+            return 1 to stop iteration,  and return `is_balanced` as false (0)
+        */    
+        else if (*tokens_ctr <= 0)
+            return 1;
+
+        else if (tokens[(*tokens_ctr)-1] == inverted)
             (*tokens_ctr)--;
-        else
-            return 0;
     }
 
     else if (is_open_brace(current)) {
-        if (BRACE_BUFFER_SZ >= *tokens_ctr) {
+        if (*tokens_ctr >= BRACE_BUFFER_SZ) {
             return -1;
         }
         
@@ -167,7 +171,7 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
         tokens[(*tokens_ctr)-1] = current;
     }
 
-    return 1;
+    return 0;
 }
 
 /* 
@@ -184,7 +188,9 @@ int8_t is_balanced(struct Token tokens[], usize ntokens) {
         ret = inner_balance(braces, &braces_ctr, tokens[i].type);
         if (ret == -1)
             return -1;
-        else if (ret == 0)
+        
+        // immediately unbalanced
+        else if (ret == 1)
             return 0;
     }
 
@@ -205,9 +211,11 @@ int8_t is_balanced_by_ref(struct Token *tokens[], usize ntokens) {
     
     for (usize i=0; ntokens > i; i++){
         ret = inner_balance(braces, &braces_ctr, tokens[i]->type);
+        
         if (ret == -1)
             return -1;
-        else if (ret == 0)
+        
+        else if (ret == 1)
             return 0;
     }
     
