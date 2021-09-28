@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "../../src/prelude.h"
 #include "../../src/parser/lexer/lexer.h"
 #include "../../src/parser/lexer/helpers.h"

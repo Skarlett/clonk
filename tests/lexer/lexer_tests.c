@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <string.h>
+
 #include "../CuTest.h"
 #include "../../src/prelude.h"
 #include "../../src/parser/lexer/lexer.h"
@@ -50,23 +53,23 @@ void __test__basic_perthensis(CuTest* tc)
 
         // Setup error messages for tests
         for (usize j = 0; tokens_sz[i] > j; j++) {
-            sprintf(&token_buf, "[%s] ", ptoken(tokens[j].type));
+            sprintf(token_buf, "[%s] ", ptoken(tokens[j].type));
             tmp = strlen(ptoken(tokens[j].type)) + 3;
-            strncpy(got + offset_got, &token_buf, tmp);
+            strncpy(got + offset_got, token_buf, tmp);
             offset_got += tmp;
 
-            memset(&token_buf, 24, 0);
+            memset(&token_buf, 0, 24);
 
-            sprintf(&token_buf, "[%s] ", ptoken(check_list[i][j]));
+            sprintf(token_buf, "[%s] ", ptoken(check_list[i][j]));
             tmp = strlen(ptoken(tokens[j].type)) + 3;
-            strncpy(expected + offset_expected, &token_buf, tmp);
+            strncpy(expected + offset_expected, token_buf, tmp);
             offset_expected += tmp;
-            memset(&token_buf, 24, 0);
+            memset(&token_buf, 0, 24);
 
         }
 
         sprintf(msg,"Expected [%s], got [%s] | * %s *", expected, got, line[i]);        
-        CuAssert(tc, msg, __check_tokens(tokens, &check_list[i], tokens_sz[i]));
+        CuAssert(tc, msg, __check_tokens(tokens, check_list[i], tokens_sz[i]));
         ntokens=0;
     }
 }
@@ -239,7 +242,7 @@ void __test__collapse_operator(CuTest* tc)
         sprintf(msg, "expected <%s>, got <%s>", ptoken(answers[i]), ptoken(tokens[0].type));
 
         CuAssert(tc, msg, tokens[0].type == answers[i]);
-        memset(msg, 64, 0);
+        memset(msg, 0, 64);
         sz=0;
     }
 }
@@ -269,7 +272,7 @@ void __test__fails_on_utf(CuTest* tc)
     struct Token tokens[2];
     char buf[2] = {0xC3, 0xff};
     usize i=0;    
-    CuAssertTrue(tc, tokenize(&buf, tokens, &i, NULL) == -1);
+    CuAssertTrue(tc, tokenize(buf, tokens, &i, NULL) == -1);
 }
 
 void __test__oversized_bin_ops(CuTest* tc)
@@ -306,12 +309,12 @@ void __test__oversized_bin_ops(CuTest* tc)
     for (int i=0; 19 > i; i++) {
         CuAssertTrue(tc, tokenize(line[i], tokens, &sz, NULL) == 0);
     
-        sprintf(msg, "failed on %d (size: %d)", i, sz);
+        sprintf(msg, "failed on %d (size: %ld)", i, sz);
 
         CuAssert(tc, msg, sizes[i] == sz);
-        CuAssert(tc, msg, __check_tokens(tokens, &answers[i], sz));
+        CuAssert(tc, msg, __check_tokens(tokens, answers[i], sz));
         sz=0;
-        memset(msg, 1024, 0);
+        memset(msg, 0, 1024);
     }
 }
 
@@ -356,7 +359,7 @@ void __test__derive_keywords(CuTest* tc)
         sprintf(msg, "expected <%s>, got <%s>", ptoken(answers[i]), ptoken(tokens[0].type));
 
         CuAssert(tc, msg, tokens[0].type == answers[i]);
-        memset(msg, 64, 0);
+        memset(msg, 0, 64);
         sz=0;
     }
 }
@@ -385,10 +388,10 @@ void __test__correct_tokenization(CuTest* tc)
     CuAssertTrue(tc, sz == 24);
     
     for (usize i=0; sz > i; i++) {
-        sprintf(msg, "expected <%s>, got <%s> [%d]", ptoken(answers[i]), ptoken(tokens[i].type), i);
+        sprintf(msg, "expected <%s>, got <%s> [%ld]", ptoken(answers[i]), ptoken(tokens[i].type), i);
 
         CuAssert(tc, msg, tokens[i].type == answers[i]);
-        memset(msg, 64, 0);
+        memset(msg, 0, 64);
     }
 }
 
