@@ -1,7 +1,8 @@
 #include <stdint.h>
 #include <string.h>
-#include "expr.h"
 #include "../lexer/lexer.h"
+#include "expr.h"
+
 #include "../../prelude.h"
 
 // int cmpexpr(struct Expr *a, struct  Expr *b) {
@@ -110,27 +111,6 @@
 //     return _expr_len_inner(expr, 1);
 // }
 
-inline int is_expr(
-    char *line,
-    Token tokens[],
-    usize ntokens)
-{   
-    return (
-        tokens[0].type == NOT
-        || tokens[0].type == PARAM_OPEN
-        || is_data(tokens[0].type)
-        //|| is_func_call(tokens, ntokens)
-    );
-}
-
-inline int is_expr_token(enum Lexicon token) {
-    return token == NOT || 
-        token == PARAM_OPEN || 
-        token == PARAM_CLOSE || 
-        is_data(token) ||
-        is_bin_operator(token);
-}
-
 // int assignment_from_token(enum Lexicon t){
 //     switch (t) {
 //         case MINUSEQ: return EqSub;
@@ -141,7 +121,7 @@ inline int is_expr_token(enum Lexicon token) {
 //     }
 // }
 
-inline int binop_from_token(enum Lexicon t){
+inline int8_t binop_from_token(enum Lexicon t){
     switch (t) {
         case ADD: return Add;
         case SUB: return Sub;
