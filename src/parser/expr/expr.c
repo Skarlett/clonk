@@ -5,12 +5,12 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "debug.h"
+#include "../../prelude.h"
+#include "../lexer/lexer.h"
+#include "../lexer/helpers.h"
+
 #include "expr.h"
 
-#include "../lexer/helpers.h"
-#include "../lexer/lexer.h"
-#include "../../prelude.h"
 
 #define WORKING_BUF_SZ 128
 #define QUEUE_BUF_SZ 256
@@ -82,24 +82,15 @@ enum Associativity {
     LASSOC
 };
 
-enum Associativity get_assoc(int8_t precedence) {
-    if (END_PRECEDENCE > precedence > 4)
-        return RASSOC;
-    else if(5 > precedence > 1)
-        return LASSOC;
-    
-    return NONASSOC;
-}
-
 /*
     precendense table:
       ") ] }"   : 127 non-assoc
-      "." "::"  : 6 R Object Application
-      "^"       : 5 Right-assoc (2 ^ 2 ^ 2) -> (2 ^ (2 ^ 2))
-      "/ * %"   : 4 Left-assoc  (4 / 2 * 2) -> ((4 / 2) * 2)
-      "+ -"     : 3 L
-      "!= == >= > <= < && ||": 2 L
-      ","       : 1
+      "^"       : 6 R (1 ^ 2 ^ 3) -> (1 ^ (2 ^ 3))
+      "/ * %"   : 5 L  (4 / 2 * 2) -> ((4 / 2) * 2)
+      "+ -"     : 4 L
+      "!= == >= > <= < && ||": 3 L
+      "!"       : 2 L
+      ", ."     : 1
       "( [ {"   : 0 non-assoc
 */
 int8_t op_precedence(enum Lexicon token) {
@@ -108,19 +99,20 @@ int8_t op_precedence(enum Lexicon token) {
         || token == BRACKET_CLOSE)
         return END_PRECEDENCE;
     
-    if (token == DOT)
-        return 6;
+    if (token == DOT || token == COMMA)
+        return 1;
     
     else if (token == POW)
-        return 5;
+        return 6;
 
     else if (token == MUL 
         || token == DIV
         || token == MOD)
-        return 4;
+        return 5;
 
-    else if (token == ADD || token == SUB)
-        return 3;
+    else if (token == ADD
+        || token == SUB)
+        return 4;
     
     else if (token == ISEQL
         || token == ISNEQL
@@ -130,7 +122,7 @@ int8_t op_precedence(enum Lexicon token) {
         || token == LT
         || token == AND
         || token == OR)
-        return 1;
+        return 2;
     
     else if (token == PARAM_OPEN 
         || token == BRACE_OPEN  
@@ -162,7 +154,7 @@ int8_t op_precedence(enum Lexicon token) {
     `start` will correlate to the index of `input[]` where it originates from.
     `end` will correlate to the index of `input[]` where it originates from.
 */
-int create_fnmasks(
+int mk_fnmask_tokens(
     struct Token *output[],
     usize output_sz,
     usize *output_ctr,
@@ -198,17 +190,19 @@ int create_fnmasks(
             if(parathesis_ctr == 0)
             {
                 // we've successfully minted a new FNMASK token
+
+                if ((*masks_ctr)+1 >= masks_sz || (*output_ctr)+1 >= output_sz)
+                    return -1;
+                
+                masks[*masks_ctr].start = starts_at;
+                masks[*masks_ctr].end = starts_at+span;
+                masks[*masks_ctr].type = FNMASK; 
+
+                output[*output_ctr] = &masks[*masks_ctr];
+
                 *masks_ctr += 1;
                 *output_ctr += 1;
 
-                if (*masks_ctr >= masks_sz || *output_ctr >= output_sz)
-                    return -1;
-                
-                masks[(*masks_ctr)-1].start = starts_at;
-                masks[(*masks_ctr)-1].end = starts_at+span;
-                masks[(*masks_ctr)-1].type = FNMASK; 
-
-                output[(*output_ctr)-1] = &masks[(*masks_ctr)-1];
                 starts_at=0;
                 making_mask=0;
                 span=0;
@@ -217,49 +211,113 @@ int create_fnmasks(
 
         else if (input[i].type == WORD
             && input[i+1].type == PARAM_OPEN
-            && parathesis_ctr == 0){
+            && parathesis_ctr == 0)
+        {
             starts_at=i;
             making_mask=1;
         }
-
-        else if (making_mask==0 && parathesis_ctr == 0 && starts_at == 0) {
+        else if (making_mask==0 && parathesis_ctr == 0 && starts_at == 0)
+        {
+            output[*output_ctr] = &input[i];
             *output_ctr += 1;
-            output[(*output_ctr)-1] = &input[i];
         }
-        else {
+        else
+        {
             span += 1;
             continue;
         }
     }
+
     /* loop ended before token could be stored */
     if (starts_at || making_mask || span) {
-        *masks_ctr += 1;
-        *output_ctr += 1;
-
-        if (*masks_ctr >= masks_sz || *output_ctr >= output_sz)
+        
+        if ((*masks_ctr)+1 >= masks_sz || (*output_ctr)+1 >= output_sz)
             /* buffer overflow */
             return -1;
             
-        masks[(*masks_ctr)-1].start = starts_at;
-        masks[(*masks_ctr)-1].end = starts_at+span;
-        masks[(*masks_ctr)-1].type = FNMASK; 
-        output[(*output_ctr)-1] = &masks[(*masks_ctr)-1];
+        masks[*masks_ctr].start = starts_at;
+        masks[*masks_ctr].end = starts_at+span;
+        masks[*masks_ctr].type = FNMASK; 
+        output[*output_ctr] = &masks[*masks_ctr];
+
     }
 
     return 0;
 }
-
-
 /*
-    Eval masks are a similar concept to the FNMASK, except consider the following.
+    composite masks are a similar concept to the FNMASK, except consider the following.
     `"foo().length" will not parse `[FNMASK, DOT, WORD]`
     They will contain both all of the following tokens.
 
                   "foo().length"
-    FNMASK         ----^
-    COMPOSITE      -----------^
-*/
+    FNMASK         ^---^
+    COMPOSITE      ^----------^
+    
 
+int8_t mk_composite_tokens(
+    struct Token *tokens[],
+    usize ntokens,
+    struct Token *output[],
+    usize *output_ctr,
+    usize output_sz,
+    struct Token composite_tokens[],
+
+    usize composite_tokens_sz,
+    usize *composite_tokens_ctr
+) {
+    strussct Token composite_token;
+    usize span=0;
+    usize starts_at=0;
+    uint8_t is_collecting_tokens = 0;
+
+    *composite_tokens_ctr = 0;
+    *output_ctr = 0;
+    
+    for (usize i=0; ntokens > i; i++) {
+        if (tokens[i]->type == FNMASK 
+            || tokens[i]->type == WORD 
+            || tokens[i]->type == DOT)
+        {
+            if(is_collecting_tokens)
+                span += 1;
+            else {
+                is_collecting_tokens=1;
+                starts_at=i;
+            }
+        }
+
+        else if (is_collecting_tokens) {
+            composite_token.type = COMPOSITE;
+            composite_token.start = starts_at;
+            composite_token.end = starts_at + span;
+            
+            is_collecting_tokens = 0;
+            starts_at = 0;
+            span = 0;
+
+            if (*output_ctr > output_sz || *composite_tokens_ctr > composite_tokens_sz)
+                // bounds check
+                return -1;
+            
+            composite_tokens[*composite_tokens_ctr] = composite_token;
+            output[*output_ctr] = &composite_tokens[*composite_tokens_ctr];
+
+            *output_ctr += 1;
+            *composite_tokens_ctr += 1;
+        }
+
+        else if (!is_collecting_tokens) {
+            // bounds check
+            if(*output_ctr > output_sz)
+                return -1;
+            
+            output[*output_ctr] = tokens[i];
+            *output_ctr += 1;
+        }
+    }
+    return 0;
+}
+*/
 
 /*
   Shunting yard expression parsing algorthim 
@@ -268,9 +326,16 @@ int create_fnmasks(
   takes a token stream, and two extra buffers, and converts an infix expression
   into a postfix expression.
 
-  *tokens[]
-    token stream - expects the token stream `*output[]` from `
+  NOTE:
+    When ordering precedense, our algorithmn expects a single token,
+    but a function call is a collection of tokens.
+    To compensate, we'll create a token with FNMASK 
+    as its identifier.
   
+  *tokens[]
+    WARNING: Expects stream to have been processed 
+            to contain FNMASK tokens
+
   *queue[]
     references tokens inside of `tokens[]`,
     but annotated in postfix (reverse polish notation)
@@ -280,131 +345,170 @@ int create_fnmasks(
     This temporary buffer contains FNMASK tokens, 
     this converts function calls into a single token for
     ordering precendence
+
+
+  1st) pop operators off of the operator-stack 
+       until the popped operator's precedense is equal
+       than our current operator
+                
+  2nd) Check right/left association on the operator
+       If Right: based off the precedence of the current operator pop the remaining
+       equally valued operators from the operator-stack
+                   
+       If Left: Do nothing.
+
+  3rd) place current operator and restore 
+       previous operators to the
+       operator-stack as they were ordered
+                
+        If our current precedense is higher, then
+        pop operators off the stack until the previous
+        operations equal/less than our current precedense,
+        OR the LAST precedense is 0. afterwards
+        we insert our current token into operators stack. 
+        finally, we push all of the operators we popped off 
+        in **reverse** order.
 */
-int8_t construct_postfix_queue(
+
+#define _OP_SZ 128
+#define _WK_BUF_SZ 64
+
+int8_t postfix_expr(
     struct Token *tokens[],
     usize expr_size,
-    struct Token *queue[],
-    usize queue_sz,
-    usize *queue_ctr
+    struct Token *output[],
+    usize output_sz,
+    usize *output_ctr
 ){
     struct Token *hdlr = NULL;
+    int8_t hdlr_precedence = 0;
 
-    *queue_ctr = 0;
-
-    struct Token *operators[64];
-    usize operators_ctr = 0;
-    
-    struct Token *working_buf[32];
-    usize working_buf_ctr = 0;
+    struct Token *operators[_OP_SZ];
+    int8_t operators_ctr = 0, j;
 
     int8_t precedense = 0;
-    /*
-        NOTE:
-            When ordering precedense, our algorithmn expects a single token,
-            but a function call is a collection of tokens.
-            To compensate, we'll create a token with FNMASK 
-            as its identifier.
-    */
+
+    *output_ctr = 0;
 
     for (usize i = 0; expr_size > i; i++)
     {
-        if (is_data(tokens[i]->type) 
-            || tokens[i]->type == FNMASK
-            || tokens[i]->type == NOT)
+        /* if the token is data (value/variable in the source code),
+        // place it directly into our stack */
+        if (is_data(tokens[i]->type) || tokens[i]->type == FNMASK)
         {
-            if (*queue_ctr >= queue_sz)
+            if (*output_ctr >= output_sz)
                 return -1;
             
-            *queue_ctr += 1;
-            queue[(*queue_ctr) - 1] = &tokens[i];
+            output[*output_ctr] = tokens[i];
+            *output_ctr += 1;
             continue;
         }
-        
-        /*
-            every other operation is left-to-right accoicated
-            except for the night operator
-        */
 
         else if (is_bin_operator(tokens[i]->type))
         {
-            /*
-                since this is a operator, 
-                we need to set precedense for their operands.
-            */
             precedense = op_precedence(tokens[i]->type);
-
+            
             /* unrecongized token */
             if (precedense == -1)
                 return -1;
 
-            else if (precedense == 0 || operators_ctr == 0) {
+            /*
+            no operators in operators-stack, 
+            so no extra checks needed
+            */
+            else if (operators_ctr == 0) { 
+                operators[0] = tokens[i];
                 operators_ctr += 1;
-                operators[operators_ctr - 1] = &tokens[i];
                 continue;
             }
-            else
-            {
-                /*
-                NOTE:
-                    Compare our current token's precedense 
-                    (order of evaluation),
-                    to the last operator's precedense. 
-                    If our current precedense is higher, then
-                    pop operators off the stack until the previous
-                    operationis equal/less than our current precedense,
-                    OR the LAST precedense is 0. afterwards
-                    we insert our current token into operators stack. 
-                    finally, we push all of the operators we popped off 
-                    in reverse order.
-                */
-                // this section smells funny
-                for (usize j = 0; operators_ctr > j; j++)
-                {
-                    if (operators[operators_ctr - 1]->type != invert_brace_type(tokens[i]->type))
-                    {
-                        if (*queue_ctr >= queue_sz)
-                            return -1;
-                        
-                        *queue_ctr += 1;
-                        queue[(*queue_ctr) - 1] = operators[operators_ctr - 1];
-                        operators_ctr -= 1;
-                    } else {
-                        operators_ctr -= 1;
-                        break;
-                    }
 
-                    working_buf_ctr += 1;
-                    working_buf[working_buf_ctr - 1] = operators[operators_ctr - 1];
-                    
-                    if (operators_ctr == 0 || op_precedence(working_buf[working_buf_ctr - 1]->type) == 0)
-                    {
-                        operators_ctr -= 1;
-                        break;
-                    }
-                    else
-                        operators_ctr -= 1;
+            /*
+            if the head of the operator stack is an open brace
+            we don't need to do anymore checks
+            before placing the operator
+            */
+            else if (is_open_brace(operators[operators_ctr-1]->type)) {
+                operators[operators_ctr] = tokens[i];
+                operators_ctr += 1;
+                continue;
+            }
+            
+            for (j=0; operators_ctr >= j; j++) {
+                hdlr = operators[operators_ctr - j];
+                hdlr_precedence = op_precedence(hdlr->type);
+
+                // pop operator off the operator-stack
+                // place into output
+                if (hdlr_precedence > precedense)
+                {
+                    output[*output_ctr] = hdlr;
+                    *output_ctr += 1;
+                }
+                // place operator in operator-stack
+                else if (precedense >= hdlr_precedence)
+                {
+                    // once we've placed the operator
+                    // we can break the loop
+                    operators_ctr -= j;
+                    operators[operators_ctr] = tokens[i];
+                    break;
                 }
             }
         }
+        else if (is_close_brace(tokens[i]->type))
+        {
+            /* Operators stack is empty */
+            if (operators_ctr == 0) {
+                return -1;
+            }
 
-        else {}
+            /* Last operator in the operator-stack was the inverted brace */
+            else if (operators[operators_ctr - 1]->type == invert_brace_tok_ty(tokens[i]->type)) {
+                continue;
+            }
+
+            /* pop operators off of the operator-stack into the output */
+            for (j=0; operators_ctr >= j; j++) {
+
+                /* Grab the head of the stack */
+                hdlr = operators[operators_ctr - j];
+
+                /* ends if tokens opposite brace is found*/
+                if (hdlr->type == invert_brace_tok_ty(tokens[i]->type)) {
+                    operators_ctr -= j + 1;
+                    break;
+                }
+                /* otherwise pop into output */
+                else {
+                    output[*output_ctr] = hdlr;
+                    *output_ctr += 1;
+                }
+            }
+        }
+        else if (is_open_brace(tokens[i]->type))
+        {
+            operators[operators_ctr] = tokens[i];
+            operators_ctr += 1;
+        }
+        else
+        {
+        #ifdef DEBUG 
+            printf("debug: token fell through precedense [%s]\n", ptoken(tokens[i]->type));
+        #endif
+        }
     }
 
     /*
-    NOTE:
-        dump the remaining operators onto the queue
+        dump the remaining operators onto the output
     */
-    usize temp = operators_ctr;
-    for (usize k = 0; temp > k; k++)
+    for (j = 0; operators_ctr >= j; j++)
     {
         /*any remaining params/brackets/braces are unclosed if reached here*/
-        if (op_precedence(operators[operators_ctr - 1]) == END_PRECEDENCE)
+        if (is_open_brace(operators[operators_ctr - j]->type) == END_PRECEDENCE)
             return -1;
         
-        *queue_ctr += 1;
-        queue[*queue_ctr - 1] = operators[operators_ctr - 1];
-        operators_ctr -= 1;
+        output[*output_ctr] = operators[operators_ctr - j];
+        *output_ctr += 1;
     }
     return 0;
 }
@@ -422,7 +526,7 @@ int8_t construct_expr_ast(char *line, struct Token tokens[], usize ntokens, stru
     // if (!is_balanced(tokens, ntokens))
     //     return -1;
     
-    // if (create_fnmasks(
+    // if (mk_fnmask_tokens(
     //     masked_tokens, 512, &masked_tokens_ctr,
     //     tokens, ntokens,
     //     masks, 32, &masks_ctr) == -1)
@@ -434,7 +538,7 @@ int8_t construct_expr_ast(char *line, struct Token tokens[], usize ntokens, stru
     // else if (is_data(tokens[0].type)) {}
     // else if (tokens[0].type == DOT) {}
 
-    // if (create_fnmasks(
+    // if (mk_fnmask_tokens(
     //     masked_tokens, 512, &masked_tokens_ctr,
     //     tokens, ntokens,
     //     masks, 32, &masks_ctr) == -1)

@@ -50,9 +50,13 @@ typedef enum BinOp {
     Lt,
     GtEq,
     LtEq,
+
     /* appendage */
     And,
-    Or
+    Or,
+    
+    /* dot operator */
+    Access
 } BinOp;
 
 struct String { 
@@ -125,5 +129,26 @@ struct Expr {
     } inner;
 };
 
+int mk_fnmask_tokens(
+    struct Token *output[],
+    usize output_sz,
+    usize *output_ctr,
+
+    struct Token input[],
+    usize expr_size,
+
+    struct Token masks[],
+    usize masks_sz,
+    usize *masks_ctr,
+    struct CompileTimeError *err
+);
+
+int8_t postfix_expr(
+    struct Token *tokens[],
+    usize expr_size,
+    struct Token *output[],
+    usize output_sz,
+    usize *output_ctr
+);
 
 #endif
