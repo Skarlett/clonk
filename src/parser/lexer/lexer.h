@@ -210,13 +210,12 @@ enum Lexicon {
 
         `end` correlates to the ending position of the token instead the token array.
         The position is directly indexable against its source (tokens[]).
-    
 */
-typedef struct Token {
+struct Token {
     usize start;
     usize end;
     enum Lexicon type;
-} Token;
+};
 
 int8_t tokenize(
     char *line,
