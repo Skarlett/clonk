@@ -2,6 +2,7 @@
 INCL  = 
 SRC   = src/prelude.c \
 		src/parser/lexer/lexer.c \
+		src/parser/lexer/debug.c \
 		src/parser/lexer/helpers.c \
 		src/parser/expr/expr.c \
 		src/parser/expr/debug.c \
@@ -9,10 +10,11 @@ SRC   = src/prelude.c \
 		src/parser/synthetize.c
 
 TESTS = tests/CuTest.c \
-		tests/lexer_tests.c \
-		tests/lexer_helpers.c \
 		tests/common.c \
-		tests/expr_tests.c
+		tests/lexer/lexer_tests.c \
+		tests/lexer/lexer_helpers.c \
+		tests/expr/fnmask.c \
+		tests/expr/postfix.c 
 
 OBJ	= $(SRC:.c=.o)
 LIBS =
