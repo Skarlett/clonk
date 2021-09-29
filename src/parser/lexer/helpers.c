@@ -3,32 +3,32 @@
 
 #define BRACE_BUFFER_SZ 256
 
-int8_t is_close_brace(enum Lexicon token) {
+static inline int8_t is_close_brace(enum Lexicon token) {
     return (token == PARAM_CLOSE 
     || token == BRACE_CLOSE  
     || token == BRACKET_CLOSE);
 }
 
-int8_t is_open_brace(enum Lexicon token) {
+static inline int8_t is_open_brace(enum Lexicon token) {
     return (token == PARAM_OPEN 
     || token == BRACE_OPEN  
     || token == BRACKET_OPEN);
 }
 
-int8_t is_data(enum Lexicon token) {
+static inline int8_t is_data(enum Lexicon token) {
     return (token == WORD
         || token == INTEGER 
         || token == STRING_LITERAL
     );
 }
 
-int8_t is_fncall(struct Token tokens[], usize ntokens) {
+static inline int8_t is_fncall(struct Token tokens[], usize ntokens) {
     return ntokens > 1 
         && tokens[0].type == WORD 
         || tokens[1].type == PARAM_OPEN;
 }
 
-int8_t is_cmp_operator(enum Lexicon token) {
+static inline int8_t is_cmp_operator(enum Lexicon token) {
     return (
         token == ISEQL
         || token == ISNEQL  
@@ -39,7 +39,7 @@ int8_t is_cmp_operator(enum Lexicon token) {
     );
 }
 
-int8_t is_assignment_operator(enum Lexicon token) {
+static inline int8_t is_assignment_operator(enum Lexicon token) {
     return (
         token == EQUAL
         || token == MINUSEQ
@@ -49,7 +49,7 @@ int8_t is_assignment_operator(enum Lexicon token) {
 /*
     returns bool if token is a binary operator
 */
-int8_t is_bin_operator(enum Lexicon token) {
+static inline int8_t is_bin_operator(enum Lexicon token) {
     return (token == ISEQL
         || token == ISNEQL 
         || token == GTEQ 
@@ -70,7 +70,7 @@ int8_t is_bin_operator(enum Lexicon token) {
 }
 
 /* is character utf encoded */
-int8_t is_utf(char ch) {
+static inline int8_t is_utf(char ch) {
     return ((unsigned char)ch >= 0x80);
 }
 
@@ -80,7 +80,7 @@ int8_t is_utf(char ch) {
        input:"(" - outputs:")"
        input:"]" - output:"["
 */
-enum Lexicon invert_brace_tok_ty(enum Lexicon token) {
+static inline enum Lexicon invert_brace_tok_ty(enum Lexicon token) {
     switch (token) {
         case PARAM_OPEN: return PARAM_CLOSE;
         case PARAM_CLOSE: return PARAM_OPEN;
@@ -172,7 +172,7 @@ int8_t is_balanced_by_ref(struct Token *tokens[], usize ntokens) {
     return braces_ctr == 0;
 }
 
-int8_t is_keyword(enum Lexicon token) {
+static inline int8_t is_keyword(enum Lexicon token) {
     static enum Lexicon keywords[10] = {
         STATIC, CONST, RETURN, EXTERN, 
         AS, IF, ELSE, FUNC_DEF, IMPORT, IMPL
@@ -184,4 +184,8 @@ int8_t is_keyword(enum Lexicon token) {
     }
     
     return 0;
+}
+
+static inline int8_t is_num_negative(const char * source, struct Token *token) {
+    return token->type == INTEGER && *(source + token->start) == '-';
 }
