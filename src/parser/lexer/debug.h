@@ -21,4 +21,11 @@ int8_t sprintf_token_slice_by_ref(
     usize output_sz    
 );
 
+int8_t sprintf_lexicon_slice(
+    enum Lexicon tokens[],
+    usize ntokens,
+    char * output,
+    usize output_sz    
+);
+
 #endif
