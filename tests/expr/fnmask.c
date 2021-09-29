@@ -478,11 +478,11 @@ void __test__fnmasks_with_application(CuTest* tc) {
     usize masks_ctr = 0;
     usize output_ctr = 0;
 
-    static char *source = "foo().length + 1\0";
+    static char *source = "foo().length + 1";
 
     CuAssertTrue(tc, tokenize(source, input, &input_sz, NULL) == 0);
 
-    CuAssertTrue(tc, input_sz == 26);
+    CuAssertTrue(tc, input_sz == 7);
 
     CuAssertTrue(tc,
         mk_fnmask_tokens(
@@ -499,7 +499,8 @@ void __test__fnmasks_with_application(CuTest* tc) {
     );
 
     CuAssertTrue(tc, masks_ctr == 1);
-    CuAssertTrue(tc, output_ctr == 3);
+    CuAssertTrue(tc, output_ctr == 5);
+
     CuAssertTrue(tc, output[0]->type == FNMASK);
     CuAssertTrue(tc, output[0]->start == 0);
     CuAssertTrue(tc, output[0]->end == 2);
@@ -539,7 +540,7 @@ CuSuite* FnMaskUnitTestSuite(void) {
     SUITE_ADD_TEST(suite, __test__fnmasks_with_unbalanced_parthesis_left_of_args);
     SUITE_ADD_TEST(suite, __test__fnmasks_with_unbalanced_parthesis_right_of_args);
 
-    //SUITE_ADD_TEST(suite, __test__fnmasks_with_application);
+    SUITE_ADD_TEST(suite, __test__fnmasks_with_application);
 
     return suite;
 }
