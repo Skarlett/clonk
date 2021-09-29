@@ -94,9 +94,7 @@ enum Associativity {
       "( [ {"   : 0 non-assoc
 */
 int8_t op_precedence(enum Lexicon token) {
-    if (token == PARAM_CLOSE 
-        || token == BRACE_CLOSE 
-        || token == BRACKET_CLOSE)
+    if (is_close_brace(token))
         return END_PRECEDENCE;
     
     if (token == DOT || token == COMMA)
@@ -124,9 +122,7 @@ int8_t op_precedence(enum Lexicon token) {
         || token == OR)
         return 2;
     
-    else if (token == PARAM_OPEN 
-        || token == BRACE_OPEN  
-        || token == BRACKET_OPEN )
+    else if (is_open_brace(token))
         return 0;
     
     return -1;
@@ -378,17 +374,18 @@ int8_t postfix_expr(
     usize expr_size,
     struct Token *output[],
     usize output_sz,
-    usize *output_ctr
+    usize *output_ctr,
+    struct CompileTimeError *err
 ){
     struct Token *hdlr = NULL;
     int8_t hdlr_precedence = 0;
 
     struct Token *operators[_OP_SZ];
     int8_t operators_ctr = 0, j;
-
     int8_t precedense = 0;
 
     *output_ctr = 0;
+
 
     for (usize i = 0; expr_size > i; i++)
     {
@@ -404,6 +401,10 @@ int8_t postfix_expr(
             continue;
         }
 
+        // else if(tokens[i]->type == FNMASK) {
+
+        // }
+
         else if (is_bin_operator(tokens[i]->type))
         {
             precedense = op_precedence(tokens[i]->type);
@@ -413,8 +414,8 @@ int8_t postfix_expr(
                 return -1;
 
             /*
-            no operators in operators-stack, 
-            so no extra checks needed
+                no operators in operators-stack, 
+                so no extra checks needed
             */
             else if (operators_ctr == 0) { 
                 operators[0] = tokens[i];
@@ -423,9 +424,9 @@ int8_t postfix_expr(
             }
 
             /*
-            if the head of the operator stack is an open brace
-            we don't need to do anymore checks
-            before placing the operator
+                if the head of the operator stack is an open brace
+                we don't need to do anymore checks
+                before placing the operator
             */
             else if (is_open_brace(operators[operators_ctr-1]->type)) {
                 operators[operators_ctr] = tokens[i];
@@ -433,8 +434,8 @@ int8_t postfix_expr(
                 continue;
             }
             
-            for (j=0; operators_ctr >= j; j++) {
-                hdlr = operators[operators_ctr - j];
+            for (j=0; operators_ctr > j; j++) {
+                hdlr = operators[(operators_ctr - 1) - j || 0];
                 hdlr_precedence = op_precedence(hdlr->type);
 
                 // pop operator off the operator-stack
@@ -451,7 +452,8 @@ int8_t postfix_expr(
                     // we can break the loop
                     operators_ctr -= j;
                     operators[operators_ctr] = tokens[i];
-                    break;
+                    operators_ctr += 1;
+                    continue;;
                 }
             }
         }
@@ -501,13 +503,16 @@ int8_t postfix_expr(
     /*
         dump the remaining operators onto the output
     */
-    for (j = 0; operators_ctr >= j; j++)
+    for (j = 0; operators_ctr > j; j++)
     {
-        /*any remaining params/brackets/braces are unclosed if reached here*/
-        if (is_open_brace(operators[operators_ctr - j]->type) == END_PRECEDENCE)
+        /*
+            any remaining params/brackets/braces are unclosed
+            indiciate invalid expressions    
+        */
+        if (is_open_brace(operators[(operators_ctr-1) - j || 0]->type) == END_PRECEDENCE)
             return -1;
         
-        output[*output_ctr] = operators[operators_ctr - j];
+        output[*output_ctr] = operators[(operators_ctr-1) - j || 0];
         *output_ctr += 1;
     }
     return 0;
@@ -557,4 +562,5 @@ int8_t construct_expr_ast(char *line, struct Token tokens[], usize ntokens, stru
     // }
 
     /*todo: create expr tree*/
+    return 0;
 }
