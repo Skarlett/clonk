@@ -394,6 +394,23 @@ void __test__correct_tokenization(CuTest* tc)
         memset(msg, 0, 64);
     }
 }
+void __test__num_is_negative(CuTest* tc) {
+    usize ntokens=0;
+    struct Token tokens[32];
+
+    CuAssertTrue(tc, tokenize("-1234", tokens, &ntokens, NULL) == 0);
+    CuAssertTrue(tc, ntokens == 1);
+
+    CuAssertTrue(tc, tokenize("1234 - 1234", tokens, &ntokens, NULL) == 0);
+    CuAssertTrue(tc, ntokens == 3);
+
+    CuAssertTrue(tc, tokenize("1234- -1234", tokens, &ntokens, NULL) == 0);
+    CuAssertTrue(tc, ntokens == 3);
+
+    CuAssertTrue(tc, tokenize("-1234--1234", tokens, &ntokens, NULL) == 0);
+    CuAssertTrue(tc, ntokens == 3);
+    
+}
 
 CuSuite* LexerUnitTestSuite(void) {
 	CuSuite* suite = CuSuiteNew();
@@ -407,6 +424,9 @@ CuSuite* LexerUnitTestSuite(void) {
 	SUITE_ADD_TEST(suite, __test__collapse_string);
     SUITE_ADD_TEST(suite, __test__collapse_word);
     SUITE_ADD_TEST(suite, __test__collapse_operator);
+    SUITE_ADD_TEST(suite, __test__num_is_negative);
+    
+
     SUITE_ADD_TEST(suite, __test__basic_perthensis);
     SUITE_ADD_TEST(suite, __test__derive_keywords);
 
