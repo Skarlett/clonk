@@ -1,65 +1,7 @@
 #include "lexer.h"
 #include "../../prelude.h"
+
 #define BRACE_BUFFER_SZ 256
-
-const char * ptoken(enum Lexicon t) {
-    switch (t) {
-        case INTEGER: return "integer";
-        case WORD: return "word";
-        case CHAR: return "char";
-        case NULLTOKEN: return "nulltoken";
-        case WHITESPACE: return "whitespace";
-        case NEWLINE: return "newline";
-        case BRACE_OPEN: return "brace_open";
-        case BRACE_CLOSE: return "brace_close";
-        case PARAM_OPEN: return "param_open";
-        case PARAM_CLOSE: return "param_close";
-        case COMMA: return "comma";
-        case DIGIT: return "digit";
-        case QUOTE: return "quote";
-        case EQUAL: return "eq";
-        case ADD: return "add";
-        case MUL: return "multiply";
-        case DIV: return "divide";
-        case GT: return "greater than";
-        case LT: return "less than";
-        case ISEQL: return "is eq";
-        case ISNEQL: return "not eq";
-        case GTEQ: return "greater than or eq";
-        case LTEQ: return "less than or eq";
-        case POW: return "exponent";
-        case PLUSEQ: return "plus eq";
-        case MINUSEQ: return "minus eq";
-        case MOD: return "modolus";
-        case SUB: return "sub";
-        case COLON: return "colon";
-        case SEMICOLON: return "semi-colon";
-        case STRING_LITERAL: return "str_literal";
-        case AMPER: return "&";
-        case PIPE: return "pipe";
-        case AND: return "and";
-        case OR: return "or";
-        case UNDERSCORE: return "underscore";
-        case NOT: return "not";
-        case POUND: return "pound";
-        case STATIC: return "'static'";
-        case CONST: return "'const'";
-        case IF: return "'if";
-        case ELSE: return "'else'";
-        case IMPL: return "'impl'";
-        case FUNC_DEF: return "'def'";
-        case FNMASK: return "fn_call(..)";
-        case RETURN: return "'return'";
-        case AS: return "'as'";
-        case ATSYM: return "@";
-        case IMPORT: return "'import'";
-        case EXTERN: return "'extern'";
-        case COMMENT: return "comment";
-        case UNDEFINED: return "undef";
-        default: return "PTOKEN_ERROR_UNKNOWN_TOKEN";
-    };
-}
-
 
 int8_t is_close_brace(enum Lexicon token) {
     return (token == PARAM_CLOSE 
@@ -86,51 +28,59 @@ int8_t is_fncall(struct Token tokens[], usize ntokens) {
         || tokens[1].type == PARAM_OPEN;
 }
 
-int8_t is_cmp_operator(enum Lexicon compound_token) {
+int8_t is_cmp_operator(enum Lexicon token) {
     return (
-        compound_token == ISEQL
-        || compound_token == ISNEQL  
-        || compound_token == GTEQ 
-        || compound_token == LTEQ
-        || compound_token == AND
-        || compound_token == OR
+        token == ISEQL
+        || token == ISNEQL  
+        || token == GTEQ 
+        || token == LTEQ
+        || token == AND
+        || token == OR
     );
 }
 
-int8_t is_assignment_operator(enum Lexicon compound_token) {
+int8_t is_assignment_operator(enum Lexicon token) {
     return (
-        compound_token == EQUAL
-        || compound_token == MINUSEQ
-        || compound_token == PLUSEQ
+        token == EQUAL
+        || token == MINUSEQ
+        || token == PLUSEQ
+    );
+}
+/*
+    returns bool if token is a binary operator
+*/
+int8_t is_bin_operator(enum Lexicon token) {
+    return (token == ISEQL
+        || token == ISNEQL 
+        || token == GTEQ 
+        || token == LTEQ
+        || token == AND
+        || token == OR
+        || token == GT
+        || token == LT
+        || token == ADD
+        || token == SUB
+        || token == MUL
+        || token == POW
+        || token == NOT
+        || token == MOD
+        || token == DIV
+        || token == DOT
     );
 }
 
-// is this token a binary operator?
-int8_t is_bin_operator(enum Lexicon compound_token) {
-    return (compound_token == ISEQL
-        || compound_token == ISNEQL 
-        || compound_token == GTEQ 
-        || compound_token == LTEQ
-        || compound_token == AND
-        || compound_token == OR
-        || compound_token == GT
-        || compound_token == LT
-        || compound_token == ADD
-        || compound_token == SUB
-        || compound_token == MUL
-        || compound_token == POW
-        || compound_token == NOT
-        || compound_token == MOD
-        || compound_token == DIV
-    );
-}
-
-
+/* is character utf encoded */
 int8_t is_utf(char ch) {
     return ((unsigned char)ch >= 0x80);
 }
 
-enum Lexicon invert_brace_type(enum Lexicon token) {
+/*
+    Inverts brace characters into their counter parts.
+    example
+       input:"(" - outputs:")"
+       input:"]" - output:"["
+*/
+enum Lexicon invert_brace_tok_ty(enum Lexicon token) {
     switch (token) {
         case PARAM_OPEN: return PARAM_CLOSE;
         case PARAM_CLOSE: return PARAM_OPEN;
@@ -147,7 +97,7 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
     enum Lexicon inverted;
 
     if (is_close_brace(current)) {
-        inverted = invert_brace_type(current);
+        inverted = invert_brace_tok_ty(current);
 
         if (inverted == -1)
             return -1;
