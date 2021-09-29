@@ -148,7 +148,8 @@ int8_t postfix_expr(
     usize expr_size,
     struct Token *output[],
     usize output_sz,
-    usize *output_ctr
+    usize *output_ctr,
+    struct CompileTimeError *err
 );
 
 #endif
