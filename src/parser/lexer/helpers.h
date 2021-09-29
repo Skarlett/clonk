@@ -6,7 +6,7 @@
 #include "lexer.h"
 
 const char * ptoken(enum Lexicon t);
-enum Lexicon invert_brace_type(enum Lexicon token);
+enum Lexicon invert_brace_tok_ty(enum Lexicon token);
 
 int8_t is_fncall(struct Token tokens[], usize ntokens);
 int8_t is_cmp_operator(enum Lexicon compound_token);
