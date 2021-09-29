@@ -146,7 +146,7 @@ inline int8_t binop_from_token(enum Lexicon t){
 /*            symbols & values                */
 /* ------------------------------------------ */
 
-int symbol_from_token(const char *line, struct Token token, struct Symbol *value) {
+//int symbol_from_token(const char *line, struct Token token, struct Symbol *value) {
 //     if (token.token == WORD) {
 //         // Variable *var = xmalloc(sizeof(Variable));
 //         value->tag = VariableTag;
@@ -182,4 +182,4 @@ int symbol_from_token(const char *line, struct Token token, struct Symbol *value
 //         return -1;
     
 //     return 0;
-}
+//}
