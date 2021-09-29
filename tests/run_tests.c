@@ -2,9 +2,11 @@
 
 #include "CuTest.h"
 
+
 CuSuite* LexerUnitTestSuite();
-CuSuite* ExprUnitTestSuite();
 CuSuite* LexerHelpersUnitTestSuite();
+CuSuite* FnMaskUnitTestSuite();
+CuSuite* PostFixUnitTestSuite();
 
 void RunAllTests(void)
 {
@@ -13,7 +15,8 @@ void RunAllTests(void)
 
 	CuSuiteAddSuite(suite, LexerUnitTestSuite());
 	CuSuiteAddSuite(suite, LexerHelpersUnitTestSuite());
-	CuSuiteAddSuite(suite, ExprUnitTestSuite());
+	CuSuiteAddSuite(suite, FnMaskUnitTestSuite());
+	CuSuiteAddSuite(suite, PostFixUnitTestSuite());
 
 	CuSuiteRun(suite);
 	CuSuiteSummary(suite, output);
