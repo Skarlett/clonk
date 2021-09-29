@@ -62,8 +62,10 @@ const char * ptoken(enum Lexicon t) {
 
 
 
-int8_t __sprintf_token_slice(char *output, usize output_sz, const char *ptok, usize *ctr) {
+int8_t __sprintf_token_ty_slice(char *output, usize output_sz, enum Lexicon token, usize *ctr) {
     char token_buf[24];
+    const char *ptok = ptoken(token);
+
     sprintf(token_buf, "[%s], ", ptok);
         
     strncpy(
@@ -71,6 +73,7 @@ int8_t __sprintf_token_slice(char *output, usize output_sz, const char *ptok, us
         token_buf,
         strlen(ptok) + 4
     );
+
     *ctr += strlen(ptok) + 4;
     if (*ctr > output_sz)
         return -1;
@@ -84,17 +87,49 @@ int8_t sprintf_token_slice(
     char * output,
     usize output_sz    
 ){
-    const char *ptok;
     char token_buf[32];
-    usize ctr=0, tmp=0;
+    usize ctr=0;
 
     output[0] = '[';
 
     for (usize i=0; ntokens > i; i++) {
-        ptok = ptoken(tokens[i].type);
-        
-        if (__sprintf_token_slice(output+1, output_sz, ptok, &ctr) == -1)
-            return -1;
+        if (__sprintf_token_ty_slice(
+                output+1,
+                output_sz,
+                tokens[i].type,
+                &ctr
+            ) == -1
+        ) return -1;
+    }
+
+    if (output_sz > strlen(output)+2) {
+        output[strlen(output)] = ']';
+        output[strlen(output)+1] = 0;
+        return -1;
+    }
+    
+    return 0;
+}
+
+int8_t sprintf_lexicon_slice(
+    enum Lexicon tokens[],
+    usize ntokens,
+    char * output,
+    usize output_sz    
+){
+    char token_buf[32];
+    usize ctr=0;
+
+    output[0] = '[';
+
+    for (usize i=0; ntokens > i; i++) {
+        if (__sprintf_token_ty_slice(
+                output+1,
+                output_sz,
+                tokens[i],
+                &ctr
+            ) == -1
+        ) return -1;
     }
 
     if (output_sz > strlen(output)+2) {
@@ -112,17 +147,18 @@ int8_t sprintf_token_slice_by_ref(
     char * output,
     usize output_sz    
 ){
-    const char *ptok;
     char token_buf[32];
-    usize ctr=0, tmp=0;
-
+    usize ctr=0;
     output[0] = '[';
 
-    for (usize i=0; ntokens > i; i++) {
-        ptok = ptoken(tokens[i]->type);
-        
-        if (__sprintf_token_slice(output+1, output_sz, ptok, &ctr) == -1)
-            return -1;
+    for (usize i=0; ntokens > i; i++) {        
+        if (__sprintf_token_ty_slice(
+                output+1,
+                output_sz-1,
+                tokens[i]->type,
+                &ctr
+            ) == -1
+        ) return -1;
     }
 
     if (output_sz > strlen(output)+2) {
