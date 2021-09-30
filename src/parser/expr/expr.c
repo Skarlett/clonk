@@ -82,6 +82,15 @@ enum Associativity {
     LASSOC
 };
 
+enum Associativity get_assoc(enum Lexicon token) {
+    switch(token) {
+        case POW:
+            return RASSOC;
+        default:
+            return LASSOC;
+    }
+}
+
 /*
     precendense table:
       ") ] }"   : 127 non-assoc
@@ -90,7 +99,7 @@ enum Associativity {
       "+ -"     : 4 L
       "!= == >= > <= < && ||": 3 L
       "!"       : 2 L
-      ", ."     : 1
+      ", ."     : 1 L
       "( [ {"   : 0 non-assoc
 */
 int8_t op_precedence(enum Lexicon token) {
@@ -377,8 +386,8 @@ int8_t postfix_expr(
     usize *output_ctr,
     struct CompileTimeError *err
 ){
-    struct Token *hdlr = NULL;
-    int8_t hdlr_precedence = 0;
+    struct Token *head = NULL;
+    int8_t head_precedense = 0;
 
     struct Token *operators[_OP_SZ];
     int8_t operators_ctr = 0, j;
@@ -408,7 +417,7 @@ int8_t postfix_expr(
         else if (is_bin_operator(tokens[i]->type))
         {
             precedense = op_precedence(tokens[i]->type);
-            
+
             /* unrecongized token */
             if (precedense == -1)
                 return -1;
@@ -423,39 +432,57 @@ int8_t postfix_expr(
                 continue;
             }
 
+            /* Grab the head of the operators-stack */
+            head = operators[operators_ctr-1];
+            head_precedense = op_precedence(head->type);
             /*
                 if the head of the operator stack is an open brace
                 we don't need to do anymore checks
                 before placing the operator
             */
-            else if (is_open_brace(operators[operators_ctr-1]->type)) {
+            if (is_open_brace(head->type)) {
                 operators[operators_ctr] = tokens[i];
                 operators_ctr += 1;
                 continue;
             }
             
-            for (j=0; operators_ctr > j; j++) {
-                hdlr = operators[(operators_ctr - 1) - j || 0];
-                hdlr_precedence = op_precedence(hdlr->type);
+            //else if (head_precedense > precedense)
+            // head_precedense = o2
+            // precedense = o1
+            while(op_precedence(head->type) >= precedense)
+            {
 
-                // pop operator off the operator-stack
-                // place into output
-                if (hdlr_precedence > precedense)
+                if (head_precedense > precedense)
                 {
-                    output[*output_ctr] = hdlr;
+                    output[*output_ctr] = head;
                     *output_ctr += 1;
                 }
-                // place operator in operator-stack
-                else if (precedense >= hdlr_precedence)
+
+                /* test asscotation */
+                else if (precedense == head_precedense)
                 {
-                    // once we've placed the operator
-                    // we can break the loop
-                    operators_ctr -= j;
-                    operators[operators_ctr] = tokens[i];
-                    operators_ctr += 1;
-                    continue;;
+                    if (get_assoc(tokens[i]->type) == LASSOC)
+                    {
+                        output[*output_ctr] = head;
+                        *output_ctr += 1;
+                    }
                 }
+
+                operators_ctr -= 1;
+                if (operators_ctr <= 0)
+                    break;
+                head = operators[operators_ctr-1];
             }
+
+            operators[operators_ctr] = tokens[i];
+            operators_ctr += 1;
+
+            /*
+                Place operator in the operator stack,
+                and remove lower precedense operators from it,
+                where they'll be placed into the output.
+            */
+           
         }
         else if (is_close_brace(tokens[i]->type))
         {
@@ -469,20 +496,23 @@ int8_t postfix_expr(
                 continue;
             }
 
+            // should be atleast one operator in the stack
+            if (operators_ctr <= 0)
+                return -1;
+            
             /* pop operators off of the operator-stack into the output */
-            for (j=0; operators_ctr >= j; j++) {
-
+            for (j=operators_ctr; 0 > j; j--) {
                 /* Grab the head of the stack */
-                hdlr = operators[operators_ctr - j];
+                head = operators[j-1];
 
-                /* ends if tokens opposite brace is found*/
-                if (hdlr->type == invert_brace_tok_ty(tokens[i]->type)) {
-                    operators_ctr -= j + 1;
+                /* ends if tokens inverted brace is found*/
+                if (head->type == invert_brace_tok_ty(tokens[i]->type)) {
+                    operators_ctr -= j;
                     break;
                 }
                 /* otherwise pop into output */
                 else {
-                    output[*output_ctr] = hdlr;
+                    output[*output_ctr] = head;
                     *output_ctr += 1;
                 }
             }
@@ -503,16 +533,16 @@ int8_t postfix_expr(
     /*
         dump the remaining operators onto the output
     */
-    for (j = 0; operators_ctr > j; j++)
+    for (j = operators_ctr; j > 0; j--)
     {
         /*
             any remaining params/brackets/braces are unclosed
             indiciate invalid expressions    
         */
-        if (is_open_brace(operators[(operators_ctr-1) - j || 0]->type) == END_PRECEDENCE)
+        if (is_open_brace(operators[j-1]->type) == END_PRECEDENCE)
             return -1;
         
-        output[*output_ctr] = operators[(operators_ctr-1) - j || 0];
+        output[*output_ctr] = operators[j-1];
         *output_ctr += 1;
     }
     return 0;
