@@ -56,16 +56,19 @@ const char * ptoken(enum Lexicon t) {
         case EXTERN: return "'extern'";
         case COMMENT: return "comment";
         case UNDEFINED: return "undef";
+        case DOT: return "dot";
         default: return "PTOKEN_ERROR_UNKNOWN_TOKEN";
     };
 }
 
-
-
 int8_t __sprintf_token_ty_slice(char *output, usize output_sz, enum Lexicon token, usize *ctr) {
-    char token_buf[24];
-    const char *ptok = ptoken(token);
+    char token_buf[64];
+    const char *ptok;
 
+    if (!ctr || !output)
+        return -1;
+    
+    ptok = ptoken(token);
     sprintf(token_buf, "[%s], ", ptok);
         
     strncpy(
@@ -87,9 +90,11 @@ int8_t sprintf_token_slice(
     char * output,
     usize output_sz    
 ){
-    char token_buf[32];
     usize ctr=0;
-
+    
+    if (!tokens || !output)
+        return -1;
+    
     output[0] = '[';
 
     for (usize i=0; ntokens > i; i++) {
@@ -117,7 +122,9 @@ int8_t sprintf_lexicon_slice(
     char * output,
     usize output_sz    
 ){
-    char token_buf[32];
+    if (!tokens || !output)
+        return -1;
+    
     usize ctr=0;
 
     output[0] = '[';
@@ -147,7 +154,9 @@ int8_t sprintf_token_slice_by_ref(
     char * output,
     usize output_sz    
 ){
-    char token_buf[32];
+    if (!output || !tokens)
+        return -1;
+
     usize ctr=0;
     output[0] = '[';
 
@@ -162,10 +171,26 @@ int8_t sprintf_token_slice_by_ref(
     }
 
     if (output_sz > strlen(output)+2) {
-        output[strlen(output)] = ']';
-        output[strlen(output)+1] = 0;
         return -1;
     }
+    output[strlen(output)] = ']';
+    output[strlen(output)+1] = 0;
     
+    return 0;
+}
+
+int8_t sprint_src_code(char * output, usize output_sz, const char * source, struct Token *token) {
+    if (!source 
+        || !output 
+        || !token 
+        || token->end - token->start > output_sz
+    ) return -1;
+    
+    strncpy(
+        output,
+        source+token->start,
+        token->end-token->start
+    );
+
     return 0;
 }

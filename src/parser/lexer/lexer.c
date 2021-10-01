@@ -369,6 +369,7 @@ int8_t tokenize(
         tokens[new_tokens] = token;
         new_tokens += 1;
     }
+    // add to counter
     *token_ctr += new_tokens;
     return 0;
 }
