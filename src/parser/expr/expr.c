@@ -450,6 +450,9 @@ int8_t postfix_expr(
             // precedense = o1
             while(op_precedence(head->type) >= precedense && operators_ctr > 0)
             {
+                if (is_open_brace(head->type))
+                    break;
+                
                 if (head_precedense > precedense)
                 {
                     output[*output_ctr] = head;
@@ -469,6 +472,7 @@ int8_t postfix_expr(
                 operators_ctr -= 1;
                 if (operators_ctr <= 0)
                     break;
+                
                 head = operators[operators_ctr-1];
             }
 
@@ -480,7 +484,6 @@ int8_t postfix_expr(
                 and remove lower precedense operators from it,
                 where they'll be placed into the output.
             */
-           
         }
         else if (is_close_brace(tokens[i]->type))
         {
