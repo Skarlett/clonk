@@ -390,7 +390,7 @@ int8_t postfix_expr(
     int8_t head_precedense = 0;
 
     struct Token *operators[_OP_SZ];
-    int8_t operators_ctr = 0, j;
+    int8_t operators_ctr = 0;
     int8_t precedense = 0;
 
     *output_ctr = 0;
@@ -446,12 +446,10 @@ int8_t postfix_expr(
                 continue;
             }
             
-            //else if (head_precedense > precedense)
             // head_precedense = o2
             // precedense = o1
-            while(op_precedence(head->type) >= precedense)
+            while(op_precedence(head->type) >= precedense && operators_ctr > 0)
             {
-
                 if (head_precedense > precedense)
                 {
                     output[*output_ctr] = head;
@@ -467,7 +465,7 @@ int8_t postfix_expr(
                         *output_ctr += 1;
                     }
                 }
-
+                
                 operators_ctr -= 1;
                 if (operators_ctr <= 0)
                     break;
@@ -487,33 +485,32 @@ int8_t postfix_expr(
         else if (is_close_brace(tokens[i]->type))
         {
             /* Operators stack is empty */
-            if (operators_ctr == 0) {
+            if (operators_ctr == 0)
                 return -1;
-            }
-
+            
             /* Last operator in the operator-stack was the inverted brace */
-            else if (operators[operators_ctr - 1]->type == invert_brace_tok_ty(tokens[i]->type)) {
+            else if (operators[operators_ctr - 1]->type == invert_brace_tok_ty(tokens[i]->type))
                 continue;
-            }
-
-            // should be atleast one operator in the stack
+            
+            /* should be atleast one operator in the stack */
             if (operators_ctr <= 0)
                 return -1;
             
             /* pop operators off of the operator-stack into the output */
-            for (j=operators_ctr; 0 > j; j--) {
+            while(operators_ctr > 0) {
                 /* Grab the head of the stack */
-                head = operators[j-1];
+                head = operators[operators_ctr-1];
 
                 /* ends if tokens inverted brace is found*/
                 if (head->type == invert_brace_tok_ty(tokens[i]->type)) {
-                    operators_ctr -= j;
+                    operators_ctr -= 1;
                     break;
                 }
                 /* otherwise pop into output */
                 else {
                     output[*output_ctr] = head;
                     *output_ctr += 1;
+                    operators_ctr -= 1;                
                 }
             }
         }
@@ -533,18 +530,21 @@ int8_t postfix_expr(
     /*
         dump the remaining operators onto the output
     */
-    for (j = operators_ctr; j > 0; j--)
+    while(operators_ctr > 0)
     {
         /*
             any remaining params/brackets/braces are unclosed
             indiciate invalid expressions    
         */
-        if (is_open_brace(operators[j-1]->type) == END_PRECEDENCE)
+        if (is_open_brace(operators[operators_ctr-1]->type) == END_PRECEDENCE)
             return -1;
         
-        output[*output_ctr] = operators[j-1];
+        output[*output_ctr] = operators[operators_ctr-1];
+        
         *output_ctr += 1;
+        operators_ctr -= 1;
     }
+
     return 0;
 }
 
