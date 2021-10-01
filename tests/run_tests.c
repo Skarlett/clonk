@@ -1,7 +1,5 @@
 #include <stdio.h>
-
 #include "CuTest.h"
-
 
 CuSuite* LexerUnitTestSuite();
 CuSuite* LexerHelpersUnitTestSuite();
