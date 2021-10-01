@@ -279,7 +279,7 @@ void __test__fnmasks_multi_empty(CuTest* tc) {
 }
 
 void __test__fnmasks_multi_with_args(CuTest* tc) {
-      struct Token input[64],
+    struct Token input[64],
         masks[4],
         *output[16];
     

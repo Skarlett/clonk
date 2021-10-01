@@ -4,6 +4,7 @@
 #include "../CuTest.h"
 #include "../../src/prelude.h"
 #include "../../src/parser/lexer/lexer.h"
+#include "../../src/parser/lexer/debug.h"
 #include "../../src/parser/lexer/helpers.h"
 #include "../../src/parser/error.h"
 #include "../common.h"
@@ -394,21 +395,26 @@ void __test__correct_tokenization(CuTest* tc)
         memset(msg, 0, 64);
     }
 }
-void __test__num_is_negative(CuTest* tc) {
+void __test__negative_num_var(CuTest* tc) {
     usize ntokens=0;
     struct Token tokens[32];
+    enum Lexicon answer[3] = {INTEGER, SUB, INTEGER};
 
     CuAssertTrue(tc, tokenize("-1234", tokens, &ntokens, NULL) == 0);
     CuAssertTrue(tc, ntokens == 1);
+    AssertTokens(tc, "", tokens, answer, 1);
 
     CuAssertTrue(tc, tokenize("1234 - 1234", tokens, &ntokens, NULL) == 0);
     CuAssertTrue(tc, ntokens == 3);
+    AssertTokens(tc, "", tokens, answer, 3);
 
     CuAssertTrue(tc, tokenize("1234- -1234", tokens, &ntokens, NULL) == 0);
     CuAssertTrue(tc, ntokens == 3);
+    AssertTokens(tc, "", tokens, answer, 3);
 
     CuAssertTrue(tc, tokenize("-1234--1234", tokens, &ntokens, NULL) == 0);
     CuAssertTrue(tc, ntokens == 3);
+    AssertTokens(tc, "", tokens, answer, 3);
     
 }
 
@@ -417,6 +423,7 @@ CuSuite* LexerUnitTestSuite(void) {
 	SUITE_ADD_TEST(suite, __test__fails_on_utf);
     SUITE_ADD_TEST(suite, __test__collapse_integer);
     SUITE_ADD_TEST(suite, __test__num_var);
+    SUITE_ADD_TEST(suite, __test__negative_num_var);
     SUITE_ADD_TEST(suite, __test__fails_on_partial_string);
     SUITE_ADD_TEST(suite, __test__oversized_bin_ops);
 	SUITE_ADD_TEST(suite, __test__destroy_whitespace);
@@ -424,7 +431,6 @@ CuSuite* LexerUnitTestSuite(void) {
 	SUITE_ADD_TEST(suite, __test__collapse_string);
     SUITE_ADD_TEST(suite, __test__collapse_word);
     SUITE_ADD_TEST(suite, __test__collapse_operator);
-    SUITE_ADD_TEST(suite, __test__num_is_negative);
     
 
     SUITE_ADD_TEST(suite, __test__basic_perthensis);
