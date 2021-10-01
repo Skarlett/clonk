@@ -36,7 +36,6 @@ void __test__simple_order_precedence(CuTest* tc) {
         "1 + 2",
         "1 + 3 * 4",
         "1 / 2 + 2",
-        "(a - 2) * 3",
         "a + b - c * d",
         "1 * 2 + 3",
         "1 + 2 * 3",
@@ -48,25 +47,66 @@ void __test__simple_order_precedence(CuTest* tc) {
     static enum Lexicon check_list[][16] = {
         {INTEGER, INTEGER, ADD},
         {INTEGER, INTEGER, INTEGER, MUL, ADD},
-        {INTEGER, INTEGER, INTEGER, DIV, ADD},
-        {WORD, INTEGER, SUB, INTEGER, INTEGER, MUL},
-        {WORD, WORD, WORD, WORD, MUL, ADD, SUB},
+        {INTEGER, INTEGER, DIV, INTEGER, ADD},
+        {WORD, WORD, ADD, WORD, WORD, MUL, SUB},
         {INTEGER, INTEGER, MUL, INTEGER, ADD},
-        {INTEGER, INTEGER, MUL, INTEGER, ADD},
+        {INTEGER, INTEGER, INTEGER, MUL, ADD},
 
     };
 
-    for (usize i=0; 8 > i; i++) {
+    for (usize i=0; 6 > i; i++) {
         ntokens=0;
         CuAssertTrue(tc, tokenize(line[i], tokens, &ntokens, NULL) == 0);
         CuAssertTrue(tc, into_ref_array(tokens, queue, ntokens, 32) == 0);
 
         sprintf(msg, "failed on index %ld", i);
 
-        CuAssertTrue(tc, postfix_expr(queue, ntokens, output, 32, &nout, NULL) == 0);        
-        CuAssert(tc, msg, __check_tokens_by_ref(output, check_list[i], nout));
+        CuAssertTrue(tc, postfix_expr(queue, ntokens, output, 32, &nout, NULL) == 0);  
+        
+        AssertTokensByRef(tc, msg, output, check_list[i], nout);
     }
 }
+
+void __test__order_precedence(CuTest* tc) {
+    usize ntokens=0, nqueue=0, nout = 0;
+    struct Token tokens[32],
+        *queue[32],
+        *output[32];
+    
+    static char * line[] = {
+        "(1 + 2)",
+        "(1 + 3) * 4",
+        "1 / (2 + 2)",
+        "a + (b - c) * d",
+        "1 * (2 + 3)",
+        "(1 + 2) * 3",
+        0
+    };
+    
+    char msg[64]; 
+
+    static enum Lexicon check_list[][16] = {
+        {INTEGER, INTEGER, ADD},
+        {INTEGER, INTEGER, ADD, INTEGER, MUL},
+        {INTEGER, INTEGER, INTEGER, ADD, DIV},
+        {WORD, WORD, WORD, SUB, WORD, MUL, ADD},
+        {INTEGER, INTEGER, INTEGER, ADD, MUL},
+        {INTEGER, INTEGER, ADD, INTEGER, MUL},
+    };
+
+    for (usize i=0; 6 > i; i++) {
+        ntokens=0;
+        CuAssertTrue(tc, tokenize(line[i], tokens, &ntokens, NULL) == 0);
+        CuAssertTrue(tc, into_ref_array(tokens, queue, ntokens, 32) == 0);
+
+        sprintf(msg, "failed on index %ld", i);
+
+        CuAssertTrue(tc, postfix_expr(queue, ntokens, output, 32, &nout, NULL) == 0);  
+        
+        AssertTokensByRef(tc, msg, output, check_list[i], nout);
+    }
+}
+
 
 // void __test__order_precedence_left_assoc(CuTest* tc) {
 //     usize ntokens=0, nqueue=0;
@@ -151,8 +191,8 @@ void __test__simple_order_precedence(CuTest* tc) {
 void __test__apply_op(CuTest* tc) {
     usize ntokens=0, nout=0;
     char msg[128];
-    static enum Lexicon answer[] = {WORD, WORD, WORD, DOT, DOT};
-    static char * words[] = {"first", "middle", "last", ".", ".", 0};    
+    static enum Lexicon answer[] = {WORD, WORD, DOT, WORD, DOT};
+    static char * words[] = {"first", "middle", ".", "last", ".", 0};    
     struct Token tokens[32],
         *queue[32],
         *output[32];
@@ -162,21 +202,9 @@ void __test__apply_op(CuTest* tc) {
     CuAssertTrue(tc, ntokens == 5);
 
     into_ref_array(tokens, queue, ntokens, 32);
-
     CuAssertTrue(tc, postfix_expr(queue, ntokens, output, 32, &nout, NULL) == 0);
+    AssertTokensByRef(tc, "", output, answer, 5);
     CuAssertTrue(tc, nout == 5);
-
-    for (usize i=0; nout > i; i++) {
-        //sprintf(msg, "expected '%s' got '%s'", )
-        CuAssertTrue(tc, output[i]->type == answer[i]);
-        
-        
-        CuAssertTrue(tc, strncmp(
-            line + output[i]->start,
-            words[i],
-            output[i]->end - queue[i]->start
-        ) == 0);
-    }
 }
 
 // void __test__order_precedense_with_fncall(CuTest* tc) {
@@ -199,5 +227,7 @@ CuSuite* PostFixUnitTestSuite(void) {
     
     SUITE_ADD_TEST(suite, __test__apply_op);
     SUITE_ADD_TEST(suite, __test__simple_order_precedence);
+    SUITE_ADD_TEST(suite, __test__order_precedence);
+
     return suite;
 }
