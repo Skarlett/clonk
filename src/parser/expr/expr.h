@@ -133,26 +133,36 @@ struct Expr {
 };
 
 
+/*
+    This represents the second stage of parsing function calls.
+    the attribute `token` should always be an FNMASK token.
+    
+    The amount of arguments the function 
+    call was made with is represented with `argc`.
+
+    When sorting order precedence, 
+    the amount of arguments each 
+    function call expects is lost.
+
+    This information is used to recover that after 
+    we've sorted our precedence.
+*/
 struct FnCall {
     struct Token token;
-    uint8_t argc;
+    uint16_t argc;
+    uint16_t id;
 };
 
-
-int mk_fnmask_tokens(
-    struct Token *output[],
-    usize output_sz,
-    usize *output_ctr,
-
+int8_t mk_fnmask_tokens(
     struct Token input[],
     usize expr_size,
 
     struct Token masks[],
     usize masks_sz,
     usize *masks_ctr,
+  
     struct CompileTimeError *err
 );
-
 
 int8_t postfix_expr(
     struct Token *tokens[],

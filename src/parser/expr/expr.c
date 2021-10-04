@@ -197,7 +197,35 @@ int8_t create_token_stream(
     return 0;
 }
 
-int8_t mk_fn_tokens(
+/*
+    This is the first stage of parsing function calls.
+
+    During this stage, we will create new 
+    tokens based off of our current token stream.
+    These new tokens will be of the type FNMASK.
+
+    FNMASK tokens attributes `start` and `end` 
+    are directly indexible against their source.
+
+    The `start` attribute will point at the WORD 
+    token starting the function. example: `foo();` 
+    the attribute `start` will point at `"foo"` token.
+
+    The `en` attribute will point at the PARAM_CLOSE 
+    token end the function. example: `foo();` 
+    the attribute `end` will point at `")"` token.
+
+    The creation of FNMASK tokens should not mutate its source (`input`).
+    
+    the amount of FNMASKS created will be placed inside
+    of `masks_ctr`
+    
+    `mask_ctr` will be initalized to 0 before  its used 
+    internally in this function.
+
+    Function returns 0 for OK and -1 for error.
+*/
+int8_t mk_fnmask_tokens(
     struct Token input[],
     usize expr_size,
 
@@ -268,7 +296,6 @@ int8_t mk_fn_tokens(
         masks[*masks_ctr].start = starts_at;
         masks[*masks_ctr].end = starts_at+span;
         masks[*masks_ctr].type = FNMASK; 
-
     }
 
     return 0;
@@ -291,7 +318,7 @@ int8_t fncall_get_argc(
         && src[target_mask->start+1].type == PARAM_CLOSE)
         return 0;
     
-    else if (mk_fn_tokens(
+    else if (mk_fnmask_tokens(
         &src[target_mask->start],
         target_mask->end - target_mask->start,
         masks,
@@ -317,31 +344,76 @@ int8_t fncall_get_argc(
     return 0;
 }
 
-
-int8_t mk_fn_call_single(
+int8_t fnmask(
     struct Token input[],
     struct Token *parent_mask,
+    struct FnCall output[],
+    usize *output_ctr,
     struct CompileTimeError *err
-) {
-    struct Token children_masks[32];
+){
+    struct Token masks[32];
     
-    /* you could say they're cousins! */
-    struct Token secondhand_children[32];
-    // second hand children counter
-    usize shc_ctr = 0; 
-
-    if (mk_fn_tokens(
-            &input[parent_mask->start],
-            parent_mask->end - parent_mask->start,
-            secondhand_children,
-            32,
-            &shc_ctr,
-            err
-        ) == -1
+    usize masks_len=0,
+          masks_ctr=0,
+          comma_ctr=0,
+          i;
+    
+    if (parent_mask->type != FNMASK)
+        return -1;
+    
+    /* If function's parameters is empty, return 0*/
+    else if (parent_mask->start+1 == parent_mask->end
+        && input[parent_mask->start+1].type == PARAM_CLOSE)
+    {
+        output[*output_ctr].argc = 0;
+        memcpy(
+            &output[*output_ctr].token,
+            parent_mask,
+            sizeof(struct Token)
+        );
+        *output_ctr += 1;
+        return 0;
+    }
+    
+    /* generate makes and fill in masks array */
+    else if (mk_fnmask_tokens(
+        &input[parent_mask->start],
+        parent_mask->end - parent_mask->start,
+        masks,
+        32,
+        &masks_len,
+        err) == -1
     ) return -1;
 
-    for (usize i=0; shc_ctr > i; i++)
-        mk_fn_call_single(input, )
+    for (i=parent_mask->start+1; parent_mask->end+1 > i; i++) {
+        if (masks_ctr > masks_len) break;
+        
+        /* skip ahead of functions */
+        else if (masks[masks_ctr].start == i && masks_len > masks_ctr){
+            i += masks[masks_ctr].end - masks[masks_ctr].start;
+            masks_ctr += 1;
+        }
+
+        else if (input[i].type == COMMA)
+            comma_ctr += 1;
+    }
+    
+    if (comma_ctr == 0)
+        output[*output_ctr].argc = 1;
+    else
+        output[*output_ctr].argc = comma_ctr + 1;
+    
+    memcpy(
+        &output[*output_ctr].token,
+        parent_mask,
+        sizeof(struct Token)
+    );
+    
+    *output_ctr += 1;
+
+    for (i=0; masks_len > i; i++) {
+        fnmask(input, &masks[i], output, output_ctr, err);
+    }
 
     return 0;
 }
@@ -356,18 +428,17 @@ int8_t mk_fncalls(
     struct Token masks[256];
     usize masks_ctr = 0;
 
-    mk_fn_tokens(
+    mk_fnmask_tokens(
         input,
         ninput,
         masks,
-
+    
         256,
         &masks_ctr,
         err
     );
 
     
-
     return 0;
 }
 
@@ -477,32 +548,50 @@ int8_t mk_composite_tokens(
 */
 
 
+#define STACK_SZ 128
 #define _OP_SZ 128
-#define _WK_BUF_SZ 64
+
+
 int8_t postfix_expr(
     struct Token *tokens[],
     usize expr_size,
     struct Token *output[],
     usize output_sz,
     usize *output_ctr,
-    struct Token fnmasks[],
+    struct FnCall fnmasks[],
     usize fnmasks_sz,
     struct CompileTimeError *err
 ){
     struct Token *head = NULL;
     int8_t head_precedense = 0;
 
-    struct Token *operators[_OP_SZ];
+    struct Token *operators[STACK_SZ];
+
     int8_t operators_ctr = 0;
     int8_t precedense = 0;
     uint8_t mask_ctr = 0;
 
     *output_ctr = 0;
 
+    uint8_t sz_stack[STACK_SZ];
+    uint8_t sz_stack_ctr = 0;
+
+
     for (usize i = 0; expr_size > i; i++)
     {
-        /* if the token is data (value/variable in the source code),
-        // place it directly into our stack */
+        /*
+            If the token is the start of a function
+        */
+        if(tokens[i+1]->type == PARAM_OPEN && tokens[i]->type == WORD) {
+            sz_stack_ctr += 1;
+            sz_stack[sz_stack_ctr] = 0;
+            sz_stack[sz_stack_ctr] += 1;
+        }
+
+        /*
+            if the token is data (value/variable in the source code),
+            place it directly into our stack
+        */
         if (is_data(tokens[i]->type))
         {
             if (*output_ctr >= output_sz)
@@ -512,10 +601,10 @@ int8_t postfix_expr(
             *output_ctr += 1;
             continue;
         }
-        // else if (tokens[i])
-        // else if(tokens[i]->type == FNMASK) {
 
-        // }
+        else if (tokens[i]->type == COMMA) {
+            sz_stack[sz_stack_ctr] += 1;
+        }
 
         else if (is_bin_operator(tokens[i]->type))
         {
@@ -538,6 +627,7 @@ int8_t postfix_expr(
             /* Grab the head of the operators-stack */
             head = operators[operators_ctr-1];
             head_precedense = op_precedence(head->type);
+            
             /*
                 if the head of the operator stack is an open brace
                 we don't need to do anymore checks
@@ -549,8 +639,12 @@ int8_t postfix_expr(
                 continue;
             }
             
-            // head_precedense = o2
-            // precedense = o1
+            /*
+                while operator1 (current token) is less than 
+                operators2 (head of stack) precedence,
+                pop operators from
+                the operator-stack onto the output
+            */
             while(op_precedence(head->type) >= precedense && operators_ctr > 0)
             {
                 if (is_open_brace(head->type))
@@ -562,7 +656,10 @@ int8_t postfix_expr(
                     *output_ctr += 1;
                 }
 
-                /* test asscotation */
+                /* 
+                    If left associated, push equal
+                    precedence operators onto the output 
+                */
                 else if (precedense == head_precedense)
                 {
                     if (get_assoc(tokens[i]->type) == LASSOC)
@@ -581,13 +678,8 @@ int8_t postfix_expr(
 
             operators[operators_ctr] = tokens[i];
             operators_ctr += 1;
-
-            /*
-                Place operator in the operator stack,
-                and remove lower precedense operators from it,
-                where they'll be placed into the output.
-            */
         }
+
         else if (is_close_brace(tokens[i]->type))
         {
             /* Operators stack is empty */
@@ -622,6 +714,11 @@ int8_t postfix_expr(
         }
         else if (is_open_brace(tokens[i]->type))
         {
+            sz_stack_ctr += 1;
+            sz_stack[sz_stack_ctr] = 0;
+
+            //sz_stack[sz_stack_ctr] += 1;
+
             operators[operators_ctr] = tokens[i];
             operators_ctr += 1;
         }

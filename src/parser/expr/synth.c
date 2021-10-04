@@ -6,7 +6,7 @@
 
 int8_t simple_validate_postfix(struct Token *tokens[], usize ntokens){
     // if more than one operand - then n-1 operators will be
-    
+
     uint8_t operands = 0,
             operators = 0;
     
@@ -21,7 +21,6 @@ int8_t simple_validate_postfix(struct Token *tokens[], usize ntokens){
 
     }
     
-    
 
 }
 
@@ -29,7 +28,7 @@ int8_t simple_validate_postfix(struct Token *tokens[], usize ntokens){
 /*
     https://stackoverflow.com/a/789867/5249205
 */
-int8_t ctr_validate_postfix(struct Token *tokens[], usize ntokens) {
+int8_t ctr_validate_postfix(struct Token tokens[], usize ntokens, masks) {
     isize ctr=0;
 
     for (usize i=0; ntokens > i; i++) {
@@ -38,19 +37,18 @@ int8_t ctr_validate_postfix(struct Token *tokens[], usize ntokens) {
         }
         else if (is_bin_operator(tokens[i]->type)) {
             ctr -= 2;
+            if (ctr > 0) return 0;
             ctr += 1;
         }
-
-        //else if (tokens[i]->type == FNMASK )
-
-        if (ctr > 0)
-            return 0;
+        else if ()
     }
 
     return ctr == 1;
 }
 
-int8_t is_valid_postfix(struct Token *tokens[], usize ntokens) {}
+int8_t is_valid_postfix(struct Token *tokens[], usize ntokens) {
+
+}
 
 
 
