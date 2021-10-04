@@ -107,6 +107,48 @@ void __test__order_precedence(CuTest* tc) {
     }
 }
 
+/*
+        TODO
+*/
+void __test__order_precedence_not(CuTest* tc) {
+    usize ntokens=0, nqueue=0, nout = 0;
+    struct Token tokens[32],
+        *queue[32],
+        *output[32];
+    
+    static char * line[] = {
+        "((1 + 2))",
+        "(1 + 3) * 4",
+        "1 / (2 + 2)",
+        "a + (b - c) * d",
+        "1 * (2 + 3)",
+        "(1 + 2) * 3",
+        0
+    };
+    
+    char msg[64]; 
+
+    static enum Lexicon check_list[][16] = {
+        {INTEGER, INTEGER, ADD},
+        {INTEGER, INTEGER, ADD, INTEGER, MUL},
+        {INTEGER, INTEGER, INTEGER, ADD, DIV},
+        {WORD, WORD, WORD, SUB, WORD, MUL, ADD},
+        {INTEGER, INTEGER, INTEGER, ADD, MUL},
+        {INTEGER, INTEGER, ADD, INTEGER, MUL},
+    };
+
+    for (usize i=0; 6 > i; i++) {
+        ntokens=0;
+        CuAssertTrue(tc, tokenize(line[i], tokens, &ntokens, NULL) == 0);
+        CuAssertTrue(tc, into_ref_array(tokens, queue, ntokens, 32) == 0);
+
+        sprintf(msg, "failed on index %ld", i);
+
+        CuAssertTrue(tc, postfix_expr(queue, ntokens, output, 32, &nout, NULL) == 0);  
+        
+        AssertTokensByRef(tc, msg, output, check_list[i], nout);
+    }
+}
 
 // void __test__order_precedence_left_assoc(CuTest* tc) {
 //     usize ntokens=0, nqueue=0;

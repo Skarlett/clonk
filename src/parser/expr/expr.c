@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <time.h>
 
@@ -94,20 +95,22 @@ enum Associativity get_assoc(enum Lexicon token) {
 /*
     precendense table:
       ") ] }"   : 127 non-assoc
+      "."     : 126 L
+      
+    
       "^"       : 6 R (1 ^ 2 ^ 3) -> (1 ^ (2 ^ 3))
       "/ * %"   : 5 L  (4 / 2 * 2) -> ((4 / 2) * 2)
       "+ -"     : 4 L
       "!= == >= > <= < && ||": 3 L
       "!"       : 2 L
-      ", ."     : 1 L
       "( [ {"   : 0 non-assoc
 */
 int8_t op_precedence(enum Lexicon token) {
     if (is_close_brace(token))
         return END_PRECEDENCE;
     
-    if (token == DOT || token == COMMA)
-        return 1;
+    if (token == DOT)
+        return 126;
     
     else if (token == POW)
         return 6;
@@ -136,7 +139,6 @@ int8_t op_precedence(enum Lexicon token) {
     
     return -1;
 }
-
 /*
     creates a duplicate version of `input[]`, 
     but replaces sequences of tokens which represent a function call
@@ -159,11 +161,43 @@ int8_t op_precedence(enum Lexicon token) {
     `start` will correlate to the index of `input[]` where it originates from.
     `end` will correlate to the index of `input[]` where it originates from.
 */
-int mk_fnmask_tokens(
+
+/* Replicate `*src`, but replace slices of tokens with `FNMASK` tokens */
+int8_t create_token_stream(
     struct Token *output[],
     usize output_sz,
     usize *output_ctr,
+    
+    struct Token input[],
+    usize ninput,
 
+    struct Token masks[],
+    usize nmasks
+) {
+    usize masks_ctr = 0;
+
+    for (usize i=0; ninput > i; i++) {
+        if (masks[masks_ctr].start == i) {
+            
+            output[*output_ctr] = &masks[masks_ctr];
+            
+            i += masks[masks_ctr].end - masks[masks_ctr].start;
+            
+            masks_ctr += 1;
+            *output_ctr += 1;
+        }
+        
+        output[*output_ctr] = &input[i]; 
+        *output_ctr += 1;
+
+        if (*output_ctr > output_sz)
+            return -1; 
+    }
+
+    return 0;
+}
+
+int8_t mk_fn_tokens(
     struct Token input[],
     usize expr_size,
 
@@ -178,7 +212,6 @@ int mk_fnmask_tokens(
         starts_at = 0,
         span = 0;
     
-    *output_ctr = 0;
     *masks_ctr = 0;
     
     for (usize i=0; expr_size > i; i++)
@@ -196,17 +229,14 @@ int mk_fnmask_tokens(
             {
                 // we've successfully minted a new FNMASK token
 
-                if ((*masks_ctr)+1 >= masks_sz || (*output_ctr)+1 >= output_sz)
+                if ((*masks_ctr)+1 >= masks_sz)
                     return -1;
                 
                 masks[*masks_ctr].start = starts_at;
                 masks[*masks_ctr].end = starts_at+span;
                 masks[*masks_ctr].type = FNMASK; 
 
-                output[*output_ctr] = &masks[*masks_ctr];
-
                 *masks_ctr += 1;
-                *output_ctr += 1;
 
                 starts_at=0;
                 making_mask=0;
@@ -221,12 +251,7 @@ int mk_fnmask_tokens(
             starts_at=i;
             making_mask=1;
         }
-        else if (making_mask==0 && parathesis_ctr == 0 && starts_at == 0)
-        {
-            output[*output_ctr] = &input[i];
-            *output_ctr += 1;
-        }
-        else
+        else if (making_mask)
         {
             span += 1;
             continue;
@@ -236,19 +261,117 @@ int mk_fnmask_tokens(
     /* loop ended before token could be stored */
     if (starts_at || making_mask || span) {
         
-        if ((*masks_ctr)+1 >= masks_sz || (*output_ctr)+1 >= output_sz)
+        if ((*masks_ctr)+1 >= masks_sz)
             /* buffer overflow */
             return -1;
             
         masks[*masks_ctr].start = starts_at;
         masks[*masks_ctr].end = starts_at+span;
         masks[*masks_ctr].type = FNMASK; 
-        output[*output_ctr] = &masks[*masks_ctr];
 
     }
 
     return 0;
 }
+
+int8_t fncall_get_argc(
+    uint8_t *param_ctr,
+    struct Token *target_mask,
+    struct Token src[],
+    struct CompileTimeError *err
+){
+    struct Token masks[32];
+    usize masks_len=0,
+          masks_ctr=0;
+    
+    if (target_mask->type != FNMASK)
+        return -1;
+    
+    else if (target_mask->start+1 == target_mask->end
+        && src[target_mask->start+1].type == PARAM_CLOSE)
+        return 0;
+    
+    else if (mk_fn_tokens(
+        &src[target_mask->start],
+        target_mask->end - target_mask->start,
+        masks,
+        32,
+        &masks_len,
+        err) == -1
+    ) return -1;
+
+    for (usize i=target_mask->start+1; target_mask->end+1 > i; i++) {
+        /* skip ahead of functions */
+        if (masks[masks_ctr].start == i && masks_len > masks_ctr){
+            i += masks[masks_ctr].end - masks[masks_ctr].start;
+            masks_ctr += 1;
+        }
+
+        else if (src[i].type == COMMA)
+            *param_ctr += 1;
+
+        if (*param_ctr > 255)
+            return -1;
+    }
+
+    return 0;
+}
+
+
+int8_t mk_fn_call_single(
+    struct Token input[],
+    struct Token *parent_mask,
+    struct CompileTimeError *err
+) {
+    struct Token children_masks[32];
+    
+    /* you could say they're cousins! */
+    struct Token secondhand_children[32];
+    // second hand children counter
+    usize shc_ctr = 0; 
+
+    if (mk_fn_tokens(
+            &input[parent_mask->start],
+            parent_mask->end - parent_mask->start,
+            secondhand_children,
+            32,
+            &shc_ctr,
+            err
+        ) == -1
+    ) return -1;
+
+    for (usize i=0; shc_ctr > i; i++)
+        mk_fn_call_single(input, )
+
+    return 0;
+}
+
+int8_t mk_fncalls(
+    struct FnCall output[],
+    struct Token input[],
+    usize ninput,
+    struct CompileTimeError *err    
+) {
+
+    struct Token masks[256];
+    usize masks_ctr = 0;
+
+    mk_fn_tokens(
+        input,
+        ninput,
+        masks,
+
+        256,
+        &masks_ctr,
+        err
+    );
+
+    
+
+    return 0;
+}
+
+
 /*
     composite masks are a similar concept to the FNMASK, except consider the following.
     `"foo().length" will not parse `[FNMASK, DOT, WORD]`
@@ -351,39 +474,19 @@ int8_t mk_composite_tokens(
     this converts function calls into a single token for
     ordering precendence
 
-
-  1st) pop operators off of the operator-stack 
-       until the popped operator's precedense is equal
-       than our current operator
-                
-  2nd) Check right/left association on the operator
-       If Right: based off the precedence of the current operator pop the remaining
-       equally valued operators from the operator-stack
-                   
-       If Left: Do nothing.
-
-  3rd) place current operator and restore 
-       previous operators to the
-       operator-stack as they were ordered
-                
-        If our current precedense is higher, then
-        pop operators off the stack until the previous
-        operations equal/less than our current precedense,
-        OR the LAST precedense is 0. afterwards
-        we insert our current token into operators stack. 
-        finally, we push all of the operators we popped off 
-        in **reverse** order.
 */
+
 
 #define _OP_SZ 128
 #define _WK_BUF_SZ 64
-
 int8_t postfix_expr(
     struct Token *tokens[],
     usize expr_size,
     struct Token *output[],
     usize output_sz,
     usize *output_ctr,
+    struct Token fnmasks[],
+    usize fnmasks_sz,
     struct CompileTimeError *err
 ){
     struct Token *head = NULL;
@@ -392,15 +495,15 @@ int8_t postfix_expr(
     struct Token *operators[_OP_SZ];
     int8_t operators_ctr = 0;
     int8_t precedense = 0;
+    uint8_t mask_ctr = 0;
 
     *output_ctr = 0;
-
 
     for (usize i = 0; expr_size > i; i++)
     {
         /* if the token is data (value/variable in the source code),
         // place it directly into our stack */
-        if (is_data(tokens[i]->type) || tokens[i]->type == FNMASK)
+        if (is_data(tokens[i]->type))
         {
             if (*output_ctr >= output_sz)
                 return -1;
@@ -409,7 +512,7 @@ int8_t postfix_expr(
             *output_ctr += 1;
             continue;
         }
-
+        // else if (tokens[i])
         // else if(tokens[i]->type == FNMASK) {
 
         // }

@@ -4,8 +4,9 @@
 
 #include <stdint.h>
 #include "../../prelude.h"
+#include "../lexer/lexer.h"
 
-typedef enum ExprType {
+enum ExprType {
     UndefinedExprT,
     
     // variable names
@@ -31,11 +32,12 @@ typedef enum ExprType {
     // binary operation
     // 1 + 2 * foo.max - size_of(list)
     BinaryExprT
-} ExprType;
 
-typedef enum BinOp {
+};
+
+enum Operation {
     /* no operation */
-    BinOpNop,
+    Nop,
     /* math */
     Add,
     Sub,
@@ -51,13 +53,14 @@ typedef enum BinOp {
     GtEq,
     LtEq,
 
-    /* appendage */
     And,
     Or,
+    Not,
     
     /* dot operator */
-    Access
-} BinOp;
+    Access,
+
+};
 
 struct String { 
     usize capacity;
@@ -81,7 +84,7 @@ enum DataType {
     NullT
 };
 
-struct ConstData {
+struct Literals {
     enum DataType type;
     union {
         isize integer;
@@ -91,7 +94,7 @@ struct ConstData {
     } literal;
 };
 
-struct FnCall {
+struct FnCallNode {
     enum DataType returns;
     char * func_name; 
     uint8_t name_capacity;
@@ -101,17 +104,17 @@ struct FnCall {
     struct Expr * args;
 };
 
-/*
-    `head` should always contain a valid reference to an Expr
-    `tail` will contain a valid reference, or a null pointer
-*/
-struct LinkedExpr {
-    struct Expr *head;
-    struct Expr *tail;
-};
+// /*
+//     `head` should always contain a valid reference to an Expr
+//     `tail` will contain a valid reference, or a null pointer
+// */
+// struct LinkedExpr {
+//     struct Expr *head;
+//     struct Expr *tail;
+// };
 
-struct BinExpr {
-    enum BinOp op;
+struct BinExprNode {
+    enum Operation op;
     struct Expr *lhs;
     struct Expr *rhs;
     enum DataType returns;
@@ -123,11 +126,18 @@ struct Expr {
 
     union {
         char * symbol;
-        struct ConstData value;
-        struct FnCall fncall;
-        struct BinExpr bin;
+        struct Literals value;
+        struct FnCallNode fncall;
+        struct BinExprNode bin;
     } inner;
 };
+
+
+struct FnCall {
+    struct Token token;
+    uint8_t argc;
+};
+
 
 int mk_fnmask_tokens(
     struct Token *output[],
@@ -149,6 +159,8 @@ int8_t postfix_expr(
     struct Token *output[],
     usize output_sz,
     usize *output_ctr,
+    struct FnCall fn_map[],
+    usize fn_map_sz,
     struct CompileTimeError *err
 );
 
