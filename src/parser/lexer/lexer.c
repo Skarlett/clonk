@@ -325,6 +325,10 @@ int8_t tokenize(
             }
         }
         
+        /* 
+            if the token can be upgraded,
+            restart the loop. 
+        */
         if (can_upgrade_token(lexed)) {
             i--;
             continue;
@@ -351,9 +355,15 @@ int8_t tokenize(
     }
     
     /*
-       the source code (char *line) sometimes 
-       doesn't run into a condition to break a complex token's continuation,
-       so the for loop ends, before the complex token is stored.
+        the source code (char *line) sometimes 
+        doesn't run into a condition-branch
+        where it breaks a complex token's
+        continuation before the loop ends
+
+        so forth, if we we're minting a compound token
+        it was not stored. 
+        
+        This checks, and fixes it.
     */
     if (compound_token != UNDEFINED && compound_token != COMMENT)
     {

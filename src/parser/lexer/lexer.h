@@ -185,8 +185,10 @@ enum Lexicon {
         and should never been seen in the token stream
     */
     FNMASK,
-    COMPOSITE
 
+    COMPOSITE,
+
+    GROUPING
     
 };
 
