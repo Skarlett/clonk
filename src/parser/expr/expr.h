@@ -167,11 +167,19 @@ int8_t mk_fnmask_tokens(
 int8_t postfix_expr(
     struct Token *tokens[],
     usize expr_size,
+    
     struct Token *output[],
     usize output_sz,
     usize *output_ctr,
-    struct FnCall fn_map[],
-    usize fn_map_sz,
+    
+    struct Token grouping_tokens[],
+    uint8_t grouping_tokens_sz,
+    uint8_t *grouping_tokens_ctr,
+
+    struct Token *functions[],
+    uint8_t functions_sz,
+    uint8_t *functions_ctr,
+
     struct CompileTimeError *err
 );
 
