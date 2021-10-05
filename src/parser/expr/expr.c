@@ -570,17 +570,23 @@ int8_t postfix_expr(
 
     struct CompileTimeError *err
 ){
-    struct Token *head = NULL;
-    int8_t head_precedense = 0;
-
+    /* operator stack */
     struct Token *operators[STACK_SZ];
 
+    /*
+        operators stack pointer, always points 
+        to the next available index
+    */
     int8_t operators_ctr = 0;
-    int8_t precedense = 0;
-    int8_t is_func;
-    uint8_t mask_ctr = 0;
+  
+    /* head of the operator stack*/
+    struct Token *head = NULL;
+    
+    /* head of the operator stacks precedence*/
+    int8_t head_precedense = 0;
 
-    *output_ctr = 0;
+    /* current tokens precedence */
+    int8_t precedense = 0;
 
     /*
         keep track of the amount of sequal expressions
@@ -606,10 +612,10 @@ int8_t postfix_expr(
         {
             if (!expecting_operand)
                 return -1;
-            
-            expecting_operand = 0;
-            expecting_operator = 1;
 
+            /*
+                Our current token is a function name.
+            */
             if (tokens[i]->type == WORD 
                 && tokens[i+1]->type == PARAM_OPEN)
             {
@@ -619,17 +625,23 @@ int8_t postfix_expr(
                 if (*functions_ctr > functions_sz)
                     return -1;
                 
+                /* book keeping to remember functions */
                 functions[*functions_ctr] = tokens[i];
                 functions_ctr += 1;
 
                 if (operators_ctr > (int8_t)_OP_SZ)
                     return -1;
                 
+                /* place into operator stack */
                 operators[operators_ctr] = tokens[i];
                 operators_ctr += 1;
             }
             else
+            /* if not a function, place it into output */
             {
+                expecting_operand = 0;
+                expecting_operator = 1;
+                
                 if (*output_ctr >= output_sz)
                     return -1;
                 
@@ -639,7 +651,13 @@ int8_t postfix_expr(
             continue;
         }
 
+        /*
+            
+        */
         else if (tokens[i]->type == COMMA) {
+            if (grouping_ctr > STACK_SZ)
+                return -1;
+            
             grouping_stack[grouping_ctr] += 1;
             expecting_operand = 1;
             expecting_operator = 0;
@@ -671,7 +689,7 @@ int8_t postfix_expr(
 
             /* Grab the head of the operators-stack */
             head = operators[operators_ctr-1];
-            
+
             /*
                 if the head of the operator stack is an open brace
                 we don't need to do anymore checks
@@ -691,8 +709,6 @@ int8_t postfix_expr(
                 than our current token pop operators from
                 the operator-stack into the output
             */
-
-            /* sus */
             while(op_precedence(head->type) >= precedense && operators_ctr > 0)
             {
                 head_precedense = op_precedence(head->type);
@@ -701,10 +717,14 @@ int8_t postfix_expr(
                     break;
                 
                 /*
-                    
+                    pop operators off the stack
+                    into the output
                 */
                 if (head_precedense > precedense)
                 {
+                    if (*output_ctr > output_sz)
+                        return -1;
+                    
                     output[*output_ctr] = head;
                     *output_ctr += 1;
                 }
@@ -723,7 +743,8 @@ int8_t postfix_expr(
                         *output_ctr += 1;
                     }
                 }
-                
+
+                /* discard operator after placed in output */
                 operators_ctr -= 1;
                 if (operators_ctr <= 0)
                     break;
@@ -748,20 +769,6 @@ int8_t postfix_expr(
             /* should be atleast one operator in the stack */
             else if (operators_ctr <= 0)
                 return -1;
-            
-            /*
-
-            */
-            else if (grouping_stack[grouping_ctr] > 0) {
-                grouping_tokens[grouping_ctr].type = GROUPING;
-                grouping_tokens[grouping_ctr].start = 0;
-                grouping_tokens[grouping_ctr].end = grouping_stack[grouping_ctr] + 1;
-                
-                output[*output_ctr] = &grouping_tokens[grouping_ctr];
-                *output_ctr += 1;
-            }
-
-            grouping_ctr -= 1;
 
             /* pop operators off of the operator-stack into the output */
             while(operators_ctr > 0) {
@@ -770,30 +777,86 @@ int8_t postfix_expr(
 
                 /* ends if tokens inverted brace is found*/
                 if (head->type == invert_brace_tok_ty(tokens[i]->type)) {
+                    
+                    /* discard opening brace */
                     operators_ctr -= 1;
                     break;
                 }
                 /* otherwise pop into output */
-                else {
+                else {    
+                    if (*output_ctr > output_sz)
+                        return -1;
+                     
                     output[*output_ctr] = head;
                     *output_ctr += 1;
                     operators_ctr -= 1;                
                 }
             }
+
+            /* 
+                the top of the stack is a function,
+                push it onto the output, and discard
+                from the operator stack
+            */
+            
+            /*
+
+            */
+            if (grouping_stack[grouping_ctr] > 0) {
+
+                if (grouping_ctr > STACK_SZ)
+                    return -1;
+                
+                grouping_tokens[grouping_ctr].type = GROUPING;
+                grouping_tokens[grouping_ctr].start = 0;
+                grouping_tokens[grouping_ctr].end = grouping_stack[grouping_ctr] + 1;
+                
+                if (*output_ctr > output_sz)
+                    return -1;
+                
+                output[*output_ctr] = &grouping_tokens[grouping_ctr];
+                *output_ctr += 1;
+            }
+            grouping_ctr -= 1;
+            
+            /*
+                if the last operator on the stack is a function,
+                push the function into the output
+            */
+            if(operators_ctr > 0 && operators[operators_ctr-1]->type == WORD) {
+                
+                if (*output_ctr > output_sz)
+                    return -1;
+                
+                output[*output_ctr] = head;
+                *output_ctr += 1;
+                operators_ctr -= 1;
+            }
+
         }
+        /*
+            place opening brace on the operator stack,
+            inside the 
+        */
         else if (is_open_brace(tokens[i]->type))
         {
+            if (grouping_ctr > STACK_SZ)
+                return -1;
+
             grouping_ctr += 1;
             grouping_stack[grouping_ctr] = 0;
 
+            if (operators_ctr > (int8_t)_OP_SZ)
+                return -1;
+            
             operators[operators_ctr] = tokens[i];
             operators_ctr += 1;
         }
         else
         {
-        #ifdef DEBUG 
-            printf("debug: token fell through precedense [%s]\n", ptoken(tokens[i]->type));
-        #endif
+            #ifdef DEBUG 
+                printf("debug: token fell through precedense [%s]\n", ptoken(tokens[i]->type));
+            #endif
         }
     }
 
@@ -807,6 +870,9 @@ int8_t postfix_expr(
             indiciate invalid expressions    
         */
         if (is_open_brace(operators[operators_ctr-1]->type) == END_PRECEDENCE)
+            return -1;
+        
+        if (*output_ctr > output_sz)
             return -1;
         
         output[*output_ctr] = operators[operators_ctr-1];
