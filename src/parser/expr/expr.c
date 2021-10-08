@@ -226,14 +226,22 @@ int8_t postfix_expr(
 
     uint8_t index_colon_stack[STACK_SZ];
     uint8_t index_colon_stack_ctr = 0;
-
+    /* used for stack digging */
     usize _last_insert = 0;
+
+
+    /*
+        this is a stack array,
+        where each set/grouping has 
+        the number of its atomics accounted for here
+    */
+    uint16_t atomics_stack[STACK_SZ];
+    uint8_t atomics_ctr = 0;
 
     uint8_t expecting_operand = 1;
     uint8_t expecting_operator = 0;
 
     uint8_t hint_index_flag;
-
 
     for (usize i = 0; expr_size > i; i++)
     {
@@ -247,7 +255,6 @@ int8_t postfix_expr(
         
         else if (is_data(tokens[i]->type))
         {
-            
             if (!expecting_operand)
                 return -1;
 
@@ -277,9 +284,10 @@ int8_t postfix_expr(
             }
 
             /*
-                hint to our expr that this is an index access
+                hint to our expression parser
+                that this is an index access
             */
-            else if (tokens[i]->type == WORD && tokens[i+1]->type == BRACE_OPEN) {
+            else if (tokens[i]->type == WORD && tokens[i+1]->type == BRACKET_OPEN) {
                 if (bookkeeping->index_hints_ctr > bookkeeping->function_hints_sz)
                     return -1;
                 
@@ -296,6 +304,9 @@ int8_t postfix_expr(
                 output[*output_ctr] = tokens[i];
                 *output_ctr += 1;
             }
+
+            /* increment atomics counter */
+            atomics_stack[atomics_ctr] += 1;
             continue;
         }
 
@@ -401,34 +412,34 @@ int8_t postfix_expr(
                 The current token is the inverted brace 
                 type of the top of operator-stack.
             */
-            else if (
-                // NOTE/WARNING:    TODO
-                // this is being treated as 
-                //   **if it checks that there is a
-                //    value between two braces and fires if there is not **
-                // BUT THIS IS FALSE
-                // THIS WILL FIRE ON THE FOLLOWING
-                // () A() (A) (A, B, ..) [] A[] [A] [A, B, ..] 
-                
-                operators[operators_ctr - 1]->type == invert_brace_tok_ty(tokens[i]->type)
-            
-            
-            ) {
-                
-                /* overflow check */
-                if (bookkeeping->set_ctr > bookkeeping->sets_sz
-                    || grouping_stack_ctr > STACK_SZ)
-                        return -1;
+            else if (operators[operators_ctr - 1]->type == invert_brace_tok_ty(tokens[i]->type)) {
+                /* 
+                    if there is no atomics,
+                    then we know this is an empty nesting (set of 0 members/expressions)
+                    Empty nestings may be symbolic for functionality,
+                    so include a GROUP(0) token in the output.
+                */
+                if (atomics_stack[atomics_ctr] == 0) {
+                    /* overflow check */
+                    if (bookkeeping->set_ctr > bookkeeping->sets_sz
+                        || grouping_stack_ctr > STACK_SZ)
+                            return -1;
 
-                /* */
-                bookkeeping->sets[bookkeeping->set_ctr] = new_token(bookkeeping, GROUPING, tokens[i]->start, 0);
-                output[*output_ctr] = bookkeeping->sets[grouping_stack_ctr];
-                
-                *output_ctr += 1;
-                bookkeeping->set_ctr += 1;
-            
+                    /* Create GROUP(0) token, and reference in sets */
+                    bookkeeping->sets[bookkeeping->set_ctr] = new_token(bookkeeping, GROUPING, tokens[i]->start, 0);
+                    
+                    /* add it to output */
+                    output[*output_ctr] = bookkeeping->sets[grouping_stack_ctr];
+                    
+                    *output_ctr += 1;
+                    bookkeeping->set_ctr += 1;
+                }
+
+                /* discard opening brace token */
+                operators_ctr -= 1;
                 continue;
             }
+
             /* should be atleast one operator in the stack */
             else if (operators_ctr <= 0)
                 return -1;
@@ -446,10 +457,10 @@ int8_t postfix_expr(
                     break;
                 }
                 /* otherwise pop into output */
-                else {    
+                else {
                     if (*output_ctr > output_sz)
                         return -1;
-                     
+                    
                     output[*output_ctr] = head;
                     *output_ctr += 1;
                     operators_ctr -= 1;
@@ -460,75 +471,57 @@ int8_t postfix_expr(
             //  If enough hints are made,
             //  we can safely assume this is
             //  an index-access.
-            //  INDEX_ACCESS takes 4 arugments off the stack
-            //  'array, start, end, skip' in that order. 
-            //
-            //  output: WORD  INTEGER INTEGER INTEGER INDEX_ACCESS 
-            //          array start    end    skip    operator
             */
             if(grouping_stack[grouping_stack_ctr] == 0 
-                && head->type == BRACE_OPEN
+                && head->type == BRACKET_OPEN
                 && bookkeeping->index_hints_ctr > 0
-                && bookkeeping->index_hints[bookkeeping->index_hints_ctr-1] == head) {
-                    
-                    /* there shouldn't be more than 2 colons */
-                    if (index_colon_stack[index_colon_stack_ctr] > 2
-                        /* overflow check */
-                        || *output_ctr+2-index_colon_stack[index_colon_stack_ctr] > output_sz)
-                        return -1;
-                    
-                    /* 
-                        for every argument thats missing from A[N:N:N]
-                        fill in N as NULLTOKEN
-                    */
-                    for (uint8_t i=index_colon_stack[index_colon_stack_ctr]; 2 > i; i++) {
-                        bookkeeping->token_pool[bookkeeping->pool_i].type  = NULLTOKEN;
-                        bookkeeping->token_pool[bookkeeping->pool_i].start = 0;
-                        bookkeeping->token_pool[bookkeeping->pool_i].end   = 0;
-                        output[*output_ctr] = &bookkeeping->token_pool[bookkeeping->pool_i];
-                        
-                        bookkeeping->pool_i += 1;
-                        *output_ctr += 1;
-                    }
-
-                    bookkeeping->token_pool[bookkeeping->pool_i].type = INDEX_ACCESS;
-                    
-
-                    bookkeeping->sets[grouping_stack_ctr].type = INDEX_ACCESS;
-            
+                && bookkeeping->index_hints[bookkeeping->index_hints_ctr-1] == head)
+            {        
+                /* there shouldn't be more than 2 colons */
+                if (index_colon_stack[index_colon_stack_ctr] > 2
+                    /* overflow check */
+                    || *output_ctr+3-index_colon_stack[index_colon_stack_ctr] > output_sz)
+                    return -1;    
+                /* 
+                    for every argument thats missing from A[N:N:N]
+                    fill in N as NULLTOKEN
+                */
+                for (uint8_t i=index_colon_stack[index_colon_stack_ctr]; 2 > i; i++) {
+                    output[*output_ctr] = new_token(bookkeeping, NULLTOKEN, 0, 0);
+                    *output_ctr += 1;
+                }
+                output[*output_ctr] = new_token(bookkeeping, INDEX_ACCESS, 0, 0);
+                *output_ctr += 1;
             }
-            
-            
-            /* 
-                place a grouping token after 
-                all the appriotate operations
-                have been placed. 
-            */
-            if (bookkeeping->set_ctr > bookkeeping->sets_sz
-                || grouping_stack_ctr > STACK_SZ)
-                    return -1;
-            /* 
-                setup token from allocated pool
-                and build a grouping operator
-            */
-            bookkeeping->token_pool[bookkeeping->pool_i].type = GROUPING;
-            
-            /* using `start` as a position cordinate to determine the brace type */
-            bookkeeping->token_pool[bookkeeping->pool_i].start = head->start;
-            
-            /* using `end` to signify how many values to pull from the stack */
-            bookkeeping->token_pool[bookkeeping->pool_i].end = grouping_stack[grouping_stack_ctr] + 1;
-
-            /* reference new token from pool into groups and output*/
-            bookkeeping->sets[bookkeeping->set_ctr] = &bookkeeping->token_pool[bookkeeping->pool_i];
-
-            bookkeeping->set_ctr += 1;
-            
-            
-            /* place grouping operator on the output */
-            //output[*output_ctr] = bookkeeping->sets[grouping_stack_ctr];
-            //*output_ctr += 1;
-    
+            else
+            {
+                /* 
+                    place a grouping token after 
+                    all the appriotate operations
+                    have been placed. 
+                */
+                if (bookkeeping->set_ctr > bookkeeping->sets_sz
+                    || grouping_stack_ctr > STACK_SZ)
+                        return -1;
+                /* 
+                    setup token from allocated pool
+                    and build a grouping operator
+                */            
+                /* using `start` as a position cordinate to determine the brace type */
+                /* using `end` to signify how many values to pull from the stack */
+                /* reference new token from pool into groups and output*/
+                bookkeeping->sets[bookkeeping->set_ctr] = new_token(
+                    bookkeeping,
+                    GROUPING,
+                    head->start,
+                    grouping_stack[grouping_stack_ctr] + 1
+                );
+                bookkeeping->set_ctr += 1;
+                
+                /* place grouping operator on the output */
+                output[*output_ctr] = bookkeeping->sets[grouping_stack_ctr];
+                *output_ctr += 1;
+            }
 
             /* discard opening brace from operator stack */
             operators_ctr -= 1;
@@ -536,6 +529,9 @@ int8_t postfix_expr(
             /* discard the groups sub-expression count. */
             grouping_stack_ctr -= 1;
             
+            /* discard atomics count */
+            atomics_ctr -= 1;
+
             /* 
                 if the top of the operator-stack is a function,
                 push it onto the output, and discard
@@ -562,6 +558,7 @@ int8_t postfix_expr(
             /* overflow check */
             if (grouping_stack_ctr > STACK_SZ 
                 || index_colon_stack_ctr > STACK_SZ
+                || atomics_ctr > STACK_SZ
                 || operators_ctr > (int8_t)_OP_SZ)
                 return -1;
 
@@ -570,33 +567,39 @@ int8_t postfix_expr(
             grouping_stack[grouping_stack_ctr] = 0;
              
             /* increment colon stack counter*/
-            index_colon_stack[index_colon_stack_ctr] = 0;
             index_colon_stack_ctr += 1;
+            index_colon_stack[index_colon_stack_ctr] = 0;
+
+            /* increment colon stack counter*/
+            atomics_ctr += 1;
+            atomics_stack[atomics_ctr] = 0;
             
             /* place opening brace into operators */
             operators[operators_ctr] = tokens[i];
             operators_ctr += 1;
         }
+
          /*
             only index accesses have `:` in them
             so here we can hint that this is most
             likely an index access
         */
-        else if (tokens[i]->type == COLON
-                && get_last_insert_of_ty_tok(
-                    operators,
-                    operators_ctr,
-                    BRACE_OPEN,
-                    head,
-                    &_last_insert
-                ) == 1
-            )
+        else if (tokens[i]->type == COLON)
         {
-            index_colon_stack[index_colon_stack_ctr] += 1;
-            index_hints[index_hint_ctr] = head;
-            index_hint_ctr += 1;
+            if (get_last_insert_of_ty_tok(
+                operators,
+                operators_ctr,
+                BRACKET_OPEN,
+                head,
+                &_last_insert) == 1)
+            {
+                index_colon_stack[index_colon_stack_ctr] += 1;
+                index_hints[index_hint_ctr] = head;
+                index_hint_ctr += 1;
+            }
+            else 
+                return -1;
         }
-
         /*
             Increment our current grouping-set
         */

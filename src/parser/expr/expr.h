@@ -175,13 +175,6 @@ struct TokenHints {
     uint16_t set_ctr;
 
     /*
-    */
-    uint16_t *sets_n_operand;
-    uint8_t function_hints_sz;
-    uint8_t function_hints_ctr;
-
-
-    /*
         **function_hints contains references to function calls
     */
     struct Token **function_hints;
