@@ -153,6 +153,7 @@ struct FnCall {
     uint16_t id;
 };
 
+
 int8_t mk_fnmask_tokens(
     struct Token input[],
     usize expr_size,
@@ -164,6 +165,42 @@ int8_t mk_fnmask_tokens(
     struct CompileTimeError *err
 );
 
+struct TokenHints {
+
+    /* 
+        **sets contains references to groups in the output
+    */
+    struct Token **sets;
+    uint16_t sets_sz;
+    uint16_t set_ctr;
+
+    /*
+    */
+    uint16_t *sets_n_operand;
+    uint8_t function_hints_sz;
+    uint8_t function_hints_ctr;
+
+
+    /*
+        **function_hints contains references to function calls
+    */
+    struct Token **function_hints;
+    uint16_t function_hints_sz;
+    uint16_t function_hints_ctr;
+
+    struct Token **index_hints;
+    uint16_t index_hints_sz;
+    uint16_t index_hints_ctr;
+
+    /*
+        quick bump-allocator pool
+    */
+    struct Token *token_pool;
+    usize pool_sz;
+    usize pool_i;
+
+};
+
 int8_t postfix_expr(
     struct Token *tokens[],
     usize expr_size,
@@ -172,13 +209,14 @@ int8_t postfix_expr(
     usize output_sz,
     usize *output_ctr,
     
-    struct Token grouping_tokens[],
-    uint8_t grouping_tokens_sz,
-    uint8_t *grouping_tokens_ctr,
+    struct TokenHints *meta,
+    // struct Token grouping_tokens[],
+    // uint8_t grouping_tokens_sz,
+    // uint8_t *grouping_tokens_ctr,
 
-    struct Token *functions[],
-    uint8_t functions_sz,
-    uint8_t *functions_ctr,
+    // struct Token *functions[],
+    // uint8_t functions_sz,
+    // uint8_t *functions_ctr,
 
     struct CompileTimeError *err
 );
