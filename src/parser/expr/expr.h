@@ -181,10 +181,6 @@ struct TokenHints {
     uint16_t function_hints_sz;
     uint16_t function_hints_ctr;
 
-    struct Token **index_hints;
-    uint16_t index_hints_sz;
-    uint16_t index_hints_ctr;
-
     /*
         quick bump-allocator pool
     */
