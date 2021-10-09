@@ -129,22 +129,38 @@ struct Token * new_token(struct TokenHints *bookkeeping, enum Lexicon token, usi
 #define STACK_SZ 128
 #define _OP_SZ 128
 
-#define EXPECTING_OPERAND        0x00000001
-#define EXPECTING_OPERATOR       0x00000002
-#define EXPECTING_OPEN_BRACE     0x00000004
-#define EXPECTING_CLOSE_BRACE    0x00000008
-#define EXPECTING_COMMA          0x00000016
+                                
+
+/* if bit set, expects operand to be the next token */
+#define EXPECTING_OPERAND        1
+
+/* if bit set, expects binary operator to be the next token */
+#define EXPECTING_OPERATOR       2
+
+/* if bit set, expects opening brace type be the next token */
+#define EXPECTING_OPEN_BRACE     4    
+
+/* if bit set, expects closing brace type be the next token */
+#define EXPECTING_CLOSE_BRACE    8
+
+/* if bit set, expects a comma be the next token */
+#define EXPECTING_COMMA          16   
+
+/* if bit set, expects a colon until bracket_brace token type is closed */
+#define EXPECTING_COLON          32 
+
+/* if bit set, expects a token to follow */
+#define EXPECTING_NEXT           64  
+
+/* reserved */
+#define ___XXXXXXXXXXXXXX        128 
+
 
 /*
     check flag, and if present, unset it.
 */
-int8_t check_flag(uint8_t set, uint8_t flag, uint8_t unset_flags_opt)
-{
-    int8_t result = (set & flag);
-    if (unset_flags_opt && result)
-        set = set & ~flag;
-    
-    return result;
+int8_t check_flag(uint8_t *set, uint8_t flag){
+    return (*set) & flag;
 }
 
 int8_t postfix_expr(
@@ -185,14 +201,13 @@ int8_t postfix_expr(
         We generate GROUPING tokens based on the stack model
         our parser uses.
 
-        For every new brace type added into the operator-stack
+        For every new brace token-type added into the operator-stack
         increment the grouping stack, and initalize it to 0.
         For every comma, increment the current grouping-stack's head by 1.
 
         Once the closing brace is found;
-        if group-stack's head is larger than 0,
+        if this stack's head is larger than 0,
         we have a set/grouping of expressions. 
-
     */
     uint8_t grouping_stack[STACK_SZ];
     uint8_t grouping_stack_ctr = 0;
@@ -200,7 +215,6 @@ int8_t postfix_expr(
     /*
         Indexable_Array[START:END:SKIP]
     */
-
     uint8_t index_colon_stack[STACK_SZ];
     uint8_t index_colon_stack_ctr = 0;
     /* used for stack digging */
@@ -214,7 +228,10 @@ int8_t postfix_expr(
     uint16_t atomics_stack[STACK_SZ];
     uint8_t atomics_ctr = 0;
 
-    uint8_t flags = 0 | EXPECTING_OPERAND | EXPECTING_OPEN_BRACE;
+    
+    bookkeeping->flags = 0 | EXPECTING_OPERAND 
+        | EXPECTING_OPEN_BRACE
+        | EXPECTING_NEXT;
 
     for (usize i = 0; expr_size > i; i++)
     {
@@ -228,22 +245,32 @@ int8_t postfix_expr(
         
         else if (is_data(tokens[i]->type))
         {
-            if (!check_flag(flags, EXPECTING_OPERAND, 1))
+            if (!check_flag(&bookkeeping->flags, EXPECTING_OPERAND))
                 return -1;
-            // if (!(flags & EXPECTING_OPERAND))
-            //     return -1;
-            // flags = flags & ~EXPECTING_OPERAND;
+
+            if (!check_flag(&bookkeeping->flags, EXPECTING_COLON))
+                bookkeeping->flags = 0 | EXPECTING_OPERATOR 
+                    | EXPECTING_OPEN_BRACE
+                    | EXPECTING_CLOSE_BRACE
+                    | EXPECTING_COMMA
+                    | EXPECTING_COLON;
+            else 
+                bookkeeping->flags = 0 | EXPECTING_OPERATOR 
+                    | EXPECTING_OPEN_BRACE
+                    | EXPECTING_CLOSE_BRACE
+                    | EXPECTING_COMMA;
             
             /*
-                Our current token is a function name.
-                We'll expect an operand to follow this statement
+                peek ahead to see if this 
+                could possibly be a function call.
             */
             if (tokens[i]->type == WORD 
                 && tokens[i+1]->type == PARAM_OPEN)
             {
                 /* expecting open brace */
-                flags = flags | EXPECTING_OPEN_BRACE;
+                bookkeeping->flags = 0 | EXPECTING_OPEN_BRACE | EXPECTING_NEXT;
                 
+                /* overflow check */
                 if (bookkeeping->function_hints_ctr > bookkeeping->function_hints_sz)
                     return -1;
                 
@@ -260,15 +287,13 @@ int8_t postfix_expr(
             }
 
             /*
-                hint to our expression parser
-                that this is an index access
+            *    peek ahead to see if this 
+            *    could possibly be an index-access.
             */
-            else if (tokens[i]->type == WORD && tokens[i+1]->type == BRACKET_OPEN) {
+            else if (tokens[i]->type == WORD && tokens[i+1]->type == BRACKET_OPEN)
+            {
                 /* expecting operand = 1 */
-                flags = flags | EXPECTING_OPERAND;
-
-                /* expecting operator = 0 */
-                flags = flags & ~EXPECTING_OPERATOR;
+                bookkeeping->flags = 0 | EXPECTING_OPEN_BRACE | EXPECTING_NEXT;
                 
                 if (index_hint_ctr > STACK_SZ)
                     return -1;
@@ -278,23 +303,11 @@ int8_t postfix_expr(
             }
 
             /*
-                if not a function, place it into the
-                output as an operand
+            *   if not a function, place it into the
+            *   output as an operand 
             */
             else
             {
-                
-                /*
-                    expecting the next token to be an
-                        - bin operation, 
-                        - open brace / close brace
-                        - comma
-                */
-                flags = flags | EXPECTING_OPERATOR 
-                    | EXPECTING_OPEN_BRACE
-                    | EXPECTING_CLOSE_BRACE
-                    | EXPECTING_COMMA;
-
                 output[*output_ctr] = tokens[i];
                 *output_ctr += 1;
             }
@@ -306,15 +319,10 @@ int8_t postfix_expr(
 
         else if (is_bin_operator(tokens[i]->type))
         {
-            if (!check_flag(flags, EXPECTING_OPERATOR, 1))
+            if (!check_flag(&bookkeeping->flags, EXPECTING_OPERATOR))
                 return -1;
 
-            /* expecting opening brace = 0 */
-            /* expecting closing brace = 0 */
-            flags = flags & ~(EXPECTING_OPEN_BRACE | EXPECTING_CLOSE_BRACE | EXPECTING_COMMA);
-            
-            /* expecting operand = 1 */
-            flags = flags | EXPECTING_OPERAND;
+            bookkeeping->flags = 0 | EXPECTING_OPERAND | EXPECTING_OPEN_BRACE | EXPECTING_NEXT;
 
             precedense = op_precedence(tokens[i]->type);
 
@@ -402,8 +410,14 @@ int8_t postfix_expr(
 
         else if (is_close_brace(tokens[i]->type))
         {
-            expecting_operator = 0;
-            expecting_operator = 1;
+            if (!check_flag(&bookkeeping->flags, EXPECTING_CLOSE_BRACE))
+                return -1;
+
+            bookkeeping->flags = 0 | EXPECTING_OPEN_BRACE 
+                | EXPECTING_CLOSE_BRACE
+                | EXPECTING_COMMA
+                | EXPECTING_OPERATOR;
+            
             /* Operators stack is empty */
             if (operators_ctr == 0)
                 return -1;
@@ -476,20 +490,31 @@ int8_t postfix_expr(
                 && head->type == BRACKET_OPEN
                 && index_hint_ctr > 0
                 && index_hints[index_hint_ctr-1] == head)
-            {        
+            {    
+
+                /* 
+                    * TODO * DOES NOT ACCOUNT FOR ATOMICS 
+                    
+                    Should be able to parse Foo[::1]
+                    IT DOES NOT
+                */
+
                 /* there shouldn't be more than 2 colons */
                 if (index_colon_stack[index_colon_stack_ctr] > 2
                     /* overflow check */
                     || *output_ctr+3-index_colon_stack[index_colon_stack_ctr] > output_sz)
-                    return -1;    
+                    return -1;
+                
                 /* 
                     for every argument thats missing from A[N:N:N]
                     fill in N as NULLTOKEN
                 */
+                
                 for (uint8_t i=index_colon_stack[index_colon_stack_ctr]; 2 > i; i++) {
                     output[*output_ctr] = new_token(bookkeeping, NULLTOKEN, 0, 0);
                     *output_ctr += 1;
                 }
+
                 output[*output_ctr] = new_token(bookkeeping, INDEX_ACCESS, 0, 0);
                 *output_ctr += 1;
             }
@@ -555,6 +580,17 @@ int8_t postfix_expr(
         */
         else if (is_open_brace(tokens[i]->type))
         {
+            if (check_flag(&bookkeeping->flags, EXPECTING_OPEN_BRACE))
+                return -1;
+            
+            bookkeeping->flags = 0 | EXPECTING_OPERAND 
+                | EXPECTING_CLOSE_BRACE
+                | EXPECTING_OPEN_BRACE
+                | EXPECTING_NEXT;
+            
+            if (tokens[i]->type == BRACKET_OPEN)
+                bookkeeping->flags = bookkeeping->flags | EXPECTING_COLON;
+
             /* overflow check */
             if (grouping_stack_ctr > STACK_SZ 
                 || index_colon_stack_ctr > STACK_SZ
@@ -586,13 +622,43 @@ int8_t postfix_expr(
         */
         else if (tokens[i]->type == COLON)
         {
+            if (!check_flag(&bookkeeping->flags, EXPECTING_COLON) 
+                || index_colon_stack_ctr > STACK_SZ
+                || index_colon_stack[index_colon_stack_ctr] > 2)
+                return -1;
+
+            bookkeeping->flags = 0 | EXPECTING_OPERAND 
+                | EXPECTING_OPEN_BRACE
+                | EXPECTING_NEXT;
+
+            /*
+                This is a bit hacky,
+                but since any opening brace increments this.
+                we can use it to track the amount of atomics 
+                in each segment of `A[N:N:N]` where it individually 
+                traces each N.
+                
+                Respectively we can do this without 
+                much hastle because index-access 
+                start with the brace token '['
+
+                Will be its own stack frame `[` to `:`,  
+                then from `:` to `:` will be its own stack frame.
+                Finally `:` to `]` will be its own stack frame, respectively.
+            */
+            atomics_ctr += 1;
+
+            /* 
+                check that there is a `[` 
+                token in the operator-stack
+            */ 
             if (get_last_insert_of_ty_tok(
                 operators,
                 operators_ctr,
                 BRACKET_OPEN,
                 head,
-                &_last_insert) == 1)
-            {
+                &_last_insert) == 1
+            ){
                 index_colon_stack[index_colon_stack_ctr] += 1;
                 index_hints[index_hint_ctr] = head;
                 index_hint_ctr += 1;
@@ -604,12 +670,15 @@ int8_t postfix_expr(
             Increment our current grouping-set
         */
         else if (tokens[i]->type == COMMA) {
-            if (grouping_stack_ctr > STACK_SZ)
+            if (!check_flag(&bookkeeping->flags, EXPECTING_COMMA)
+                || grouping_stack_ctr > STACK_SZ)
                 return -1;
             
+            bookkeeping->flags = 0 | EXPECTING_OPERAND 
+                | EXPECTING_OPEN_BRACE 
+                | EXPECTING_NEXT;
+
             grouping_stack[grouping_stack_ctr] += 1;
-            expecting_operand = 1;
-            expecting_operator = 0;
         }
         else
         {

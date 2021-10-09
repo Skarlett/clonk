@@ -188,6 +188,8 @@ struct TokenHints {
     usize pool_sz;
     usize pool_i;
 
+    uint8_t flags;
+
 };
 
 int8_t postfix_expr(
