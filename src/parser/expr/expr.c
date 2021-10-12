@@ -81,26 +81,54 @@ int8_t op_precedence(enum Lexicon token) {
     return -1;
 }
 
+int8_t unwind_params_needed(struct Token *tok, usize *ptr_sz) {
+    if (tok->type == GROUPING)
+        *ptr_sz = tok->end;
+    
+    if (tok->type == INDEX_ACCESS)
+        *ptr_sz = 5;
+    
+    else if (is_bin_operator(tok->type))
+        *ptr_sz = 2;
+
+    // next token is a group
+    else if (tok->type == WORD)
+        *ptr_sz = 0;
+
+    else
+        return -1;
+
+    return 0;
+}
+
+
 /*
     Search stack for the last token type.
 */
-int8_t get_last_insert_of_ty_tok(
+int8_t get_last_inserted_token(
     struct Token *operators[],
     usize operator_sz,
-    enum Lexicon type,
+    enum Lexicon match[],
+    enum Lexicon match_len,
     struct Token *out,
     usize *out_idx
 ) {
 
+    usize i=0, j=0;
     struct Token *head;
+
+    if (0 >= match_len)
+        return 0;
     
-    for (usize i=0; operator_sz > i; i++)
+    for (i=0; operator_sz > i; i++)
     {
         head = operators[operator_sz - i];   
-        if (type == head->type) {
-            out = head;
-            *out_idx = operator_sz - i;
-            return 1;
+        for (j=0; match_len > j; j++) {
+            if (match[j] == head->type) {
+                out = head;
+                *out_idx = operator_sz - i;
+                return 1;
+            }
         }
     } 
     
@@ -108,8 +136,7 @@ int8_t get_last_insert_of_ty_tok(
 }
 
 
-
-struct Token * new_token(struct TokenHints *bookkeeping, enum Lexicon token, usize start, usize end) {
+struct Token * new_token(struct ExprParserState *bookkeeping, enum Lexicon token, usize start, usize end) {
     bookkeeping->token_pool[bookkeeping->pool_i].type = token;
     bookkeeping->token_pool[bookkeeping->pool_i].start = start;
     bookkeeping->token_pool[bookkeeping->pool_i].end = end;
@@ -125,43 +152,24 @@ struct Token * new_token(struct TokenHints *bookkeeping, enum Lexicon token, usi
   https://en.wikipedia.org/wiki/Shunting-yard_algorithm
   --------------
 */
-
 #define STACK_SZ 128
 #define _OP_SZ 128
-
-                                
-
-/* if bit set, expects operand to be the next token */
-#define EXPECTING_OPERAND        1
-
-/* if bit set, expects binary operator to be the next token */
-#define EXPECTING_OPERATOR       2
-
-/* if bit set, expects opening brace type be the next token */
-#define EXPECTING_OPEN_BRACE     4    
-
-/* if bit set, expects closing brace type be the next token */
-#define EXPECTING_CLOSE_BRACE    8
-
-/* if bit set, expects a comma be the next token */
-#define EXPECTING_COMMA          16   
-
-/* if bit set, expects a colon until bracket_brace token type is closed */
-#define EXPECTING_COLON          32 
-
-/* if bit set, expects a token to follow */
-#define EXPECTING_NEXT           64  
-
-/* reserved */
-#define ___XXXXXXXXXXXXXX        128 
-
-
 /*
     check flag, and if present, unset it.
 */
-int8_t check_flag(uint8_t *set, uint8_t flag){
-    return (*set) & flag;
+int8_t check_flag(FLAG_T set, FLAG_T flag){
+    return set & flag;
 }
+
+void set_flag(FLAG_T *set, FLAG_T flag){
+    *set = *set | flag;
+}
+
+void unset_flag(FLAG_T *set, FLAG_T flag){
+    *set = *set & ~flag;
+}
+
+
 
 int8_t postfix_expr(
     struct Token *tokens[],
@@ -171,11 +179,11 @@ int8_t postfix_expr(
     usize output_sz,
     usize *output_ctr,
     
-    struct TokenHints *bookkeeping,
+    struct ExprParserState *state,
     struct CompileTimeError *err
 ){
     /* operator stack */
-    struct Token *operators[STACK_SZ];    
+    struct Token *operators[STACK_SZ];
     /*
         operators stack pointer, always points 
         to the next available index
@@ -188,8 +196,18 @@ int8_t postfix_expr(
     /* head of the operator stacks precedence*/
     int8_t head_precedense = 0;
 
+    /* used for stack digging */
+    usize last_insert = 0;
+
+    /* track the amount of elements to remove */
+    usize unwind_param_ctr = 0;
+    usize unwind_param_total = 0;
+
+    enum Lexicon search_token_buffer[4];
+
     /* references to tokens */
-    struct Token *index_hints[STACK_SZ];
+    /* TODO */
+    //struct Token *index_hints[STACK_SZ];
     uint8_t index_hint_ctr = 0;
 
     /* current tokens precedence */
@@ -212,13 +230,11 @@ int8_t postfix_expr(
     uint8_t grouping_stack[STACK_SZ];
     uint8_t grouping_stack_ctr = 0;
 
-    /*
-        Indexable_Array[START:END:SKIP]
-    */
+    
+    /*Indexable_Array[START:END:SKIP]*/
     uint8_t index_colon_stack[STACK_SZ];
     uint8_t index_colon_stack_ctr = 0;
-    /* used for stack digging */
-    usize _last_insert = 0;
+    
 
     /*
         this is a stack array,
@@ -227,59 +243,113 @@ int8_t postfix_expr(
     */
     uint16_t atomics_stack[STACK_SZ];
     uint8_t atomics_ctr = 0;
-
     
-    bookkeeping->flags = 0 | EXPECTING_OPERAND 
+    set_flag(&state->flags, EXPECTING_OPERAND 
         | EXPECTING_OPEN_BRACE
-        | EXPECTING_NEXT;
-
+        | EXPECTING_NEXT);
+    
     for (usize i = 0; expr_size > i; i++)
     {
+
         /*
-            if the token is data (value/variable in the source code),
-            place it directly into our stack
+            If the PANIC_FLAG is set, we'll attempt to recover the parser
+            from its failing state. We'll do this by discarding
+            the entire expression within its error space.
         */
+        if (!check_flag(state->flags, PANIC_FLAG)) {
+                set_flag(&state->flags, INCOMPLETE_FLAG);
+
+                search_token_buffer[0] = BRACKET_OPEN;
+                search_token_buffer[1] = PARAM_OPEN;
+                /*
+                    search for BRACK/PARAM
+                    open tokens in the operator-stack
+                */
+                if (
+                    get_last_inserted_token(
+                        operators,
+                        operators_ctr,
+                        search_token_buffer,
+                        2,
+                        head,
+                        &last_insert) == 1)
+                {
+                    /* unwind operators until brace type is found*/
+                    while (head != operators[operators_ctr - 1]){
+                        unwind_params_needed(operators[operators_ctr - 1], &unwind_param_ctr);
+                        unwind_param_total += unwind_param_ctr;
+                        operators_ctr -= 1;
+                    }
+
+                    if(check_flag(state->flags, EXPECTING_NEXT) == 1)
+                        unwind_param_total -= 1;
+                    
+                    unwind_param_ctr = 0;
+
+                    for (int x=0; unwind_param_total > x; x++) {
+                        if (*output_ctr > 0 && *output_ctr - x > 0) {
+                            
+                            if (unwind_param_total > *output_ctr)
+                                return -1;
+                            
+                            if (unwind_params_needed(output[*output_ctr - x], &unwind_param_ctr) == 0){
+                                
+                                /* love, live, explode */
+                                /*
+                                    grab the groups and placed operators from the output 
+                                */
+                                unwind_param_total += unwind_param_ctr;
+                            }
+                        }
+                        else break;
+                    }
+                }
+                else {
+
+                }
+                
+                return -1;
+        }
+
         if (*output_ctr > output_sz
             || operators_ctr > (int8_t)_OP_SZ )
             return -1;
         
+        /*
+            if the token is data (value/variable in the source code),
+            place it directly into our stack
+        */
         else if (is_data(tokens[i]->type))
         {
-            if (!check_flag(&bookkeeping->flags, EXPECTING_OPERAND))
+            if (!check_flag(state->flags, EXPECTING_OPERAND))
                 return -1;
-
-            if (!check_flag(&bookkeeping->flags, EXPECTING_COLON))
-                bookkeeping->flags = 0 | EXPECTING_OPERATOR 
+            
+            set_flag(&state->flags,
+                EXPECTING_OPERATOR 
                     | EXPECTING_OPEN_BRACE
                     | EXPECTING_CLOSE_BRACE
                     | EXPECTING_COMMA
-                    | EXPECTING_COLON;
-            else 
-                bookkeeping->flags = 0 | EXPECTING_OPERATOR 
-                    | EXPECTING_OPEN_BRACE
-                    | EXPECTING_CLOSE_BRACE
-                    | EXPECTING_COMMA;
+            );
             
             /*
                 peek ahead to see if this 
                 could possibly be a function call.
+                When hinting functions, we place the WORD
+                token ino
             */
             if (tokens[i]->type == WORD 
                 && tokens[i+1]->type == PARAM_OPEN)
             {
                 /* expecting open brace */
-                bookkeeping->flags = 0 | EXPECTING_OPEN_BRACE | EXPECTING_NEXT;
+                state->flags = 0 | EXPECTING_OPEN_BRACE | EXPECTING_NEXT;
                 
                 /* overflow check */
-                if (bookkeeping->function_hints_ctr > bookkeeping->function_hints_sz)
+                if (state->function_hints_ctr > state->function_hints_sz)
                     return -1;
                 
-                /* 
-                    book-keeping to remember functions
-                */
-                bookkeeping->function_hints[bookkeeping->function_hints_ctr] = tokens[i];
-                bookkeeping->function_hints_ctr += 1;
-
+                /* book-keeping to remember functions */
+                state->function_hints[state->function_hints_ctr] = tokens[i];
+                state->function_hints_ctr += 1;
                 
                 /* place func name into operator stack */
                 operators[operators_ctr] = tokens[i];
@@ -289,11 +359,12 @@ int8_t postfix_expr(
             /*
             *    peek ahead to see if this 
             *    could possibly be an index-access.
+            *    we save the brace token as reference for later.
             */
             else if (tokens[i]->type == WORD && tokens[i+1]->type == BRACKET_OPEN)
             {
                 /* expecting operand = 1 */
-                bookkeeping->flags = 0 | EXPECTING_OPEN_BRACE | EXPECTING_NEXT;
+                state->flags = 0 | EXPECTING_OPEN_BRACE | EXPECTING_NEXT;
                 
                 if (index_hint_ctr > STACK_SZ)
                     return -1;
@@ -319,10 +390,10 @@ int8_t postfix_expr(
 
         else if (is_bin_operator(tokens[i]->type))
         {
-            if (!check_flag(&bookkeeping->flags, EXPECTING_OPERATOR))
+            if (!check_flag(state->flags, EXPECTING_OPERATOR))
                 return -1;
 
-            bookkeeping->flags = 0 | EXPECTING_OPERAND | EXPECTING_OPEN_BRACE | EXPECTING_NEXT;
+            state->flags = 0 | EXPECTING_OPERAND | EXPECTING_OPEN_BRACE | EXPECTING_NEXT;
 
             precedense = op_precedence(tokens[i]->type);
 
@@ -349,7 +420,6 @@ int8_t postfix_expr(
                 before placing the operator
             */
             if (is_open_brace(head->type)) {
-               
                 operators[operators_ctr] = tokens[i];
                 operators_ctr += 1;
                 continue;
@@ -410,10 +480,10 @@ int8_t postfix_expr(
 
         else if (is_close_brace(tokens[i]->type))
         {
-            if (!check_flag(&bookkeeping->flags, EXPECTING_CLOSE_BRACE))
+            if (!check_flag(state->flags, EXPECTING_CLOSE_BRACE))
                 return -1;
 
-            bookkeeping->flags = 0 | EXPECTING_OPEN_BRACE 
+            state->flags = 0 | EXPECTING_OPEN_BRACE 
                 | EXPECTING_CLOSE_BRACE
                 | EXPECTING_COMMA
                 | EXPECTING_OPERATOR;
@@ -435,18 +505,18 @@ int8_t postfix_expr(
                 */
                 if (atomics_stack[atomics_ctr] == 0) {
                     /* overflow check */
-                    if (bookkeeping->set_ctr > bookkeeping->sets_sz
+                    if (state->set_ctr > state->sets_sz
                         || grouping_stack_ctr > STACK_SZ)
                             return -1;
 
                     /* Create GROUP(0) token, and reference in sets */
-                    bookkeeping->sets[bookkeeping->set_ctr] = new_token(bookkeeping, GROUPING, tokens[i]->start, 0);
+                    state->sets[state->set_ctr] = new_token(state, GROUPING, tokens[i]->start, 0);
                     
                     /* add it to output */
-                    output[*output_ctr] = bookkeeping->sets[grouping_stack_ctr];
+                    output[*output_ctr] = state->sets[grouping_stack_ctr];
                     
                     *output_ctr += 1;
-                    bookkeeping->set_ctr += 1;
+                    state->set_ctr += 1;
                 }
 
                 /* discard opening brace token */
@@ -482,6 +552,8 @@ int8_t postfix_expr(
             }
 
             /*
+            //  TODO: index_hints probably doesn't work
+            // 
             //  If enough hints are made,
             //  we can safely assume this is
             //  an index-access.
@@ -494,8 +566,8 @@ int8_t postfix_expr(
 
                 /* 
                     * TODO * DOES NOT ACCOUNT FOR ATOMICS 
-                    
-                    Should be able to parse Foo[::1]
+                    * TODO * DECREMENT ATOMICS CTR APPRIOTATELY
+                    Should be able to parse Foo[::]
                     IT DOES NOT
                 */
 
@@ -511,11 +583,11 @@ int8_t postfix_expr(
                 */
                 
                 for (uint8_t i=index_colon_stack[index_colon_stack_ctr]; 2 > i; i++) {
-                    output[*output_ctr] = new_token(bookkeeping, NULLTOKEN, 0, 0);
+                    output[*output_ctr] = new_token(state, NULLTOKEN, 0, 0);
                     *output_ctr += 1;
                 }
 
-                output[*output_ctr] = new_token(bookkeeping, INDEX_ACCESS, 0, 0);
+                output[*output_ctr] = new_token(state, INDEX_ACCESS, 0, 0);
                 *output_ctr += 1;
             }
             else
@@ -525,7 +597,7 @@ int8_t postfix_expr(
                     all the appriotate operations
                     have been placed. 
                 */
-                if (bookkeeping->set_ctr > bookkeeping->sets_sz
+                if (state->set_ctr > state->sets_sz
                     || grouping_stack_ctr > STACK_SZ)
                         return -1;
                 /* 
@@ -535,16 +607,16 @@ int8_t postfix_expr(
                 /* using `start` as a position cordinate to determine the brace type */
                 /* using `end` to signify how many values to pull from the stack */
                 /* reference new token from pool into groups and output*/
-                bookkeeping->sets[bookkeeping->set_ctr] = new_token(
-                    bookkeeping,
+                state->sets[state->set_ctr] = new_token(
+                    state,
                     GROUPING,
                     head->start,
                     grouping_stack[grouping_stack_ctr] + 1
                 );
-                bookkeeping->set_ctr += 1;
+                state->set_ctr += 1;
                 
                 /* place grouping operator on the output */
-                output[*output_ctr] = bookkeeping->sets[grouping_stack_ctr];
+                output[*output_ctr] = state->sets[grouping_stack_ctr];
                 *output_ctr += 1;
             }
 
@@ -580,16 +652,16 @@ int8_t postfix_expr(
         */
         else if (is_open_brace(tokens[i]->type))
         {
-            if (check_flag(&bookkeeping->flags, EXPECTING_OPEN_BRACE))
+            if (check_flag(state->flags, EXPECTING_OPEN_BRACE))
                 return -1;
             
-            bookkeeping->flags = 0 | EXPECTING_OPERAND 
+            state->flags = 0 | EXPECTING_OPERAND 
                 | EXPECTING_CLOSE_BRACE
                 | EXPECTING_OPEN_BRACE
                 | EXPECTING_NEXT;
             
             if (tokens[i]->type == BRACKET_OPEN)
-                bookkeeping->flags = bookkeeping->flags | EXPECTING_COLON;
+                state->flags = state->flags | EXPECTING_COLON;
 
             /* overflow check */
             if (grouping_stack_ctr > STACK_SZ 
@@ -622,12 +694,12 @@ int8_t postfix_expr(
         */
         else if (tokens[i]->type == COLON)
         {
-            if (!check_flag(&bookkeeping->flags, EXPECTING_COLON) 
+            if (!check_flag(state->flags, EXPECTING_COLON) 
                 || index_colon_stack_ctr > STACK_SZ
                 || index_colon_stack[index_colon_stack_ctr] > 2)
                 return -1;
 
-            bookkeeping->flags = 0 | EXPECTING_OPERAND 
+            state->flags = 0 | EXPECTING_OPERAND 
                 | EXPECTING_OPEN_BRACE
                 | EXPECTING_NEXT;
 
@@ -652,10 +724,13 @@ int8_t postfix_expr(
                 check that there is a `[` 
                 token in the operator-stack
             */ 
-            if (get_last_insert_of_ty_tok(
+            search_token_buffer[0] = BRACKET_OPEN;
+
+            if (get_last_inserted_token(
                 operators,
                 operators_ctr,
-                BRACKET_OPEN,
+                search_token_buffer,
+                1,
                 head,
                 &_last_insert) == 1
             ){
@@ -670,11 +745,11 @@ int8_t postfix_expr(
             Increment our current grouping-set
         */
         else if (tokens[i]->type == COMMA) {
-            if (!check_flag(&bookkeeping->flags, EXPECTING_COMMA)
+            if (!check_flag(state->flags, EXPECTING_COMMA)
                 || grouping_stack_ctr > STACK_SZ)
                 return -1;
             
-            bookkeeping->flags = 0 | EXPECTING_OPERAND 
+            state->flags = 0 | EXPECTING_OPERAND 
                 | EXPECTING_OPEN_BRACE 
                 | EXPECTING_NEXT;
 

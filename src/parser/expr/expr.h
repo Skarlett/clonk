@@ -165,7 +165,9 @@ int8_t mk_fnmask_tokens(
     struct CompileTimeError *err
 );
 
-struct TokenHints {
+typedef uint16_t FLAG_T; 
+
+struct ExprParserState {
 
     /* 
         **sets contains references to groups in the output
@@ -188,9 +190,38 @@ struct TokenHints {
     usize pool_sz;
     usize pool_i;
 
-    uint8_t flags;
+    FLAG_T flags;
 
 };
+
+/* if bit set, expects operand to be the next token */
+#define EXPECTING_OPERAND        1
+
+/* if bit set, expects binary operator to be the next token */
+#define EXPECTING_OPERATOR       2
+
+/* if bit set, expects opening brace type be the next token */
+#define EXPECTING_OPEN_BRACE     4    
+
+/* if bit set, expects closing brace type be the next token */
+#define EXPECTING_CLOSE_BRACE    8
+
+/* if bit set, expects a comma be the next token */
+#define EXPECTING_COMMA          16   
+
+/* if bit set, expects a colon until bracket_brace token type is closed */
+#define EXPECTING_COLON          32 
+
+/* if bit set, expects a token to follow */
+#define EXPECTING_NEXT           64  
+
+/* If token stream contains an error */
+/* we'll attempt to recover, by discarding tokens */
+#define PANIC_FLAG               128 
+
+/* If we ever paniced */
+/* we'll attempt to recover, by discarding tokens */
+#define INCOMPLETE_FLAG          256 
 
 int8_t postfix_expr(
     struct Token *tokens[],
@@ -200,15 +231,7 @@ int8_t postfix_expr(
     usize output_sz,
     usize *output_ctr,
     
-    struct TokenHints *meta,
-    // struct Token grouping_tokens[],
-    // uint8_t grouping_tokens_sz,
-    // uint8_t *grouping_tokens_ctr,
-
-    // struct Token *functions[],
-    // uint8_t functions_sz,
-    // uint8_t *functions_ctr,
-
+    struct ExprParserState *state,
     struct CompileTimeError *err
 );
 
