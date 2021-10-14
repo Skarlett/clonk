@@ -85,7 +85,7 @@ int8_t __sprintf_token_ty_slice(char *output, usize output_sz, enum Lexicon toke
 }
 
 int8_t sprintf_token_slice(
-    struct Token tokens[],
+    const struct Token tokens[],
     usize ntokens,
     char * output,
     usize output_sz    
@@ -117,7 +117,7 @@ int8_t sprintf_token_slice(
 }
 
 int8_t sprintf_lexicon_slice(
-    enum Lexicon tokens[],
+    const enum Lexicon tokens[],
     usize ntokens,
     char * output,
     usize output_sz    
@@ -149,7 +149,7 @@ int8_t sprintf_lexicon_slice(
 }
 
 int8_t sprintf_token_slice_by_ref(
-    struct Token *tokens[],
+    const struct Token *tokens[],
     usize ntokens,
     char * output,
     usize output_sz    
