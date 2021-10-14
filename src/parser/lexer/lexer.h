@@ -150,6 +150,12 @@ enum Lexicon {
     // something
     STRING_LITERAL,
 
+    // ()
+    //EMPTY_PARAM,
+
+    // []
+    //EMPTY_BRACKET,
+
     // static
     STATIC,
     // const
@@ -186,10 +192,56 @@ enum Lexicon {
     */
     FNMASK,
 
-    COMPOSITE,
+    /*
+        GROUPING token are generated in the expression parser
+        
+        The GROUPING token is used to track the amount 
+        of sub-expressions inside an expression.
+        
+        - `start` 
+            points to its origin grouping token,
+            or 0 if not applicable
+        
+        - `end`
+            is the amount of arguments to pop from the stack
 
-    GROUPING
+        See example expression:
+            [1, 2, 3]
+        
+            where '1', '2', '3' are atomic expressions.
+            When grouped together by a comma to become 
+            "1,2,3" this is called grouping.
+
+            Groupings may not explicitly 
+            point to a brace type if none is present. 
+            
+            After postfix evaluation, 
+            a group token is added into the postfix output.
+
+            1 2 3 GROUP(3)
+        
+        it's `start` attribute will point to its origin grouping token
+        and its `end` attribute will determine the amount of arguments
+        it will take off of the stack
     
+        
+    */
+    GROUPING,
+    //  INDEX_ACCESS takes 4 arugments off the stack
+    //  'array, start, end, skip' in that order. 
+    //
+    //  output: WORD  INTEGER INTEGER INTEGER INDEX_ACCESS 
+    //          array start    end    skip    operator
+    INDEX_ACCESS,
+
+    // foo(a)(b)
+    // foo(a) -> func(b) -> T
+    // foo(a)(b) -> ((a foo), b G(2)) DyCall
+    // foo(a)(b)(c) -> a foo b G(2) DyCall c G(2) DyCall
+
+    DyCall
+
+
 };
 
 /*
@@ -223,6 +275,7 @@ int8_t tokenize(
     char *line,
     struct Token tokens[],
     usize *token_ctr,
+    usize token_sz,
     struct CompileTimeError *error
 );
 
