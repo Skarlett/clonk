@@ -96,6 +96,7 @@ int8_t pool_realloc(struct ExprPool *pool) {
 
     if (pool->heap_buf == 0) {
         pool->heap_buf = old_heap;
+        pool->capacity = pool->capacity / 2;
         return -1;
     }
 
