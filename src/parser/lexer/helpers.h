@@ -96,6 +96,13 @@ int8_t is_keyword(enum Lexicon token);
 
 /**
  * Checks if token stream is balanced.
+ * To be balanced is every brace opening,
+ * having a pairing brace closing token 
+ * following it eventually.
+ * The follow are examples:
+ *
+ *   (a + b + (2 + 5)) Is balanced
+ *   (a + b            Is unbalanced.
  *
  * @param tokens stream of tokens
  * @param ntokens amount of tokens to read
@@ -106,7 +113,7 @@ int8_t is_balanced(struct Token tokens[], usize ntokens);
 
 
 /**
- * Checks if token stream is balanced by reference.
+ * Checks if token stream is balanced by reference. see (src/parser/lexer/helpers.h#is_balance)
  *
  * @param tokens stream of referenced tokens
  * @param ntokens amount of tokens to read

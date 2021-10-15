@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include "lexer.h"
 #include "../../prelude.h"
 
@@ -180,10 +181,10 @@ int8_t is_keyword(enum Lexicon token) {
     
     for (int i=0; 10 > i; i++) {
         if (token == keywords[i])
-            return 1;
+            return true;
     }
     
-    return 0;
+    return false;
 }
 
 int8_t is_num_negative(const char * source, struct Token *token) {
