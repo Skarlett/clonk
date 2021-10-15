@@ -3,13 +3,31 @@
 #include <stdint.h>
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
+#include "expr.h"
 
-// int cmpexpr(struct Expr *a, struct  Expr *b);
-// int is_expr_token(enum Lexicon token);
-// int is_expr(char *line, struct Token tokens[], size_t ntokens);
-// //size_t get_expr_len(Expr *expr);
-int8_t binop_from_token(enum Lexicon t);
-// int symbol_from_token(const char *line, struct Token token, struct Symbol *value);
+struct BorderItem {
+    usize start;
+    usize end;
 
+    /*
+      The brace should always be the opening type,
+      valid input examples: '(', '[', '{'
+    */
+    char brace;
+};
 
+enum Operation operation_from_token(enum Lexicon t);
+
+int8_t chk_group_overlap(
+    const struct BorderItem borders[],
+    usize border_len
+);
+
+int8_t mk_group_borders(
+    struct BorderItem borders[],
+    usize border_sz,
+    usize *border_ctr,
+    const struct Token *tokens[],
+    usize ntokens
+);
 #endif
