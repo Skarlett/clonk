@@ -6,6 +6,12 @@
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
 
+/*
+    when defining a group, 
+    it may not have more literal elements than
+*/
+#define MAX_GROUP_SZ 256
+
 enum ExprType {
     UndefinedExprT,
     
@@ -36,8 +42,8 @@ enum ExprType {
 };
 
 enum Operation {
-    /* no operation */
     Nop,
+    /* no operation */
     /* math */
     Add,
     Sub,
@@ -60,6 +66,7 @@ enum Operation {
     /* dot operator */
     Access,
 
+    UndefinedOp = 255
 };
 
 struct String { 
@@ -68,10 +75,12 @@ struct String {
     char * ptr;
 };
 
-struct List { 
+#define GROUPING_SZ 64
+struct Grouping { 
     usize capacity;
     usize length;
-    struct Expr *ptr;
+    char brace_type;
+    struct Expr **ptr;
 };
 
 enum DataType {
@@ -80,7 +89,6 @@ enum DataType {
     StringT,
     BoolT,
     ListT,
-    StructT,
     NullT
 };
 
@@ -90,7 +98,7 @@ struct Literals {
         isize integer;
         struct String string;
         uint8_t boolean;
-        struct List list;
+        struct Grouping grouping;
     } literal;
 };
 
@@ -123,6 +131,7 @@ struct BinExprNode {
 struct Expr {
     enum ExprType type;
     enum DataType datatype;
+    uint8_t free;
 
     union {
         char * symbol;
@@ -167,32 +176,7 @@ int8_t mk_fnmask_tokens(
 
 typedef uint16_t FLAG_T; 
 
-struct ExprParserState {
 
-    /* 
-        **sets contains references to groups in the output
-    */
-    struct Token **sets;
-    uint16_t sets_sz;
-    uint16_t set_ctr;
-
-    /*
-        **function_hints contains references to function calls
-    */
-    struct Token **function_hints;
-    uint16_t function_hints_sz;
-    uint16_t function_hints_ctr;
-
-    /*
-        quick bump-allocator pool
-    */
-    struct Token *token_pool;
-    usize pool_sz;
-    usize pool_i;
-
-    FLAG_T flags;
-
-};
 
 /* if bit set, expects operand to be the next token */
 #define EXPECTING_OPERAND        1
@@ -222,6 +206,33 @@ struct ExprParserState {
 /* If we ever paniced */
 /* we'll attempt to recover, by discarding tokens */
 #define INCOMPLETE_FLAG          256 
+
+struct ExprParserState {
+
+    /* 
+        **sets contains references to groups in the output
+    */
+    struct Token **sets;
+    uint16_t sets_sz;
+    uint16_t set_ctr;
+
+    /*
+        **function_hints contains references to function calls
+    */
+    struct Token **function_hints;
+    uint16_t function_hints_sz;
+    uint16_t function_hints_ctr;
+
+    /*
+        quick bump-allocator pool
+    */
+    struct Token *token_pool;
+    usize pool_sz;
+    usize pool_i;
+
+    FLAG_T flags;
+
+};
 
 int8_t postfix_expr(
     struct Token *tokens[],

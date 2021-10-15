@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -9,12 +10,12 @@
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
 #include "../lexer/helpers.h"
+#include "../lexer/debug.h"
 
 #include "expr.h"
+#include "pool.h"
+#include "helpers.h"
 
-
-#define WORKING_BUF_SZ 128
-#define QUEUE_BUF_SZ 256
 #define OPERATOR_BUF_SZ 64
 #define END_PRECEDENCE 127
 
@@ -169,8 +170,6 @@ void unset_flag(FLAG_T *set, FLAG_T flag){
     *set = *set & ~flag;
 }
 
-
-
 int8_t postfix_expr(
     struct Token *tokens[],
     usize expr_size,
@@ -188,7 +187,7 @@ int8_t postfix_expr(
         operators stack pointer, always points 
         to the next available index
     */
-    int8_t operators_ctr = 0;
+    int16_t operators_ctr = 0;
   
     /* head of the operator stack*/
     struct Token *head = NULL;
@@ -257,58 +256,55 @@ int8_t postfix_expr(
             the entire expression within its error space.
         */
         if (!check_flag(state->flags, PANIC_FLAG)) {
-                set_flag(&state->flags, INCOMPLETE_FLAG);
+            set_flag(&state->flags, INCOMPLETE_FLAG);
 
-                search_token_buffer[0] = BRACKET_OPEN;
-                search_token_buffer[1] = PARAM_OPEN;
-                /*
-                    search for BRACK/PARAM
-                    open tokens in the operator-stack
-                */
-                if (
-                    get_last_inserted_token(
-                        operators,
-                        operators_ctr,
-                        search_token_buffer,
-                        2,
-                        head,
-                        &last_insert) == 1)
-                {
-                    /* unwind operators until brace type is found*/
-                    while (head != operators[operators_ctr - 1]){
-                        unwind_params_needed(operators[operators_ctr - 1], &unwind_param_ctr);
-                        unwind_param_total += unwind_param_ctr;
-                        operators_ctr -= 1;
-                    }
+            search_token_buffer[0] = BRACKET_OPEN;
+            search_token_buffer[1] = PARAM_OPEN;
+            /*
+                search for BRACK/PARAM
+                open tokens in the operator-stack
+            */
+            if (get_last_inserted_token(
+                    operators,
+                    operators_ctr,
+                    search_token_buffer,
+                    2,
+                    head,
+                    &last_insert) == 1)
+            {
+                /* unwind operators until brace type is found*/
+                while (head != operators[operators_ctr - 1]){
+                    unwind_params_needed(operators[operators_ctr - 1], &unwind_param_ctr);
+                    unwind_param_total += unwind_param_ctr;
+                    operators_ctr -= 1;
+                }
 
-                    if(check_flag(state->flags, EXPECTING_NEXT) == 1)
-                        unwind_param_total -= 1;
+                if(check_flag(state->flags, EXPECTING_NEXT) == 1)
+                    unwind_param_total -= 1;
                     
-                    unwind_param_ctr = 0;
+                unwind_param_ctr = 0;
 
-                    for (int x=0; unwind_param_total > x; x++) {
-                        if (*output_ctr > 0 && *output_ctr - x > 0) {
+                for (int x=0; unwind_param_total > x; x++) {
+                    if (*output_ctr > 0 && *output_ctr - x > 0) {
                             
-                            if (unwind_param_total > *output_ctr)
-                                return -1;
+                        if (unwind_param_total > *output_ctr)
+                            return -1;
                             
-                            if (unwind_params_needed(output[*output_ctr - x], &unwind_param_ctr) == 0){
+                        if (unwind_params_needed(output[*output_ctr - x], &unwind_param_ctr) == 0){
                                 
-                                /* love, live, explode */
-                                /*
-                                    grab the groups and placed operators from the output 
-                                */
-                                unwind_param_total += unwind_param_ctr;
-                            }
+                            /* love, live, explode */
+                            /*
+                                grab the groups and placed operators from the output 
+                            */
+                            unwind_param_total += unwind_param_ctr;
                         }
-                        else break;
                     }
+                    else break;
                 }
-                else {
-
-                }
-                
+            }
+            else {
                 return -1;
+            }
         }
 
         if (*output_ctr > output_sz
@@ -467,6 +463,7 @@ int8_t postfix_expr(
 
                 /* discard operator after placed in output */
                 operators_ctr -= 1;
+                
                 if (operators_ctr <= 0)
                     break;
                 
@@ -768,17 +765,18 @@ int8_t postfix_expr(
     */
     while(operators_ctr > 0)
     {
+        head = operators[operators_ctr - 1];
         /*
             any remaining params/brackets/braces are unclosed
             indiciate invalid expressions    
         */
-        if (is_open_brace(operators[operators_ctr-1]->type) == END_PRECEDENCE)
+        if (is_open_brace(head->type))
             return -1;
         
         if (*output_ctr > output_sz)
             return -1;
         
-        output[*output_ctr] = operators[operators_ctr-1];
+        output[*output_ctr] = head;
         
         *output_ctr += 1;
         operators_ctr -= 1;
@@ -787,48 +785,205 @@ int8_t postfix_expr(
     return 0;
 }
 
+int8_t mk_atom_expr(
+    struct Expr *ex,
+    const char *line,
+    const struct Token *from
+){
+    char *end;
+    ex->free=0;
 
-int8_t construct_expr_ast(char *line, struct Token tokens[], usize ntokens, struct Expr *expr) {
-    // struct Token *masked_tokens[512];
-    // struct Token *queue[512];
-    // struct Token masks[32];
-    // struct Token *working_buf[128];
-    // size_t masks_ctr = 0;
-    // size_t masked_tokens_ctr = 0;
-    // size_t queue_ctr = 0;
+    if(from->type == WORD)
+    {
+        ex->type=SymExprT;
+        ex->datatype=UndefT;
 
-    // if (!is_balanced(tokens, ntokens))
-    //     return -1;
-    
-    // if (mk_fnmask_tokens(
-    //     masked_tokens, 512, &masked_tokens_ctr,
-    //     tokens, ntokens,
-    //     masks, 32, &masks_ctr) == -1)
-    //     return -1;
-    
+        memcpy(
+            ex->inner.symbol,
+            line + from->start,
+            from->end - from->start
+        );
+    }
 
-    // if (tokens[0].type == NOT) {}
-    // else if (is_fncall(tokens)) {}
-    // else if (is_data(tokens[0].type)) {}
-    // else if (tokens[0].type == DOT) {}
+    else if(from->type == INTEGER)
+    {
+        ex->type=LiteralExprT;
+        ex->datatype=IntT;
+        errno = 0;
 
-    // if (mk_fnmask_tokens(
-    //     masked_tokens, 512, &masked_tokens_ctr,
-    //     tokens, ntokens,
-    //     masks, 32, &masks_ctr) == -1)
-    //     return -1;
+        ex->inner.value.literal.integer = strtol(line + from->start, &end, 10);
+        
+        if (errno != 0)
+            return -1;
+    }
     
-    // /*
-    //     reorders `*output[]` according to PEMDAS
-    //     into the buffer `*queue[]`
-    // */
-    // if (construct_postfix_queue(masked_tokens, masked_tokens_ctr, queue, 512, &queue_ctr) == -1)
-    //     return -1;
+    else if(from->type == STRING_LITERAL)
+    {
+        ex->type=LiteralExprT;
+        ex->datatype=StringT;
+    }
+
+    else if(from->type == ADD)
+    {
+
+    }
+    else
+        return -1;
+
+    return 0;
+}
+
+/* no special algorithms, just an equality test */
+void determine_return_ty(struct Expr *bin) {
+    if (bin->inner.bin.rhs->datatype == bin->inner.bin.lhs->datatype)
+        bin->inner.bin.returns = bin->inner.bin.rhs->datatype;
+    else
+        bin->inner.bin.returns = UndefT;
+}
+
+#define EXPR_STACK_SZ 2048
+int8_t postfix_into_tree(
+    const char * line,
+    const struct Token *tokens[],
+    usize ntokens,
+    const struct Token *fn_hints[],
+    usize fn_hints_sz,
+    struct ExprPool *pool
+){
+    char *end;
+    struct Expr ex;
+    struct Expr *phandle;
+    struct Expr *stack[EXPR_STACK_SZ];
+    uint16_t stack_ctr = 0;
     
-    // for (int i=0; queue_ctr > i; i++) {
-    //     else if (is_data(queue[i])) {}
-    //     if (is_bin_operator(queue[i]) {}
-    // }
+    if (!line || !tokens || !pool || !fn_hints)
+        return -1;
+
+    usize fn_ctr=0;
+
+    for (usize i=0; ntokens > i; i++)
+    {
+        memset(&ex, 0, sizeof(struct Expr));
+
+        if (stack_ctr > EXPR_STACK_SZ)
+            return -1;
+        
+        else if(tokens[i]->type == WORD)
+        {
+            ex.type=SymExprT;
+            ex.datatype=UndefT;
+
+            memcpy(
+                ex.inner.symbol,
+                line + tokens[i]->start,
+                tokens[i]->end - tokens[i]->start
+            );
+            
+            phandle = pool_push(pool, ex);
+            if (phandle == 0)
+               return -1;
+            
+            stack[stack_ctr] = phandle;
+            stack_ctr += 1;
+        }
+
+        else if (tokens[i]->type == GROUPING) {
+            if (tokens[i]->end > stack_ctr)
+                return -1;
+            
+            ex.inner.value.literal.grouping.ptr = malloc(sizeof(struct Expr) * tokens[i]->end);
+            ex.inner.value.literal.grouping.capacity = tokens[i]->end;
+            ex.inner.value.literal.grouping.length = tokens[i]->end;
+            ex.inner.value.literal.grouping.brace_type = brace_as_char(tokens[tokens[i]->start]->type);
+            
+            if (ex.inner.value.literal.grouping.ptr == 0)
+                return -1;
+
+            for (usize j=0; tokens[i]->end > j; j++) {
+                ex.inner.value.literal.grouping.ptr[j] = stack[stack_ctr-1];
+                stack_ctr -= 1;
+            }
+            
+            phandle = pool_push(pool, ex);
+            
+            if (phandle == 0)
+               return -1;
+
+            stack[stack_ctr] = phandle;
+        }
+        else if(tokens[i]->type == INTEGER)
+        {
+            ex.type=LiteralExprT;
+            ex.datatype=IntT;
+            errno = 0;
+
+            ex.inner.value.literal.integer = strtol(line + tokens[i]->start, &end, 10);
+            
+            if (errno != 0 || end != line + tokens[i]->end)
+                return -1;
+            
+            phandle = pool_push(pool, ex);
+            
+            if (phandle == 0)
+               return -1;
+
+            stack[stack_ctr] = phandle;
+            stack_ctr += 1;
+        }
+        
+        else if(tokens[i]->type == STRING_LITERAL)
+        {
+            ex.type=LiteralExprT;
+            ex.datatype=StringT;
+            
+            phandle = pool_push(pool, ex);
+            
+            if (phandle == 0)
+               return -1;
+
+            stack[stack_ctr] = phandle;
+            stack_ctr += 1;
+        }
+
+        else if(is_bin_operator(tokens[i]->type))
+        {
+            if (2 >= stack_ctr)
+                return -1;
+            
+            ex.type = BinaryExprT;
+            ex.inner.bin.lhs = stack[stack_ctr-1];
+            ex.inner.bin.rhs = stack[stack_ctr-2];
+            ex.inner.bin.op = operation_from_token(tokens[i]->type);
+            determine_return_ty(&ex);
+            
+            phandle = pool_push(pool, ex);
+            
+            if (phandle == 0)
+               return -1;
+
+            stack_ctr -= 2;
+            stack[stack_ctr] = phandle;
+            stack_ctr += 1;
+
+        }
+        else
+            return -1;
+
+    }
+    return 0;
+
+}
+
+int8_t new_expr(char *line, struct Token tokens[], usize ntokens, struct Expr *expr) {
+    postfix_expr(
+        tokens,
+        ntokens,
+        struct Token **output,
+        usize output_sz, 
+        usize *output_ctr,
+        struct ExprParserState *state,
+        struct CompileTimeError *err
+    )
 
     /*todo: create expr tree*/
     return 0;
