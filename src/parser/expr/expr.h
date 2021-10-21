@@ -2,6 +2,7 @@
 #ifndef _HEADER_EXPR__
 #define _HEADER_EXPR__
 
+#include <cstdint>
 #include <stdint.h>
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
@@ -65,6 +66,10 @@ enum Operation {
     
     /* dot operator */
     Access,
+
+    /* L[N:N:N] */
+    IdxAccess,
+
 
     UndefinedOp = 255
 };
@@ -185,10 +190,10 @@ typedef uint16_t FLAG_T;
 #define EXPECTING_OPERATOR       2
 
 /* if bit set, expects opening brace type be the next token */
-#define EXPECTING_OPEN_BRACE     4    
+#define EXPECTING_OPEN_BRACKET   4    
 
 /* if bit set, expects closing brace type be the next token */
-#define EXPECTING_CLOSE_BRACE    8
+#define EXPECTING_CLOSE_BRACKET  8
 
 /* if bit set, expects a comma be the next token */
 #define EXPECTING_COMMA          16   
@@ -203,35 +208,68 @@ typedef uint16_t FLAG_T;
 /* we'll attempt to recover, by discarding tokens */
 #define PANIC_FLAG               128 
 
+
 /* If we ever paniced */
-/* we'll attempt to recover, by discarding tokens */
+/* we'll attempt to recover, by discarding tokens, 
+but keep this flag set for the rest of parsing */
 #define INCOMPLETE_FLAG          256 
+
+/* too disastrous to recover from */
+#define INTERNAL_ERROR          512 
+
+
+
+struct Group {
+    struct Token *postfix_group_token;
+
+    // amount of delimiters + 1
+    uint16_t delimiter_cnt;
+    
+    // count symbols inside of group
+    // lamen terms, count every 
+    // token between braces
+    uint16_t atomic_symbols;
+
+    // should be ',' ':' or `0`
+    enum Lexicon delimiter;
+
+    // should be `[` `(` or `0`
+    enum Lexicon open_brace;
+
+    // INDEX / APPLY
+    enum Lexicon tag_op;
+};
+
+
 
 struct ExprParserState {
 
-    /* 
-        **sets contains references to groups in the output
-    */
-    struct Token **sets;
-    uint16_t sets_sz;
-    uint16_t set_ctr;
-
-    /*
-        **function_hints contains references to function calls
-    */
-    struct Token **function_hints;
-    uint16_t function_hints_sz;
-    uint16_t function_hints_ctr;
-
     /*
         quick bump-allocator pool
+        all tokens created in this stage will be
+        referenced from this pool
     */
-    struct Token *token_pool;
-    usize pool_sz;
+    struct Token *src;
+    usize src_sz;
+    usize *i;
+
+    struct Token **out;
+    usize out_sz;
+    usize *out_ctr;
+
+    struct Token *pool;
     usize pool_i;
+    usize pool_sz;
+
+    struct Group *set_stack;
+    usize set_ctr;
+    usize set_sz;
+
+    struct Token **operator_stack;
+    uint16_t operators_ctr;
+    uint16_t operator_stack_sz;
 
     FLAG_T flags;
-
 };
 
 int8_t postfix_expr(
