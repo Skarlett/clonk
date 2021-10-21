@@ -2,7 +2,6 @@
 #ifndef _HEADER_EXPR__
 #define _HEADER_EXPR__
 
-#include <cstdint>
 #include <stdint.h>
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
@@ -229,6 +228,12 @@ struct Group {
     // lamen terms, count every 
     // token between braces
     uint16_t atomic_symbols;
+
+    // count how many values have
+    // been placed in the output
+    // to account for the index/slice 
+    // operation arguments.
+    uint8_t idx_value_ctr;
 
     // should be ',' ':' or `0`
     enum Lexicon delimiter;

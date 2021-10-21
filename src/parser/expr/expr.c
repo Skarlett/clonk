@@ -505,6 +505,7 @@ int8_t handle_operator(struct ExprParserState *state) {
     state->operator_stack[0] = &state->src[*state->i];
     state->operators_ctr += 1;
     //continue;
+    return 0;
   }
 
   /* Grab the head of the operators-stack */
@@ -577,55 +578,101 @@ int8_t handle_operator(struct ExprParserState *state) {
 }
 
 
-/* TODO */
 int8_t handle_delimiter(struct ExprParserState *state) {
-  struct Token *head;
+  struct Token *head = 0, 
+    *current = &state->src[*state->i],
+    *prev = 0,
+    *next = 0;
+
+  struct Group *ghead = 0;
+
+  /* Setup group group head ptr */
+  if (state->set_ctr > 0)
+    ghead = &state->set_stack[state->set_ctr - 1];
+  else
+    ghead = &state->set_stack[0];
+
+  /* increment the delimiter counter */
+  ghead->delimiter_cnt += 1;
   
-  if (state->src[*state->i].type == COLON) {
-    
+  if (*state->i > 0)
+    prev = &state->src[*state->i - 1];
+  
+  if (state->src_sz > *state->i + 1)
+    next = &state->src[*state->i + 1];
+  
+  if (current->type == COLON) {
+    /* if not expecting brace char?*/
     if (!check_flag(state->flags, EXPECTING_COLON) ||
-        // too many ~~assholes~~ colons?
+        // overflow check
         state->set_ctr > state->set_sz ||
-        state->set_stack[state->set_ctr].delimiter_cnt > 2)
+        // must be a previous token,
+        !prev,
+        // there must atleast one group ('[')
+        1 > state->set_ctr ||
+        // too many colons?
+        ghead->delimiter_cnt > 2 ||
+        // previously set to comma
+        ghead->delimiter == COMMA ||
+        // not allowed to index the previous thing
+        ghead->tag_op != INDEX_ACCESS)
       return -1;
     
+    ghead->delimiter = COLON;
+
     set_flag(&state->flags, EXPECTING_OPERAND | EXPECTING_OPEN_BRACKET | EXPECTING_NEXT);
-    
     /*
-        This is a bit hacky,
-        but since any opening brace increments this.
-        we can use it to track the amount of atomics
-        in each segment of `A[N:N:N]` where it individually
-        traces each N.
+        peek behind our current token to 
+        see if its a COLON, or an OPEN_BRACKET.
 
-        Respectively we can do this without
-        much hastle because index-access
-        start with the brace token '['
-
-        Will be its own stack frame `[` to `:`,
-        then from `:` to `:` will be its own stack frame.
-        Finally `:` to `]` will be its own stack frame, respectively.
+        If so, place a null token to transform `[:...]`
+        into `[NULLTOKEN:...]`
+        
+            [:]
+            [null:null]
+            [:5]
+            [::]
     */
-    atomics_ctr += 1;
-    // TODO Add to group, then add counter to undo group stacking, set group identifier to COLON
-    // state->set_ctr += 1;
-    // memset(&state->set_stack[state->set_ctr], 1, sizeof(struct Group));
-    // state->
+    if (prev->type == BRACKET_OPEN ||
+        prev->type == COLON)
+    {
+      /*
+        add null operand to output to pad idx access
+        this also keeps us aligned to `ghead->idx_value_ctr`
+      */
+      
+      state->out[*state->out_ctr] = new_token(state, NULLTOKEN, 0, 0);
+      *state->out_ctr += 1; 
+      
+    }
+    /* if last colon token, peek ahead to see if theres a symbol*/
+    if (ghead->delimiter_cnt == 2 &&
+        next->type == BRACKET_CLOSE)
+    {
+      state->out[*state->out_ctr] = new_token(state, NULLTOKEN, 0, 0);
+      *state->out_ctr += 1;
+      ghead->idx_value_ctr += 1;
+    }
+
+    ghead->idx_value_ctr += 1;
 
   }
   /*
       Increment our current grouping-set
   */
-  else if (state->src[*state->i].type == COMMA) {
-    
+  else if (current->type == COMMA)
+  {
     if (!check_flag(state->flags, EXPECTING_COMMA) ||
-        state->set_ctr > state->set_sz)
+        state->set_ctr > state->set_sz ||
+        ghead->delimiter == COLON)
       return -1;
 
-     set_flag(&state->flags, 
+    ghead->delimiter = COMMA;
+    
+    set_flag(&state->flags, 
         EXPECTING_OPERAND | EXPECTING_OPEN_BRACKET | EXPECTING_NEXT);
   }
-  
+
   /*
     empty operators until ( ,
   */
@@ -649,8 +696,7 @@ int8_t handle_delimiter(struct ExprParserState *state) {
       state->operators_ctr -= 1;
     }
   }
-
-  state->set_stack[state->set_ctr - 1].delimiter_cnt += 1;
+  return 0;
 }
 
 int8_t stage_infix_parser(
