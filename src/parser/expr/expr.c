@@ -337,6 +337,7 @@ int8_t handle_open_brace(struct ExprParserState *state) {
   set_hdlr->postfix_group_token->end = 0;
   set_hdlr->tag_op = 0;
 
+  // Comma groups dont have to have an origin brace
   if (0 >= *state->i)
     return 0;
 
@@ -368,39 +369,47 @@ int8_t handle_open_brace(struct ExprParserState *state) {
   }
 }
 
-int8_t handle_close_brace(struct ExprParserState* state) {
+int8_t handle_close_brace(struct ExprParserState *state) {
   struct Token *head;
-  
+  struct Group *ghead;
+
   /* Operators stack is empty */
   if (state->operators_ctr == 0
       /* unbalanced brace, extra closing brace.*/
-    | state->set_ctr == 0)
+      | state->set_ctr == 0)
     return -1;
+
+  /* Grab the head of the group stack */
+  ghead = &state->set_stack[state->set_ctr - 1];
+
+  /* Grab the head of the operator stack */
+  head = state->operator_stack[state->operators_ctr - 1];
 
   /*
       The current token is the inverted brace
       type of the top of operator-stack.
   */
-  if (state->operator_stack[state->operators_ctr - 1]->type ==
-           invert_brace_tok_ty(state->src[*state->i].type)) {
-    
+  if (head->type == invert_brace_tok_ty(state->src[*state->i].type)) {
     /*
         if there is no atomics,
         then we know this is an empty nesting (set of 0 members/expressions)
         Empty nestings may be symbolic for functionality,
         so include a GROUP(0) token in the output.
     */
-
-    if (state->set_stack[state->set_ctr].atomic_symbols == 0) {
+    if (ghead->atomic_symbols == 0) {
       /* overflow check */
       if (state->set_ctr > state->set_sz)
         return -1;
 
       /* add it to output */
       /* Create GROUP(0) token, and reference in sets */
-      state->out[*state->out_ctr] = new_token(state, GROUPING, state->src[*state->i].start, 0);
+      state->out[*state->out_ctr] =
+          new_token(state, GROUPING, state->src[*state->i].start, 0);
 
       *state->out_ctr += 1;
+      
+      /* discard opening brace token */
+      state->operators_ctr -= 1;
       return 0;
     }
 
@@ -415,9 +424,6 @@ int8_t handle_close_brace(struct ExprParserState* state) {
 
   /* pop operators off of the operator-stack into the output */
   while (state->operators_ctr > 0) {
-    /* Grab the head of the stack */
-    head = state->operator_stack[state->operators_ctr - 1];
-
     /* ends if tokens inverted brace is found*/
     if (head->type == invert_brace_tok_ty(state->src[*state->i].type)) {
       /* do not discard opening brace yet
@@ -434,6 +440,30 @@ int8_t handle_close_brace(struct ExprParserState* state) {
       *state->out_ctr += 1;
       state->operators_ctr -= 1;
     }
+
+    /* Grab the head of the stack */
+    head = state->operator_stack[state->operators_ctr - 1];
+  }
+
+  if (ghead->tag_op == INDEX_ACCESS) {
+    /* Expects delimiter & brace type */
+    if (ghead->delimiter != COLON || head->type != BRACKET_OPEN ||
+        ghead->open_brace != BRACKET_OPEN || 
+        /* overflow check */
+        *state->out_ctr + (5 - ghead->arg_align_ctr) > state->out_sz)
+      return -1;
+    
+    // Fill in any missing arguments
+    for (uint8_t i=ghead->arg_align_ctr; 4 > ghead->arg_align_ctr; i++) {
+      state->out[*state->out_ctr] = new_token(state, NULLTOKEN, 0, 0);
+      *state->out_ctr += 1;
+    }
+
+    state->out[*state->out_ctr] = new_token(state, NULLTOKEN, 0, 0);
+    *state->out_ctr += 1;
+  }
+
+  else if (ghead->tag_op == APPLY) {
   }
 
   /*
@@ -443,31 +473,24 @@ int8_t handle_close_brace(struct ExprParserState* state) {
   //  we can safely assume this is
   //  an index-access.
   */
-  if (
-    state->set_stack[state->set_ctr - 1].delimiter_cnt == 0
-    && head->type == BRACKET_OPEN 
-    && state->set_stack[state->set_ctr - 1].tag_op == INDEX_ACCESS
-    )
-  {
+  if (state->set_stack[state->set_ctr - 1].delimiter_cnt == 0 &&
+      head->type == BRACKET_OPEN &&
+      state->set_stack[state->set_ctr - 1].tag_op == INDEX_ACCESS) {
 
-  }
-  else {
+  } else {
     if (state->set_ctr > state->set_sz)
       return -1;
-    
+
     /*
       refer to lexer.h#Lexicon::GROUPING
       place a grouping token after
       all the appriotate operations
       have been placed.
     */
-    state->out[*state->out_ctr] = new_token(
-        state,
-        GROUPING,
-        head->start,
-        state->set_stack[state->set_ctr].delimiter_cnt + 1
-    );
-    
+    state->out[*state->out_ctr] =
+        new_token(state, GROUPING, head->start,
+                  state->set_stack[state->set_ctr].delimiter_cnt + 1);
+
     *state->out_ctr += 1;
   }
 
