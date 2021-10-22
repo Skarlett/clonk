@@ -190,7 +190,6 @@ enum Lexicon {
         internally by expression
         and should never been seen in the token stream
     */
-    FNMASK,
 
     /*
         GROUPING token are generated in the expression parser
@@ -224,24 +223,43 @@ enum Lexicon {
         and its `end` attribute will determine the amount of arguments
         it will take off of the stack
     
-        
+        tokens of this type will be spawned from a differing source
+        than the original token stream.
     */
+
     GROUPING,
-    //  INDEX_ACCESS takes 4 arugments off the stack
-    //  'array, start, end, skip' in that order. 
-    //
-    //  output: WORD  INTEGER INTEGER INTEGER INDEX_ACCESS 
-    //          array start    end    skip    operator
+
+    /*
+
+    INDEX_ACCESS acts as a function in the postfix representation
+    that takes 4 arugments off the stack
+    'source, start, end, skip' in that order.
+    
+    when INDEX_ACCESS arguments maybe padded with NULLTOKENS
+    inserted by the first stage or the user.
+    NULLTOKENS when parsed into expression trees 
+    will assume their value based on position except
+    for the first argument (the source being index).
+    The 2nd argument (start) will assume 0 if NULLTOKEN is present.
+    The 3rd argument (end) will assume the length of the array if NULLTOKEN is present.
+    The 4th (skip) will assume 1 if NULLTOKEN is present.
+
+    Examples:
+      token output: WORD   INTEGER INTEGER INTEGER INDEX_ACCESS 
+                    source start   end     skip    operator
+              text: foo[1::2]
+        postfix-IR: foo 1 NULL 2 INDEX_ACCESS
+    */
     INDEX_ACCESS,
 
     // foo(a)(b)
     // foo(a) -> func(b) -> T
     // foo(a)(b) -> ((a foo), b G(2)) DyCall
     // foo(a)(b)(c) -> a foo b G(2) DyCall c G(2) DyCall
+    APPLY
 
-    DyCall
-
-
+    // soon to be map operator?
+    // MAP
 };
 
 /*

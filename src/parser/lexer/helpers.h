@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "../../prelude.h"
 #include "lexer.h"
+#include <stdbool.h>
 
 
 /**
@@ -25,7 +26,7 @@ enum Lexicon invert_brace_tok_ty(enum Lexicon token);
  * @param token
  * @return bool
  */
-int8_t is_fncall(struct Token tokens[], usize ntokens);
+bool is_fncall(struct Token tokens[], usize ntokens);
 
 
 /**
@@ -34,7 +35,7 @@ int8_t is_fncall(struct Token tokens[], usize ntokens);
  * @param token
  * @return bool
  */
-int8_t is_cmp_operator(enum Lexicon compound_token);
+bool is_cmp_operator(enum Lexicon compound_token);
 
 
 /**
@@ -46,7 +47,7 @@ int8_t is_cmp_operator(enum Lexicon compound_token);
  * @param token
  * @return bool
  */
-int8_t is_bin_operator(enum Lexicon compound_token);
+bool is_bin_operator(enum Lexicon compound_token);
 
 
 /**
@@ -55,7 +56,7 @@ int8_t is_bin_operator(enum Lexicon compound_token);
  * @param token
  * @return bool
  */
-int8_t is_close_brace(enum Lexicon token);
+bool is_close_brace(enum Lexicon token);
 
 
 /**
@@ -64,16 +65,19 @@ int8_t is_close_brace(enum Lexicon token);
  * @param token
  * @return bool
  */
-int8_t is_open_brace(enum Lexicon token); 
+bool is_open_brace(enum Lexicon token); 
 
 
 /**
  * Check if parameter `token` is
- * symbolic or literal data. 
+ * symbolic or literal data.
+ * returns `true` if `token` is
+ * STRING_LITERAL, INTEGER or
+ * WORD.
  * @param token
  * @return bool
  */
-int8_t is_data(enum Lexicon token);
+bool is_symbolic_data(enum Lexicon token);
 
 
 /**
@@ -82,7 +86,7 @@ int8_t is_data(enum Lexicon token);
  * @param token
  * @return bool
  */
-int8_t is_utf(char ch);
+bool is_utf(char ch);
 
 
 /**
@@ -91,7 +95,7 @@ int8_t is_utf(char ch);
  * @param token
  * @return bool
  */
-int8_t is_keyword(enum Lexicon token);
+bool is_keyword(enum Lexicon token);
 
 
 /**
@@ -109,7 +113,7 @@ int8_t is_keyword(enum Lexicon token);
  *
  * @return bool
  */
-int8_t is_balanced(struct Token tokens[], usize ntokens);
+bool is_balanced(struct Token tokens[], usize ntokens);
 
 
 /**
@@ -120,7 +124,7 @@ int8_t is_balanced(struct Token tokens[], usize ntokens);
  *
  * @return bool
  */
-int8_t is_balanced_by_ref(struct Token *tokens[], usize ntokens);
+bool is_balanced_by_ref(struct Token *tokens[], usize ntokens);
 
 
 /**
@@ -130,6 +134,6 @@ int8_t is_balanced_by_ref(struct Token *tokens[], usize ntokens);
  *
  * @return bool
  */
-int8_t is_num_negative(struct Token *token);
+bool is_num_negative(struct Token *token);
 
 #endif

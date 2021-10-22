@@ -16,7 +16,7 @@ int8_t is_open_brace(enum Lexicon token) {
     || token == BRACKET_OPEN);
 }
 
-int8_t is_data(enum Lexicon token) {
+int8_t is_symbolic_data(enum Lexicon token) {
     return (token == WORD
         || token == INTEGER 
         || token == STRING_LITERAL
