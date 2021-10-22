@@ -97,7 +97,6 @@ enum DataType {
 };
 
 struct Literals {
-    enum DataType type;
     union {
         isize integer;
         struct String string;
@@ -178,8 +177,8 @@ int8_t mk_fnmask_tokens(
     struct CompileTimeError *err
 );
 
+#define FLAG_ERROR 65535
 typedef uint16_t FLAG_T; 
-
 
 
 /* if bit set, expects operand to be the next token */
@@ -194,30 +193,50 @@ typedef uint16_t FLAG_T;
 /* if bit set, expects closing brace type be the next token */
 #define EXPECTING_CLOSE_BRACKET  8
 
+/* if bit set, expects opening brace type be the next token */
+#define EXPECTING_OPEN_PARAM     16    
+
+/* if bit set, expects closing brace type be the next token */
+#define EXPECTING_CLOSE_PARAM    32
+
 /* if bit set, expects a comma be the next token */
-#define EXPECTING_COMMA          16   
+#define EXPECTING_COMMA          64   
 
 /* if bit set, expects a colon until bracket_brace token type is closed */
-#define EXPECTING_COLON          32 
+#define EXPECTING_COLON          128 
 
 /* if bit set, expects a token to follow */
-#define EXPECTING_NEXT           64  
+#define EXPECTING_NEXT           256 
+
+
 
 /* If token stream contains an error */
 /* we'll attempt to recover, by discarding tokens */
-#define PANIC_FLAG               128 
-
+#define STATE_PANIC               1 
 
 /* If we ever paniced */
 /* we'll attempt to recover, by discarding tokens, 
 but keep this flag set for the rest of parsing */
-#define INCOMPLETE_FLAG          256 
+#define STATE_INCOMPLETE          2 
 
 /* too disastrous to recover from */
-#define INTERNAL_ERROR          512 
+#define INTERNAL_ERROR            4 
 
 
+/*
+    The grouping stack is used to track the amount 
+    of sub-expressions inside an expression. (See lexer.h)
+    We generate GROUPING tokens based on the stack model
+    our parser uses.
 
+    For every new brace token-type added into the operator-stack
+    increment the grouping stack, and initalize it to 0.
+    For every comma, increment the current grouping-stack's head by 1.
+    
+    Once the closing brace is found and
+    this stack's head is larger than 0,
+    we have a set/grouping of expressions. 
+*/
 struct Group {
     struct Token *postfix_group_token;
 
@@ -274,7 +293,9 @@ struct ExprParserState {
     uint16_t operators_ctr;
     uint16_t operator_stack_sz;
 
-    FLAG_T flags;
+
+    FLAG_T expecting;
+    FLAG_T state;
 };
 
 int8_t postfix_expr(
