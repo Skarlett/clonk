@@ -83,7 +83,7 @@ struct String {
 struct Grouping { 
     usize capacity;
     usize length;
-    char brace_type;
+    enum Lexicon brace;
     struct Expr **ptr;
 };
 
@@ -182,31 +182,40 @@ typedef uint16_t FLAG_T;
 
 
 /* if bit set, expects operand to be the next token */
-#define EXPECTING_OPERAND        1
+
+#define EXPECTING_WORD           2
+
+#define EXPECTING_INTEGER        4
+
+#define EXPECTING_STRING         8
 
 /* if bit set, expects binary operator to be the next token */
-#define EXPECTING_OPERATOR       2
+#define EXPECTING_OPERATOR       16
 
 /* if bit set, expects opening brace type be the next token */
-#define EXPECTING_OPEN_BRACKET   4    
+#define EXPECTING_OPEN_BRACKET   32   
 
 /* if bit set, expects closing brace type be the next token */
-#define EXPECTING_CLOSE_BRACKET  8
+#define EXPECTING_CLOSE_BRACKET  64
 
 /* if bit set, expects opening brace type be the next token */
-#define EXPECTING_OPEN_PARAM     16    
+#define EXPECTING_OPEN_PARAM     128    
 
 /* if bit set, expects closing brace type be the next token */
-#define EXPECTING_CLOSE_PARAM    32
+#define EXPECTING_CLOSE_PARAM    256
 
 /* if bit set, expects a comma be the next token */
-#define EXPECTING_COMMA          64   
+#define EXPECTING_COMMA          512   
 
 /* if bit set, expects a colon until bracket_brace token type is closed */
-#define EXPECTING_COLON          128 
+#define EXPECTING_COLON          1024 
+
+/* hint that colons are acceptable */
+#define _EX_COLON_APPLICABLE     2048 
 
 /* if bit set, expects a token to follow */
-#define EXPECTING_NEXT           256 
+#define EXPECTING_NEXT           4096 
+
 
 
 
@@ -240,6 +249,9 @@ but keep this flag set for the rest of parsing */
 struct Group {
     struct Token *postfix_group_token;
 
+    /* pointer of token in operation stack*/
+    //struct Token *operation_ptr;
+
     // amount of delimiters + 1
     uint16_t delimiter_cnt;
     
@@ -252,7 +264,9 @@ struct Group {
     // been placed in the output
     // to account for the index/slice 
     // operation arguments.
-    uint8_t idx_value_ctr;
+    // This is so we know how many NULLs 
+    // to place
+    uint8_t arg_align_ctr;
 
     // should be ',' ':' or `0`
     enum Lexicon delimiter;
