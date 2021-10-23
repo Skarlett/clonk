@@ -403,6 +403,11 @@ int8_t handle_close_brace(struct ExprParserState *state) {
 
       /* add it to output */
       /* Create GROUP(0) token, and reference in sets */
+      
+      /*TODO README
+      IMPL for APPLY aswell.
+      */
+
       state->out[*state->out_ctr] =
           new_token(state, GROUPING, state->src[*state->i].start, 0);
 
@@ -419,7 +424,7 @@ int8_t handle_close_brace(struct ExprParserState *state) {
   }
 
   /* should be atleast one operator in the stack */
-  else if (state->operators_ctr == 0)
+  if (state->operators_ctr == 0)
     return -1;
 
   /* pop operators off of the operator-stack into the output */
@@ -459,7 +464,7 @@ int8_t handle_close_brace(struct ExprParserState *state) {
       *state->out_ctr += 1;
     }
 
-    state->out[*state->out_ctr] = new_token(state, NULLTOKEN, 0, 0);
+    state->out[*state->out_ctr] = new_token(state, INDEX_ACCESS, 0, ghead->delimiter_cnt + 1);
     *state->out_ctr += 1;
   }
 
@@ -706,6 +711,46 @@ int8_t handle_delimiter(struct ExprParserState *state) {
   Shunting yard expression parsing algorthim 
   https://en.wikipedia.org/wiki/Shunting-yard_algorithm
   --------------
+
+  This function takes takes a stream of token `tokens[]`
+  and writes an array of pointers (of type `struct Token`)
+  into `*output[]` in postfix notation.
+
+  The contents of `*output[]` will be a
+  POSTFIX notation referenced from the 
+  INFIX notation of `input[]`.
+
+    infix: 1 + 1
+  postfix: 1 1 +
+    input: [INT, ADD, INT]
+   output: [*INT, *INT, *ADD]
+
+  Further more, this function handles organizing operation precedense
+  based on shunting-yard algorthm.
+  This is in combination with arithmetic operations, and our custom operations
+  (GROUP, INDEX_ACCESS, APPLY, DOT).
+  
+  Upon completion, the result will be an ordered array of operands, 
+  and operators ready to be evaluated into a tree structure.
+
+  infix:   (1+2) * (1 + 1)
+  postfix: 1 2 + 1 1 + *
+  To turn the output into a tree see `stage_postfix_parser`.
+
+  Digging deeper into the realm of this, 
+  you'll find I evaluate some custom operators
+  such as the DOT token, and provide 
+  extra operators to the output to describe
+  function calls (APPLY(N)).
+
+  infix:   foo(a, b+c).bar(1)
+  postfix  foo a b c + APPLY(3) bar 1 APPLY(2) .
+  pretty-postfix:
+           ((foo a (b c +) APPLY(3)) bar 1 APPLY(2) .)
+ 
+  See src/parser/lexer/lexer.h#Lexicon::APPLY for 
+  more information about the APPLY operator, and
+  others like it.
 */
 int8_t stage_infix_parser(
     struct Token tokens[], usize expr_size,
@@ -826,7 +871,7 @@ void determine_return_ty(struct Expr *bin) {
 }
 
 #define EXPR_STACK_SZ 2048
-int8_t postfix_into_tree(
+int8_t stage_postfix_parser(
   const char *line, const struct Token *tokens[],
   usize ntokens,
   struct ExprPool *pool
