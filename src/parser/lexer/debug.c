@@ -48,7 +48,6 @@ const char * ptoken(enum Lexicon t) {
         case ELSE: return "'else'";
         case IMPL: return "'impl'";
         case FUNC_DEF: return "'def'";
-        case FNMASK: return "fn_call(..)";
         case RETURN: return "'return'";
         case AS: return "'as'";
         case ATSYM: return "@";
@@ -61,6 +60,33 @@ const char * ptoken(enum Lexicon t) {
     };
 }
 
+char brace_as_char(enum Lexicon tok) {
+    switch(tok){
+        case BRACE_OPEN: return '{';
+        case BRACE_CLOSE: return '}';
+        case PARAM_OPEN: return '(';
+        case PARAM_CLOSE: return ')';
+        case BRACKET_OPEN: return '[';
+        case BRACKET_CLOSE: return ']';
+        default:
+            return -1;
+    }
+}
+
+char invert_brace_char(char brace) {
+    switch(brace){
+        case '{': return '}';
+        case '}': return '{';
+        case '(': return ')';
+        case ')': return '(';
+        case '[': return ']';
+        case ']': return '[';
+        default:
+            return -1;
+    }
+}
+
+
 int8_t __sprintf_token_ty_slice(char *output, usize output_sz, enum Lexicon token, usize *ctr) {
     char token_buf[64];
     const char *ptok;
@@ -71,7 +97,7 @@ int8_t __sprintf_token_ty_slice(char *output, usize output_sz, enum Lexicon toke
     ptok = ptoken(token);
     sprintf(token_buf, "[%s], ", ptok);
         
-    strncpy(
+    memcpy(
         output + *ctr,
         token_buf,
         strlen(ptok) + 4
@@ -85,7 +111,7 @@ int8_t __sprintf_token_ty_slice(char *output, usize output_sz, enum Lexicon toke
 }
 
 int8_t sprintf_token_slice(
-    struct Token tokens[],
+    const struct Token tokens[],
     usize ntokens,
     char * output,
     usize output_sz    
@@ -117,7 +143,7 @@ int8_t sprintf_token_slice(
 }
 
 int8_t sprintf_lexicon_slice(
-    enum Lexicon tokens[],
+    const enum Lexicon tokens[],
     usize ntokens,
     char * output,
     usize output_sz    
@@ -149,7 +175,7 @@ int8_t sprintf_lexicon_slice(
 }
 
 int8_t sprintf_token_slice_by_ref(
-    struct Token *tokens[],
+    const struct Token *tokens[],
     usize ntokens,
     char * output,
     usize output_sz    
@@ -179,18 +205,25 @@ int8_t sprintf_token_slice_by_ref(
     return 0;
 }
 
-int8_t sprint_src_code(char * output, usize output_sz, const char * source, struct Token *token) {
-    if (!source 
-        || !output 
-        || !token 
-        || token->end - token->start > output_sz
-    ) return -1;
+int8_t sprint_src_code(
+    char * output,
+    usize output_sz,
+    usize *nbytes,
+    const char * source,
+    const struct Token *token
+
+) {
+    if (!source || !output || !token 
+        || token->start > token->end
+        || token->end - token->start > output_sz)
+        return -1;
     
-    strncpy(
+    memcpy(
         output,
         source+token->start,
         token->end-token->start
     );
-
+    
+    *nbytes = token->end - token->start;
     return 0;
 }

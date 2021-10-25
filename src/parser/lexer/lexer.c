@@ -189,7 +189,7 @@ int8_t continue_compound_token(enum Lexicon token, enum Lexicon compound_token, 
     );
 }
 
-
+/* used for downgrading compound tokens */
 enum Lexicon invert_operator_token(enum Lexicon compound_token) {
     switch (compound_token) {
         case COMMENT: return POUND;
@@ -264,6 +264,7 @@ int8_t tokenize(
     char *line,
     struct Token tokens[],
     usize *token_ctr,
+    usize token_sz,
     struct CompileTimeError *error
 ){
     struct Token token;
@@ -281,6 +282,7 @@ int8_t tokenize(
     {
         if (line[i] == 0) continue;
         else if (is_utf(line[i])) return -1;
+        else if (new_tokens > token_sz) return -1;
 
         lexed = tokenize_char(line[i]);
         
