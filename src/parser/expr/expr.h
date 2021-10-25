@@ -11,6 +11,8 @@
     it may not have more literal elements than
 */
 #define MAX_GROUP_SZ 256
+#define MAX_ARGS_SZ 24
+#define MAX_FUNC_NAME_SZ 256
 
 enum ExprType {
     UndefinedExprT,
@@ -30,10 +32,6 @@ enum ExprType {
     // x(a, ...)
     FnCallExprT,
 
-    // Chain of evaluation
-    // foo(x.map(f)).length
-    // FnCall -> Symbol
-    LinkedExprT,
     
     // binary operation
     // 1 + 2 * foo.max - size_of(list)
@@ -61,22 +59,16 @@ enum Operation {
 
     And,
     Or,
-    Not,
     
     /* dot operator */
     Access,
+    
 
+    Not,
     /* L[N:N:N] */
     IdxAccess,
 
-
     UndefinedOp = 255
-};
-
-struct String { 
-    usize capacity;
-    usize length;
-    char * ptr;
 };
 
 #define GROUPING_SZ 64
@@ -92,43 +84,44 @@ enum DataType {
     IntT,
     StringT,
     BoolT,
-    ListT,
+    GroupT,
     NullT
 };
 
 struct Literals {
     union {
         isize integer;
-        struct String string;
+        char * string;
         uint8_t boolean;
         struct Grouping grouping;
     } literal;
 };
 
-struct FnCallNode {
-    enum DataType returns;
-    char * func_name; 
-    uint8_t name_capacity;
-    uint8_t name_length;
-    uint8_t args_capacity;
+
+struct CallExpr {
+    struct Expr *caller;
+    char * func_name;
     uint8_t args_length;
-    struct Expr * args;
+    struct Expr *args[MAX_ARGS_SZ];
+    enum DataType returns;
 };
 
-// /*
-//     `head` should always contain a valid reference to an Expr
-//     `tail` will contain a valid reference, or a null pointer
-// */
-// struct LinkedExpr {
-//     struct Expr *head;
-//     struct Expr *tail;
-// };
-
-struct BinExprNode {
+struct BinExpr {
     enum Operation op;
     struct Expr *lhs;
     struct Expr *rhs;
     enum DataType returns;
+};
+
+struct NotExpr {
+    struct Expr *operand;
+};
+
+struct IdxExpr {
+    struct Expr *operand;
+    struct Expr * start;
+    struct Expr * end;
+    struct Expr * skip;
 };
 
 struct Expr {
@@ -139,51 +132,21 @@ struct Expr {
     union {
         char * symbol;
         struct Literals value;
-        struct FnCallNode fncall;
-        struct BinExprNode bin;
+        struct CallExpr fncall;
+        struct BinExpr bin;
+        struct NotExpr not_;
+        struct IdxExpr idx;
+
     } inner;
 };
 
-
-/*
-    This represents the second stage of parsing function calls.
-    the attribute `token` should always be an FNMASK token.
-    
-    The amount of arguments the function 
-    call was made with is represented with `argc`.
-
-    When sorting order precedence, 
-    the amount of arguments each 
-    function call expects is lost.
-
-    This information is used to recover that after 
-    we've sorted our precedence.
-*/
-struct FnCall {
-    struct Token token;
-    uint16_t argc;
-    uint16_t id;
-};
-
-
-int8_t mk_fnmask_tokens(
-    struct Token input[],
-    usize expr_size,
-
-    struct Token masks[],
-    usize masks_sz,
-    usize *masks_ctr,
-  
-    struct CompileTimeError *err
-);
 
 #define FLAG_ERROR 65535
 typedef uint16_t FLAG_T; 
 
 
 /* if bit set, expects operand to be the next token */
-
-#define EXPECTING_WORD           2
+#define EXPECTING_SYMBOL         2
 
 #define EXPECTING_INTEGER        4
 
@@ -217,8 +180,6 @@ typedef uint16_t FLAG_T;
 #define EXPECTING_NEXT           4096 
 
 
-
-
 /* If token stream contains an error */
 /* we'll attempt to recover, by discarding tokens */
 #define STATE_PANIC               1 
@@ -230,7 +191,6 @@ but keep this flag set for the rest of parsing */
 
 /* too disastrous to recover from */
 #define INTERNAL_ERROR            4 
-
 
 /*
     The grouping stack is used to track the amount 
@@ -272,21 +232,13 @@ struct Group {
     enum Lexicon delimiter;
 
     // should be `[` `(` or `0`
-    enum Lexicon open_brace;
+    struct Token *origin;
 
     // INDEX / APPLY
     enum Lexicon tag_op;
 };
 
-
-
-struct ExprParserState {
-
-    /*
-        quick bump-allocator pool
-        all tokens created in this stage will be
-        referenced from this pool
-    */
+struct StageInfixState {
     struct Token *src;
     usize src_sz;
     usize *i;
@@ -295,6 +247,11 @@ struct ExprParserState {
     usize out_sz;
     usize *out_ctr;
 
+    /*
+      quick bump-allocator pool
+      all tokens created in this stage will be
+      referenced from this pool
+    */
     struct Token *pool;
     usize pool_i;
     usize pool_sz;
@@ -306,7 +263,6 @@ struct ExprParserState {
     struct Token **operator_stack;
     uint16_t operators_ctr;
     uint16_t operator_stack_sz;
-
 
     FLAG_T expecting;
     FLAG_T state;
@@ -320,7 +276,7 @@ int8_t postfix_expr(
     usize output_sz,
     usize *output_ctr,
     
-    struct ExprParserState *state,
+    struct StageInfixState *state,
     struct CompileTimeError *err
 );
 

@@ -20,6 +20,7 @@ int8_t is_symbolic_data(enum Lexicon token) {
     return (token == WORD
         || token == INTEGER 
         || token == STRING_LITERAL
+        || token == NULLTOKEN
     );
 }
 

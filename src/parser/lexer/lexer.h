@@ -258,8 +258,6 @@ enum Lexicon {
     // foo(a)(b)(c) -> a foo b G(2) DyCall c G(2) DyCall
     APPLY
 
-    // soon to be map operator?
-    // MAP
 };
 
 /*

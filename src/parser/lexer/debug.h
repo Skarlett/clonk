@@ -32,6 +32,7 @@ int8_t sprintf_lexicon_slice(
 int8_t sprint_src_code(
     char * output,
     usize output_sz,
+    usize *nbytes,
     const char * source,
     const struct Token *token
 );

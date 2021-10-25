@@ -48,7 +48,6 @@ const char * ptoken(enum Lexicon t) {
         case ELSE: return "'else'";
         case IMPL: return "'impl'";
         case FUNC_DEF: return "'def'";
-        case FNMASK: return "fn_call(..)";
         case RETURN: return "'return'";
         case AS: return "'as'";
         case ATSYM: return "@";
@@ -214,12 +213,10 @@ int8_t sprint_src_code(
     const struct Token *token
 
 ) {
-    if (!source 
-        || !output 
-        || !token 
+    if (!source || !output || !token 
         || token->start > token->end
-        || token->end - token->start > output_sz
-    ) return -1;
+        || token->end - token->start > output_sz)
+        return -1;
     
     memcpy(
         output,

@@ -14,10 +14,31 @@
 
 #include "expr.h"
 #include "pool.h"
-#include "helpers.h"
 
 #define OPERATOR_BUF_SZ 64
 #define END_PRECEDENCE 127
+
+enum Operation operation_from_token(enum Lexicon t){
+    switch (t) {
+        case ADD: return Add;
+        case SUB: return Sub;
+        case MUL: return Multiply;
+        case DIV: return Divide;
+        case MOD: return Modolus;
+        case POW: return Pow;
+        case AND: return And;
+        case OR: return Or;
+        case ISEQL: return IsEq;
+        case ISNEQL: return NotEq;
+        case GTEQ: return GtEq;
+        case LTEQ: return LtEq;
+        case LT: return Lt;
+        case GT: return Gt;
+        case DOT: return Access;
+        default: return UndefinedOp;
+    }
+}
+
 
 enum Associativity {
     NONASSOC,
@@ -44,7 +65,7 @@ enum Associativity get_assoc(enum Lexicon token) {
       "/ * %"   : 5 L  (4 / 2 * 2) -> ((4 / 2) * 2)
       "+ -"     : 4 L
       "!= == >= > <= < && ||": 3 L
-      "!"       : 2 L
+      "!"       : 2 R
       "( [ {"   : 0 non-assoc
 */
 int8_t op_precedence(enum Lexicon token) {
@@ -73,7 +94,8 @@ int8_t op_precedence(enum Lexicon token) {
         || token == GT
         || token == LT
         || token == AND
-        || token == OR)
+        || token == OR
+        || token == NOT)
         return 2;
     
     else if (is_open_brace(token))
@@ -102,7 +124,7 @@ int8_t unwind_params_needed(struct Token *tok, usize *ptr_sz) {
     return 0;
 }
 
-struct Token * new_token(struct ExprParserState *state, enum Lexicon token, usize start, usize end) {
+struct Token * new_token(struct StageInfixState *state, enum Lexicon token, usize start, usize end) {
     struct Token *ret;
     
     state->pool[state->pool_i].type = token;
@@ -114,13 +136,58 @@ struct Token * new_token(struct ExprParserState *state, enum Lexicon token, usiz
 
     return ret;
 }
-
 #define STACK_SZ 128
 #define _OP_SZ 128
+
+
+/*  Flushes operators of higher precedence than `current`
+ *  into the output until stack is empty,
+ *  or runs into an open brace token.
+ *  This function will not pop off the open brace token
+ *  if one
+ */
+
+int8_t flush_ops(struct StageInfixState *state)
+{
+  struct Token *head;
+
+  if (state->operators_ctr <= 0)
+    return 0;
+  
+  head = state->operator_stack[state->operators_ctr - 1];
+
+  /* pop operators off of the operator-stack into the output */
+  while (state->operators_ctr > 0) {
+    /* ends if tokens inverted brace is found*/
+    if (head->type == invert_brace_tok_ty(state->src[*state->i].type)) {
+      
+      /* do not discard opening brace yet
+      operators_ctr -= 1; */
+      break;
+    }
+    /* otherwise pop into output */
+    else {
+      if (*state->out_ctr > state->out_sz)
+        return -1;
+      state->out[*state->out_ctr] = head;
+      *state->out_ctr += 1;
+      state->operators_ctr -= 1;
+    }
+
+    if (state->operators_ctr <= 0)
+      break;
+
+    /* Grab the head of the stack */
+    head = state->operator_stack[state->operators_ctr - 1];
+  }
+
+  return 0;
+}
+
 /*
     check flag, and if present, unset it.
 */
-int8_t check_flag(FLAG_T set, FLAG_T flag){
+FLAG_T check_flag(FLAG_T set, FLAG_T flag){
     return set & flag;
 }
 
@@ -135,47 +202,64 @@ void unset_flag(FLAG_T *set, FLAG_T flag){
 int8_t is_token_unexpected(const struct Token *current, FLAG_T flags) {
   FLAG_T check_list = 0;
 
-  if (current->type == WORD)
-    set_flag(&check_list, EXPECTING_WORD);
 
-  else if (is_bin_operator(current->type))
+  if (is_bin_operator(current->type)) {
     set_flag(&check_list, EXPECTING_OPERATOR);
+    return 0;
+  }
 
-  else if (current->type == INTEGER)
-    set_flag(&check_list, EXPECTING_INTEGER);
+  switch (current->type) {
+  case WORD:
+    set_flag(&check_list, EXPECTING_SYMBOL);
+    break;
 
-  else if (current->type == STRING_LITERAL)
+  case NULLTOKEN:
+    set_flag(&check_list, EXPECTING_SYMBOL);
+    break;
+
+  case STRING_LITERAL:
     set_flag(&check_list, EXPECTING_STRING);
-  
-  else if (current->type == COMMA)
+    break;
+
+  case COMMA:
     set_flag(&check_list, EXPECTING_COMMA);
+    break;
 
-  else if (current->type == COLON)
+  case COLON:
     set_flag(&check_list, EXPECTING_COLON);
+    break;
 
-  else if (current->type == PARAM_OPEN)
+  case PARAM_OPEN:
     set_flag(&check_list, EXPECTING_OPEN_PARAM);
+    break;
 
-  else if (current->type == PARAM_CLOSE)
+  case PARAM_CLOSE:
     set_flag(&check_list, EXPECTING_CLOSE_PARAM);
+    break;
 
-  else if (current->type == BRACKET_OPEN)
+  case BRACKET_OPEN:
     set_flag(&check_list, EXPECTING_OPEN_BRACKET);
+    break;
 
-  else if (current->type == BRACKET_CLOSE)
+  case BRACKET_CLOSE:
     set_flag(&check_list, EXPECTING_CLOSE_BRACKET);
+    break;
+
+  default: return -1;
+  }
+
 
   return !check_flag(flags, check_list);
 }
 
-FLAG_T setup_flags(struct ExprParserState* state)
+FLAG_T setup_flags(struct StageInfixState* state)
 {
   struct Token *current;
   FLAG_T ret = FLAG_ERROR;
 
   if (is_bin_operator(current->type))
     set_flag(&ret, 0
-      | EXPECTING_WORD
+      | EXPECTING_SYMBOL
       | EXPECTING_INTEGER
       | EXPECTING_STRING
       | EXPECTING_OPEN_BRACKET
@@ -205,7 +289,7 @@ FLAG_T setup_flags(struct ExprParserState* state)
   else if (current->type == COMMA)
     set_flag(&ret, 0
       | EXPECTING_INTEGER
-      | EXPECTING_WORD
+      | EXPECTING_SYMBOL
       | EXPECTING_STRING
       | EXPECTING_OPEN_BRACKET
       | EXPECTING_OPEN_PARAM
@@ -216,7 +300,7 @@ FLAG_T setup_flags(struct ExprParserState* state)
   else if (current->type == COLON)
     set_flag(&ret, 0
       | EXPECTING_INTEGER
-      | EXPECTING_WORD
+      | EXPECTING_SYMBOL
       //| EXPECTING_STRING 
       | EXPECTING_OPEN_BRACKET
       | EXPECTING_OPEN_PARAM
@@ -230,7 +314,7 @@ FLAG_T setup_flags(struct ExprParserState* state)
       | EXPECTING_OPEN_BRACKET
       | EXPECTING_OPEN_PARAM
       | EXPECTING_INTEGER
-      | EXPECTING_WORD
+      | EXPECTING_SYMBOL
       | EXPECTING_STRING
       | EXPECTING_NEXT
     );
@@ -274,7 +358,7 @@ FLAG_T setup_flags(struct ExprParserState* state)
   return ret;
 }
 
-int8_t handle_unwind(struct ExprParserState *state) {
+int8_t handle_unwind(struct StageInfixState *state) {
 
     
 }
@@ -282,7 +366,7 @@ int8_t handle_unwind(struct ExprParserState *state) {
 /*
   symbols are placed directly into the output.
 */
-int8_t handle_symbol(struct ExprParserState* state) {
+int8_t handle_symbol(struct StageInfixState* state) {
     state->out[*state->out_ctr] = &state->src[*state->i];
     *state->out_ctr += 1;
     
@@ -310,8 +394,17 @@ int8_t handle_symbol(struct ExprParserState* state) {
         "[
          ^-- current token.
 */
-int8_t handle_open_brace(struct ExprParserState *state) {
-  struct Group *set_hdlr;
+int8_t handle_open_brace(struct StageInfixState *state) {
+  struct Group *ghead = 0;
+  struct Token *current, *prev = 0, *next = 0;
+
+  current = &state->src[*state->i];
+
+  if (*state->i > 0)
+    prev = &state->src[*state->i - 1];
+  
+  if (state->src_sz-1 > *state->i)
+    next = &state->src[*state->i + 1];
 
   /* overflow check */
   if (state->set_ctr > state->set_sz ||
@@ -324,18 +417,18 @@ int8_t handle_open_brace(struct ExprParserState *state) {
   /* increment group */
   state->set_ctr += 1;
 
-  set_hdlr = &state->set_stack[state->set_ctr];
+  ghead = &state->set_stack[state->set_ctr];
 
-  set_hdlr->atomic_symbols = 0;
-  set_hdlr->delimiter = 0;
-  set_hdlr->delimiter_cnt = 0;
+  ghead->atomic_symbols = 0;
+  ghead->delimiter = 0;
+  ghead->delimiter_cnt = 0;
 
-  set_hdlr->open_brace = state->src[*state->i].type;
+  ghead->origin = current;
 
-  set_hdlr->postfix_group_token->type = GROUPING;
-  set_hdlr->postfix_group_token->start = *state->i;
-  set_hdlr->postfix_group_token->end = 0;
-  set_hdlr->tag_op = 0;
+  ghead->postfix_group_token->type = GROUPING;
+  ghead->postfix_group_token->start = *state->i;
+  ghead->postfix_group_token->end = 0;
+  ghead->tag_op = 0;
 
   // Comma groups dont have to have an origin brace
   if (0 >= *state->i)
@@ -344,32 +437,33 @@ int8_t handle_open_brace(struct ExprParserState *state) {
   /*
     function call pattern
   */
-  else if (state->src[*state->i].type == PARAM_OPEN)
+  else if (current->type == PARAM_OPEN)
   {
-    if (is_close_brace(state->src[*state->i - 1].type) ||
-        state->src[*state->i - 1].type == WORD) 
+    if (prev && (is_close_brace(prev->type) ||
+        prev->type == WORD)) 
       {
-        set_hdlr->tag_op = APPLY;
-        set_hdlr->arg_align_ctr += 1;
+        ghead->tag_op = APPLY;
+        ghead->arg_align_ctr += 1;
       }
   }
 
   /*
     index call pattern
   */
-  else if (state->src[*state->i].type == BRACKET_OPEN)
+  else if (current->type == BRACKET_OPEN)
   {
-    if (is_close_brace(state->src[*state->i - 1].type) ||
-        state->src[*state->i - 1].type == WORD ||
-        state->src[*state->i - 1].type == STRING_LITERAL)
+    if (prev && (is_close_brace(prev->type) ||
+        prev->type == WORD ||
+        prev->type == STRING_LITERAL))
     {
-      set_hdlr->tag_op = INDEX_ACCESS;
-        set_hdlr->arg_align_ctr += 1;
+      ghead->tag_op = INDEX_ACCESS;
+        ghead->arg_align_ctr += 1;
     }
   }
+  return 0;
 }
 
-int8_t handle_close_brace(struct ExprParserState *state) {
+int8_t handle_close_brace(struct StageInfixState *state) {
   struct Token *head;
   struct Group *ghead;
 
@@ -390,70 +484,34 @@ int8_t handle_close_brace(struct ExprParserState *state) {
       type of the top of operator-stack.
   */
   if (head->type == invert_brace_tok_ty(state->src[*state->i].type)) {
-    /*
-        if there is no atomics,
-        then we know this is an empty nesting (set of 0 members/expressions)
+    if(ghead->atomic_symbols == 0)
+    {
+      /*
+        its a set of 0 members/expressions
         Empty nestings may be symbolic for functionality,
         so include a GROUP(0) token in the output.
-    */
-    if (ghead->atomic_symbols == 0) {
-      /* overflow check */
+      */
       if (state->set_ctr > state->set_sz)
         return -1;
-
-      /* add it to output */
-      /* Create GROUP(0) token, and reference in sets */
-      
-      /*TODO README
-      IMPL for APPLY aswell.
-      */
-
+        
       state->out[*state->out_ctr] =
-          new_token(state, GROUPING, state->src[*state->i].start, 0);
+        new_token(state, GROUPING, state->src[*state->i].start, 0);
 
       *state->out_ctr += 1;
-      
-      /* discard opening brace token */
-      state->operators_ctr -= 1;
-      return 0;
     }
+  } 
+  else
+  {
+    /* should be atleast one operator in the stack */
+    if (state->operators_ctr == 0)
+      return -1;
 
-    /* discard opening brace token */
-    state->operators_ctr -= 1;
-    return 0;
-  }
-
-  /* should be atleast one operator in the stack */
-  if (state->operators_ctr == 0)
-    return -1;
-
-  /* pop operators off of the operator-stack into the output */
-  while (state->operators_ctr > 0) {
-    /* ends if tokens inverted brace is found*/
-    if (head->type == invert_brace_tok_ty(state->src[*state->i].type)) {
-      /* do not discard opening brace yet
-      // operators_ctr -= 1;
-      */
-      break;
-    }
-    /* otherwise pop into output */
-    else {
-      if (*state->out_ctr > state->out_sz)
-        return -1;
-
-      state->out[*state->out_ctr] = head;
-      *state->out_ctr += 1;
-      state->operators_ctr -= 1;
-    }
-
-    /* Grab the head of the stack */
-    head = state->operator_stack[state->operators_ctr - 1];
+    flush_ops(state);
   }
 
   if (ghead->tag_op == INDEX_ACCESS) {
     /* Expects delimiter & brace type */
-    if (ghead->delimiter != COLON || head->type != BRACKET_OPEN ||
-        ghead->open_brace != BRACKET_OPEN || 
+    if (ghead->delimiter != COLON || head != ghead->origin || 
         /* overflow check */
         *state->out_ctr + (5 - ghead->arg_align_ctr) > state->out_sz)
       return -1;
@@ -464,37 +522,27 @@ int8_t handle_close_brace(struct ExprParserState *state) {
       *state->out_ctr += 1;
     }
 
-    state->out[*state->out_ctr] = new_token(state, INDEX_ACCESS, 0, ghead->delimiter_cnt + 1);
+    state->out[*state->out_ctr] = new_token(
+        state,
+        INDEX_ACCESS,
+        0,
+        0
+    );
+
     *state->out_ctr += 1;
   }
 
   else if (ghead->tag_op == APPLY) {
-  }
-
-  /*
-  //  TODO: index_hints probably doesn't work
-  //
-  //  If enough hints are made,
-  //  we can safely assume this is
-  //  an index-access.
-  */
-  if (state->set_stack[state->set_ctr - 1].delimiter_cnt == 0 &&
-      head->type == BRACKET_OPEN &&
-      state->set_stack[state->set_ctr - 1].tag_op == INDEX_ACCESS) {
-
-  } else {
-    if (state->set_ctr > state->set_sz)
+    if (head->type != PARAM_OPEN || ghead->origin != head
+    || *state->out_ctr > state->out_sz)
       return -1;
-
-    /*
-      refer to lexer.h#Lexicon::GROUPING
-      place a grouping token after
-      all the appriotate operations
-      have been placed.
-    */
-    state->out[*state->out_ctr] =
-        new_token(state, GROUPING, head->start,
-                  state->set_stack[state->set_ctr].delimiter_cnt + 1);
+    
+    state->out[*state->out_ctr] = new_token(
+        state,
+        INDEX_ACCESS,
+        0,
+        ghead->delimiter_cnt + 1
+    );
 
     *state->out_ctr += 1;
   }
@@ -502,9 +550,10 @@ int8_t handle_close_brace(struct ExprParserState *state) {
   /* discard opening brace from operator stack */
   state->operators_ctr -= 1;
   state->set_ctr -= 1;
+  return 0;
 }
 
-int8_t handle_operator(struct ExprParserState *state) {
+int8_t handle_operator(struct StageInfixState *state) {
   struct Token *head;
   int8_t precedense = 0, head_precedense = 0;
 
@@ -517,11 +566,14 @@ int8_t handle_operator(struct ExprParserState *state) {
   /*
       no operators in operators-stack,
       so no extra checks needed
+
+      if the head of the operator stack is an open brace
+      we don't need to do anymore checks
+      before placing the operator  
   */
-  else if (state->operators_ctr == 0) {
-    state->operator_stack[0] = &state->src[*state->i];
+  else if (state->operators_ctr == 0 || is_open_brace(head->type)) {
+    state->operator_stack[state->operators_ctr] = &state->src[*state->i];
     state->operators_ctr += 1;
-    //continue;
     return 0;
   }
 
@@ -529,38 +581,25 @@ int8_t handle_operator(struct ExprParserState *state) {
   head = state->operator_stack[state->operators_ctr - 1];
 
   /*
-      if the head of the operator stack is an open brace
-      we don't need to do anymore checks
-      before placing the operator
-  */
-  if (is_open_brace(head->type)) {
-    state->operator_stack[state->operators_ctr] = &state->src[*state->i];
-    state->operators_ctr += 1;
-    return 0;
-    //continue;
-  }
-
-  /*
       while `head` has higher precedence
       than our current token pop operators from
       the operator-stack into the output
   */
+  
   while (op_precedence(head->type) >= precedense && state->operators_ctr > 0) {
     head_precedense = op_precedence(head->type);
 
     if (is_open_brace(head->type))
       break;
-
+    
     /*
         pop operators off the stack
         into the output
     */
     if (head_precedense > precedense) {
-      if (*state->out_ctr > state->out_sz) {
-        
+      if (*state->out_ctr > state->out_sz) 
         return -1;
-      }
-
+      
       state->out[*state->out_ctr] = head;
       *state->out_ctr += 1;
     }
@@ -596,8 +635,7 @@ int8_t handle_operator(struct ExprParserState *state) {
   return 0;
 }
 
-
-int8_t handle_delimiter(struct ExprParserState *state) {
+int8_t handle_delimiter(struct StageInfixState *state) {
   struct Token *head = 0, 
     *current = &state->src[*state->i],
     *prev = 0,
@@ -631,7 +669,7 @@ int8_t handle_delimiter(struct ExprParserState *state) {
     if (// overflow check
         state->set_ctr > state->set_sz ||
         // must be a previous token,
-        !prev ||
+        !prev || !head ||
         // there must atleast one group ('[')
         1 > state->set_ctr ||
         // too many colons?
@@ -665,8 +703,7 @@ int8_t handle_delimiter(struct ExprParserState *state) {
       if last colon token, 
       peek ahead to see if theres a symbol
     */
-    if (ghead->delimiter_cnt == 2 && next &&
-        next->type == BRACKET_CLOSE)
+    if (ghead->delimiter_cnt == 2 && next->type == BRACKET_CLOSE)
     {
       state->out[*state->out_ctr] = new_token(state, NULLTOKEN, 0, 0);
       *state->out_ctr += 1;
@@ -682,7 +719,7 @@ int8_t handle_delimiter(struct ExprParserState *state) {
   }
 
   /*
-    empty operators until ( [ ,
+    empty operators until ( [
   */
   while (state->operators_ctr > 0) {
     head = state->operator_stack[state->operators_ctr - 1];
@@ -759,75 +796,63 @@ int8_t stage_infix_parser(
     struct Token token_pool[], usize pool_sz,
     struct CompileTimeError *err)
 {
-  struct ExprParserState *state;
+  struct StageInfixState state;
   struct Token *operators[STACK_SZ];
   struct Group groups[STACK_SZ];
   struct Token *head;
+
   int8_t ret = -1;
   int8_t precedense = 0;
   usize i = 0;
 
-  state->i = &i;
-  state->src = tokens;
-  state->src_sz = expr_size;
+  state.i = &i;
+  state.src = tokens;
+  state.src_sz = expr_size;
 
-  state->out = output;
-  state->out_ctr = output_ctr;
-  state->out_sz = output_sz;
+  state.out = output;
+  state.out_ctr = output_ctr;
+  state.out_sz = output_sz;
 
-  state->pool = token_pool;
-  state->pool_sz = pool_sz;
+  state.pool = token_pool;
+  state.pool_sz = pool_sz;
 
-  state->set_stack = groups;
-  state->set_ctr = 0;
-  state->set_sz = STACK_SZ;
+  state.set_stack = groups;
+  state.set_ctr = 0;
+  state.set_sz = STACK_SZ;
 
-  state->operators_ctr = 0;
-  state->operator_stack = operators;
-  state->operator_stack_sz = STACK_SZ;
-  state->state = 0;
+  state.operators_ctr = 0;
+  state.operator_stack = operators;
+  state.operator_stack_sz = STACK_SZ;
+  state.state = 0;
 
-  set_flag(&state->expecting,  EXPECTING_OPEN_PARAM 
-    | EXPECTING_STRING | EXPECTING_WORD
+  set_flag(&state.expecting,  EXPECTING_OPEN_PARAM 
+    | EXPECTING_STRING | EXPECTING_SYMBOL
     | EXPECTING_OPEN_BRACKET | EXPECTING_NEXT
     | EXPECTING_INTEGER
   );
 
   for (i = 0; expr_size > i; i++) {
     if (*output_ctr > output_sz ||
-        state->operators_ctr > state->operator_stack_sz)
+        state.operators_ctr > state.operator_stack_sz)
       return -1;
-    /*
-        If the PANIC_FLAG is set, we'll attempt to recover the parser
-        from its failing state. We'll do this by discarding
-        the entire expression within its error space.
-    */
-    else if (check_flag(state->state, STATE_PANIC) || is_token_unexpected(&tokens[i], state->expecting))
-      handle_unwind(state);
 
-    else if (is_symbolic_data(state->src[i].type))
-      handle_symbol(state);
+    else if (check_flag(state.state, STATE_PANIC) || is_token_unexpected(&tokens[i], state.expecting))
+      handle_unwind(&state);
 
-    else if (is_bin_operator(state->src[i].type))
-      handle_operator(state);
+    else if (is_symbolic_data(state.src[i].type))
+      handle_symbol(&state);
 
-    else if (is_close_brace(state->src[i].type))
-      handle_open_brace(state);
+    else if (is_bin_operator(state.src[i].type))
+      handle_operator(&state);
 
-    /*
-        place opening brace on the operator stack,
-        and update book-keeping stacks
-    */
-    else if (is_open_brace(state->src[i].type))
-      handle_open_brace(state);
+    else if (is_close_brace(state.src[i].type))
+      handle_open_brace(&state);
 
-    /*
-       only index accesses have `:` in them
-       so here we can hint that this is most
-       likely an index access
-   */
-    else if (tokens[i].type == COLON || tokens[i].type == COMMA)
-      handle_delimiter(state);
+    else if (is_open_brace(state.src[i].type))
+      handle_open_brace(&state);
+
+    else if (state.src[i].type == COLON || state.src[i].type == COMMA)
+      handle_delimiter(&state);
 
     else {
 #ifdef DEBUG
@@ -836,27 +861,24 @@ int8_t stage_infix_parser(
 #endif
     }
   }
-
-  state->expecting = setup_flags(&tokens[i]);
-  /*
-      dump the remaining operators onto the output
-  */
-  while (state->operators_ctr > 0) {
-    head = operators[state->operators_ctr - 1];
+  
+  /* setup next-token expectation */
+  state.expecting = setup_flags(&state);
+  
+  /* dump the remaining operators onto the output */
+  while (state.operators_ctr > 0) {
+    head = operators[state.operators_ctr - 1];
     /*
         any remaining params/brackets/braces are unclosed
         indiciate invalid expressions
     */
-    if (is_open_brace(head->type))
+    if (*state.out_ctr > state.out_sz || is_open_brace(head->type))
       return -1;
 
-    if (*output_ctr > output_sz)
-      return -1;
+    state.out[*state.out_ctr] = head;
 
-    output[*output_ctr] = head;
-
-    *output_ctr += 1;
-    state->operators_ctr -= 1;
+    *state.out_ctr += 1;
+    state.operators_ctr -= 1;
   }
 
   return 0;
@@ -870,132 +892,299 @@ void determine_return_ty(struct Expr *bin) {
         bin->inner.bin.returns = UndefT;
 }
 
-#define EXPR_STACK_SZ 2048
+struct StagePostfixState {
+  const char *line;
+  struct Token **postfix;
+  struct Token *src;
+  usize src_sz;
+  usize *i;
+
+  struct ExprPool *pool;
+
+  struct Expr **stack;
+  uint16_t stack_ctr;
+  uint16_t stack_sz;
+};
+
+int8_t inc_stack(struct StagePostfixState *state, struct Expr ex)
+{
+  struct Expr *phandle;
+  
+  if (state->stack_ctr > state->stack_sz)
+    return -1;
+
+  phandle = pool_push(state->pool, ex);
+  if (phandle == 0)
+    return -1;
+  
+  state->stack[state->stack_ctr] = phandle;
+  state->stack_ctr += 1;
+
+  return 0;
+}
+
+int8_t mk_sym(struct StagePostfixState *state, struct Expr ex)
+{
+  struct Token *current = state->postfix[*state->i];
+  uint8_t size = current->end - current->start;
+
+  ex.type = SymExprT;
+  ex.datatype = UndefT;
+  ex.inner.symbol = calloc(1, size+1);
+  
+  /*bad alloc*/
+  if (ex.inner.symbol == 0)
+    return -1;
+
+  memcpy(ex.inner.symbol,
+    state->line + current->start,
+    size + 1
+  );
+      
+  ex.inner.symbol[size] = 0;
+
+  if (inc_stack(state, ex) == -1)
+    return -1;
+  
+  return 0;
+}
+
+int8_t mk_null(struct StagePostfixState *state, struct Expr ex) {
+  ex.type = LiteralExprT;
+  ex.datatype = NullT;
+  
+  if (inc_stack(state, ex) == -1)
+    return -1;
+  
+  return 0;
+}
+
+int8_t mk_binop(struct StagePostfixState *state, struct Expr ex) {
+  struct Expr *phandle;
+
+  if (1 > state->stack_ctr)
+    return -1;
+
+  ex.type = BinaryExprT;
+  ex.inner.bin.lhs = state->stack[state->stack_ctr - 1];
+  ex.inner.bin.rhs = state->stack[state->stack_ctr - 2];
+  ex.inner.bin.op = operation_from_token(state->postfix[*state->i]->type);
+  determine_return_ty(&ex);
+  state->stack_ctr -= 2;
+  
+  if (inc_stack(state, ex) == -1)
+    return -1;
+  
+  return 0;
+}
+
+int8_t mk_int(struct StagePostfixState *state, struct Expr ex) {
+  struct Expr *phandle;
+  char * end;
+  ex.type = LiteralExprT;
+  ex.datatype = IntT;
+  errno = 0;
+
+  ex.inner.value.literal.integer =
+    // TODO
+    // shouldnt this be (usize specified) long long ???
+    strtol(state->line + state->postfix[*state->i]->start, &end, 10);
+
+  if (errno != 0 || end != state->line + state->postfix[*state->i]->end)
+    return -1;
+
+  if (inc_stack(state, ex) == -1)
+    return -1;
+  
+  return 0;
+}
+
+int8_t mk_str(struct StagePostfixState *state, struct Expr ex) {
+  struct Expr *phandle;
+  struct Token *current = state->postfix[*state->i];
+  usize size = current->end - current->start;
+
+  ex.type = LiteralExprT;
+  ex.datatype = StringT;
+  
+  ex.inner.value.literal.string =
+      calloc(1, size + 1);
+
+  memcpy(ex.inner.value.literal.string, &state->line[current->start],
+        size);
+
+  ex.inner.value.literal.string[size] = 0;
+  
+  if(inc_stack(state, ex) == -1)
+    return -1;
+  
+  return 0;
+}
+
+int8_t mk_group(struct StagePostfixState *state, struct Expr ex) {
+  struct Token *current = state->postfix[*state->i];
+
+  if (state->stack_ctr > STACK_SZ)
+        return -1;
+
+  ex.inner.value.literal.grouping.ptr =
+    malloc(sizeof(struct Expr) * current->end);
+      
+  ex.inner.value.literal.grouping.capacity = current->end;
+  ex.inner.value.literal.grouping.length = current->end;
+  ex.inner.value.literal.grouping.brace =
+    state->postfix[current->start]->type;
+
+  if (ex.inner.value.literal.grouping.ptr == 0)
+    return -1;
+
+  for (usize j = 0; current->end > j; j++) {
+    ex.inner.value.literal.grouping.ptr[j] = state->stack[state->stack_ctr - 1];
+    state->stack_ctr -= 1;
+  }
+    
+  if (inc_stack(state, ex) == -1)
+    return -1;
+
+  return 0;
+}
+
+int8_t mk_fncall(struct StagePostfixState *state, struct Expr ex) {
+  struct Token *current = state->postfix[*state->i];
+  struct Expr *head;
+
+  if (state->stack_ctr > STACK_SZ || current->end > MAX_ARGS_SZ)
+    return -1;
+    
+  head = state->stack[state->stack_ctr - 1];
+
+  ex.type = FnCallExprT;
+  ex.datatype = 0;
+
+  /* fill in arguments popping them off the stack */
+  while (current->end > ex.inner.fncall.args_length) {
+    ex.inner.fncall.args[ex.inner.fncall.args_length] = head;
+    ex.inner.fncall.args_length += 1;
+    state->stack_ctr -= 1;
+    head = state->stack[state->stack_ctr - 1];
+  }
+
+  ex.inner.fncall.func_name = "anonymous";
+
+  /* this is usually the function name, but could be a grouping */
+  if (head->type == SymExprT)
+    ex.inner.fncall.func_name = head->inner.symbol;
+  else if (head->type == LiteralExprT &&
+           head->datatype == GroupT)
+    nop;
+  else if (head->type == FnCallExprT)
+    nop;
+  else
+    /*expected a group, or symbol as last item on the stack*/
+    return -1;
+
+  ex.inner.fncall.caller = head;
+  state->stack_ctr -= 1;
+
+  if (inc_stack(state, ex) == -1)
+    return -1;
+  return 0;
+}
+
+int8_t mk_idx_access(struct StagePostfixState *state, struct Expr ex) {
+  ex.type = FnCallExprT;
+  ex.datatype = 0;
+
+  if (3 > state->stack_ctr)
+    return -1;
+
+  ex.inner.idx.start   = state->stack[state->stack_ctr - 1];
+  ex.inner.idx.end     = state->stack[state->stack_ctr - 2];
+  ex.inner.idx.skip    = state->stack[state->stack_ctr - 3];
+  ex.inner.idx.operand = state->stack[state->stack_ctr - 4];
+
+  state->stack_ctr -= 4;
+  if (inc_stack(state, ex) == -1)
+    return -1;
+  return 0;
+}
+
+int8_t mk_not(struct StagePostfixState *state, struct Expr ex) {
+  if (0 > state->stack_ctr)
+    return -1;
+
+  ex.inner.not_.operand = state->stack[state->stack_ctr - 1];
+  state->stack_ctr -= 1;
+
+  if (inc_stack(state, ex) == -1)
+    return -1;
+  return 0;
+}
+
 int8_t stage_postfix_parser(
-  const char *line, const struct Token *tokens[],
+  const char *line, 
+  struct Token *tokens[],
   usize ntokens,
   struct ExprPool *pool
 ){
-  char *end;
+  struct Expr *stack[STACK_SZ];
   struct Expr ex;
-  struct Expr *phandle;
-  struct Expr *stack[EXPR_STACK_SZ];
-  uint16_t stack_ctr = 0;
+  int8_t ret = 0;
+  usize i = 0;
+
+  struct StagePostfixState state;
+  
+  state.pool = pool;
+  state.stack_ctr = 0;
+  state.i = &i;
+  state.postfix = tokens;
+  state.line = line;
 
   if (!line || !tokens || !pool)
     return -1;
 
-  usize fn_ctr = 0;
-
-  for (usize i = 0; ntokens > i; i++)
+  for (i = 0; ntokens > i; i++)
   {
     memset(&ex, 0, sizeof(struct Expr));
 
-    if (stack_ctr > EXPR_STACK_SZ)
+    if (state.stack_ctr > state.stack_sz)
       return -1;
 
     else if (tokens[i]->type == WORD)
-    {
-      ex.type = SymExprT;
-      ex.datatype = UndefT;
+      ret = mk_sym(&state, ex);
 
-      memcpy(ex.inner.symbol, line + tokens[i]->start,
-             tokens[i]->end - tokens[i]->start);
+    else if (tokens[i]->type == NULLTOKEN)
+      ret = mk_null(&state, ex);
 
-      phandle = pool_push(pool, ex);
-      if (phandle == 0)
-        return -1;
-
-      stack[stack_ctr] = phandle;
-      stack_ctr += 1;
-    }
-
-    else if (tokens[i]->type == GROUPING)
-    {
-      if (tokens[i]->end > stack_ctr)
-        return -1;
-
-      ex.inner.value.literal.grouping.ptr =
-          malloc(sizeof(struct Expr) * tokens[i]->end);
-      
-      ex.inner.value.literal.grouping.capacity = tokens[i]->end;
-      ex.inner.value.literal.grouping.length = tokens[i]->end;
-      ex.inner.value.literal.grouping.brace =
-          tokens[tokens[i]->start]->type;
-
-      if (ex.inner.value.literal.grouping.ptr == 0)
-        return -1;
-
-      for (usize j = 0; tokens[i]->end > j; j++) {
-        ex.inner.value.literal.grouping.ptr[j] = stack[stack_ctr - 1];
-        stack_ctr -= 1;
-      }
-
-      phandle = pool_push(pool, ex);
-
-      if (phandle == 0)
-        return -1;
-
-      stack[stack_ctr] = phandle;
-    }
     else if (tokens[i]->type == INTEGER)
-    {
-      ex.type = LiteralExprT;
-      ex.datatype = IntT;
-      errno = 0;
-
-      ex.inner.value.literal.integer =
-          strtol(line + tokens[i]->start, &end, 10);
-
-      if (errno != 0 || end != line + tokens[i]->end)
-        return -1;
-
-      phandle = pool_push(pool, ex);
-
-      if (!phandle)
-        return -1;
-
-      stack[stack_ctr] = phandle;
-      stack_ctr += 1;
-    }
+      ret = mk_int(&state, ex);
 
     else if (tokens[i]->type == STRING_LITERAL)
-    {
-      ex.type = LiteralExprT;
-      ex.datatype = StringT;
-
-      phandle = pool_push(pool, ex);
-
-      if (phandle == 0)
-        return -1;
-
-      stack[stack_ctr] = phandle;
-      stack_ctr += 1;
-    }
+      ret = mk_str(&state, ex);
 
     else if (is_bin_operator(tokens[i]->type))
-    {
-      if (2 >= stack_ctr)
-        return -1;
+      ret = mk_binop(&state, ex);
 
-      ex.type = BinaryExprT;
-      ex.inner.bin.lhs = stack[stack_ctr - 1];
-      ex.inner.bin.rhs = stack[stack_ctr - 2];
-      ex.inner.bin.op = operation_from_token(tokens[i]->type);
-      determine_return_ty(&ex);
+    else if (tokens[i]->type == GROUPING)
+      ret = mk_group(&state, ex);
 
-      phandle = pool_push(pool, ex);
+    else if (tokens[i]->type == APPLY)
+      ret = mk_fncall(&state, ex);
 
-      if (!phandle || phandle->inner.bin.op == UndefinedOp)
-        return -1;
+    else if (tokens[i]->type == INDEX_ACCESS)
+      ret = mk_idx_access(&state, ex);
+    
+    else if (tokens[i]->type == NOT)
+      ret = mk_not(&state, ex);
+    
+    else
+      return -1;
 
-      stack_ctr -= 2;
-      stack[stack_ctr] = phandle;
-      stack_ctr += 1;
-
-    } else
+    if (ret == -1)
       return -1;
   }
+
+
   return 0;
 }
 
