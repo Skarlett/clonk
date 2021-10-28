@@ -32,7 +32,6 @@ enum ExprType {
     // x(a, ...)
     FnCallExprT,
 
-    
     // binary operation
     // 1 + 2 * foo.max - size_of(list)
     BinaryExprT
@@ -62,20 +61,39 @@ enum Operation {
     
     /* dot operator */
     Access,
-    
 
     Not,
-    /* L[N:N:N] */
+
+    /* ([]|a)[N:N:N] */
+    /* cannot index SetT*/
     IdxAccess,
 
+    /* {a:b, a:c}[K] */
+    MapAccess,
+
+    /**/
     UndefinedOp = 255
+};
+
+enum GroupT {
+    // {1:2, 3:4}
+    MapT,
+    
+    // [1, 2]
+    ListT,
+    
+    // (a, b)
+    TupleT,
+
+    // {a, b}
+    SetT
 };
 
 #define GROUPING_SZ 64
 struct Grouping { 
+    enum GroupT type;
     usize capacity;
     usize length;
-    enum Lexicon brace;
     struct Expr **ptr;
 };
 
@@ -97,8 +115,7 @@ struct Literals {
     } literal;
 };
 
-
-struct CallExpr {
+struct FnCallExpr {
     struct Expr *caller;
     char * func_name;
     uint8_t args_length;
@@ -118,7 +135,7 @@ struct NotExpr {
 };
 
 struct IdxExpr {
-    struct Expr *operand;
+    struct Expr * operand;
     struct Expr * start;
     struct Expr * end;
     struct Expr * skip;
@@ -132,7 +149,7 @@ struct Expr {
     union {
         char * symbol;
         struct Literals value;
-        struct CallExpr fncall;
+        struct FnCallExpr fncall;
         struct BinExpr bin;
         struct NotExpr not_;
         struct IdxExpr idx;
@@ -144,53 +161,59 @@ struct Expr {
 #define FLAG_ERROR 65535
 typedef uint16_t FLAG_T; 
 
-
-/* if bit set, expects operand to be the next token */
+/* word */
 #define EXPECTING_SYMBOL         2
 
+/* 123 */
 #define EXPECTING_INTEGER        4
 
+/* "string" */
 #define EXPECTING_STRING         8
 
-/* if bit set, expects binary operator to be the next token */
-#define EXPECTING_OPERATOR       16
+/* +/-*^ */
+#define EXPECTING_ARITHMETIC_OPERATOR 16
 
-/* if bit set, expects opening brace type be the next token */
-#define EXPECTING_OPEN_BRACKET   32   
+/* . */
+#define EXPECTING_APPLY_OPERATOR 32
 
-/* if bit set, expects closing brace type be the next token */
-#define EXPECTING_CLOSE_BRACKET  64
+/* [ */
+#define EXPECTING_OPEN_BRACKET   64   
+/* ] */
+#define EXPECTING_CLOSE_BRACKET  128
 
-/* if bit set, expects opening brace type be the next token */
-#define EXPECTING_OPEN_PARAM     128    
+/* ( */
+#define EXPECTING_OPEN_PARAM     256    
+/* ) */
+#define EXPECTING_CLOSE_PARAM    512
 
-/* if bit set, expects closing brace type be the next token */
-#define EXPECTING_CLOSE_PARAM    256
+/* { */
+#define EXPECTING_OPEN_BRACE    1024
+/* } */
+#define EXPECTING_CLOSE_BRACE    2048
 
-/* if bit set, expects a comma be the next token */
-#define EXPECTING_COMMA          512   
+/* : , */
+#define EXPECTING_DELIMITER      8192
 
-/* if bit set, expects a colon until bracket_brace token type is closed */
-#define EXPECTING_COLON          1024 
-
-/* hint that colons are acceptable */
-#define _EX_COLON_APPLICABLE     2048 
-
-/* if bit set, expects a token to follow */
+/* expects another token */
 #define EXPECTING_NEXT           4096 
 
+#define CTX_LIST 1
+#define CTX_IDX 2
+#define CTX_SET 4
+#define CTX_TUPLE 8
+#define CTX_MAP 16
 
-/* If token stream contains an error */
-/* we'll attempt to recover, by discarding tokens */
-#define STATE_PANIC               1 
+/* If we ever paniced this flag set for the rest of parsing */
+#define STATE_INCOMPLETE          1 
 
-/* If we ever paniced */
-/* we'll attempt to recover, by discarding tokens, 
-but keep this flag set for the rest of parsing */
-#define STATE_INCOMPLETE          2 
+/* if set, we ran into an error that requires us to unwind the expression*/
+#define STATE_PANIC               2 
 
-/* too disastrous to recover from */
-#define INTERNAL_ERROR            4 
+/* if set an error occured disastrous to recover from*/
+#define INTERNAL_ERROR            4
+
+/* if set - warning messages are present */
+#define STATE_WARNING             8
 
 /*
     The grouping stack is used to track the amount 
@@ -206,13 +229,34 @@ but keep this flag set for the rest of parsing */
     this stack's head is larger than 0,
     we have a set/grouping of expressions. 
 */
-struct Group {
-    struct Token *postfix_group_token;
 
+enum GroupOperator {
+    GOPUndef = 0,
+    GOP_INDEX_ACCESS,
+    GOP_APPLY
+};
+
+enum MarkerT {
+    MarkerTUndef = 0,
+    // operators
+    _IdxAccess, //
+    Apply,  // word|)|]|}(
+
+    TupleGroup, // (x,x)
+    ListGroup,  // [x,x]
+    MapGroup,   // {x:x}
+    SetGroup,   // {x,x}
+};
+
+#define DELIM_COMMA 1
+#define DELIM_COLON 2
+
+/* used in the group-stack exclusively */
+struct Group {
     /* pointer of token in operation stack*/
     //struct Token *operation_ptr;
 
-    // amount of delimiters + 1
+    // amount of delimiters
     uint16_t delimiter_cnt;
     
     // count symbols inside of group
@@ -226,16 +270,15 @@ struct Group {
     // operation arguments.
     // This is so we know how many NULLs 
     // to place
-    uint8_t arg_align_ctr;
+    uint8_t index_accsess_operand_ctr;
 
-    // should be ',' ':' or `0`
-    enum Lexicon delimiter;
-
-    // should be `[` `(` or `0`
+    FLAG_T delimiter;
+    FLAG_T expecting_ctx;
+    // should be `[` `(` '{' or `0`
     struct Token *origin;
 
-    // INDEX / APPLY
-    enum Lexicon tag_op;
+    // INDEX / MAP_ACCESS / APPLY
+    enum GroupOperator tag_op;
 };
 
 struct StageInfixState {

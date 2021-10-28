@@ -39,6 +39,23 @@ enum Operation operation_from_token(enum Lexicon t){
     }
 }
 
+/*
+  derive the group type from the brace token
+  will always return `SetGroup` for `MapGroup` 
+  and `SetGroup`
+
+  returns `MarkerTUndef` (0) on error
+*/
+enum MarkerT derive_group_marker_t(enum Lexicon token) {
+  if (token == PARAM_OPEN || token == PARAM_CLOSE)
+    return TupleGroup;
+  else if (token == BRACKET_OPEN || token == BRACKET_CLOSE)
+    return ListGroup;
+  else if (token == BRACE_OPEN || token == BRACE_CLOSE)
+    return SetGroup;
+  else
+   return MarkerTUndef;
+}
 
 enum Associativity {
     NONASSOC,
@@ -49,6 +66,8 @@ enum Associativity {
 enum Associativity get_assoc(enum Lexicon token) {
     switch(token) {
         case POW:
+            return RASSOC;
+        case NOT:
             return RASSOC;
         default:
             return LASSOC;
@@ -104,38 +123,42 @@ int8_t op_precedence(enum Lexicon token) {
     return -1;
 }
 
-int8_t unwind_params_needed(struct Token *tok, usize *ptr_sz) {
-    if (tok->type == GROUPING)
-        *ptr_sz = tok->end;
+// struct Token * new_token(struct StageInfixState *state, enum Lexicon token, usize start, usize end) {
+//     struct Token *ret;
     
-    if (tok->type == INDEX_ACCESS)
-        *ptr_sz = 5;
+//     state->pool[state->pool_i].type = token;
+//     state->pool[state->pool_i].start = start;
+//     state->pool[state->pool_i].end = end;
     
-    else if (is_bin_operator(tok->type))
-        *ptr_sz = 2;
+//     ret = &state->pool[state->pool_i];
+//     state->pool_i += 1;
 
-    // next token is a group
-    else if (tok->type == WORD)
-        *ptr_sz = 0;
+//     return ret;
+// }
 
-    else
-        return -1;
+int8_t add_marker(
+  struct StageInfixState *state,
+  enum MarkerT type,
+  usize argc
+){
+  struct Token *ret;
 
-    return 0;
+  state->pool[state->pool_i].type = MARKER;
+  state->pool[state->pool_i].start = type;
+  state->pool[state->pool_i].end = argc;
+
+  ret = &state->pool[state->pool_i];
+  state->pool_i += 1;
+
+  if (*state->out_ctr > state->out_sz)
+    return -1;
+
+  state->out[*state->out_ctr] = ret;
+  *state->out_ctr += 1;
+
+  return 0;
 }
 
-struct Token * new_token(struct StageInfixState *state, enum Lexicon token, usize start, usize end) {
-    struct Token *ret;
-    
-    state->pool[state->pool_i].type = token;
-    state->pool[state->pool_i].start = start;
-    state->pool[state->pool_i].end = end;
-    
-    ret = &state->pool[state->pool_i];
-    state->pool_i += 1;
-
-    return ret;
-}
 #define STACK_SZ 128
 #define _OP_SZ 128
 
@@ -199,162 +222,178 @@ void unset_flag(FLAG_T *set, FLAG_T flag){
     *set = *set & ~flag;
 }
 
-int8_t is_token_unexpected(const struct Token *current, FLAG_T flags) {
+enum Lexicon get_expected_delimiter(struct StageInfixState *state) {
+  /* setup delimiter expectation */
+  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+
+  if(ghead->expecting_ctx == 0
+    ||check_flag(CTX_SET, ghead->expecting_ctx)
+    ||check_flag(CTX_LIST, ghead->expecting_ctx)
+    ||check_flag(CTX_TUPLE, ghead->expecting_ctx)
+  ) return COMMA;
+  
+  else if (check_flag(CTX_IDX, ghead->expecting_ctx))
+    return COLON;
+  
+  else if (check_flag(CTX_MAP, ghead->expecting_ctx)) {
+    if (ghead->delimiter_cnt % 2 == 0)
+      return COMMA;
+    else
+      return COLON;
+    // 2:3, 3:4
+  }
+
+  else
+    return 0;
+}
+
+int8_t is_token_unexpected( struct StageInfixState *state, FLAG_T flags) {
+  struct Token * current = &state->src[*state->i];
+  enum Lexicon delim;
   FLAG_T check_list = 0;
 
+  if (current->type == DOT)
+    set_flag(&check_list, EXPECTING_APPLY_OPERATOR);
+  
+  else if (is_bin_operator(current->type))
+    set_flag(&check_list, EXPECTING_ARITHMETIC_OPERATOR);
+  
+  else if (is_delimiter(current->type)) {
+    delim = get_expected_delimiter(state);
+    
+    if (delim != current->type)
+      return -1;
 
-  if (is_bin_operator(current->type)) {
-    set_flag(&check_list, EXPECTING_OPERATOR);
-    return 0;
+    set_flag(&check_list, EXPECTING_DELIMITER);
   }
+  else {  
+    switch (current->type) {
+      case WORD:
+        set_flag(&check_list, EXPECTING_SYMBOL);
+        break;
 
-  switch (current->type) {
-  case WORD:
-    set_flag(&check_list, EXPECTING_SYMBOL);
-    break;
+      case NULLTOKEN:
+        set_flag(&check_list, EXPECTING_SYMBOL);
+        break;
 
-  case NULLTOKEN:
-    set_flag(&check_list, EXPECTING_SYMBOL);
-    break;
+      case STRING_LITERAL:
+        set_flag(&check_list, EXPECTING_STRING);
+        break;
 
-  case STRING_LITERAL:
-    set_flag(&check_list, EXPECTING_STRING);
-    break;
+      case PARAM_OPEN:
+        set_flag(&check_list, EXPECTING_OPEN_PARAM);
+        break;
 
-  case COMMA:
-    set_flag(&check_list, EXPECTING_COMMA);
-    break;
+      case PARAM_CLOSE:
+        set_flag(&check_list, EXPECTING_CLOSE_PARAM);
+        break;
 
-  case COLON:
-    set_flag(&check_list, EXPECTING_COLON);
-    break;
+      case BRACKET_OPEN:
+        set_flag(&check_list, EXPECTING_OPEN_BRACKET);
+        break;
 
-  case PARAM_OPEN:
-    set_flag(&check_list, EXPECTING_OPEN_PARAM);
-    break;
+      case BRACKET_CLOSE:
+        set_flag(&check_list, EXPECTING_CLOSE_BRACKET);
+        break;
 
-  case PARAM_CLOSE:
-    set_flag(&check_list, EXPECTING_CLOSE_PARAM);
-    break;
-
-  case BRACKET_OPEN:
-    set_flag(&check_list, EXPECTING_OPEN_BRACKET);
-    break;
-
-  case BRACKET_CLOSE:
-    set_flag(&check_list, EXPECTING_CLOSE_BRACKET);
-    break;
-
-  default: return -1;
+      default: return -1;
+    }
   }
-
 
   return !check_flag(flags, check_list);
 }
 
+FLAG_T expect_any_close_brace(){
+  return 0 | EXPECTING_CLOSE_BRACKET
+    | EXPECTING_CLOSE_PARAM
+    | EXPECTING_CLOSE_BRACE;
+}
+
+FLAG_T expect_any_open_brace(){
+  return 0 | EXPECTING_OPEN_BRACKET
+    | EXPECTING_OPEN_PARAM
+    | EXPECTING_OPEN_BRACE;
+}
+
+FLAG_T expect_any_data(){
+  return 0 | EXPECTING_SYMBOL
+    | EXPECTING_INTEGER
+    | EXPECTING_STRING;
+}
+
+FLAG_T expect_any_op(){
+  return 0 | EXPECTING_ARITHMETIC_OPERATOR
+    | EXPECTING_APPLY_OPERATOR;
+}
+
 FLAG_T setup_flags(struct StageInfixState* state)
 {
-  struct Token *current;
+  struct Token *current = &state->src[*state->i];
   FLAG_T ret = FLAG_ERROR;
 
-  if (is_bin_operator(current->type))
+  if (is_symbolic_data(current->type))
+  {
     set_flag(&ret, 0
-      | EXPECTING_SYMBOL
-      | EXPECTING_INTEGER
-      | EXPECTING_STRING
-      | EXPECTING_OPEN_BRACKET
-      | EXPECTING_OPEN_PARAM
-      | EXPECTING_NEXT
-    );
-  
-  else if (current->type == EXPECTING_INTEGER)
-    set_flag(&ret, 0
-      | EXPECTING_OPERATOR 
-      | EXPECTING_CLOSE_BRACKET
-      | EXPECTING_CLOSE_PARAM
-      | EXPECTING_COMMA
-      | _EX_COLON_APPLICABLE
-    );
+      | EXPECTING_ARITHMETIC_OPERATOR      
+      | expect_any_close_brace()
+      | EXPECTING_DELIMITER);
 
-  else if (current->type == STRING_LITERAL)
-    set_flag(&ret, 0
-      | EXPECTING_OPERATOR 
-      | EXPECTING_OPEN_BRACKET 
-      | EXPECTING_CLOSE_BRACKET
-      | EXPECTING_CLOSE_PARAM
-      | EXPECTING_COMMA
-      | _EX_COLON_APPLICABLE
-    );
-
-  else if (current->type == COMMA)
-    set_flag(&ret, 0
-      | EXPECTING_INTEGER
-      | EXPECTING_SYMBOL
-      | EXPECTING_STRING
-      | EXPECTING_OPEN_BRACKET
-      | EXPECTING_OPEN_PARAM
-      | EXPECTING_NEXT
-      |_EX_COLON_APPLICABLE
-    );
-  
-  else if (current->type == COLON)
-    set_flag(&ret, 0
-      | EXPECTING_INTEGER
-      | EXPECTING_SYMBOL
-      //| EXPECTING_STRING 
-      | EXPECTING_OPEN_BRACKET
-      | EXPECTING_OPEN_PARAM
-      | EXPECTING_CLOSE_BRACKET
-      | EXPECTING_NEXT
-      | _EX_COLON_APPLICABLE
-      | EXPECTING_NEXT);
-  
-  else if (is_open_brace(current->type)) {
-    set_flag(&ret, 0
-      | EXPECTING_OPEN_BRACKET
-      | EXPECTING_OPEN_PARAM
-      | EXPECTING_INTEGER
-      | EXPECTING_SYMBOL
-      | EXPECTING_STRING
-      | EXPECTING_NEXT
-    );
-
-    if (current->type == PARAM_OPEN)
-      set_flag(&ret, EXPECTING_CLOSE_PARAM);
-
-    else if (current->type == BRACKET_OPEN)
-      set_flag(&ret, _EX_COLON_APPLICABLE | EXPECTING_CLOSE_BRACKET);
+    if (current->type == WORD)
+      set_flag(&ret, EXPECTING_OPEN_BRACKET
+        | EXPECTING_OPEN_PARAM
+        | EXPECTING_APPLY_OPERATOR);
     
-    else
-      return -1;
+    else if(current->type == STRING_LITERAL)
+      set_flag(&ret, EXPECTING_OPEN_BRACKET 
+        | EXPECTING_APPLY_OPERATOR
+      );
+  }
+  
+  else if (current->type == DOT)
+    //(a.b).
+    set_flag(&ret, 0 
+      | EXPECTING_SYMBOL
+      | EXPECTING_NEXT);
+
+  else if (is_bin_operator(current->type)) {
+    set_flag(&ret, 0
+      | expect_any_data()
+      | expect_any_open_brace()
+      | EXPECTING_NEXT
+    );
+    
+    if (current->type != DOT)
+      set_flag(&ret, EXPECTING_INTEGER
+        | EXPECTING_STRING);
   }
 
-  else if (is_close_brace(current->type))
-     set_flag(&ret, 0
-        | EXPECTING_CLOSE_BRACKET
-        | EXPECTING_OPEN_BRACKET
-        | EXPECTING_OPEN_PARAM
-        | EXPECTING_CLOSE_PARAM
-        | EXPECTING_OPERATOR
-        | EXPECTING_COMMA
-        | _EX_COLON_APPLICABLE
+  else if (current->type == COMMA || current->type == COLON)
+    set_flag(&ret, 0
+      | expect_any_data()
+      | expect_any_open_brace()
+      | EXPECTING_NEXT
     );
   
-  /* allow colon expectation if conditions add up*/
-  /* If theres atleast 1 group*/
-  if (state->set_ctr > 0 &&
-      /* the group type is a bracket [ */
-      state->set_stack[state->set_ctr - 1].delimiter == BRACKET_OPEN &&
-      
-      /* The group has been marked as a possible index access */
-      state->set_stack[state->set_ctr - 1].tag_op == INDEX_ACCESS &&
+  else if (is_open_brace(current->type)) {
+      set_flag(&ret, 0
+        | expect_any_open_brace()
+        | expect_any_data()
+        | EXPECTING_NEXT
+      );
 
-      /* and we expect that a colon can occur as the next token */
-      check_flag(ret, _EX_COLON_APPLICABLE))
-    
-    /* set expecting colon*/
-    set_flag(&ret, EXPECTING_COLON);
+      // TODO: invert current->type and expect it  
+    }
 
+  // ][[
+  else if (is_close_brace(current->type))
+     set_flag(&ret, 0
+        | expect_any_close_brace()
+        | EXPECTING_OPEN_BRACKET
+        | EXPECTING_OPEN_PARAM
+        | EXPECTING_DELIMITER
+        | expect_any_op()
+    );
+  
   return ret;
 }
 
@@ -403,7 +442,7 @@ int8_t handle_open_brace(struct StageInfixState *state) {
   if (*state->i > 0)
     prev = &state->src[*state->i - 1];
   
-  if (state->src_sz-1 > *state->i)
+  if (state->src_sz - 1 > *state->i)
     next = &state->src[*state->i + 1];
 
   /* overflow check */
@@ -413,37 +452,28 @@ int8_t handle_open_brace(struct StageInfixState *state) {
     set_flag(&state->state, INTERNAL_ERROR);
     return -1;
   }
-
-  /* increment group */
-  state->set_ctr += 1;
-
+  
   ghead = &state->set_stack[state->set_ctr];
 
   ghead->atomic_symbols = 0;
   ghead->delimiter = 0;
   ghead->delimiter_cnt = 0;
-
   ghead->origin = current;
 
-  ghead->postfix_group_token->type = GROUPING;
-  ghead->postfix_group_token->start = *state->i;
-  ghead->postfix_group_token->end = 0;
   ghead->tag_op = 0;
-
-  // Comma groups dont have to have an origin brace
-  if (0 >= *state->i)
-    return 0;
 
   /*
     function call pattern
   */
-  else if (current->type == PARAM_OPEN)
+  if (current->type == PARAM_OPEN)
   {
+    ghead->expecting_ctx = 0 | CTX_TUPLE;
+
     if (prev && (is_close_brace(prev->type) ||
         prev->type == WORD)) 
       {
-        ghead->tag_op = APPLY;
-        ghead->arg_align_ctr += 1;
+        ghead->tag_op = GOP_APPLY;
+        ghead->index_accsess_operand_ctr += 1;
       }
   }
 
@@ -452,21 +482,38 @@ int8_t handle_open_brace(struct StageInfixState *state) {
   */
   else if (current->type == BRACKET_OPEN)
   {
+    ghead->expecting_ctx = 0 | CTX_LIST;
+    /* peek-behind to check for index access */
     if (prev && (is_close_brace(prev->type) ||
         prev->type == WORD ||
         prev->type == STRING_LITERAL))
     {
-      ghead->tag_op = INDEX_ACCESS;
-        ghead->arg_align_ctr += 1;
+      ghead->tag_op = GOP_INDEX_ACCESS;
+      ghead->index_accsess_operand_ctr += 1;
     }
+
   }
+  
+  else if (current->type == BRACE_OPEN)
+  {
+    ghead->expecting_ctx = 0 | CTX_SET;
+  }
+
+  /* increment group */
+  state->set_ctr += 1;
+
+  
   return 0;
 }
 
 int8_t handle_close_brace(struct StageInfixState *state) {
-  struct Token *head;
+  struct Token *head, *prev;
   struct Group *ghead;
+  enum MarkerT marker_type;
 
+  // if (*state->i > 0){}
+  
+  // state->src[*state->i -1]
   /* Operators stack is empty */
   if (state->operators_ctr == 0
       /* unbalanced brace, extra closing brace.*/
@@ -478,10 +525,9 @@ int8_t handle_close_brace(struct StageInfixState *state) {
 
   /* Grab the head of the operator stack */
   head = state->operator_stack[state->operators_ctr - 1];
-
   /*
-      The current token is the inverted brace
-      type of the top of operator-stack.
+      The current token is the closing brace
+      of the top of operator-stack.
   */
   if (head->type == invert_brace_tok_ty(state->src[*state->i].type)) {
     if(ghead->atomic_symbols == 0)
@@ -491,13 +537,15 @@ int8_t handle_close_brace(struct StageInfixState *state) {
         Empty nestings may be symbolic for functionality,
         so include a GROUP(0) token in the output.
       */
-      if (state->set_ctr > state->set_sz)
+      if (state->set_ctr > state->set_sz 
+          || ghead->tag_op == GOP_INDEX_ACCESS)
         return -1;
-        
-      state->out[*state->out_ctr] =
-        new_token(state, GROUPING, state->src[*state->i].start, 0);
+      
+      marker_type = derive_group_marker_t(state->src[*state->i].type);
 
-      *state->out_ctr += 1;
+      if (marker_type == 0 || 
+          add_marker(state, marker_type, 0) == -1)
+            return -1;
     }
   } 
   else
@@ -513,11 +561,11 @@ int8_t handle_close_brace(struct StageInfixState *state) {
     /* Expects delimiter & brace type */
     if (ghead->delimiter != COLON || head != ghead->origin || 
         /* overflow check */
-        *state->out_ctr + (5 - ghead->arg_align_ctr) > state->out_sz)
+        *state->out_ctr + (5 - ghead->index_accsess_operand_ctr) > state->out_sz)
       return -1;
     
     // Fill in any missing arguments
-    for (uint8_t i=ghead->arg_align_ctr; 4 > ghead->arg_align_ctr; i++) {
+    for (uint8_t i=ghead->index_accsess_operand_ctr; 4 > ghead->index_accsess_operand_ctr; i++) {
       state->out[*state->out_ctr] = new_token(state, NULLTOKEN, 0, 0);
       *state->out_ctr += 1;
     }
@@ -545,6 +593,10 @@ int8_t handle_close_brace(struct StageInfixState *state) {
     );
 
     *state->out_ctr += 1;
+  }
+
+  else {
+    // TODO add GROUPING operand
   }
 
   /* discard opening brace from operator stack */
@@ -657,19 +709,15 @@ int8_t handle_delimiter(struct StageInfixState *state) {
   
   if (state->src_sz > *state->i + 1)
     next = &state->src[*state->i + 1];
-  else
-    /*
-      there should always be a 
-      token available next after a delimiter
-    */
+  
+  if(!prev || !head)
     return -1;
   
   if (current->type == COLON) {
     /* if not expecting brace char?*/
+
     if (// overflow check
         state->set_ctr > state->set_sz ||
-        // must be a previous token,
-        !prev || !head ||
         // there must atleast one group ('[')
         1 > state->set_ctr ||
         // too many colons?
@@ -680,7 +728,7 @@ int8_t handle_delimiter(struct StageInfixState *state) {
         ghead->tag_op != INDEX_ACCESS)
       return -1;
     
-    ghead->delimiter = COLON;
+    set_flag(&ghead->delimiter, DELIM_COLON);
 
     /*
         peek behind our current token to 
@@ -699,6 +747,7 @@ int8_t handle_delimiter(struct StageInfixState *state) {
       state->out[*state->out_ctr] = new_token(state, NULLTOKEN, 0, 0);
       *state->out_ctr += 1; 
     }
+
     /*
       if last colon token, 
       peek ahead to see if theres a symbol
@@ -707,40 +756,29 @@ int8_t handle_delimiter(struct StageInfixState *state) {
     {
       state->out[*state->out_ctr] = new_token(state, NULLTOKEN, 0, 0);
       *state->out_ctr += 1;
-      ghead->arg_align_ctr += 1;
+      ghead->index_accsess_operand_ctr += 1;
     }
 
-    ghead->arg_align_ctr += 1;
+    ghead->index_accsess_operand_ctr += 1;
   }
 
   else if (current->type == COMMA)
   {
     ghead->delimiter = COMMA;
   }
+  
+  /* set seen flag */
+  if (current->type == COLON)
+    set_flag(&ghead->delimiter, DELIM_COLON);
+  
+  else if(current->type == COMMA)
+    set_flag(&ghead->delimiter, DELIM_COMMA);
+  
 
   /*
     empty operators until ( [
   */
-  while (state->operators_ctr > 0) {
-    head = state->operator_stack[state->operators_ctr - 1];
-
-    /* ends if tokens inverted brace is found*/
-    if (is_open_brace(head->type)) {
-      /* do not discard opening brace yet
-      // operators_ctr -= 1;
-      */
-      break;
-    }
-    /* otherwise pop into output */
-    else {
-      if (*state->out_ctr > state->out_sz)
-        return -1;
-
-      state->out[*state->out_ctr] = head;
-      *state->out_ctr += 1;
-      state->operators_ctr -= 1;
-    }
-  }
+  flush_ops(state);
   return 0;
 }
 
@@ -827,7 +865,9 @@ int8_t stage_infix_parser(
 
   set_flag(&state.expecting,  EXPECTING_OPEN_PARAM 
     | EXPECTING_STRING | EXPECTING_SYMBOL
-    | EXPECTING_OPEN_BRACKET | EXPECTING_NEXT
+    | EXPECTING_OPEN_BRACKET 
+    | EXPECTING_OPEN_BRACE
+    | EXPECTING_NEXT
     | EXPECTING_INTEGER
   );
 
@@ -1183,22 +1223,10 @@ int8_t stage_postfix_parser(
     if (ret == -1)
       return -1;
   }
-
-
   return 0;
 }
 
 // int8_t new_expr(char *line, struct Token tokens[], usize ntokens, struct Expr *expr) {
-//     postfix_expr(
-//         tokens,
-//         ntokens,
-//         struct Token **output,
-//         usize output_sz, 
-//         usize *output_ctr,
-//         struct ExprParserState *state,
-//         struct CompileTimeError *err
-//     )
-
 //     /*todo: create expr tree*/
 //     return 0;
 // }
