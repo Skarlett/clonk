@@ -15,8 +15,7 @@
 #define MAX_FUNC_NAME_SZ 256
 
 enum ExprType {
-    UndefinedExprT,
-    
+    NopExprT,
     // variable names
     // x
     // foo.max
@@ -34,8 +33,9 @@ enum ExprType {
 
     // binary operation
     // 1 + 2 * foo.max - size_of(list)
-    BinaryExprT
-
+    BinaryExprT,
+    
+    UndefinedExprT
 };
 
 enum Operation {
@@ -76,6 +76,8 @@ enum Operation {
 };
 
 enum GroupT {
+    GroupTUndef,
+
     // {1:2, 3:4}
     MapT,
     
@@ -87,6 +89,7 @@ enum GroupT {
 
     // {a, b}
     SetT
+
 };
 
 #define GROUPING_SZ 64
@@ -197,12 +200,6 @@ typedef uint16_t FLAG_T;
 /* expects another token */
 #define EXPECTING_NEXT           4096 
 
-#define CTX_LIST 1
-#define CTX_IDX 2
-#define CTX_SET 4
-#define CTX_TUPLE 8
-#define CTX_MAP 16
-
 /* If we ever paniced this flag set for the rest of parsing */
 #define STATE_INCOMPLETE          1 
 
@@ -230,26 +227,91 @@ typedef uint16_t FLAG_T;
     we have a set/grouping of expressions. 
 */
 
-enum GroupOperator {
-    GOPUndef = 0,
-    GOP_INDEX_ACCESS,
-    GOP_APPLY
-};
-
 enum MarkerT {
-    MarkerTUndef = 0,
     // operators
-    _IdxAccess, //
-    Apply,  // word|)|]|}(
+    MarkerNop = 0,
+    
+    /*
+      INDEX_ACCESS acts as a function in the postfix representation
+      that takes 4 arugments off the stack
+      'source, start, end, skip' in that order.
+      
+      when INDEX_ACCESS arguments maybe padded with NULLTOKENS
+      inserted by the first stage or the user.
+      NULLTOKENS when parsed into expression trees 
+      will assume their value based on position except
+      for the first argument (the source being index).
+      The 2nd argument (start) will assume 0 if NULLTOKEN is present.
+      The 3rd argument (end) will assume the length of the array if NULLTOKEN is present.
+      The 4th (skip) will assume 1 if NULLTOKEN is present.
+  
+      Examples:
+        token output: WORD   INTEGER INTEGER INTEGER INDEX_ACCESS 
+                      source start   end     skip    operator
+                text: foo[1::2]
+          postfix-IR: foo 1 NULL 2 INDEX_ACCESS
+    */
+    _IdxAccess, 
 
+    // foo(a)(b)
+    // foo(a) -> func(b) -> T
+    // foo(a)(b) -> ((a foo), b G(2)) DyCall
+    // foo(a)(b)(c) -> a foo b G(2) DyCall c G(2) DyCall
+    // word|)|]|}(
+    Apply,
+
+    /*
+      GROUPING token are generated in the expression parser
+        
+      The GROUPING token is used to track the amount 
+      of sub-expressions inside an expression.
+        
+      - `start` 
+          points to its origin grouping token,
+          or 0 if not applicable
+        
+      - `end`
+          is the amount of arguments to pop from the stack
+
+      See example expression:
+          [1, 2, 3]
+      
+          where '1', '2', '3' are atomic expressions.
+          When grouped together by a comma to become 
+          "1,2,3" this is called grouping.
+
+          Groupings may not explicitly 
+          point to a brace type if none is present. 
+            
+          After postfix evaluation, 
+          a group token is added into the postfix output.
+
+          1 2 3 GROUP(3)
+        
+      it's `start` attribute will point to its origin grouping token
+      and its `end` attribute will determine the amount of arguments
+      it will take off of the stack
+    
+      tokens of this type will be spawned from a differing source
+      than the original token stream.
+    */
     TupleGroup, // (x,x)
     ListGroup,  // [x,x]
     MapGroup,   // {x:x}
     SetGroup,   // {x,x}
+
+    MarkerTUndef = 255,
 };
 
-#define DELIM_COMMA 1
-#define DELIM_COLON 2
+#define GSTATE_CTX_LIST 4
+#define GSTATE_CTX_TUPLE 8
+#define GSTATE_CTX_SET 16
+#define GSTATE_CTX_MAP 32
+#define GSTATE_CTX_IDX 64
+#define GSTATE_CTX_LOCK 128
+#define GSTATE_OP_IDX 256
+#define GSTATE_OP_APPLY 512
+#define GSTATE_OP_GROUP 1024
 
 /* used in the group-stack exclusively */
 struct Group {
@@ -270,15 +332,28 @@ struct Group {
     // operation arguments.
     // This is so we know how many NULLs 
     // to place
-    uint8_t index_accsess_operand_ctr;
+    // : , ctx(5) idx apply
 
-    FLAG_T delimiter;
-    FLAG_T expecting_ctx;
+    /*
+        0 : Uninitialized state
+        1 : COLON token in group
+        2 : COMMA token in group
+        4 : List context mode
+        8 : Tuple context mode
+       16 : Set context mode
+       32 : Map context mode
+       64 : Index context mode
+      (?) : Tuple context mode (without bracing)
+      128 : lock context mode
+      256 : index marker operation
+      512 : apply marker operation
+     1024 : group marker operation
+    */
+    FLAG_T state;
+
     // should be `[` `(` '{' or `0`
     struct Token *origin;
-
-    // INDEX / MAP_ACCESS / APPLY
-    enum GroupOperator tag_op;
+    struct Token *last_delim;
 };
 
 struct StageInfixState {

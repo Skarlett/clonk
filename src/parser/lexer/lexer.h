@@ -10,10 +10,7 @@
 #define DIGITS "1234567890"
 
 enum Lexicon {
-    UNDEFINED,
-    
-    // End of file token
-    EOFT,
+    UNDEFINED = 0,
     
     NULLTOKEN,
     
@@ -181,7 +178,10 @@ enum Lexicon {
 
     //import
     IMPORT,
-
+    
+    // end of file
+    EOFT = 255,
+    
     //impl
     IMPL,
     
@@ -191,73 +191,7 @@ enum Lexicon {
         and should never been seen in the token stream
     */
 
-    /*
-        GROUPING token are generated in the expression parser
-        
-        The GROUPING token is used to track the amount 
-        of sub-expressions inside an expression.
-        
-        - `start` 
-            points to its origin grouping token,
-            or 0 if not applicable
-        
-        - `end`
-            is the amount of arguments to pop from the stack
-
-        See example expression:
-            [1, 2, 3]
-        
-            where '1', '2', '3' are atomic expressions.
-            When grouped together by a comma to become 
-            "1,2,3" this is called grouping.
-
-            Groupings may not explicitly 
-            point to a brace type if none is present. 
-            
-            After postfix evaluation, 
-            a group token is added into the postfix output.
-
-            1 2 3 GROUP(3)
-        
-        it's `start` attribute will point to its origin grouping token
-        and its `end` attribute will determine the amount of arguments
-        it will take off of the stack
-    
-        tokens of this type will be spawned from a differing source
-        than the original token stream.
-    */
-
-    GROUPING,
-
-    /*
-
-    INDEX_ACCESS acts as a function in the postfix representation
-    that takes 4 arugments off the stack
-    'source, start, end, skip' in that order.
-    
-    when INDEX_ACCESS arguments maybe padded with NULLTOKENS
-    inserted by the first stage or the user.
-    NULLTOKENS when parsed into expression trees 
-    will assume their value based on position except
-    for the first argument (the source being index).
-    The 2nd argument (start) will assume 0 if NULLTOKEN is present.
-    The 3rd argument (end) will assume the length of the array if NULLTOKEN is present.
-    The 4th (skip) will assume 1 if NULLTOKEN is present.
-
-    Examples:
-      token output: WORD   INTEGER INTEGER INTEGER INDEX_ACCESS 
-                    source start   end     skip    operator
-              text: foo[1::2]
-        postfix-IR: foo 1 NULL 2 INDEX_ACCESS
-    */
-    INDEX_ACCESS,
-
-    // foo(a)(b)
-    // foo(a) -> func(b) -> T
-    // foo(a)(b) -> ((a foo), b G(2)) DyCall
-    // foo(a)(b)(c) -> a foo b G(2) DyCall c G(2) DyCall
-    APPLY
-
+    MARKER,
 };
 
 /*
@@ -274,7 +208,7 @@ enum Lexicon {
 
     `type` defines what kind of token it is.
 
-    In the case of `type` being of FNMASK or COMPOSITE:
+    In the case of `type` being of MARKER:
         `start` correlates to the starting position of the token instead the token array.
         The position is directly indexable against its source (tokens[]).
 
@@ -284,6 +218,7 @@ enum Lexicon {
 struct Token {
     usize start;
     usize end;
+    usize col;
     enum Lexicon type;
 };
 
