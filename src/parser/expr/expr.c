@@ -11,12 +11,132 @@
 #include "../lexer/lexer.h"
 #include "../lexer/helpers.h"
 #include "../lexer/debug.h"
-
+#include "../../utils/vec.h"
 #include "expr.h"
-#include "pool.h"
 
 #define OPERATOR_BUF_SZ 64
 #define END_PRECEDENCE 127
+
+typedef uint16_t FLAG_T; 
+
+#define GSTATE_EMPTY       2
+#define GSTATE_CTX_LIST    4
+#define GSTATE_CTX_TUPLE   8
+#define GSTATE_CTX_SET    16
+#define GSTATE_CTX_MAP    32
+#define GSTATE_CTX_IDX    64
+#define GSTATE_CTX_LOCK  128
+#define GSTATE_OP_IDX    256
+#define GSTATE_OP_APPLY  512
+#define GSTATE_OP_GROUP 1024
+
+#define FLAG_ERROR           65535
+#define EXPECTING_SYMBOL         2
+#define EXPECTING_INTEGER        4
+#define EXPECTING_STRING         8
+#define EXPECTING_ARITHMETIC_OP 16
+
+/* . */
+#define EXPECTING_APPLY_OPERATOR 32
+#define EXPECTING_OPEN_BRACKET   64   
+#define EXPECTING_CLOSE_BRACKET  128
+#define EXPECTING_OPEN_PARAM     256    
+#define EXPECTING_CLOSE_PARAM    512
+#define EXPECTING_OPEN_BRACE     1024
+#define EXPECTING_CLOSE_BRACE    2048
+
+#define EXPECTING_NEXT           4096 
+/* : , */
+#define EXPECTING_DELIMITER      8192
+
+#define STATE_INCOMPLETE          1
+#define STATE_PANIC               2 
+#define INTERNAL_ERROR            4
+
+/* if set - warning messages are present */
+#define STATE_WARNING             8
+
+/*
+    The grouping stack is used to track the amount 
+    of sub-expressions inside an expression. (See lexer.h)
+    We generate GROUPING tokens based on the stack model
+    our parser uses.
+
+    For every new brace token-type added into the operator-stack
+    increment the grouping stack, and initalize it to 0.
+    For every comma, increment the current grouping-stack's head by 1.
+    
+    Once the closing brace is found and
+    this stack's head is larger than 0,
+    we have a set/grouping of expressions. 
+  
+    used in the group-stack exclusively
+*/
+struct Group {
+    // amount of delimiters
+    uint16_t delimiter_cnt;
+
+    /*
+        0 : Uninitialized state
+        1 : COLON token in group
+        2 : COMMA token in group
+        4 : List context mode
+        8 : Tuple context mode
+       16 : Set context mode
+       32 : Map context mode
+       64 : Index context mode
+      (?) : Tuple context mode (without bracing)
+      128 : lock context mode
+      256 : index marker operation
+      512 : apply marker operation
+     1024 : group marker operation
+    */
+    FLAG_T state;
+
+    // should be `[` `(` '{' or `0`
+    struct Token *origin;
+    struct Token *last_delim;
+};
+
+struct StageInfixState {
+    struct Token *src;
+    usize src_sz;
+    usize *i;
+    char * line;
+
+    struct Token **debug;
+    usize debug_sz;
+    usize *debug_ctr;
+
+    struct Expr **expr_stack;
+    usize expr_ctr;
+    usize expr_sz;
+
+    struct Vec *expr_pool;
+
+    /*
+      quick bump-allocator pool
+      all tokens created in this stage will be
+      referenced from this pool
+    */
+    struct Token *pool;
+    usize pool_i;
+    usize pool_sz;
+
+    struct Group *set_stack;
+    usize set_ctr;
+    usize set_sz;
+
+    struct Token **operator_stack;
+    uint16_t operators_ctr;
+    uint16_t operator_stack_sz;
+
+    struct CompileTimeError *errors;
+    uint16_t errors_ctr;
+
+    FLAG_T expecting;
+    FLAG_T state;
+};
 
 enum Operation operation_from_token(enum Lexicon t){
     switch (t) {
@@ -35,6 +155,9 @@ enum Operation operation_from_token(enum Lexicon t){
         case LT: return Lt;
         case GT: return Gt;
         case DOT: return Access;
+        case EQUAL: return Assign;
+        case PLUSEQ: return AssignAdd;
+        case MINUSEQ: return AssignSub;
         default: return UndefinedOp;
     }
 }
@@ -78,13 +201,12 @@ enum Associativity get_assoc(enum Lexicon token) {
     precendense table:
       ") ] }"   : 127 non-assoc
       "."     : 126 L
-      
-    
       "^"       : 6 R (1 ^ 2 ^ 3) -> (1 ^ (2 ^ 3))
       "/ * %"   : 5 L  (4 / 2 * 2) -> ((4 / 2) * 2)
       "+ -"     : 4 L
-      "!= == >= > <= < && ||": 3 L
       "!"       : 2 R
+      "!= == >= > <= < && ||": 2 L
+      "+= -= =" : 1 R
       "( [ {"   : 0 non-assoc
 */
 int8_t op_precedence(enum Lexicon token) {
@@ -117,6 +239,11 @@ int8_t op_precedence(enum Lexicon token) {
         || token == NOT)
         return 2;
     
+    else if (token == EQUAL
+      || token == PLUSEQ
+      || token == MINUSEQ)
+      return 1;
+    
     else if (is_open_brace(token))
         return 0;
     
@@ -139,62 +266,17 @@ int8_t add_marker(
   ret = &state->pool[state->pool_i];
   state->pool_i += 1;
 
-  if (*state->out_ctr > state->out_sz)
+  if (*state->debug_ctr > state->debug_sz)
     return -1;
 
-  state->out[*state->out_ctr] = ret;
-  *state->out_ctr += 1;
+  state->debug[*state->debug_ctr] = ret;
+  *state->debug_ctr += 1;
 
   return 0;
 }
 
 #define STACK_SZ 128
 #define _OP_SZ 128
-
-
-/*  Flushes operators of higher precedence than `current`
- *  into the output until stack is empty,
- *  or runs into an open brace token.
- *  This function will not pop off the open brace token
- *  if one
- */
-
-int8_t flush_ops(struct StageInfixState *state)
-{
-  struct Token *head;
-
-  if (state->operators_ctr <= 0)
-    return 0;
-  
-  head = state->operator_stack[state->operators_ctr - 1];
-
-  /* pop operators off of the operator-stack into the output */
-  while (state->operators_ctr > 0) {
-    /* ends if tokens inverted brace is found*/
-    if (head->type == invert_brace_tok_ty(state->src[*state->i].type)) {
-      
-      /* do not discard opening brace yet
-      operators_ctr -= 1; */
-      break;
-    }
-    /* otherwise pop into output */
-    else {
-      if (*state->out_ctr > state->out_sz)
-        return -1;
-      state->out[*state->out_ctr] = head;
-      *state->out_ctr += 1;
-      state->operators_ctr -= 1;
-    }
-
-    if (state->operators_ctr <= 0)
-      break;
-
-    /* Grab the head of the stack */
-    head = state->operator_stack[state->operators_ctr - 1];
-  }
-
-  return 0;
-}
 
 /*
     check flag, and if present, unset it.
@@ -236,20 +318,29 @@ enum Lexicon get_expected_delimiter(struct StageInfixState *state) {
     return 0;
 }
 
+void mk_error(struct StageInfixState *state, enum ErrorT type, char * msg) {
+  struct CompileTimeError *err;
+  
+  err->type = type;
+  state->errors[state->errors_ctr].base = &state->src[*state->i];
+  err->msg = msg;
+
+  set_flag(&state->state, STATE_PANIC | STATE_INCOMPLETE);
+}
+
 int8_t is_token_unexpected(struct StageInfixState *state) {
   struct Token * current = &state->src[*state->i];
   enum Lexicon delim;
   FLAG_T check_list = 0;
-
 
   if (current->type == WORD || current->type == NULLTOKEN)
     set_flag(&check_list, EXPECTING_SYMBOL);
 
   else if (current->type == DOT)
     set_flag(&check_list, EXPECTING_APPLY_OPERATOR);
-  
-  else if (is_bin_operator(current->type))
-    set_flag(&check_list, EXPECTING_ARITHMETIC_OPERATOR);
+
+  else if (is_operator(current->type))
+    set_flag(&check_list, EXPECTING_ARITHMETIC_OP);
   
   else if (is_delimiter(current->type)) {
     delim = get_expected_delimiter(state);
@@ -312,7 +403,7 @@ FLAG_T expect_any_data(){
 }
 
 FLAG_T expect_any_op(){
-  return 0 | EXPECTING_ARITHMETIC_OPERATOR
+  return 0 | EXPECTING_ARITHMETIC_OP
     | EXPECTING_APPLY_OPERATOR;
 }
 
@@ -333,7 +424,7 @@ FLAG_T setup_flags(struct StageInfixState* state)
   if (is_symbolic_data(current->type))
   {
     set_flag(&ret, 0
-      | EXPECTING_ARITHMETIC_OPERATOR      
+      | EXPECTING_ARITHMETIC_OP      
       | expect_any_close_brace()
       | EXPECTING_DELIMITER);
 
@@ -354,7 +445,7 @@ FLAG_T setup_flags(struct StageInfixState* state)
       | EXPECTING_SYMBOL
       | EXPECTING_NEXT);
 
-  else if (is_bin_operator(current->type)) {
+  else if (is_operator(current->type)) {
     set_flag(&ret, 0
       | expect_any_data()
       | expect_any_open_brace()
@@ -397,22 +488,272 @@ FLAG_T setup_flags(struct StageInfixState* state)
   return ret;
 }
 
-int8_t handle_unwind(struct StageInfixState *state) {
+int8_t inc_stack(
+  struct StageInfixState *state,
+  struct Expr *ex,
+  bool add_debug)
+{
+  struct Expr * vec_item;
+  
+  if (state->expr_ctr > state->expr_sz || *state->debug_ctr > state->debug_sz )
+    return -1;
+  
+  vec_item = vec_push(state->expr_pool, &ex);
 
-    
+  if (vec_item == 0)
+    return -1;
+
+  state->expr_stack[state->expr_ctr] = vec_item;
+  state->expr_ctr += 1;
+
+  state->debug[*state->debug_ctr] = &state->src[*state->i];
+  *state->debug_ctr += 1;
+
+  return 0;
+}
+
+int8_t handle_int(struct StageInfixState* state)
+{
+  struct Expr ex;
+  struct Token *current = &state->src[*state->i];
+  usize size = current->end - current->start;
+
+  char * end;
+  ex.type = LiteralExprT;
+  ex.datatype = IntT;
+  errno = 0;
+
+  ex.inner.value.literal.integer =
+    str_to_isize(state->line + current->start, &end, 10);
+
+  if (errno != 0 || end != state->line + size)
+    return -1;
+
+  if (inc_stack(state, &ex, true) == -1)
+    return -1;
+  
+  return 0;
 }
 
 /*
   symbols are placed directly into the output.
 */
 int8_t handle_symbol(struct StageInfixState* state) {
-    state->out[*state->out_ctr] = &state->src[*state->i];
-    *state->out_ctr += 1;
-    
-    state->set_stack[state->set_ctr].atomic_symbols += 1;
-    return 0;
+  struct Expr ex;
+  struct Token *current = &state->src[*state->i];
+  uint8_t size = current->end - current->start;
+  
+  ex.type = SymExprT;
+  ex.datatype = UndefT;
+  ex.inner.symbol = calloc(1, size+1);
+  
+  /*bad alloc*/
+  if (ex.inner.symbol == 0)
+    return -1;
+
+  memcpy(ex.inner.symbol,
+    state->line + current->start,
+    size + 1
+  );
+  
+  ex.inner.symbol[size] = 0;
+  
+  if (inc_stack(state, &ex, true) == -1)
+    return -1;
+  return 0;
 }
 
+
+/* no special algorithms, just an equality test */
+void determine_return_ty(struct Expr *bin) {
+  if (bin->inner.bin.rhs->datatype == bin->inner.bin.lhs->datatype)
+    bin->inner.bin.returns = bin->inner.bin.rhs->datatype;
+  else
+    bin->inner.bin.returns = UndefT;
+}
+
+int8_t mk_binop(struct StageInfixState *state, struct Expr *ex) {
+  struct Token *current = &state->src[*state->i];
+
+  if (1 > state->expr_ctr)
+    return -1;
+
+  ex->type = BinaryExprT;
+  ex->inner.bin.lhs = 
+    state->expr_stack[state->expr_ctr - 1];
+
+  ex->inner.bin.rhs = 
+    state->expr_stack[state->expr_ctr - 2];
+      
+  ex->inner.bin.op = operation_from_token(current->type);
+  
+  determine_return_ty(ex);
+
+  state->expr_ctr -= 2;
+  return 0;
+}
+
+int8_t mk_not(struct StageInfixState *state, struct Expr *ex) {
+
+  if (1 > state->expr_ctr)
+    return -1;
+  
+  ex->type = NopExprT;
+  ex->inner.not_.operand = state->expr_stack[state->expr_ctr - 1];
+  state->expr_ctr -= 1;
+
+  return 0;
+}
+
+int8_t mk_operator(
+  struct StageInfixState *state,
+  struct Expr *ex,
+  struct Token *op_head
+) {  
+  if (op_head->type == NOT && mk_not(state, ex) == -1)
+    return -1;
+      
+  else if (mk_binop(state, ex) == -1)
+    return -1;
+  
+  return 0;
+}
+
+
+/*  Flushes operators of higher precedence than `current`
+ *  into the output until stack is empty,
+ *  or runs into an open brace token.
+ *  This function will pop off the open brace token
+ *  if one is found.
+ */
+int8_t flush_ops(struct StageInfixState *state)
+{
+  struct Token *head;
+  struct Expr ex;
+
+  if (state->operators_ctr <= 0)
+    return 0;
+  
+  head = state->operator_stack[state->operators_ctr - 1];
+
+  /* pop operators off of the operator-stack into the output */
+  while (state->operators_ctr > 0) {
+    memset(&ex, 0, sizeof(struct Expr));
+    /* ends if tokens inverted brace is found*/
+    if (head->type == invert_brace_tok_ty(state->src[*state->i].type))
+      break;
+    
+    /* otherwise pop into output */
+    else {
+      if (*state->debug_ctr > state->debug_sz)
+        return -1;
+
+      if (mk_operator(state, &ex, head) == -1 || inc_stack(state, &ex, true) == -1)
+        return -1;
+      
+      state->operators_ctr -= 1;
+    }
+
+    if (state->operators_ctr <= 0)
+      break;
+
+    /* Grab the head of the stack */
+    head = state->operator_stack[state->operators_ctr - 1];
+  }
+  
+  /* discard opening brace yet */
+  state->operators_ctr -= 1;
+  return 0;
+}
+
+int8_t handle_operator(struct StageInfixState *state) {
+  struct Expr ex;
+  struct Token *head=0, *current=0;
+  int8_t precedense = 0, head_precedense = 0;
+
+  current = &state->src[*state->i];
+  precedense = op_precedence(current->type);
+
+  if (precedense == -1){
+    mk_error(state, Fatal, "Unrecongized operator");
+    return -1;
+  }
+
+  /*
+    no operators in operators-stack,
+    so no extra checks needed
+
+    if the head of the operator stack is an open brace
+    we don't need to do anymore checks
+    before placing the operator  
+  */
+  else if (state->operators_ctr == 0 || is_open_brace(head->type)) {
+    if (state->operators_ctr > state->operator_stack_sz)
+      return -1;
+    
+    state->operator_stack[state->operators_ctr] = current;
+    state->operators_ctr += 1;
+    return 0;
+  }
+
+  /* Grab the head of the operators-stack */
+  head = state->operator_stack[state->operators_ctr - 1];
+
+  /*
+    while `head` has higher precedence
+    than our current token pop operators from
+    the operator-stack into the output
+  */
+  while (op_precedence(head->type) >= precedense && state->operators_ctr > 0) {
+    memset(&ex, 0, sizeof(struct Expr));
+
+    head_precedense = op_precedence(head->type);
+
+    if (is_open_brace(head->type))
+      break;
+    
+    /* pop operators off the stack into the output */
+    if (head_precedense > precedense)
+    {
+      if (*state->debug_ctr > state->debug_sz) {
+        mk_error(state, Fatal, "Output overflowed");
+        return -1;
+      }
+      
+      else if (
+        mk_operator(state, &ex, head) == -1 
+        || inc_stack(state, &ex, true) == -1)
+        return -1;
+    }
+
+    /*
+        If left associated, push equal
+        precedence operators onto the output
+    */
+    else if (precedense == head_precedense && get_assoc(current->type) == LASSOC) 
+    {
+      if (mk_operator(state, &ex, head) == -1
+          || inc_stack(state, &ex, true) == -1)
+          return -1;
+    }
+
+    /* discard operator after placed in output */
+    state->operators_ctr -= 1;
+
+    if (state->operators_ctr <= 0)
+      break;
+
+    head = state->operator_stack[state->operators_ctr - 1];
+  }
+
+  /* place low precedence operator */
+  if (state->operators_ctr > state->operator_stack_sz)
+    return -1;
+  
+  state->operator_stack[state->operators_ctr] = &state->src[*state->i];
+  state->operators_ctr += 1;
+  return 0;
+}
 /*
   every opening brace starts a new possible group,
   increment the group stack, and watch for the following 
@@ -454,8 +795,9 @@ int8_t handle_open_brace(struct StageInfixState *state) {
   }
   
   ghead = &state->set_stack[state->set_ctr];
+  /* increment group */
+  state->set_ctr += 1;
 
-  ghead->atomic_symbols = 0;
   ghead->delimiter_cnt = 0;
   ghead->origin = current;
   /*
@@ -465,12 +807,11 @@ int8_t handle_open_brace(struct StageInfixState *state) {
   {
     ghead->state = 0 | GSTATE_CTX_TUPLE | GSTATE_CTX_LOCK;
 
-    if (prev && (is_close_brace(prev->type) ||
-        prev->type == WORD))
-      {
-        set_flag(&ghead->state, GSTATE_OP_APPLY);
-      }
+    if (prev && (is_close_brace(prev->type)
+       || prev->type == WORD))
+          set_flag(&ghead->state, GSTATE_OP_APPLY);
   }
+  
   /*
     index call pattern
   */
@@ -478,31 +819,222 @@ int8_t handle_open_brace(struct StageInfixState *state) {
   {
     ghead->state = 0 | GSTATE_CTX_LIST | GSTATE_CTX_LOCK;
     /* peek-behind to check for index access */
-    if (prev && (is_close_brace(prev->type) ||
-        prev->type == WORD ||
-        prev->type == STRING_LITERAL))
-    {
-      set_flag(&ghead->state, GSTATE_OP_IDX);
-    }
+    if (prev && (is_close_brace(prev->type)
+       ||prev->type == WORD
+       ||prev->type == STRING_LITERAL))
+          set_flag(&ghead->state, GSTATE_OP_IDX);
   }
   else if (current->type == BRACE_OPEN)
-  {
     ghead->state = 0 | GSTATE_CTX_SET;
+  
+  if (!check_flag(ghead->state, GSTATE_OP_APPLY)
+      ||!check_flag(ghead->state, GSTATE_OP_IDX))
+          set_flag(&ghead->state, GSTATE_OP_GROUP);
+  
+  return 0;
+}
+
+enum GroupT get_group_ty(FLAG_T group_state) {
+  if (check_flag(group_state, GSTATE_CTX_TUPLE))
+    return TupleT;
+  else if(check_flag(group_state, GSTATE_CTX_SET))
+    return SetT;
+  else if (check_flag(group_state, GSTATE_CTX_LIST))
+    return ListT;
+  else if(check_flag(group_state, GSTATE_CTX_MAP))
+    return MapT;
+  else
+    return GroupTUndef;
+}
+
+int8_t mk_group(struct StageInfixState *state, struct Expr *ex) {
+  struct Expr **buf;
+
+  struct Token *current = &state->src[*state->i];
+  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+
+  usize elements = ghead->delimiter_cnt + 1;
+
+  enum GroupT group_ty = get_group_ty(ghead->state);
+  if (group_ty == GroupTUndef || elements > state->expr_ctr)
+    return -1;
+  
+  ex->type = LiteralExprT;
+  ex->datatype = GroupT;
+  ex->inner.value.literal.grouping.type = group_ty;
+  ex->inner.value.literal.grouping.ptr = 0;
+  ex->inner.value.literal.grouping.length = 0;
+
+  if (!check_flag(ghead->state, GSTATE_EMPTY))
+  {
+    buf = calloc(elements, sizeof(void *));
+    
+    if (!buf)
+      return -1;
+    
+    ex->inner.value.literal.grouping.ptr = buf;
+    ex->inner.value.literal.grouping.length = elements;
+
+    for (usize j = 0; elements > j; j++) {
+      ex->inner.value.literal.grouping.ptr[j] = state->expr_stack[state->expr_ctr - 1];
+      state->expr_ctr -= 1;
+    }
   }
 
-  if (!check_flag(ghead->state, GSTATE_OP_APPLY)
-    ||!check_flag(ghead->state, GSTATE_OP_IDX))
-    set_flag(&ghead->state, GSTATE_OP_GROUP);
+  return 0;
+}
 
-  /* increment group */
-  state->set_ctr += 1;
+int8_t mk_idx_access(struct StageInfixState *state, struct Expr *ex) {
+  ex->type = FnCallExprT;
+  ex->datatype = 0;
+
+  if (3 > state->expr_ctr)
+    return -1;
+
+  ex->inner.idx.start   = state->expr_stack[state->expr_ctr - 1];
+  ex->inner.idx.end     = state->expr_stack[state->expr_ctr - 2];
+  ex->inner.idx.skip    = state->expr_stack[state->expr_ctr - 3];
+  ex->inner.idx.operand = state->expr_stack[state->expr_ctr - 4];
+
+  state->expr_ctr -= 4;
+  return 0;
+}
+
+int8_t mk_fncall(struct StageInfixState *state, struct Expr *ex) {
+  struct Token *current = &state->src[*state->i];
+  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+  usize argc = ghead->delimiter_cnt + 1;
+  
+  struct Expr *head;
+
+  if (state->expr_ctr > state->expr_sz || 1 > *state->i)
+    return -1;
+    
+  ex->type = FnCallExprT;
+  ex->datatype = 0;
+
+  if (check_flag(ghead->state, GSTATE_EMPTY))
+  {
+    ex->inner.fncall.args = 0;
+    ex->inner.fncall.args_length = 0;
+  }
+  else {
+    ex->inner.fncall.args = calloc(argc, sizeof(void *));
+
+    /* fill in arguments popping them off the stack */
+    for (usize x=0; argc > x; x++){
+      ex->inner.fncall.args[ex->inner.fncall.args_length] = head;
+      ex->inner.fncall.args_length += 1;
+      state->expr_ctr -= 1;
+      head = state->expr_stack[state->expr_ctr - 1];
+    }
+  }
+  
+  // TODO
+  // something feels off right here
+  // like we're not pointing at the caller yet 
+  head = state->expr_stack[state->expr_ctr - 1];
+  state->expr_ctr -= 1;
+  
+  ex->inner.fncall.func_name = "anonymous";
+  ex->inner.fncall.caller = head;
+  
+  if (head->type == SymExprT)
+    ex->inner.fncall.func_name = head->inner.symbol;
+
+
+  // /* this is usually the function name, but could be a grouping */
+  
+  // else if (head->type == LiteralExprT &&
+  //          head->datatype == GroupT)
+  //   nop;
+  // else if (head->type == FnCallExprT)
+  //   nop;
+  // else
+  //   /*expected a group, or symbol as last item on the stack*/
+  //   return -1;
+
+  return 0;
+}
+
+
+void mk_null(struct StageInfixState *state, struct Expr *ex) {
+  ex->type = LiteralExprT;
+  ex->datatype = NullT;
+}
+
+int8_t handle_idx_op(struct StageInfixState *state) {
+  struct Expr ex;
+  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+  struct Token *prev = &state->src[*state->i - 1];
+
+  if (ghead->origin->type != BRACE_OPEN)
+      return -1;
+    
+  mk_null(state, &ex);
+    
+  /*
+    peek-behind if token was COLON 
+    add a value for its missing argument
+  */
+  // a: -> a:a
+  // :: => ::a
+  if (prev->type == COLON && 
+    (add_marker(state, MarkerNop, 0) == -1 
+    || inc_stack(state, &ex, false) == -1))
+    return -1;
+  
+  // a:a -> a:a:a
+  for (uint8_t i=0; 2 > ghead->delimiter_cnt; i++)
+  {
+    if(add_marker(state, MarkerNop, 0) == -1 
+      || inc_stack(state, &ex, false) == -1)
+        return -1;
+  }
+
+  memset(&ex, 0, sizeof(struct Expr));
+  if (add_marker(state, _IdxAccess, 0) == -1
+      || mk_idx_access(state, &ex) == -1
+      || inc_stack(state, &ex, false) == -1)
+        return -1;
+    
+  return 0;
+}
+
+int8_t handle_fncall(struct StageInfixState *state) {
+  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+  struct Expr ex;
+
+  if (ghead->origin->type != PARAM_OPEN 
+      || *state->debug_ctr > state->debug_sz
+      || add_marker(state, Apply, ghead->delimiter_cnt + 1) == -1
+      || mk_fncall(state, &ex) == -1
+      || inc_stack(state, &ex, false) == -1)
+      return -1;
+  return 0;
+}
+
+int8_t handle_grouping(struct StageInfixState *state) {
+  enum MarkerT marker_type;
+  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+  struct Token *current = &state->src[*state->i];
+  struct Expr ex;
+
+  marker_type = derive_group_marker_t(current->type);
+  if (marker_type == MarkerTUndef 
+    || add_marker(state, marker_type, ghead->delimiter_cnt + 1) == -1
+    || mk_group(state, &ex) == -1
+    || inc_stack(state, &ex, false) == -1)
+    return -1;
   
   return 0;
 }
 
 int8_t handle_close_brace(struct StageInfixState *state) {
-  struct Token *op_head, *prev = 0, *current = &state->src[*state->i];
+  struct Token *prev = 0, *ophead=0, *current = &state->src[*state->i];
   struct Group *ghead;
+  struct Expr ex;
+  bool is_empty_group = false;
   enum MarkerT marker_type = MarkerNop;
 
   /* Operators stack is empty */
@@ -517,161 +1049,49 @@ int8_t handle_close_brace(struct StageInfixState *state) {
   else
     return -1;
 
-  /* Grab the head of the group stack */
+  /* Grab the head of the group stack & decrement */
   ghead = &state->set_stack[state->set_ctr - 1];
+  state->set_ctr -= 1;
 
-  /* Grab the head of the operator stack */
-  op_head = state->operator_stack[state->operators_ctr - 1];
-
-  if (op_head != ghead->origin)
-    return -1;
-
-  // empty collection
-  if (prev->type == invert_brace_tok_ty(current->type))
-  {
+  if (prev->type == invert_brace_tok_ty(current->type)) {
+    set_flag(&ghead->state, GSTATE_EMPTY);
+    state->operators_ctr -= 1;
+    
     if (check_flag(ghead->state, GSTATE_OP_IDX))
       return -1;
-    
-    marker_type = derive_group_marker_t(current->type);
-    if (marker_type == MarkerTUndef || add_marker(state, marker_type, 0) == -1)
+  }
+
+  else {
+    if (flush_ops(state) == -1)
       return -1;
     
-    state->operators_ctr -= 1;
-    state->set_ctr -= 1;
-    return 0;
-  }
-  else
-  {
-    flush_ops(state);
-  }
-
-  if (check_flag(ghead->state, GSTATE_OP_IDX | GSTATE_CTX_IDX))
-  {
-    if (ghead->origin->type != BRACE_OPEN)
+    /* Grab the head of the operator stack */
+    // reach into de-allocated space 
+    // and just check for sanity purposes
+    // that our current group's origin
+    // is this group
+    ophead = state->operator_stack[state->operators_ctr];
+    if (ophead != ghead->origin)
       return -1;
-    /*
-      peek-behind if token was COLON 
-      add a value for its missing argument
-    */
-    // a: -> a:a
-    // :: => ::a
-    if (prev->type == COLON &&
-        add_marker(state, MarkerNop, 0) == -1) {
-        return -1;
-    }
-
-    // a:a -> a:a:a
-    for (uint8_t i=0; 2 > ghead->delimiter_cnt; i++)
-    {
-      if (add_marker(state, MarkerNop, 0) == -1)
-        return -1;
-    }
-
-    if (add_marker(state, _IdxAccess, 0) == -1)
-        return -1;
   }
 
-  else if (check_flag(ghead->state,  GSTATE_OP_APPLY | GSTATE_CTX_TUPLE))
-  {
-    if (op_head->type != PARAM_OPEN 
-      || *state->out_ctr > state->out_sz
-      || add_marker(state, Apply, ghead->delimiter_cnt + 1) == -1)
-        return -1;
-  }
-
+  if (check_flag(ghead->state, GSTATE_OP_IDX))
+    handle_idx_op(state);
+  
+  else if (check_flag(ghead->state,  GSTATE_OP_APPLY))
+    handle_fncall(state);
+  
   else if (check_flag(ghead->state, GSTATE_OP_GROUP))
-  {
-    marker_type = derive_group_marker_t(current->type);
-    if (marker_type == MarkerTUndef || add_marker(state, marker_type, ghead->delimiter_cnt + 1) == -1)
-      return -1;
-  }
- 
-  /* discard opening brace from operator stack */
-  state->operators_ctr -= 1;
-  state->set_ctr -= 1;
-  return 0;
-}
+    handle_grouping(state);
+  
+  else return -1;
 
-int8_t handle_operator(struct StageInfixState *state) {
-  struct Token *head;
-  int8_t precedense = 0, head_precedense = 0;
-
-  precedense = op_precedence(state->src[*state->i].type);
-
-  /* unrecongized token */
-  if (precedense == -1)
-    return -1;
-
-  /*
-    no operators in operators-stack,
-    so no extra checks needed
-
-    if the head of the operator stack is an open brace
-    we don't need to do anymore checks
-    before placing the operator  
-  */
-  else if (state->operators_ctr == 0 || is_open_brace(head->type)) {
-    state->operator_stack[state->operators_ctr] = &state->src[*state->i];
-    state->operators_ctr += 1;
-    return 0;
-  }
-
-  /* Grab the head of the operators-stack */
-  head = state->operator_stack[state->operators_ctr - 1];
-
-  /*
-    while `head` has higher precedence
-    than our current token pop operators from
-    the operator-stack into the output
-  */
-  while (op_precedence(head->type) >= precedense && state->operators_ctr > 0) {
-    head_precedense = op_precedence(head->type);
-
-    if (is_open_brace(head->type))
-      break;
-    
-    /* pop operators off the stack into the output */
-    if (head_precedense > precedense) {
-      if (*state->out_ctr > state->out_sz) 
-        return -1;
-      
-      state->out[*state->out_ctr] = head;
-      *state->out_ctr += 1;
-    }
-
-    /*
-        If left associated, push equal
-        precedence operators onto the output
-    */
-    else if (precedense == head_precedense) {
-      if (get_assoc(state->src[*state->i].type) == LASSOC) {
-        
-        /* overflow check */
-        if (*state->out_ctr > state->out_sz)
-          return -1;
-        
-        state->out[*state->out_ctr] = head;
-        *state->out_ctr += 1;
-      }
-    }
-
-    /* discard operator after placed in output */
-    state->operators_ctr -= 1;
-
-    if (state->operators_ctr <= 0)
-      break;
-
-    head = state->operator_stack[state->operators_ctr - 1];
-  }
-
-  /* place low precedence operator */
-  state->operator_stack[state->operators_ctr] = &state->src[*state->i];
-  state->operators_ctr += 1;
   return 0;
 }
 
 /* TODO set GSTATE_OP_GROUP */
 int8_t handle_delimiter(struct StageInfixState *state) {
+  struct Expr ex;
   struct Token *head = 0, 
     *current = &state->src[*state->i],
     *prev = 0,
@@ -687,16 +1107,20 @@ int8_t handle_delimiter(struct StageInfixState *state) {
     return -1;
     // ghead = &state->set_stack[0];
 
-  /* increment the delimiter counter */
   ghead->delimiter_cnt += 1;
+  ghead->last_delim = current;
   
   if(*state->i > 0)
     prev = &state->src[*state->i - 1];
-  else return -1;
   
   if(state->src_sz > *state->i + 1)
     next = &state->src[*state->i + 1];
-  else return -1;
+
+  if (!next || !prev)
+  {
+    mk_error(state, Fatal, "Expected token before & after delimiter.");
+    return -1;
+  }
 
   /* 
     Tuple/List/IDX/APPLY operations will already have the context locked.
@@ -721,22 +1145,61 @@ int8_t handle_delimiter(struct StageInfixState *state) {
         return -1;
     }
   }
-
+  /* peek behind and add NULL if no */
   if (check_flag(ghead->state, GSTATE_CTX_IDX))
   {
     if(ghead->delimiter_cnt > 2)
       return -1;
     
     /* add NOP to the output if no position argument present*/
-    if (prev->type == BRACKET_OPEN || prev->type == COLON) 
-    {
-      if (add_marker(state, MarkerNop, 0) == -1)
+    if (prev == ghead->origin || prev->type == COLON) 
+    { 
+      mk_null(state, &ex);
+      if (add_marker(state, MarkerNop, 0) == -1
+         ||inc_stack(state, &ex, false) )
         return -1;
     }
   }
 
-  flush_ops(state);
+  if (flush_ops(state) == -1)
+    return -1;
+  
   return 0;
+}
+
+int8_t handle_str(struct StageInfixState *state) {
+  struct Expr ex;
+  char * str;
+  struct Token *current = &state->src[*state->i];
+  usize size = current->end - current->start;
+
+  ex.type = LiteralExprT;
+  ex.datatype = StringT;
+
+  str = malloc(size+1);
+  if (str == 0)
+    return -1;
+  
+  ex.inner.value.literal.string = str;
+
+  memcpy(
+    ex.inner.value.literal.string,
+    &state->line[current->start],
+    size
+  );
+
+  ex.inner.value.literal.string[size] = 0;
+  
+  if(inc_stack(state, &ex, true) == -1)
+    return -1;
+  
+  return 0;
+}
+
+
+int8_t handle_unwind(struct StageInfixState *state) {
+
+    
 }
 
 /*
@@ -784,6 +1247,7 @@ int8_t handle_delimiter(struct StageInfixState *state) {
   more information about the APPLY operator, and
   others like it.
 */
+
 int8_t stage_infix_parser(
     struct Token tokens[], usize expr_size,
     struct Token *output[], usize output_sz,
@@ -792,9 +1256,13 @@ int8_t stage_infix_parser(
     struct CompileTimeError *err)
 {
   struct StageInfixState state;
+  
   struct Token *operators[STACK_SZ];
   struct Group groups[STACK_SZ];
   struct Token *head;
+  
+  struct Expr ex;
+
 
   int8_t ret = -1;
   int8_t precedense = 0;
@@ -804,9 +1272,9 @@ int8_t stage_infix_parser(
   state.src = tokens;
   state.src_sz = expr_size;
 
-  state.out = output;
-  state.out_ctr = output_ctr;
-  state.out_sz = output_sz;
+  state.debug = output;
+  state.debug_ctr = output_ctr;
+  state.debug_sz = output_sz;
 
   state.pool = token_pool;
   state.pool_sz = pool_sz;
@@ -835,11 +1303,17 @@ int8_t stage_infix_parser(
 
     else if (check_flag(state.state, STATE_PANIC) || is_token_unexpected(&state))
       handle_unwind(&state);
-
-    else if (is_symbolic_data(state.src[i].type))
+    
+    else if(state.src[i].type == WORD)
       handle_symbol(&state);
 
-    else if (is_bin_operator(state.src[i].type))
+    else if(state.src[i].type == INTEGER)
+      handle_int(&state);
+    
+    else if(state.src[i].type == STRING_LITERAL)
+      handle_str(&state);
+
+    else if (is_operator(state.src[i].type))
       handle_operator(&state);
 
     else if (is_close_brace(state.src[i].type))
@@ -857,369 +1331,28 @@ int8_t stage_infix_parser(
              ptoken(tokens[i]->type));
 #endif
     }
+    /* setup next-token expectation */
+    state.expecting = setup_flags(&state);
   }
-  
-  /* setup next-token expectation */
-  state.expecting = setup_flags(&state);
   
   /* dump the remaining operators onto the output */
   while (state.operators_ctr > 0) {
+    memset(&ex, 0, sizeof(struct Expr));
     head = operators[state.operators_ctr - 1];
     /*
         any remaining params/brackets/braces are unclosed
         indiciate invalid expressions
     */
-    if (*state.out_ctr > state.out_sz || is_open_brace(head->type))
+    if (*state.debug_ctr > state.debug_sz || is_open_brace(head->type))
       return -1;
 
-    state.out[*state.out_ctr] = head;
-
-    *state.out_ctr += 1;
+    if (mk_operator(&state, &ex, head) == -1
+        || inc_stack(&state, &ex, true) == -1)
+        return -1;
+    
     state.operators_ctr -= 1;
   }
 
-  return 0;
-}
-
-/* no special algorithms, just an equality test */
-void determine_return_ty(struct Expr *bin) {
-    if (bin->inner.bin.rhs->datatype == bin->inner.bin.lhs->datatype)
-        bin->inner.bin.returns = bin->inner.bin.rhs->datatype;
-    else
-        bin->inner.bin.returns = UndefT;
-}
-
-struct StagePostfixState {
-  const char *line;
-  struct Token **postfix;
-  struct Token *src;
-  usize src_sz;
-  usize *i;
-
-  struct ExprPool *pool;
-
-  struct Expr **stack;
-  uint16_t stack_ctr;
-  uint16_t stack_sz;
-};
-
-int8_t inc_stack(struct StagePostfixState *state, struct Expr ex)
-{
-  struct Expr *phandle;
-  
-  if (state->stack_ctr > state->stack_sz)
-    return -1;
-
-  phandle = pool_push(state->pool, ex);
-  if (phandle == 0)
-    return -1;
-  
-  state->stack[state->stack_ctr] = phandle;
-  state->stack_ctr += 1;
-
-  return 0;
-}
-
-int8_t mk_sym(struct StagePostfixState *state, struct Expr ex)
-{
-  struct Token *current = state->postfix[*state->i];
-  uint8_t size = current->end - current->start;
-
-  ex.type = SymExprT;
-  ex.datatype = UndefT;
-  ex.inner.symbol = calloc(1, size+1);
-  
-  /*bad alloc*/
-  if (ex.inner.symbol == 0)
-    return -1;
-
-  memcpy(ex.inner.symbol,
-    state->line + current->start,
-    size + 1
-  );
-      
-  ex.inner.symbol[size] = 0;
-
-  if (inc_stack(state, ex) == -1)
-    return -1;
-  
-  return 0;
-}
-
-int8_t mk_null(struct StagePostfixState *state, struct Expr ex) {
-  ex.type = LiteralExprT;
-  ex.datatype = NullT;
-  
-  if (inc_stack(state, ex) == -1)
-    return -1;
-  
-  return 0;
-}
-
-int8_t mk_binop(struct StagePostfixState *state, struct Expr ex) {
-  struct Expr *phandle;
-
-  if (1 > state->stack_ctr)
-    return -1;
-
-  ex.type = BinaryExprT;
-  ex.inner.bin.lhs = state->stack[state->stack_ctr - 1];
-  ex.inner.bin.rhs = state->stack[state->stack_ctr - 2];
-  ex.inner.bin.op = operation_from_token(state->postfix[*state->i]->type);
-  determine_return_ty(&ex);
-  state->stack_ctr -= 2;
-  
-  if (inc_stack(state, ex) == -1)
-    return -1;
-  
-  return 0;
-}
-
-int8_t mk_int(struct StagePostfixState *state, struct Expr ex) {
-  struct Expr *phandle;
-  char * end;
-  ex.type = LiteralExprT;
-  ex.datatype = IntT;
-  errno = 0;
-  
-  ex.inner.value.literal.integer =
-    // TODO
-    // shouldnt this be (usize specified) long long ???
-    strtol(state->line + state->postfix[*state->i]->start, &end, 10);
-
-  if (errno != 0 || end != state->line + state->postfix[*state->i]->end)
-    return -1;
-
-  if (inc_stack(state, ex) == -1)
-    return -1;
-  
-  return 0;
-}
-
-int8_t mk_str(struct StagePostfixState *state, struct Expr ex) {
-  struct Expr *phandle;
-  struct Token *current = state->postfix[*state->i];
-  usize size = current->end - current->start;
-
-  ex.type = LiteralExprT;
-  ex.datatype = StringT;
-  
-  ex.inner.value.literal.string =
-      calloc(1, size + 1);
-
-  memcpy(ex.inner.value.literal.string, &state->line[current->start],
-        size);
-
-  ex.inner.value.literal.string[size] = 0;
-  
-  if(inc_stack(state, ex) == -1)
-    return -1;
-  
-  return 0;
-}
-
-enum GroupT groupty_from_markerty(enum MarkerT group_ty) {
-  switch (group_ty) {
-    case TupleGroup: return TupleT;
-    case ListGroup: return ListT;
-    case MapGroup: return MapT;
-    case SetGroup: return SetT;
-    default: return GroupTUndef;
-  }
-}
-
-int8_t mk_group(struct StagePostfixState *state, struct Expr ex, enum GroupT group_ty) {
-  struct Token *current = state->postfix[*state->i];
-
-  if (state->stack_ctr > STACK_SZ)
-        return -1;
-
-
-  ex.inner.value.literal.grouping.ptr =
-    malloc(sizeof(struct Expr) * current->end);
-  if (ex.inner.value.literal.grouping.ptr == 0)
-    return -1;
-
-  ex.inner.value.literal.grouping.capacity = current->end;
-  ex.inner.value.literal.grouping.length = current->end;
-  ex.inner.value.literal.grouping.type = group_ty;
-
-  for (usize j = 0; current->end > j; j++) {
-    ex.inner.value.literal.grouping.ptr[j] = state->stack[state->stack_ctr - 1];
-    state->stack_ctr -= 1;
-  }
-    
-  if (inc_stack(state, ex) == -1)
-    return -1;
-
-  return 0;
-}
-
-int8_t mk_fncall(struct StagePostfixState *state, struct Expr ex) {
-  struct Token *current = state->postfix[*state->i];
-  struct Expr *head;
-
-  if (state->stack_ctr > STACK_SZ || current->end > MAX_ARGS_SZ)
-    return -1;
-    
-  head = state->stack[state->stack_ctr - 1];
-
-  ex.type = FnCallExprT;
-  ex.datatype = 0;
-
-  /* fill in arguments popping them off the stack */
-  while (current->end > ex.inner.fncall.args_length) {
-    ex.inner.fncall.args[ex.inner.fncall.args_length] = head;
-    ex.inner.fncall.args_length += 1;
-    state->stack_ctr -= 1;
-    head = state->stack[state->stack_ctr - 1];
-  }
-
-  ex.inner.fncall.func_name = "anonymous";
-
-  /* this is usually the function name, but could be a grouping */
-  if (head->type == SymExprT)
-    ex.inner.fncall.func_name = head->inner.symbol;
-  else if (head->type == LiteralExprT &&
-           head->datatype == GroupT)
-    nop;
-  else if (head->type == FnCallExprT)
-    nop;
-  else
-    /*expected a group, or symbol as last item on the stack*/
-    return -1;
-
-  ex.inner.fncall.caller = head;
-  state->stack_ctr -= 1;
-
-  if (inc_stack(state, ex) == -1)
-    return -1;
-  return 0;
-}
-
-int8_t mk_idx_access(struct StagePostfixState *state, struct Expr ex) {
-  ex.type = FnCallExprT;
-  ex.datatype = 0;
-
-  if (3 > state->stack_ctr)
-    return -1;
-
-  ex.inner.idx.start   = state->stack[state->stack_ctr - 1];
-  ex.inner.idx.end     = state->stack[state->stack_ctr - 2];
-  ex.inner.idx.skip    = state->stack[state->stack_ctr - 3];
-  ex.inner.idx.operand = state->stack[state->stack_ctr - 4];
-
-  state->stack_ctr -= 4;
-  if (inc_stack(state, ex) == -1)
-    return -1;
-  return 0;
-}
-
-int8_t mk_not(struct StagePostfixState *state, struct Expr ex) {
-  if (0 > state->stack_ctr)
-    return -1;
-
-  ex.inner.not_.operand = state->stack[state->stack_ctr - 1];
-  state->stack_ctr -= 1;
-
-  if (inc_stack(state, ex) == -1)
-    return -1;
-  return 0;
-}
-
-int8_t handle_marker(struct StagePostfixState *state, struct Expr ex) {
-  enum MarkerT type = (enum MarkerT)state->postfix[*state->i]->start;
-  enum GroupT gtype = GroupTUndef;
-
-  switch (type) {
-    case MarkerNop:
-      ex.type = NopExprT;
-      if (inc_stack(state, ex) == -1)
-        return -1;
-      return 0;
-    
-    case _IdxAccess:
-      if (mk_idx_access(state, ex) == -1)
-        return -1;
-      return 0;
-
-    case Apply:
-      if (mk_fncall(state, ex) == -1)
-        return -1;
-      return 0;
-    default: break;
-  }
-  
-  if (type == TupleGroup || type == ListT
-     ||type == SetGroup || type == MapT)
-  {
-    gtype = groupty_from_markerty(type);
-    
-    if (gtype == GroupTUndef)
-      return -1;
-    
-    mk_group(state, ex, gtype);
-  }
-  else return -1;
-
-  return 0;
-}
-
-int8_t stage_postfix_parser(
-  const char *line, 
-  struct Token *tokens[],
-  usize ntokens,
-  struct ExprPool *pool
-){
-  struct Expr *stack[STACK_SZ];
-  struct Expr ex;
-  int8_t ret = 0;
-  usize i = 0;
-
-  struct StagePostfixState state;
-  
-  state.pool = pool;
-  state.stack_ctr = 0;
-  state.i = &i;
-  state.postfix = tokens;
-  state.line = line;
-
-  if (!line || !tokens || !pool)
-    return -1;
-
-  for (i = 0; ntokens > i; i++)
-  {
-    memset(&ex, 0, sizeof(struct Expr));
-
-    if (state.stack_ctr > state.stack_sz)
-      return -1;
-
-    else if (tokens[i]->type == WORD)
-      ret = mk_sym(&state, ex);
-
-    else if (tokens[i]->type == NULLTOKEN)
-      ret = mk_null(&state, ex);
-
-    else if (tokens[i]->type == INTEGER)
-      ret = mk_int(&state, ex);
-
-    else if (tokens[i]->type == STRING_LITERAL)
-      ret = mk_str(&state, ex);
-
-    else if (tokens[i]->type == NOT)
-      ret = mk_not(&state, ex);
-    
-    else if (is_bin_operator(tokens[i]->type))
-      ret = mk_binop(&state, ex);
-
-    else if (tokens[i]->type == MARKER)
-      ret = handle_marker(&state, ex); 
-    else
-      return -1;
-
-    if (ret == -1)
-      return -1;
-  }
   return 0;
 }
 
