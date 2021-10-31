@@ -17,8 +17,8 @@
 #    define SYS_ARCH_PRIVATE_DEFINITION_64() 1
 #    define SYS_ARCH_PRIVATE_DEFINITION_32() 0
 #    define SYS_ARCH_IF_64_BIT_ELSE( x64, x86 ) (x64)
-#    define strtoisize strtoll
-#    define strtousize strtoull
+#    define str_to_isize strtoll
+#    define str_to_usize strtoull
 #elif _WIN32 || __GNUC__
 #    define SYS_ARCH_PRIVATE_DEFINITION_64() 0
 #    define SYS_ARCH_PRIVATE_DEFINITION_32() 1
