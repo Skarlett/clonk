@@ -50,7 +50,7 @@ bool is_assignment_operator(enum Lexicon token) {
 /*
     returns bool if token is a binary operator
 */
-bool is_bin_operator(enum Lexicon token) {
+bool is_operator(enum Lexicon token) {
     return (token == ISEQL
         || token == ISNEQL 
         || token == GTEQ 
@@ -67,6 +67,10 @@ bool is_bin_operator(enum Lexicon token) {
         || token == MOD
         || token == DIV
         || token == DOT
+        || token == EQUAL
+        || token == MINUSEQ
+        || token == PLUSEQ
+        || token == NOT
     );
 }
 

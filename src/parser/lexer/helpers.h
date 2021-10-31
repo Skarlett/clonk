@@ -27,15 +27,6 @@ enum Lexicon invert_brace_tok_ty(enum Lexicon token);
 
 
 /**
- * Check if the parameter `token` is equal the token type 
- * 
- * @param token
- * @return bool
- */
-bool is_fncall(struct Token tokens[], usize ntokens);
-
-
-/**
  * Check if the parameter `token` is
  * LT, GT, ISEQL, LTEQ, GTEQ
  * @param token
@@ -49,11 +40,12 @@ bool is_cmp_operator(enum Lexicon compound_token);
  *   ADD, SUB, DIV, MOD, MUL,
  *   AND, OR, ACCESS, DOT, 
  *   POW, LT, GT, ISEQL,
- *   LTEQ, GTEQ
+ *   LTEQ, GTEQ, EQUAL, PLUSEQ
+ *   MINUSEQ, NOT
  * @param token
  * @return bool
  */
-bool is_bin_operator(enum Lexicon compound_token);
+bool is_operator(enum Lexicon compound_token);
 
 
 /**
