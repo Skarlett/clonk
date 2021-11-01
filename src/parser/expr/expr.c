@@ -101,7 +101,7 @@ struct Group {
     struct Token *last_delim;
 };
 
-struct StageInfixState {
+struct ExprParserState {
     struct Token *src;
     usize src_sz;
     usize *i;
@@ -117,11 +117,6 @@ struct StageInfixState {
 
     struct Vec *expr_pool;
 
-    /*
-      quick bump-allocator pool
-      all tokens created in this stage will be
-      referenced from this pool
-    */
     struct Token *pool;
     usize pool_i;
     usize pool_sz;
@@ -187,7 +182,7 @@ FLAG_T expect_opposite_brace(enum Lexicon brace){
   } 
 }
 
-void mk_error(struct StageInfixState *state, enum ErrorT type, const char * msg) {
+void mk_error(struct ExprParserState *state, enum ErrorT type, const char * msg) {
   struct CompileTimeError *err;
   
   err->type = type;
@@ -198,7 +193,7 @@ void mk_error(struct StageInfixState *state, enum ErrorT type, const char * msg)
   set_flag(&state->state, STATE_PANIC | STATE_INCOMPLETE);
 }
 
-void throw_internal_error(struct StageInfixState *state, const char * meta, const char * msg)
+void throw_internal_error(struct ExprParserState *state, const char * meta, const char * msg)
 {
   char * internal_msg;
   struct CompileTimeError *err = &state->errors[state->errors_ctr];
@@ -332,7 +327,7 @@ int8_t op_precedence(enum Lexicon token) {
 }
 
 int8_t add_marker(
-  struct StageInfixState *state,
+  struct ExprParserState *state,
   enum MarkerT type,
   usize argc
 ){
@@ -359,7 +354,7 @@ int8_t add_marker(
   return 0;
 }
 
-enum Lexicon get_expected_delimiter(struct StageInfixState *state) {
+enum Lexicon get_expected_delimiter(struct ExprParserState *state) {
   /* setup delimiter expectation */
   struct Group *ghead = &state->set_stack[state->set_ctr - 1];
 
@@ -384,7 +379,7 @@ enum Lexicon get_expected_delimiter(struct StageInfixState *state) {
     return 0;
 }
 
-int8_t is_token_unexpected(struct StageInfixState *state) {
+int8_t is_token_unexpected(struct ExprParserState *state) {
   struct Token * current = &state->src[*state->i];
   enum Lexicon delim;
   FLAG_T check_list = 0;
@@ -440,7 +435,7 @@ int8_t is_token_unexpected(struct StageInfixState *state) {
   return !check_flag(state->state, check_list);
 }
 
-FLAG_T setup_flags(struct StageInfixState* state)
+FLAG_T setup_flags(struct ExprParserState* state)
 {
   struct Token *current = &state->src[*state->i];
   FLAG_T ret = FLAG_ERROR;
@@ -517,7 +512,7 @@ FLAG_T setup_flags(struct StageInfixState* state)
 }
 
 int8_t inc_stack(
-  struct StageInfixState *state,
+  struct ExprParserState *state,
   struct Expr *ex,
   bool add_debug)
 {
@@ -545,7 +540,7 @@ int8_t inc_stack(
   return 0;
 }
 
-int8_t handle_int(struct StageInfixState* state)
+int8_t handle_int(struct ExprParserState* state)
 {
   struct Expr ex;
   struct Token *current = &state->src[*state->i];
@@ -576,7 +571,7 @@ int8_t handle_int(struct StageInfixState* state)
 /*
   symbols are placed directly into the output.
 */
-int8_t handle_symbol(struct StageInfixState* state) {
+int8_t handle_symbol(struct ExprParserState* state) {
   struct Expr ex;
   struct Token *current = &state->src[*state->i];
   uint8_t size = current->end - current->start;
@@ -611,7 +606,7 @@ void determine_return_ty(struct Expr *bin) {
     bin->inner.bin.returns = UndefT;
 }
 
-int8_t mk_binop(struct StageInfixState *state, struct Expr *ex) {
+int8_t mk_binop(struct ExprParserState *state, struct Expr *ex) {
   struct Token *current = &state->src[*state->i];
 
   if (1 > state->expr_ctr)
@@ -635,7 +630,7 @@ int8_t mk_binop(struct StageInfixState *state, struct Expr *ex) {
   return 0;
 }
 
-int8_t mk_not(struct StageInfixState *state, struct Expr *ex) {
+int8_t mk_not(struct ExprParserState *state, struct Expr *ex) {
 
   if (0 > state->expr_ctr)
   {
@@ -651,7 +646,7 @@ int8_t mk_not(struct StageInfixState *state, struct Expr *ex) {
 }
 
 int8_t mk_operator(
-  struct StageInfixState *state,
+  struct ExprParserState *state,
   struct Expr *ex,
   struct Token *op_head
 ) {  
@@ -670,7 +665,7 @@ int8_t mk_operator(
  *  This function will pop off the open brace token
  *  if one is found.
  */
-int8_t flush_ops(struct StageInfixState *state)
+int8_t flush_ops(struct ExprParserState *state)
 {
   struct Token *head;
   struct Expr ex;
@@ -707,7 +702,7 @@ int8_t flush_ops(struct StageInfixState *state)
   return 0;
 }
 
-int8_t handle_operator(struct StageInfixState *state) {
+int8_t handle_operator(struct ExprParserState *state) {
   struct Expr ex;
   struct Token *head=0, *current=0;
   int8_t precedense = 0, head_precedense = 0;
@@ -815,7 +810,7 @@ int8_t handle_operator(struct StageInfixState *state) {
         "[
          ^-- current token.
 */
-int8_t handle_open_brace(struct StageInfixState *state) {
+int8_t handle_open_brace(struct ExprParserState *state) {
   struct Group *ghead = 0;
   struct Token *current, *prev = 0, *next = 0;
 
@@ -888,7 +883,7 @@ enum GroupT get_group_ty(FLAG_T group_state) {
     return GroupTUndef;
 }
 
-int8_t mk_group(struct StageInfixState *state, struct Expr *ex) {
+int8_t mk_group(struct ExprParserState *state, struct Expr *ex) {
   struct Expr **buf;
 
   struct Token *current = &state->src[*state->i];
@@ -928,7 +923,7 @@ int8_t mk_group(struct StageInfixState *state, struct Expr *ex) {
   return 0;
 }
 
-int8_t mk_idx_access(struct StageInfixState *state, struct Expr *ex) {
+int8_t mk_idx_access(struct ExprParserState *state, struct Expr *ex) {
   ex->type = FnCallExprT;
   ex->datatype = 0;
 
@@ -946,7 +941,7 @@ int8_t mk_idx_access(struct StageInfixState *state, struct Expr *ex) {
   return 0;
 }
 
-int8_t mk_fncall(struct StageInfixState *state, struct Expr *ex) {
+int8_t mk_fncall(struct ExprParserState *state, struct Expr *ex) {
   struct Token *current = &state->src[*state->i];
   struct Group *ghead = &state->set_stack[state->set_ctr - 1];
   usize argc = ghead->delimiter_cnt + 1;
@@ -1003,12 +998,12 @@ int8_t mk_fncall(struct StageInfixState *state, struct Expr *ex) {
   return 0;
 }
 
-void mk_null(struct StageInfixState *state, struct Expr *ex) {
+void mk_null(struct ExprParserState *state, struct Expr *ex) {
   ex->type = LiteralExprT;
   ex->datatype = NullT;
 }
 
-int8_t handle_idx_op(struct StageInfixState *state) {
+int8_t handle_idx_op(struct ExprParserState *state) {
   struct Expr ex;
   struct Group *ghead = &state->set_stack[state->set_ctr - 1];
   struct Token *prev = &state->src[*state->i - 1];
@@ -1046,7 +1041,7 @@ int8_t handle_idx_op(struct StageInfixState *state) {
   return 0;
 }
 
-int8_t handle_fncall(struct StageInfixState *state) {
+int8_t handle_fncall(struct ExprParserState *state) {
   struct Group *ghead = &state->set_stack[state->set_ctr - 1];
   struct Expr ex;
 
@@ -1059,7 +1054,7 @@ int8_t handle_fncall(struct StageInfixState *state) {
   return 0;
 }
 
-int8_t handle_grouping(struct StageInfixState *state) {
+int8_t handle_grouping(struct ExprParserState *state) {
   enum MarkerT marker_type;
   struct Group *ghead = &state->set_stack[state->set_ctr - 1];
   struct Token *current = &state->src[*state->i];
@@ -1075,7 +1070,7 @@ int8_t handle_grouping(struct StageInfixState *state) {
   return 0;
 }
 
-int8_t handle_close_brace(struct StageInfixState *state) {
+int8_t handle_close_brace(struct ExprParserState *state) {
   struct Token *prev = 0, *ophead=0, *current = &state->src[*state->i];
   struct Group *ghead;
   struct Expr ex;
@@ -1145,7 +1140,7 @@ int8_t handle_close_brace(struct StageInfixState *state) {
   return ret;
 }
 
-int8_t handle_delimiter(struct StageInfixState *state) {
+int8_t handle_delimiter(struct ExprParserState *state) {
   struct Expr ex;
   struct Token *head = 0, 
     *current = &state->src[*state->i],
@@ -1230,7 +1225,7 @@ int8_t handle_delimiter(struct StageInfixState *state) {
   return 0;
 }
 
-int8_t handle_str(struct StageInfixState *state) {
+int8_t handle_str(struct ExprParserState *state) {
   struct Expr ex;
   char * str;
   struct Token *current = &state->src[*state->i];
@@ -1262,9 +1257,10 @@ int8_t handle_str(struct StageInfixState *state) {
 }
 
 
-int8_t handle_unwind(struct StageInfixState *state) {
+int8_t handle_unwind(struct ExprParserState *state) {
+  struct Token *current = &state->src[*state->i];
+  struct Group *ghead = &state->set_stack[state->set_ctr];
 
-    
 }
 
 /*
@@ -1321,7 +1317,7 @@ int8_t parse_expr(
     usize pool_sz,
     struct CompileTimeError *err)
 {
-  struct StageInfixState state;  
+  struct ExprParserState state;  
   struct Token *head, *operators[STACK_SZ];
   struct Group groups[STACK_SZ];
   
