@@ -1,21 +1,25 @@
 #ifndef _HEADER__PARSER_ERROR__
 #define _HEADER__PARSER_ERROR__
 
-
 enum ErrorT {
     Warning,
     Error,
     Fatal
 };
 
-struct CompileTimeError {
-    struct Token *from;
-    char * file;
-    char * msg;
+enum ComponentSource {
+    Lexer,
+    ExprParser,
+    AST,
 };
 
-struct Error {
-    struct CompileTimeError ;
+
+struct CompileTimeError {
+    struct Token *base;
+    enum ErrorT type;
+    const char * file;
+    bool free_msg;
+    const char * msg;
 };
 
 #endif
