@@ -56,6 +56,9 @@ typedef uint16_t FLAG_T;
 /* if set - warning messages are present */
 #define STATE_WARNING             8
 
+#define STACK_SZ 128
+#define _OP_SZ 128
+
 /*
     The grouping stack is used to track the amount 
     of sub-expressions inside an expression. (See lexer.h)
@@ -137,6 +140,84 @@ struct StageInfixState {
     FLAG_T expecting;
     FLAG_T state;
 };
+
+/*
+    check flag, and if present, unset it.
+*/
+FLAG_T check_flag(FLAG_T set, FLAG_T flag){
+    return set & flag;
+}
+void set_flag(FLAG_T *set, FLAG_T flag){
+    *set = *set | flag;
+}
+
+void unset_flag(FLAG_T *set, FLAG_T flag){
+    *set = *set & ~flag;
+}
+
+FLAG_T expect_any_close_brace(){
+  return 0 | EXPECTING_CLOSE_BRACKET
+    | EXPECTING_CLOSE_PARAM
+    | EXPECTING_CLOSE_BRACE;
+}
+
+FLAG_T expect_any_open_brace(){
+  return 0 | EXPECTING_OPEN_BRACKET
+    | EXPECTING_OPEN_PARAM
+    | EXPECTING_OPEN_BRACE;
+}
+
+FLAG_T expect_any_data(){
+  return 0 | EXPECTING_SYMBOL
+    | EXPECTING_INTEGER
+    | EXPECTING_STRING;
+}
+
+FLAG_T expect_any_op(){
+  return 0 | EXPECTING_ARITHMETIC_OP
+    | EXPECTING_APPLY_OPERATOR;
+}
+
+FLAG_T expect_opposite_brace(enum Lexicon brace){
+  switch (brace) {
+    case PARAM_OPEN: return EXPECTING_CLOSE_PARAM;
+    case BRACE_OPEN: return EXPECTING_CLOSE_BRACE;
+    case BRACKET_OPEN: return EXPECTING_CLOSE_BRACKET;
+    default: return 0;
+  } 
+}
+
+void mk_error(struct StageInfixState *state, enum ErrorT type, const char * msg) {
+  struct CompileTimeError *err;
+  
+  err->type = type;
+  state->errors[state->errors_ctr].base = &state->src[*state->i];
+  state->errors_ctr += 1;
+  err->msg = msg;
+
+  set_flag(&state->state, STATE_PANIC | STATE_INCOMPLETE);
+}
+
+void throw_internal_error(struct StageInfixState *state, const char * meta, const char * msg)
+{
+  char * internal_msg;
+  struct CompileTimeError *err = &state->errors[state->errors_ctr];
+
+#ifdef DEBUG
+  internal_msg = malloc(strlen(meta) + strlen(msg));
+  strcat(internal_msg, meta);
+  strcat(internal_msg, msg);
+#else
+  internal_msg = msg;
+#endif
+  err->free_msg = true;
+  err->msg = internal_msg;
+  err->type = Fatal;
+  set_flag(&state->state, STATE_PANIC | STATE_INCOMPLETE | INTERNAL_ERROR);
+  mk_error(state, Fatal, internal_msg);
+}
+
+#define throw_internal_error(X, MSG) throw_internal_error(X, FILE_LINE, MSG)
 
 enum Operation operation_from_token(enum Lexicon t){
     switch (t) {
@@ -267,30 +348,15 @@ int8_t add_marker(
   state->pool_i += 1;
 
   if (*state->debug_ctr > state->debug_sz)
+  {
+    throw_internal_error(state, "debug_ctr overflowed.");
     return -1;
+  }
 
   state->debug[*state->debug_ctr] = ret;
   *state->debug_ctr += 1;
 
   return 0;
-}
-
-#define STACK_SZ 128
-#define _OP_SZ 128
-
-/*
-    check flag, and if present, unset it.
-*/
-FLAG_T check_flag(FLAG_T set, FLAG_T flag){
-    return set & flag;
-}
-
-void set_flag(FLAG_T *set, FLAG_T flag){
-    *set = *set | flag;
-}
-
-void unset_flag(FLAG_T *set, FLAG_T flag){
-    *set = *set & ~flag;
 }
 
 enum Lexicon get_expected_delimiter(struct StageInfixState *state) {
@@ -316,16 +382,6 @@ enum Lexicon get_expected_delimiter(struct StageInfixState *state) {
 
   else
     return 0;
-}
-
-void mk_error(struct StageInfixState *state, enum ErrorT type, char * msg) {
-  struct CompileTimeError *err;
-  
-  err->type = type;
-  state->errors[state->errors_ctr].base = &state->src[*state->i];
-  err->msg = msg;
-
-  set_flag(&state->state, STATE_PANIC | STATE_INCOMPLETE);
 }
 
 int8_t is_token_unexpected(struct StageInfixState *state) {
@@ -384,38 +440,6 @@ int8_t is_token_unexpected(struct StageInfixState *state) {
   return !check_flag(state->state, check_list);
 }
 
-FLAG_T expect_any_close_brace(){
-  return 0 | EXPECTING_CLOSE_BRACKET
-    | EXPECTING_CLOSE_PARAM
-    | EXPECTING_CLOSE_BRACE;
-}
-
-FLAG_T expect_any_open_brace(){
-  return 0 | EXPECTING_OPEN_BRACKET
-    | EXPECTING_OPEN_PARAM
-    | EXPECTING_OPEN_BRACE;
-}
-
-FLAG_T expect_any_data(){
-  return 0 | EXPECTING_SYMBOL
-    | EXPECTING_INTEGER
-    | EXPECTING_STRING;
-}
-
-FLAG_T expect_any_op(){
-  return 0 | EXPECTING_ARITHMETIC_OP
-    | EXPECTING_APPLY_OPERATOR;
-}
-
-FLAG_T expect_opposite_brace(enum Lexicon brace){
-  switch (brace) {
-    case PARAM_OPEN: return EXPECTING_CLOSE_PARAM;
-    case BRACE_OPEN: return EXPECTING_CLOSE_BRACE;
-    case BRACKET_OPEN: return EXPECTING_CLOSE_BRACKET;
-    default: return 0;
-  } 
-}
-
 FLAG_T setup_flags(struct StageInfixState* state)
 {
   struct Token *current = &state->src[*state->i];
@@ -466,7 +490,11 @@ FLAG_T setup_flags(struct StageInfixState* state)
   
   else if (is_open_brace(current->type)) {
       if (expect_opposite_brace(current->type) == 0)
+      {
+        throw_internal_error(state, "Unexpected return. (0)");
         return -1;
+
+      }
       
       set_flag(&ret, 0
         | expect_any_open_brace()
@@ -495,14 +523,19 @@ int8_t inc_stack(
 {
   struct Expr * vec_item;
   
-  if (state->expr_ctr > state->expr_sz || *state->debug_ctr > state->debug_sz )
+  if (state->expr_ctr > state->expr_sz || *state->debug_ctr > state->debug_sz)
+  {
+    throw_internal_error(state, "Expr/debug ctr overflowed.");
     return -1;
+  }
   
   vec_item = vec_push(state->expr_pool, &ex);
 
-  if (vec_item == 0)
+  if (vec_item == 0) {
+    throw_internal_error(state, "vec pool returned null ptr.");
     return -1;
-
+  }
+  
   state->expr_stack[state->expr_ctr] = vec_item;
   state->expr_ctr += 1;
 
@@ -526,8 +559,13 @@ int8_t handle_int(struct StageInfixState* state)
   ex.inner.value.literal.integer =
     str_to_isize(state->line + current->start, &end, 10);
 
-  if (errno != 0 || end != state->line + size)
+  if (errno != 0)
     return -1;
+
+  else if (end != state->line + size) {
+    throw_internal_error(state, "Didn't parse integer correctly");
+    return -1;
+  }
 
   if (inc_stack(state, &ex, true) == -1)
     return -1;
@@ -548,9 +586,11 @@ int8_t handle_symbol(struct StageInfixState* state) {
   ex.inner.symbol = calloc(1, size+1);
   
   /*bad alloc*/
-  if (ex.inner.symbol == 0)
+  if (ex.inner.symbol == 0) {
+    throw_internal_error(state,  "Allocation failure");
     return -1;
-
+  }
+    
   memcpy(ex.inner.symbol,
     state->line + current->start,
     size + 1
@@ -562,7 +602,6 @@ int8_t handle_symbol(struct StageInfixState* state) {
     return -1;
   return 0;
 }
-
 
 /* no special algorithms, just an equality test */
 void determine_return_ty(struct Expr *bin) {
@@ -576,7 +615,10 @@ int8_t mk_binop(struct StageInfixState *state, struct Expr *ex) {
   struct Token *current = &state->src[*state->i];
 
   if (1 > state->expr_ctr)
+  {
+    throw_internal_error(state, "Not enough items on expr stack to build a binop");
     return -1;
+  }
 
   ex->type = BinaryExprT;
   ex->inner.bin.lhs = 
@@ -595,8 +637,11 @@ int8_t mk_binop(struct StageInfixState *state, struct Expr *ex) {
 
 int8_t mk_not(struct StageInfixState *state, struct Expr *ex) {
 
-  if (1 > state->expr_ctr)
+  if (0 > state->expr_ctr)
+  {
+    throw_internal_error(state, "Not enough items on expr stack to build a binop");
     return -1;
+  }
   
   ex->type = NopExprT;
   ex->inner.not_.operand = state->expr_stack[state->expr_ctr - 1];
@@ -618,7 +663,6 @@ int8_t mk_operator(
   
   return 0;
 }
-
 
 /*  Flushes operators of higher precedence than `current`
  *  into the output until stack is empty,
@@ -645,9 +689,6 @@ int8_t flush_ops(struct StageInfixState *state)
     
     /* otherwise pop into output */
     else {
-      if (*state->debug_ctr > state->debug_sz)
-        return -1;
-
       if (mk_operator(state, &ex, head) == -1 || inc_stack(state, &ex, true) == -1)
         return -1;
       
@@ -675,7 +716,7 @@ int8_t handle_operator(struct StageInfixState *state) {
   precedense = op_precedence(current->type);
 
   if (precedense == -1){
-    mk_error(state, Fatal, "Unrecongized operator");
+    throw_internal_error(state, "Unrecongized operator");
     return -1;
   }
 
@@ -689,8 +730,10 @@ int8_t handle_operator(struct StageInfixState *state) {
   */
   else if (state->operators_ctr == 0 || is_open_brace(head->type)) {
     if (state->operators_ctr > state->operator_stack_sz)
+    {
+      throw_internal_error(state, "Operator stack overflowed.");
       return -1;
-    
+    }    
     state->operator_stack[state->operators_ctr] = current;
     state->operators_ctr += 1;
     return 0;
@@ -715,13 +758,7 @@ int8_t handle_operator(struct StageInfixState *state) {
     /* pop operators off the stack into the output */
     if (head_precedense > precedense)
     {
-      if (*state->debug_ctr > state->debug_sz) {
-        mk_error(state, Fatal, "Output overflowed");
-        return -1;
-      }
-      
-      else if (
-        mk_operator(state, &ex, head) == -1 
+      if (mk_operator(state, &ex, head) == -1 
         || inc_stack(state, &ex, true) == -1)
         return -1;
     }
@@ -748,12 +785,16 @@ int8_t handle_operator(struct StageInfixState *state) {
 
   /* place low precedence operator */
   if (state->operators_ctr > state->operator_stack_sz)
+  {
+    throw_internal_error(state, "Operator stack overflowed.");
     return -1;
+  }    
   
   state->operator_stack[state->operators_ctr] = &state->src[*state->i];
   state->operators_ctr += 1;
   return 0;
 }
+
 /*
   every opening brace starts a new possible group,
   increment the group stack, and watch for the following 
@@ -790,7 +831,7 @@ int8_t handle_open_brace(struct StageInfixState *state) {
   if (state->set_ctr > state->set_sz ||
       state->operators_ctr > state->operator_stack_sz)
   {
-    set_flag(&state->state, INTERNAL_ERROR);
+    throw_internal_error(state, "Internal group/operator stack overflowed.");
     return -1;
   }
   
@@ -856,9 +897,12 @@ int8_t mk_group(struct StageInfixState *state, struct Expr *ex) {
   usize elements = ghead->delimiter_cnt + 1;
 
   enum GroupT group_ty = get_group_ty(ghead->state);
-  if (group_ty == GroupTUndef || elements > state->expr_ctr)
-    return -1;
   
+  if (group_ty == GroupTUndef || elements > state->expr_ctr) {
+    throw_internal_error(state, "Internal group/operator stack overflowed.");
+    return -1;
+  }
+
   ex->type = LiteralExprT;
   ex->datatype = GroupT;
   ex->inner.value.literal.grouping.type = group_ty;
@@ -888,8 +932,10 @@ int8_t mk_idx_access(struct StageInfixState *state, struct Expr *ex) {
   ex->type = FnCallExprT;
   ex->datatype = 0;
 
-  if (3 > state->expr_ctr)
-    return -1;
+  if (3 > state->expr_ctr) {
+      throw_internal_error(state, "Not enough arguments on stack to create idx operation.");
+      return -1;
+  }
 
   ex->inner.idx.start   = state->expr_stack[state->expr_ctr - 1];
   ex->inner.idx.end     = state->expr_stack[state->expr_ctr - 2];
@@ -957,7 +1003,6 @@ int8_t mk_fncall(struct StageInfixState *state, struct Expr *ex) {
   return 0;
 }
 
-
 void mk_null(struct StageInfixState *state, struct Expr *ex) {
   ex->type = LiteralExprT;
   ex->datatype = NullT;
@@ -997,7 +1042,7 @@ int8_t handle_idx_op(struct StageInfixState *state) {
       || mk_idx_access(state, &ex) == -1
       || inc_stack(state, &ex, false) == -1)
         return -1;
-    
+  
   return 0;
 }
 
@@ -1034,11 +1079,17 @@ int8_t handle_close_brace(struct StageInfixState *state) {
   struct Token *prev = 0, *ophead=0, *current = &state->src[*state->i];
   struct Group *ghead;
   struct Expr ex;
-  bool is_empty_group = false;
-  enum MarkerT marker_type = MarkerNop;
+  int8_t ret = 0;
 
+  enum MarkerT marker_type = MarkerNop;
+  
+  if (state->set_ctr == 0) {
+    mk_error(state, Fatal, "Unexpected closing brace.");
+    return -1;
+  }
   /* Operators stack is empty */
-  if (0 > state->operators_ctr
+  else if (
+      0 > state->operators_ctr
       /* unbalanced brace, extra closing brace.*/
       || state->set_ctr == 0
       || state->set_ctr > state->set_sz)
@@ -1057,8 +1108,10 @@ int8_t handle_close_brace(struct StageInfixState *state) {
     set_flag(&ghead->state, GSTATE_EMPTY);
     state->operators_ctr -= 1;
     
-    if (check_flag(ghead->state, GSTATE_OP_IDX))
+    if (check_flag(ghead->state, GSTATE_OP_IDX)) {
+      mk_error(state, Error, "Slice must contain atleast one delimiter or value.");
       return -1;
+    }    
   }
 
   else {
@@ -1071,25 +1124,27 @@ int8_t handle_close_brace(struct StageInfixState *state) {
     // that our current group's origin
     // is this group
     ophead = state->operator_stack[state->operators_ctr];
-    if (ophead != ghead->origin)
+
+    if (ophead != ghead->origin) {
+      throw_internal_error(state, "shit man.");
       return -1;
+    }
   }
 
   if (check_flag(ghead->state, GSTATE_OP_IDX))
-    handle_idx_op(state);
+    ret = handle_idx_op(state);
   
   else if (check_flag(ghead->state,  GSTATE_OP_APPLY))
-    handle_fncall(state);
+    ret = handle_fncall(state);
   
   else if (check_flag(ghead->state, GSTATE_OP_GROUP))
-    handle_grouping(state);
+    ret = handle_grouping(state);
   
   else return -1;
 
-  return 0;
+  return ret;
 }
 
-/* TODO set GSTATE_OP_GROUP */
 int8_t handle_delimiter(struct StageInfixState *state) {
   struct Expr ex;
   struct Token *head = 0, 
@@ -1103,10 +1158,12 @@ int8_t handle_delimiter(struct StageInfixState *state) {
   if (state->set_ctr > 0)
     ghead = &state->set_stack[state->set_ctr - 1];
   else
+  { 
     /* they didn't add an opening brace*/
+    mk_error(state, Error, "delimiters must be used inside of a nesting.");
     return -1;
-    // ghead = &state->set_stack[0];
-
+  }
+    
   ghead->delimiter_cnt += 1;
   ghead->last_delim = current;
   
@@ -1142,21 +1199,27 @@ int8_t handle_delimiter(struct StageInfixState *state) {
         set_flag(&ghead->state, GSTATE_CTX_LOCK);
       
       else
+      {
+        throw_internal_error(state, "Unexpected token.");
         return -1;
+      }
     }
   }
   /* peek behind and add NULL if no */
   if (check_flag(ghead->state, GSTATE_CTX_IDX))
   {
     if(ghead->delimiter_cnt > 2)
+    {
+      throw_internal_error(state, "Not enough items to create idx operation.");
       return -1;
-    
+    }
+
     /* add NOP to the output if no position argument present*/
     if (prev == ghead->origin || prev->type == COLON) 
     { 
       mk_null(state, &ex);
       if (add_marker(state, MarkerNop, 0) == -1
-         ||inc_stack(state, &ex, false) )
+         ||inc_stack(state, &ex, false))
         return -1;
     }
   }
@@ -1177,8 +1240,10 @@ int8_t handle_str(struct StageInfixState *state) {
   ex.datatype = StringT;
 
   str = malloc(size+1);
-  if (str == 0)
+  if (str == 0) {
+    throw_internal_error(state, "Allocation failure.");
     return -1;
+  }
   
   ex.inner.value.literal.string = str;
 
@@ -1248,21 +1313,19 @@ int8_t handle_unwind(struct StageInfixState *state) {
   others like it.
 */
 
-int8_t stage_infix_parser(
+int8_t parse_expr(
     struct Token tokens[], usize expr_size,
     struct Token *output[], usize output_sz,
     usize *output_ctr,
-    struct Token token_pool[], usize pool_sz,
+    struct Token token_pool[],
+    usize pool_sz,
     struct CompileTimeError *err)
 {
-  struct StageInfixState state;
-  
-  struct Token *operators[STACK_SZ];
+  struct StageInfixState state;  
+  struct Token *head, *operators[STACK_SZ];
   struct Group groups[STACK_SZ];
-  struct Token *head;
   
   struct Expr ex;
-
 
   int8_t ret = -1;
   int8_t precedense = 0;
@@ -1328,7 +1391,7 @@ int8_t stage_infix_parser(
     else {
 #ifdef DEBUG
       printf("debug: token fell through precedense [%s]\n",
-             ptoken(tokens[i]->type));
+             ptoken(tokens[i].type));
 #endif
     }
     /* setup next-token expectation */
