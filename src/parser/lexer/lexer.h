@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include "../../prelude.h"
 #include "../error.h"
 
@@ -147,12 +148,6 @@ enum Lexicon {
     // something
     STRING_LITERAL,
 
-    // ()
-    //EMPTY_PARAM,
-
-    // []
-    //EMPTY_BRACKET,
-
     // static
     STATIC,
     // const
@@ -218,7 +213,6 @@ enum Lexicon {
 struct Token {
     usize start;
     usize end;
-    usize col;
     enum Lexicon type;
 };
 
