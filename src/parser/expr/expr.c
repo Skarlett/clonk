@@ -1039,6 +1039,10 @@ int8_t initalize_parser_state(
   state->panic_flags = 0;
   state->expecting = 0;
 
+  state->canary_expr = 0;
+  state->canary_set = 0;
+  state->canary_op = 0;
+  
   set_flag(&state->expecting,  EXPECTING_OPEN_PARAM 
     | EXPECTING_STRING | EXPECTING_SYMBOL | EXPECTING_INTEGER
     | EXPECTING_OPEN_BRACKET 
@@ -1047,6 +1051,10 @@ int8_t initalize_parser_state(
   );
   
   return 0;
+}
+
+int8_t is_canary_dead(struct ExprParserState *state) {
+  return state->canary_expr != 0 || state->canary_op != 0 || state->canary_set != 0;
 }
 
 int8_t parse_expr(
@@ -1063,7 +1071,8 @@ int8_t parse_expr(
 
   for (i = 0; expr_size > i; i++) {
     if (state->expr_ctr > state->expr_sz
-        || state->operators_ctr > state->operator_stack_sz)
+        || state->operators_ctr > state->operator_stack_sz
+        || is_canary_dead(state))
       return -1;
 
     else if (check_flag(state->panic_flags, STATE_PANIC) 
@@ -1135,6 +1144,29 @@ int8_t free_state(struct ExprParserState *state) {
   || vec_free(&state->errors) == -1)
     return -1;
   
+  return 0;
+}
+
+int8_t reset_state(struct ExprParserState *state) {
+  
+  memset(state->expr_stack, 0, sizeof(void *[STACK_SZ]));
+  state->expr_ctr = 0;
+  
+  memset(state->operator_stack, 0, sizeof(void *[STACK_SZ]));
+  state->operators_ctr = 0;
+  
+  memset(state->set_stack, 0, sizeof(void *[STACK_SZ]));
+  state->set_ctr = 0;
+  
+  state->src_sz = 0;
+  state->src = 0;
+  state->_i = 0;
+  state->line = 0;
+  
+  state->expecting = 0;
+  state->panic_flags = 0;
+  
+  free_state(state);
   return 0;
 }
 

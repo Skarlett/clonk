@@ -3,6 +3,7 @@
 #define _HEADER_EXPR__
 
 #include <stdint.h>
+#include <sys/types.h>
 #include "../../utils/vec.h"
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
@@ -230,15 +231,20 @@ struct ExprParserState {
     char * line;
 
     struct Expr *expr_stack[STACK_SZ];
-    usize expr_ctr;
-    usize expr_sz;
-
+    u_int8_t canary_expr;
+    
     struct Token *operator_stack[STACK_SZ];
-    uint16_t operators_ctr;
-    uint16_t operator_stack_sz;
-
+    u_int8_t canary_op;
+    
     struct Group *set_stack[STACK_SZ];
+    u_int8_t canary_set;
+    
     usize set_ctr;
+    uint16_t operators_ctr;
+    usize expr_ctr;
+
+    usize expr_sz;
+    uint16_t operator_stack_sz;
     usize set_sz;
 
     /* Vec<struct Expr> */
@@ -256,8 +262,6 @@ struct ExprParserState {
     FLAG_T expecting;
     FLAG_T panic_flags;
 };
-
-
 /*
   Shunting yard expression parsing algorthim 
   https://en.wikipedia.org/wiki/Shunting-yard_algorithm
