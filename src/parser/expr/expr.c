@@ -13,128 +13,7 @@
 #include "../lexer/debug.h"
 #include "../../utils/vec.h"
 #include "expr.h"
-
-#define OPERATOR_BUF_SZ 64
-#define END_PRECEDENCE 127
-
-typedef uint16_t FLAG_T; 
-
-#define GSTATE_EMPTY       2
-#define GSTATE_CTX_LIST    4
-#define GSTATE_CTX_TUPLE   8
-#define GSTATE_CTX_SET    16
-#define GSTATE_CTX_MAP    32
-#define GSTATE_CTX_IDX    64
-#define GSTATE_CTX_LOCK  128
-#define GSTATE_OP_IDX    256
-#define GSTATE_OP_APPLY  512
-#define GSTATE_OP_GROUP 1024
-
-#define FLAG_ERROR           65535
-#define EXPECTING_SYMBOL         2
-#define EXPECTING_INTEGER        4
-#define EXPECTING_STRING         8
-#define EXPECTING_ARITHMETIC_OP 16
-
-/* . */
-#define EXPECTING_APPLY_OPERATOR 32
-#define EXPECTING_OPEN_BRACKET   64   
-#define EXPECTING_CLOSE_BRACKET  128
-#define EXPECTING_OPEN_PARAM     256    
-#define EXPECTING_CLOSE_PARAM    512
-#define EXPECTING_OPEN_BRACE     1024
-#define EXPECTING_CLOSE_BRACE    2048
-
-#define EXPECTING_NEXT           4096 
-/* : , */
-#define EXPECTING_DELIMITER      8192
-
-#define STATE_INCOMPLETE          1
-#define STATE_PANIC               2 
-#define INTERNAL_ERROR            4
-
-/* if set - warning messages are present */
-#define STATE_WARNING             8
-
-#define STACK_SZ 128
-#define _OP_SZ 128
-
-/*
-    The grouping stack is used to track the amount 
-    of sub-expressions inside an expression. (See lexer.h)
-    We generate GROUPING tokens based on the stack model
-    our parser uses.
-
-    For every new brace token-type added into the operator-stack
-    increment the grouping stack, and initalize it to 0.
-    For every comma, increment the current grouping-stack's head by 1.
-    
-    Once the closing brace is found and
-    this stack's head is larger than 0,
-    we have a set/grouping of expressions. 
-  
-    used in the group-stack exclusively
-*/
-struct Group {
-    // amount of delimiters
-    uint16_t delimiter_cnt;
-
-    /*
-        0 : Uninitialized state
-        1 : COLON token in group
-        2 : COMMA token in group
-        4 : List context mode
-        8 : Tuple context mode
-       16 : Set context mode
-       32 : Map context mode
-       64 : Index context mode
-      (?) : Tuple context mode (without bracing)
-      128 : lock context mode
-      256 : index marker operation
-      512 : apply marker operation
-     1024 : group marker operation
-    */
-    FLAG_T state;
-
-    // should be `[` `(` '{' or `0`
-    struct Token *origin;
-    struct Token *last_delim;
-};
-
-struct ExprParserState {
-    struct Token *src;
-    usize src_sz;
-    usize *i;
-    char * line;
-
-    struct Token **debug;
-    usize debug_sz;
-    usize *debug_ctr;
-
-    struct Expr **expr_stack;
-    usize expr_ctr;
-    usize expr_sz;
-
-    struct Vec *expr_pool;
-
-    struct Token *pool;
-    usize pool_i;
-    usize pool_sz;
-
-    struct Group *set_stack;
-    usize set_ctr;
-    usize set_sz;
-
-    struct Token **operator_stack;
-    uint16_t operators_ctr;
-    uint16_t operator_stack_sz;
-
-    struct CompileTimeError *errors;
-    uint16_t errors_ctr;
-
-    FLAG_T expecting;
-    FLAG_T state;
-};
+#include "expect.h"
 
 /*
     check flag, and if present, unset it.
@@ -150,53 +29,22 @@ void unset_flag(FLAG_T *set, FLAG_T flag){
     *set = *set & ~flag;
 }
 
-FLAG_T expect_any_close_brace(){
-  return 0 | EXPECTING_CLOSE_BRACKET
-    | EXPECTING_CLOSE_PARAM
-    | EXPECTING_CLOSE_BRACE;
-}
-
-FLAG_T expect_any_open_brace(){
-  return 0 | EXPECTING_OPEN_BRACKET
-    | EXPECTING_OPEN_PARAM
-    | EXPECTING_OPEN_BRACE;
-}
-
-FLAG_T expect_any_data(){
-  return 0 | EXPECTING_SYMBOL
-    | EXPECTING_INTEGER
-    | EXPECTING_STRING;
-}
-
-FLAG_T expect_any_op(){
-  return 0 | EXPECTING_ARITHMETIC_OP
-    | EXPECTING_APPLY_OPERATOR;
-}
-
-FLAG_T expect_opposite_brace(enum Lexicon brace){
-  switch (brace) {
-    case PARAM_OPEN: return EXPECTING_CLOSE_PARAM;
-    case BRACE_OPEN: return EXPECTING_CLOSE_BRACE;
-    case BRACKET_OPEN: return EXPECTING_CLOSE_BRACKET;
-    default: return 0;
-  } 
-}
-
-void mk_error(struct ExprParserState *state, enum ErrorT type, const char * msg) {
+int8_t mk_error(struct ExprParserState *state, enum ErrorT type, const char * msg) {
   struct CompileTimeError *err;
   
   err->type = type;
-  state->errors[state->errors_ctr].base = &state->src[*state->i];
-  state->errors_ctr += 1;
   err->msg = msg;
-
-  set_flag(&state->state, STATE_PANIC | STATE_INCOMPLETE);
+  if (vec_push(&state->errors, &state->src[*state->i]) == 0)
+    return -1;
+  
+  set_flag(&state->panic_flags, STATE_PANIC | STATE_INCOMPLETE);
+  return 0;
 }
 
-void throw_internal_error(struct ExprParserState *state, const char * meta, const char * msg)
+int8_t throw_internal_error(struct ExprParserState *state, const char * meta, const char * msg)
 {
   char * internal_msg;
-  struct CompileTimeError *err = &state->errors[state->errors_ctr];
+  //TODO
 
 #ifdef DEBUG
   internal_msg = malloc(strlen(meta) + strlen(msg));
@@ -205,11 +53,10 @@ void throw_internal_error(struct ExprParserState *state, const char * meta, cons
 #else
   internal_msg = msg;
 #endif
-  err->free_msg = true;
-  err->msg = internal_msg;
-  err->type = Fatal;
-  set_flag(&state->state, STATE_PANIC | STATE_INCOMPLETE | INTERNAL_ERROR);
-  mk_error(state, Fatal, internal_msg);
+  set_flag(&state->panic_flags, STATE_PANIC | STATE_INCOMPLETE | INTERNAL_ERROR);
+  if (mk_error(state, Fatal, internal_msg) == -1)
+    return -1;
+  return 0;
 }
 
 #define throw_internal_error(X, MSG) throw_internal_error(X, FILE_LINE, MSG)
@@ -245,7 +92,7 @@ enum Operation operation_from_token(enum Lexicon t){
 
   returns `MarkerTUndef` (0) on error
 */
-enum MarkerT derive_group_marker_t(enum Lexicon token) {
+enum Lexicon get_dbg_group_token(enum Lexicon token) {
   if (token == PARAM_OPEN || token == PARAM_CLOSE)
     return TupleGroup;
   else if (token == BRACKET_OPEN || token == BRACKET_CLOSE)
@@ -253,262 +100,31 @@ enum MarkerT derive_group_marker_t(enum Lexicon token) {
   else if (token == BRACE_OPEN || token == BRACE_CLOSE)
     return SetGroup;
   else
-   return MarkerTUndef;
+   return TOKEN_UNDEFINED;
 }
 
-enum Associativity {
-    NONASSOC,
-    RASSOC,
-    LASSOC
-};
-
-enum Associativity get_assoc(enum Lexicon token) {
-    switch(token) {
-        case POW:
-            return RASSOC;
-        case NOT:
-            return RASSOC;
-        default:
-            return LASSOC;
-    }
-}
-
-/*
-    precendense table:
-      ") ] }"   : 127 non-assoc
-      "."     : 126 L
-      "^"       : 6 R (1 ^ 2 ^ 3) -> (1 ^ (2 ^ 3))
-      "/ * %"   : 5 L  (4 / 2 * 2) -> ((4 / 2) * 2)
-      "+ -"     : 4 L
-      "!"       : 2 R
-      "!= == >= > <= < && ||": 2 L
-      "+= -= =" : 1 R
-      "( [ {"   : 0 non-assoc
-*/
-int8_t op_precedence(enum Lexicon token) {
-    if (is_close_brace(token))
-        return END_PRECEDENCE;
-    
-    if (token == DOT)
-        return 126;
-    
-    else if (token == POW)
-        return 6;
-
-    else if (token == MUL 
-        || token == DIV
-        || token == MOD)
-        return 5;
-
-    else if (token == ADD
-        || token == SUB)
-        return 4;
-    
-    else if (token == ISEQL
-        || token == ISNEQL
-        || token == GTEQ
-        || token == LTEQ
-        || token == GT
-        || token == LT
-        || token == AND
-        || token == OR
-        || token == NOT)
-        return 2;
-    
-    else if (token == EQUAL
-      || token == PLUSEQ
-      || token == MINUSEQ)
-      return 1;
-    
-    else if (is_open_brace(token))
-        return 0;
-    
-    return -1;
-}
-
-int8_t add_marker(
+int8_t add_dbg_sym(
   struct ExprParserState *state,
-  enum MarkerT type,
+  enum Lexicon type,
   usize argc
 ){
-  struct Token *ret;
-  if (state->pool_i > state->pool_sz)
-    return -1;
+  struct Token marker, *ret;
+
+  marker.type = type;
+  marker.start = 0;
+  marker.end = argc;
   
-  state->pool[state->pool_i].type = MARKER;
-  state->pool[state->pool_i].start = type;
-  state->pool[state->pool_i].end = argc;
-
-  ret = &state->pool[state->pool_i];
-  state->pool_i += 1;
-
-  if (*state->debug_ctr > state->debug_sz)
+  // push marker in the pool
+  ret = vec_push(&state->pool, &marker);
+  
+  // put ptr of marker's new allocation in
+  // the debug output
+  if (ret == 0 || vec_push(&state->debug, &ret) == 0)  
   {
-    throw_internal_error(state, "debug_ctr overflowed.");
+    throw_internal_error(state, "allocation failure in vec.");
     return -1;
   }
-
-  state->debug[*state->debug_ctr] = ret;
-  *state->debug_ctr += 1;
-
   return 0;
-}
-
-enum Lexicon get_expected_delimiter(struct ExprParserState *state) {
-  /* setup delimiter expectation */
-  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
-
-  if(ghead->state == 0
-    ||check_flag(GSTATE_CTX_SET, ghead->state)
-    ||check_flag(GSTATE_CTX_LIST, ghead->state)
-    ||check_flag(GSTATE_CTX_TUPLE, ghead->state)
-  ) return COMMA;
-  
-  else if (check_flag(GSTATE_CTX_IDX, ghead->state))
-    return COLON;
-  
-  else if (check_flag(GSTATE_CTX_MAP, ghead->state)) {
-    if (ghead->delimiter_cnt % 2 == 0)
-      return COMMA;
-    else
-      return COLON;
-    // 2:3, 3:4
-  }
-
-  else
-    return 0;
-}
-
-int8_t is_token_unexpected(struct ExprParserState *state) {
-  struct Token * current = &state->src[*state->i];
-  enum Lexicon delim;
-  FLAG_T check_list = 0;
-
-  if (current->type == WORD || current->type == NULLTOKEN)
-    set_flag(&check_list, EXPECTING_SYMBOL);
-
-  else if (current->type == DOT)
-    set_flag(&check_list, EXPECTING_APPLY_OPERATOR);
-
-  else if (is_operator(current->type))
-    set_flag(&check_list, EXPECTING_ARITHMETIC_OP);
-  
-  else if (is_delimiter(current->type)) {
-    delim = get_expected_delimiter(state);
-    
-    if (delim != current->type)
-      return -1;
-
-    set_flag(&check_list, EXPECTING_DELIMITER);
-  }
-
-  else {  
-    switch (current->type) {
-      case INTEGER:
-        set_flag(&check_list, EXPECTING_INTEGER);
-        break;
-
-      case STRING_LITERAL:
-        set_flag(&check_list, EXPECTING_STRING);
-        break;
-
-      case PARAM_OPEN:
-        set_flag(&check_list, EXPECTING_OPEN_PARAM);
-        break;
-
-      case PARAM_CLOSE:
-        set_flag(&check_list, EXPECTING_CLOSE_PARAM);
-        break;
-
-      case BRACKET_OPEN:
-        set_flag(&check_list, EXPECTING_OPEN_BRACKET);
-        break;
-
-      case BRACKET_CLOSE:
-        set_flag(&check_list, EXPECTING_CLOSE_BRACKET);
-        break;
-
-      default: return -1;
-    }
-  }
-
-  return !check_flag(state->state, check_list);
-}
-
-FLAG_T setup_flags(struct ExprParserState* state)
-{
-  struct Token *current = &state->src[*state->i];
-  FLAG_T ret = FLAG_ERROR;
-
-  if (is_symbolic_data(current->type))
-  {
-    set_flag(&ret, 0
-      | EXPECTING_ARITHMETIC_OP      
-      | expect_any_close_brace()
-      | EXPECTING_DELIMITER);
-
-    if (current->type == WORD)
-      set_flag(&ret, EXPECTING_OPEN_BRACKET
-        | EXPECTING_OPEN_PARAM
-        | EXPECTING_APPLY_OPERATOR);
-    
-    else if(current->type == STRING_LITERAL)
-      set_flag(&ret, EXPECTING_OPEN_BRACKET 
-        | EXPECTING_APPLY_OPERATOR
-      );
-  }
-  
-  else if (current->type == DOT)
-    //(a.b).
-    set_flag(&ret, 0 
-      | EXPECTING_SYMBOL
-      | EXPECTING_NEXT);
-
-  else if (is_operator(current->type)) {
-    set_flag(&ret, 0
-      | expect_any_data()
-      | expect_any_open_brace()
-      | EXPECTING_NEXT
-    );
-    
-    if (current->type != DOT)
-      set_flag(&ret, EXPECTING_INTEGER
-        | EXPECTING_STRING);
-  }
-
-  else if (current->type == COMMA || current->type == COLON)
-    set_flag(&ret, 0
-      | expect_any_data()
-      | expect_any_open_brace()
-      | EXPECTING_NEXT
-    );
-  
-  else if (is_open_brace(current->type)) {
-      if (expect_opposite_brace(current->type) == 0)
-      {
-        throw_internal_error(state, "Unexpected return. (0)");
-        return -1;
-
-      }
-      
-      set_flag(&ret, 0
-        | expect_any_open_brace()
-        | expect_any_data()
-        | expect_opposite_brace(current->type)
-        | EXPECTING_NEXT
-      );
-    }
-
-  else if (is_close_brace(current->type))
-     set_flag(&ret, 0
-        | expect_any_close_brace()
-        | EXPECTING_OPEN_BRACKET
-        | EXPECTING_OPEN_PARAM
-        | EXPECTING_DELIMITER
-        | expect_any_op()
-    );
-  
-  return ret;
 }
 
 int8_t inc_stack(
@@ -516,26 +132,24 @@ int8_t inc_stack(
   struct Expr *ex,
   bool add_debug)
 {
-  struct Expr * vec_item;
+  struct Expr * heap_ex;
   
-  if (state->expr_ctr > state->expr_sz || *state->debug_ctr > state->debug_sz)
+  if (state->expr_ctr > state->expr_sz)
   {
     throw_internal_error(state, "Expr/debug ctr overflowed.");
     return -1;
   }
   
-  vec_item = vec_push(state->expr_pool, &ex);
+  heap_ex = vec_push(&state->expr_pool, &ex);
 
-  if (vec_item == 0) {
+  if (heap_ex == 0 || (add_debug && vec_push(&state->debug, &state->src[*state->i]) == 0))
+  {
     throw_internal_error(state, "vec pool returned null ptr.");
     return -1;
   }
   
-  state->expr_stack[state->expr_ctr] = vec_item;
+  state->expr_stack[state->expr_ctr] = heap_ex;
   state->expr_ctr += 1;
-
-  state->debug[*state->debug_ctr] = &state->src[*state->i];
-  *state->debug_ctr += 1;
 
   return 0;
 }
@@ -554,13 +168,15 @@ int8_t handle_int(struct ExprParserState* state)
   ex.inner.value.literal.integer =
     str_to_isize(state->line + current->start, &end, 10);
 
-  if (errno != 0)
-    return -1;
-
-  else if (end != state->line + size) {
-    throw_internal_error(state, "Didn't parse integer correctly");
+  if (errno != 0) {
+    throw_internal_error(state, "Didn't convert integer correctly");
     return -1;
   }
+
+  // else if (end != state->line + size) {
+  //   throw_internal_error(state, "Didn't parse integer correctly");
+  //   return -1;
+  // }
 
   if (inc_stack(state, &ex, true) == -1)
     return -1;
@@ -621,7 +237,7 @@ int8_t mk_binop(struct ExprParserState *state, struct Expr *ex) {
 
   ex->inner.bin.rhs = 
     state->expr_stack[state->expr_ctr - 2];
-      
+  
   ex->inner.bin.op = operation_from_token(current->type);
   
   determine_return_ty(ex);
@@ -700,6 +316,78 @@ int8_t flush_ops(struct ExprParserState *state)
   /* discard opening brace yet */
   state->operators_ctr -= 1;
   return 0;
+}
+
+enum Associativity {
+    NONASSOC,
+    RASSOC,
+    LASSOC
+};
+
+enum Associativity get_assoc(enum Lexicon token) {
+    switch(token) {
+        case POW:
+            return RASSOC;
+        case NOT:
+            return RASSOC;
+        default:
+            return LASSOC;
+    }
+}
+
+/*
+    precendense table:
+      ") ] }"   : 127 non-assoc
+      "."     : 126 L
+      "^"       : 6 R (1 ^ 2 ^ 3) -> (1 ^ (2 ^ 3))
+      "/ * %"   : 5 L  (4 / 2 * 2) -> ((4 / 2) * 2)
+      "+ -"     : 4 L
+      "!"       : 2 R
+      "!= == >= > <= < && ||": 2 L
+      "+= -= =" : 1 R
+      "( [ {"   : 0 non-assoc
+*/
+
+#define END_PRECEDENCE 127
+int8_t op_precedence(enum Lexicon token) {
+    if (is_close_brace(token))
+        return END_PRECEDENCE;
+    
+    if (token == DOT)
+        return 126;
+    
+    else if (token == POW)
+        return 6;
+
+    else if (token == MUL 
+        || token == DIV
+        || token == MOD)
+        return 5;
+
+    else if (token == ADD
+        || token == SUB)
+        return 4;
+    
+    else if (token == ISEQL
+        || token == ISNEQL
+        || token == GTEQ
+        || token == LTEQ
+        || token == GT
+        || token == LT
+        || token == AND
+        || token == OR
+        || token == NOT)
+        return 2;
+    
+    else if (token == EQUAL
+      || token == PLUSEQ
+      || token == MINUSEQ)
+      return 1;
+    
+    else if (is_open_brace(token))
+        return 0;
+    
+    return -1;
 }
 
 int8_t handle_operator(struct ExprParserState *state) {
@@ -830,7 +518,7 @@ int8_t handle_open_brace(struct ExprParserState *state) {
     return -1;
   }
   
-  ghead = &state->set_stack[state->set_ctr];
+  ghead = state->set_stack[state->set_ctr];
   /* increment group */
   state->set_ctr += 1;
 
@@ -843,9 +531,15 @@ int8_t handle_open_brace(struct ExprParserState *state) {
   {
     ghead->state = 0 | GSTATE_CTX_TUPLE | GSTATE_CTX_LOCK;
 
-    if (prev && (is_close_brace(prev->type)
-       || prev->type == WORD))
-          set_flag(&ghead->state, GSTATE_OP_APPLY);
+    if (prev) {
+      if (is_close_brace(prev->type) || prev->type == WORD)
+        set_flag(&ghead->state, GSTATE_OP_APPLY);
+      
+      // Looking behind is easier than looking ahead
+      // lessons learned.
+      else if (prev->type == IF)
+        set_flag(&ghead->state, GSTATE_OP_IF_COND);
+    }
   }
   
   /*
@@ -860,12 +554,13 @@ int8_t handle_open_brace(struct ExprParserState *state) {
        ||prev->type == STRING_LITERAL))
           set_flag(&ghead->state, GSTATE_OP_IDX);
   }
-  else if (current->type == BRACE_OPEN)
+  else if (current->type == BRACE_OPEN) { 
     ghead->state = 0 | GSTATE_CTX_SET;
-  
+
+  }
   if (!check_flag(ghead->state, GSTATE_OP_APPLY)
       ||!check_flag(ghead->state, GSTATE_OP_IDX))
-          set_flag(&ghead->state, GSTATE_OP_GROUP);
+        set_flag(&ghead->state, GSTATE_OP_GROUP);
   
   return 0;
 }
@@ -887,7 +582,7 @@ int8_t mk_group(struct ExprParserState *state, struct Expr *ex) {
   struct Expr **buf;
 
   struct Token *current = &state->src[*state->i];
-  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+  struct Group *ghead = state->set_stack[state->set_ctr - 1];
 
   usize elements = ghead->delimiter_cnt + 1;
 
@@ -943,7 +638,7 @@ int8_t mk_idx_access(struct ExprParserState *state, struct Expr *ex) {
 
 int8_t mk_fncall(struct ExprParserState *state, struct Expr *ex) {
   struct Token *current = &state->src[*state->i];
-  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+  struct Group *ghead = state->set_stack[state->set_ctr - 1];
   usize argc = ghead->delimiter_cnt + 1;
   
   struct Expr *head;
@@ -1005,7 +700,7 @@ void mk_null(struct ExprParserState *state, struct Expr *ex) {
 
 int8_t handle_idx_op(struct ExprParserState *state) {
   struct Expr ex;
-  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+  struct Group *ghead = state->set_stack[state->set_ctr - 1];
   struct Token *prev = &state->src[*state->i - 1];
 
   if (ghead->origin->type != BRACE_OPEN)
@@ -1020,20 +715,20 @@ int8_t handle_idx_op(struct ExprParserState *state) {
   // a: -> a:a
   // :: => ::a
   if (prev->type == COLON && 
-    (add_marker(state, MarkerNop, 0) == -1 
+    (add_dbg_sym(state, NULLTOKEN, 0) == -1 
     || inc_stack(state, &ex, false) == -1))
     return -1;
   
   // a:a -> a:a:a
   for (uint8_t i=0; 2 > ghead->delimiter_cnt; i++)
   {
-    if(add_marker(state, MarkerNop, 0) == -1 
+    if(add_dbg_sym(state, NULLTOKEN, 0) == -1 
       || inc_stack(state, &ex, false) == -1)
         return -1;
   }
 
   memset(&ex, 0, sizeof(struct Expr));
-  if (add_marker(state, _IdxAccess, 0) == -1
+  if (add_dbg_sym(state, _IdxAccess, 0) == -1
       || mk_idx_access(state, &ex) == -1
       || inc_stack(state, &ex, false) == -1)
         return -1;
@@ -1042,12 +737,11 @@ int8_t handle_idx_op(struct ExprParserState *state) {
 }
 
 int8_t handle_fncall(struct ExprParserState *state) {
-  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+  struct Group *ghead = state->set_stack[state->set_ctr - 1];
   struct Expr ex;
 
   if (ghead->origin->type != PARAM_OPEN 
-      || *state->debug_ctr > state->debug_sz
-      || add_marker(state, Apply, ghead->delimiter_cnt + 1) == -1
+      || add_dbg_sym(state, Apply, ghead->delimiter_cnt + 1) == -1
       || mk_fncall(state, &ex) == -1
       || inc_stack(state, &ex, false) == -1)
       return -1;
@@ -1055,14 +749,14 @@ int8_t handle_fncall(struct ExprParserState *state) {
 }
 
 int8_t handle_grouping(struct ExprParserState *state) {
-  enum MarkerT marker_type;
-  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+  enum Lexicon marker_type;
+  struct Group *ghead = state->set_stack[state->set_ctr - 1];
   struct Token *current = &state->src[*state->i];
   struct Expr ex;
 
-  marker_type = derive_group_marker_t(current->type);
-  if (marker_type == MarkerTUndef 
-    || add_marker(state, marker_type, ghead->delimiter_cnt + 1) == -1
+  marker_type = get_dbg_group_token(current->type);
+  if (marker_type == TOKEN_UNDEFINED 
+    || add_dbg_sym(state, marker_type, ghead->delimiter_cnt + 1) == -1
     || mk_group(state, &ex) == -1
     || inc_stack(state, &ex, false) == -1)
     return -1;
@@ -1076,7 +770,7 @@ int8_t handle_close_brace(struct ExprParserState *state) {
   struct Expr ex;
   int8_t ret = 0;
 
-  enum MarkerT marker_type = MarkerNop;
+  enum Lexicon marker_type = TOKEN_UNDEFINED;
   
   if (state->set_ctr == 0) {
     mk_error(state, Fatal, "Unexpected closing brace.");
@@ -1096,7 +790,7 @@ int8_t handle_close_brace(struct ExprParserState *state) {
     return -1;
 
   /* Grab the head of the group stack & decrement */
-  ghead = &state->set_stack[state->set_ctr - 1];
+  ghead = state->set_stack[state->set_ctr - 1];
   state->set_ctr -= 1;
 
   if (prev->type == invert_brace_tok_ty(current->type)) {
@@ -1151,7 +845,7 @@ int8_t handle_delimiter(struct ExprParserState *state) {
 
   /* Setup group group head ptr */
   if (state->set_ctr > 0)
-    ghead = &state->set_stack[state->set_ctr - 1];
+    ghead = state->set_stack[state->set_ctr - 1];
   else
   { 
     /* they didn't add an opening brace*/
@@ -1213,7 +907,7 @@ int8_t handle_delimiter(struct ExprParserState *state) {
     if (prev == ghead->origin || prev->type == COLON) 
     { 
       mk_null(state, &ex);
-      if (add_marker(state, MarkerNop, 0) == -1
+      if (add_dbg_sym(state, NULLTOKEN, 0) == -1
          ||inc_stack(state, &ex, false))
         return -1;
     }
@@ -1233,6 +927,7 @@ int8_t handle_str(struct ExprParserState *state) {
 
   ex.type = LiteralExprT;
   ex.datatype = StringT;
+  memcpy(&ex.origin, current, sizeof(struct Token));
 
   str = malloc(size+1);
   if (str == 0) {
@@ -1257,132 +952,148 @@ int8_t handle_str(struct ExprParserState *state) {
 }
 
 
-int8_t handle_unwind(struct ExprParserState *state) {
-  struct Token *current = &state->src[*state->i];
-  struct Group *ghead = &state->set_stack[state->set_ctr];
+// int8_t unwind_operator(struct ExprParserState *state, struct Expr *ex) {
+//   struct Expr *op = state->expr_stack[state->expr_ctr - 1];
 
-}
+//   state->expr_stack[state->expr_ctr - 1] = ex->inner.bin.lhs;
+//   state->expr_stack[state->expr_ctr] = ex->inner.bin.rhs;
+//   state->expr_ctr += 1;
+//   //struct Token *current = &state->src[*state->i - 1];
+// }
 
-/*
-  Shunting yard expression parsing algorthim 
-  https://en.wikipedia.org/wiki/Shunting-yard_algorithm
-  --------------
 
-  This function takes takes a stream of token `tokens[]`
-  and writes an array of pointers (of type `struct Token`)
-  into `*output[]` in postfix notation.
+// int8_t handle_unwind(struct ExprParserState *state) {
+//   struct Token *prev = &state->src[*state->i - 1],
+//               *start, *end;
+//   struct Group *ghead = 0;
+   
+//   if (state->set_ctr > 0)
+//     ghead = &state->set_stack[state->set_ctr - 1];
+//   else
+//    return -1;
 
-  The contents of `*output[]` will be a
-  POSTFIX notation referenced from the 
-  INFIX notation of `input[]`.
-
-    infix: 1 + 1
-  postfix: 1 1 +
-    input: [INT, ADD, INT]
-   output: [*INT, *INT, *ADD]
-
-  Further more, this function handles organizing operation precedense
-  based on shunting-yard algorthm.
-  This is in combination with arithmetic operations, and our custom operations
-  (GROUP, INDEX_ACCESS, APPLY, DOT).
+//   //struct Token *spool_head = state->debug[*state->debug_ctr - 1];
   
-  Upon completion, the result will be an ordered array of operands, 
-  and operators ready to be evaluated into a tree structure.
+//   if (ghead->last_delim != 0)
+//     start = ghead->last_delim;
 
-    infix: (1+2) * (1 + 1)
-  postfix: 1 2 + 1 1 + *
-  To turn the output into a tree see `stage_postfix_parser`.
+//   else if (ghead->origin != 0)
+//     start = ghead->origin;
 
-  Digging deeper into the realm of this, 
-  you'll find I evaluate some custom operators
-  such as the DOT token, and provide 
-  extra operators to the output to describe
-  function calls (APPLY(N)).
+//   else {}
 
-  infix:   foo(a, b+c).bar(1)
-  postfix  foo a b c + APPLY(3) bar 1 APPLY(2) .
-  pretty-postfix:
-           ((foo a (b c +) APPLY(3)) bar 1 APPLY(2) .)
- 
-  See src/parser/lexer/lexer.h#Lexicon::APPLY for 
-  more information about the APPLY operator, and
-  others like it.
-*/
+  // for (usize i = *state->i; state->src_sz > i; i++)
+  // {
 
-int8_t parse_expr(
-    struct Token tokens[], usize expr_size,
-    struct Token *output[], usize output_sz,
-    usize *output_ctr,
-    struct Token token_pool[],
-    usize pool_sz,
-    struct CompileTimeError *err)
+  //   if (state->src[i].type == COLON || state->src[i].type == COMMA)
+  //   {
+      
+  //   }
+  // }
+//   return 0;
+// }
+
+int8_t initalize_parser_state(
+    char * line,
+    struct Token tokens[],
+    usize ntokens,
+    usize *i,
+    struct ExprParserState *state
+  )
 {
-  struct ExprParserState state;  
-  struct Token *head, *operators[STACK_SZ];
-  struct Group groups[STACK_SZ];
+  memset(state, 0, sizeof(struct ExprParserState));
+  if (init_vec(&state->expr_pool, 2048, sizeof(struct Expr)) == -1
+    ||init_vec(&state->pool, 256, sizeof(struct Token)) == -1
+    ||init_vec(&state->debug, 2048, sizeof(void *)) == -1
+    ||init_vec(&state->errors, 64, sizeof(struct CompileTimeError)) == -1)
+      return -1;
   
-  struct Expr ex;
+  state->line = line;
+  state->i = i;
 
-  int8_t ret = -1;
-  int8_t precedense = 0;
-  usize i = 0;
+  state->src = tokens;
+  state->src_sz = ntokens;
 
-  state.i = &i;
-  state.src = tokens;
-  state.src_sz = expr_size;
+  state->expr_ctr = 0;
+  state->expr_sz = STACK_SZ;
 
-  state.debug = output;
-  state.debug_ctr = output_ctr;
-  state.debug_sz = output_sz;
+  state->set_ctr = 0;
+  state->set_sz = STACK_SZ;
 
-  state.pool = token_pool;
-  state.pool_sz = pool_sz;
+  state->operators_ctr = 0;
+  state->operator_stack_sz = STACK_SZ;
+  state->panic_flags = 0;
+  state->expecting = 0;
 
-  state.set_stack = groups;
-  state.set_ctr = 0;
-  state.set_sz = STACK_SZ;
-
-  state.operators_ctr = 0;
-  state.operator_stack = operators;
-  state.operator_stack_sz = STACK_SZ;
-  state.state = 0;
-
-  set_flag(&state.expecting,  EXPECTING_OPEN_PARAM 
-    | EXPECTING_STRING | EXPECTING_SYMBOL
+  set_flag(&state->expecting,  EXPECTING_OPEN_PARAM 
+    | EXPECTING_STRING | EXPECTING_SYMBOL | EXPECTING_INTEGER
     | EXPECTING_OPEN_BRACKET 
     | EXPECTING_OPEN_BRACE
     | EXPECTING_NEXT
-    | EXPECTING_INTEGER
   );
+  
+  return 0;
+}
+
+int8_t parse_expr(
+    char * line,
+    struct Token tokens[],
+    usize expr_size,
+    struct ExprParserState *state,
+    struct Expr *ret
+){
+  struct Token *head;
+
+  int8_t precedense = 0;
+  usize i = 0;
+
+  if (initalize_parser_state(line, tokens, expr_size, &i, state) == -1)
+    return -1;
 
   for (i = 0; expr_size > i; i++) {
-    if (*output_ctr > output_sz ||
-        state.operators_ctr > state.operator_stack_sz)
+    if (state->expr_ctr > state->expr_sz
+        || state->operators_ctr > state->operator_stack_sz)
       return -1;
 
-    else if (check_flag(state.state, STATE_PANIC) || is_token_unexpected(&state))
-      handle_unwind(&state);
+    else if (check_flag(state->panic_flags, STATE_PANIC) 
+      || is_token_unexpected(&tokens[i], state->set_stack[state->set_ctr - 1], state->expecting)) {
+      // TODO
+      // handle_unwind(&state);
+      return -1;
+    }
     
-    else if(state.src[i].type == WORD)
-      handle_symbol(&state);
+    else if(state->src[i].type == WORD)
+      handle_symbol(state);
 
-    else if(state.src[i].type == INTEGER)
-      handle_int(&state);
+    else if(state->src[i].type == INTEGER)
+      handle_int(state);
     
-    else if(state.src[i].type == STRING_LITERAL)
-      handle_str(&state);
+    else if(state->src[i].type == STRING_LITERAL)
+      handle_str(state);
 
-    else if (is_operator(state.src[i].type))
-      handle_operator(&state);
+    else if (is_operator(state->src[i].type))
+      handle_operator(state);
 
-    else if (is_close_brace(state.src[i].type))
-      handle_open_brace(&state);
+    else if (is_close_brace(state->src[i].type))
+      handle_open_brace(state);
 
-    else if (is_open_brace(state.src[i].type))
-      handle_open_brace(&state);
+    else if (is_open_brace(state->src[i].type))
+      handle_open_brace(state);
 
-    else if (state.src[i].type == COLON || state.src[i].type == COMMA)
-      handle_delimiter(&state);
+    else if (state->src[i].type == COLON || state->src[i].type == COMMA)
+      handle_delimiter(state);
+
+    else if (state->src[i].type == IF)
+      nop;
+    
+    else if (state->src[i].type == ELSE)
+      //todo
+      // handle `else if` here aswell
+      nop;
+
+    else if (state->src[i].type == RETURN)
+     //todo
+     nop;
 
     else {
 #ifdef DEBUG
@@ -1391,26 +1102,31 @@ int8_t parse_expr(
 #endif
     }
     /* setup next-token expectation */
-    state.expecting = setup_flags(&state);
+    state->expecting = expecting_next(tokens[i].type);
   }
   
   /* dump the remaining operators onto the output */
-  while (state.operators_ctr > 0) {
-    memset(&ex, 0, sizeof(struct Expr));
-    head = operators[state.operators_ctr - 1];
+  while (state->operators_ctr > 0) {
+    memset(ret, 0, sizeof(struct Expr));
+    head = state->operator_stack[state->operators_ctr - 1];
     /*
         any remaining params/brackets/braces are unclosed
         indiciate invalid expressions
     */
-    if (*state.debug_ctr > state.debug_sz || is_open_brace(head->type))
+    if (is_open_brace(head->type))
       return -1;
 
-    if (mk_operator(&state, &ex, head) == -1
-        || inc_stack(&state, &ex, true) == -1)
+    if (mk_operator(state, ret, head) == -1
+        || inc_stack(state, ret, true) == -1)
         return -1;
     
-    state.operators_ctr -= 1;
+    state->operators_ctr -= 1;
   }
+
+  if (state->expr_ctr != 1)
+    return -1;
+  
+  ret = ((struct Expr **)(state->expr_pool.base))[0];
 
   return 0;
 }

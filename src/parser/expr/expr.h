@@ -3,14 +3,16 @@
 #define _HEADER_EXPR__
 
 #include <stdint.h>
+#include "../../utils/vec.h"
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
+
+#define ERR_SZ 256
 
 /*
     when defining a group, 
     it may not have more literal elements than
 */
-
 enum ExprType {
     NopExprT,
     // variable names
@@ -113,8 +115,6 @@ struct FnCallExpr {
     struct Expr *caller;
     char * func_name;
     uint8_t args_length;
-    
-    /* *args[] */
     struct Expr **args;
     enum DataType returns;
 };
@@ -140,6 +140,7 @@ struct IdxExpr {
 struct Expr {
     enum ExprType type;
     enum DataType datatype;
+    struct Token origin; 
     uint8_t free;
 
     union {
@@ -153,81 +154,160 @@ struct Expr {
     } inner;
 };
 
-enum MarkerT {
-    // operators
-    MarkerNop = 0,
+
+typedef uint16_t FLAG_T; 
+
+/*
+    The grouping stack is used to track the amount 
+    of sub-expressions inside an expression. (See lexer.h)
+    We generate GROUPING tokens based on the stack model
+    our parser uses.
+
+    For every new brace token-type added into the operator-stack
+    increment the grouping stack, and initalize it to 0.
+    For every comma, increment the current grouping-stack's head by 1.
     
-    /*
-      INDEX_ACCESS acts as a function in the postfix representation
-      that takes 4 arugments off the stack
-      'source, start, end, skip' in that order.
-      
-      when INDEX_ACCESS arguments maybe padded with NULLTOKENS
-      inserted by the first stage or the user.
-      NULLTOKENS when parsed into expression trees 
-      will assume their value based on position except
-      for the first argument (the source being index).
-      The 2nd argument (start) will assume 0 if NULLTOKEN is present.
-      The 3rd argument (end) will assume the length of the array if NULLTOKEN is present.
-      The 4th (skip) will assume 1 if NULLTOKEN is present.
+    Once the closing brace is found and
+    this stack's head is larger than 0,
+    we have a set/grouping of expressions. 
   
-      Examples:
-        token output: WORD   INTEGER INTEGER INTEGER INDEX_ACCESS 
-                      source start   end     skip    operator
-                text: foo[1::2]
-          postfix-IR: foo 1 NULL 2 INDEX_ACCESS
-    */
-    _IdxAccess, 
+    used in the group-stack exclusively
+*/
 
-    // foo(a)(b)
-    // foo(a) -> func(b) -> T
-    // foo(a)(b) -> ((a foo), b G(2)) DyCall
-    // foo(a)(b)(c) -> a foo b G(2) DyCall c G(2) DyCall
-    // word|)|]|}(
-    Apply,
+
+#define GSTATE_EMPTY        1
+#define GSTATE_CTX_BLOCK    2
+
+#define GSTATE_CTX_LIST     4
+#define GSTATE_CTX_TUPLE    8
+#define GSTATE_CTX_SET     16
+#define GSTATE_CTX_MAP     32
+#define GSTATE_CTX_IDX     64
+#define GSTATE_CTX_LOCK   128
+#define GSTATE_OP_IDX     256
+#define GSTATE_OP_APPLY   512
+#define GSTATE_OP_GROUP   1024
+#define GSTATE_OP_IF_COND 2048
+#define GSTATE_OP_IF_BODY 4092
+struct Group {
+    // amount of delimiters
+    uint16_t delimiter_cnt;
 
     /*
-      GROUPING token are generated in the expression parser
-        
-      The GROUPING token is used to track the amount 
-      of sub-expressions inside an expression.
-        
-      - `start` 
-          points to its origin grouping token,
-          or 0 if not applicable
-        
-      - `end`
-          is the amount of arguments to pop from the stack
-
-      See example expression:
-          [1, 2, 3]
-      
-          where '1', '2', '3' are atomic expressions.
-          When grouped together by a comma to become 
-          "1,2,3" this is called grouping.
-
-          Groupings may not explicitly 
-          point to a brace type if none is present. 
-            
-          After postfix evaluation, 
-          a group token is added into the postfix output.
-
-          1 2 3 GROUP(3)
-        
-      it's `start` attribute will point to its origin grouping token
-      and its `end` attribute will determine the amount of arguments
-      it will take off of the stack
-    
-      tokens of this type will be spawned from a differing source
-      than the original token stream.
+        0 : Uninitialized state
+        1 : COLON token in group
+        2 : COMMA token in group
+        4 : List context mode
+        8 : Tuple context mode
+       16 : Set context mode
+       32 : Map context mode
+       64 : Index context mode
+      (?) : Tuple context mode (without bracing)
+      128 : lock context mode
+      256 : index marker operation
+      512 : apply marker operation
+     1024 : group marker operation
     */
-    TupleGroup, // (x,x)
-    ListGroup,  // [x,x]
-    MapGroup,   // {x:x}
-    SetGroup,   // {x,x}
+    FLAG_T state;
 
-    MarkerTUndef = 255,
+    // should be `[` `(` '{' or `0`
+    struct Token *origin;
+    struct Token *last_delim;
 };
+
+
+#define FLAG_ERROR           65535
+
+#define STATE_INCOMPLETE          1
+#define STATE_PANIC               2 
+#define INTERNAL_ERROR            4
+
+/* if set - warning messages are present */
+#define STATE_WARNING             8
+#define STACK_SZ 512
+struct ExprParserState {
+    struct Token *src;
+    usize src_sz;
+    usize *i;
+    char * line;
+
+    struct Expr *expr_stack[STACK_SZ];
+    usize expr_ctr;
+    usize expr_sz;
+
+    struct Token *operator_stack[STACK_SZ];
+    uint16_t operators_ctr;
+    uint16_t operator_stack_sz;
+
+    struct Group *set_stack[STACK_SZ];
+    usize set_ctr;
+    usize set_sz;
+
+    /* Vec<struct Expr> */
+    struct Vec expr_pool;
+
+    /*Vec<struct Token>*/
+    struct Vec pool;
+    
+    /* Vec<struct Token *> */
+    struct Vec debug;
+
+    /*Vec<struct CompileTimeError>*/
+    struct Vec errors;
+
+    FLAG_T expecting;
+    FLAG_T panic_flags;
+};
+/*
+  Shunting yard expression parsing algorthim 
+  https://en.wikipedia.org/wiki/Shunting-yard_algorithm
+  --------------
+
+  This function takes takes a stream of token `tokens[]`
+  and writes an array of pointers (of type `struct Token`)
+  into `*output[]` in postfix notation.
+
+  The contents of `*output[]` will be a
+  POSTFIX notation referenced from the 
+  INFIX notation of `input[]`.
+
+    infix: 1 + 1
+  postfix: 1 1 +
+    input: [INT, ADD, INT]
+   output: [*INT, *INT, *ADD]
+
+  Further more, this function handles organizing operation precedense
+  based on shunting-yard algorthm.
+  This is in combination with arithmetic operations, and our custom operations
+  (GROUP, INDEX_ACCESS, APPLY, DOT).
+  
+  Upon completion, the result will be an ordered array of operands, 
+  and operators ready to be evaluated into a tree structure.
+
+    infix: (1+2) * (1 + 1)
+  postfix: 1 2 + 1 1 + *
+  To turn the output into a tree see `stage_postfix_parser`.
+
+  Digging deeper into the realm of this, 
+  you'll find I evaluate some custom operators
+  such as the DOT token, and provide 
+  extra operators to the output to describe
+  function calls (APPLY(N)).
+
+  infix:   foo(a, b+c).bar(1)
+  postfix  foo a b c + APPLY(3) bar 1 APPLY(2) .
+  pretty-postfix:
+           ((foo a (b c +) APPLY(3)) bar 1 APPLY(2) .)
+*/
+
+int8_t parse_expr(
+    char * line,
+    struct Token tokens[],
+    usize expr_size,
+    struct ExprParserState *state,
+    struct Expr *ret
+);
+
 
 
 #endif
