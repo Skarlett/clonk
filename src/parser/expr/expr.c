@@ -532,7 +532,7 @@ int8_t handle_open_brace(struct ExprParserState *state) {
     return -1;
   }
   
-  ghead = state->set_stack[state->set_ctr];
+  ghead = &state->set_stack[state->set_ctr];
   /* increment group */
   state->set_ctr += 1;
 
@@ -596,7 +596,7 @@ int8_t mk_group(struct ExprParserState *state, struct Expr *ex) {
   struct Expr **buf;
 
   struct Token *current = &state->src[*state->_i];
-  struct Group *ghead = state->set_stack[state->set_ctr - 1];
+  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
 
   usize elements = ghead->delimiter_cnt + 1;
 
@@ -652,7 +652,7 @@ int8_t mk_idx_access(struct ExprParserState *state, struct Expr *ex) {
 
 int8_t mk_fncall(struct ExprParserState *state, struct Expr *ex) {
   struct Token *current = &state->src[*state->_i];
-  struct Group *ghead = state->set_stack[state->set_ctr - 1];
+  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
   usize argc = ghead->delimiter_cnt + 1;
   
   struct Expr *head;
@@ -714,7 +714,7 @@ void mk_null(struct ExprParserState *state, struct Expr *ex) {
 
 int8_t handle_idx_op(struct ExprParserState *state) {
   struct Expr ex;
-  struct Group *ghead = state->set_stack[state->set_ctr - 1];
+  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
   struct Token *prev = &state->src[*state->_i - 1];
 
   if (ghead->origin->type != BRACE_OPEN)
@@ -751,7 +751,7 @@ int8_t handle_idx_op(struct ExprParserState *state) {
 }
 
 int8_t handle_fncall(struct ExprParserState *state) {
-  struct Group *ghead = state->set_stack[state->set_ctr - 1];
+  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
   struct Expr ex;
 
   if (ghead->origin->type != PARAM_OPEN 
@@ -764,7 +764,7 @@ int8_t handle_fncall(struct ExprParserState *state) {
 
 int8_t handle_grouping(struct ExprParserState *state) {
   enum Lexicon marker_type;
-  struct Group *ghead = state->set_stack[state->set_ctr - 1];
+  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
   struct Token *current = &state->src[*state->_i];
   struct Expr ex;
 
@@ -804,7 +804,7 @@ int8_t handle_close_brace(struct ExprParserState *state) {
     return -1;
 
   /* Grab the head of the group stack & decrement */
-  ghead = state->set_stack[state->set_ctr - 1];
+  ghead = &state->set_stack[state->set_ctr - 1];
   state->set_ctr -= 1;
 
   if (prev->type == invert_brace_tok_ty(current->type)) {
@@ -859,7 +859,7 @@ int8_t handle_delimiter(struct ExprParserState *state) {
 
   /* Setup group group head ptr */
   if (state->set_ctr > 0)
-    ghead = state->set_stack[state->set_ctr - 1];
+    ghead = &state->set_stack[state->set_ctr - 1];
   else
   { 
     /* they didn't add an opening brace*/
@@ -1076,7 +1076,11 @@ int8_t parse_expr(
       return -1;
 
     else if (check_flag(state->panic_flags, STATE_PANIC) 
-      || is_token_unexpected(&tokens[i], state->set_stack[state->set_ctr - 1], state->expecting)) {
+      ||is_token_unexpected(
+          &tokens[i],
+          &state->set_stack[state->set_ctr - 1],
+          state->expecting)
+    ){
       // TODO
       // handle_unwind(&state);
       return -1;

@@ -236,7 +236,7 @@ struct ExprParserState {
     struct Token *operator_stack[STACK_SZ];
     u_int8_t canary_op;
     
-    struct Group *set_stack[STACK_SZ];
+    struct Group set_stack[STACK_SZ];
     u_int8_t canary_set;
     
     usize set_ctr;
@@ -312,5 +312,5 @@ int8_t parse_expr(
 );
 
 int8_t free_state(struct ExprParserState *state);
-
+int8_t reset_state(struct ExprParserState *state);
 #endif
