@@ -49,8 +49,6 @@ void AssertTokens(
 
     CuAssert_Line(tc, file, line, buf, seq_eql_ty(tokens, answer, len) == 0);
 }
-#define AssertTokens(tc, msg, tokens, answer, len) AssertTokens((tc), __FILE__, __LINE__, (ms), (tokens), (answer), (len))
-
 
 void AssertTokensByRef(
     CuTest *tc,
@@ -71,7 +69,6 @@ void AssertTokensByRef(
     CuAssert_Line(tc, file, line, buf,  __check_tokens_by_ref(tokens, answer, len) == 1);
 }
 
-#define AssertTokensByRef(tc, msg, tokens, answer, len) AssertTokensByRef((tc), __FILE__, __LINE__, (ms), (tokens), (answer), (len))
 
 void mk_toks(struct Token token[], const enum Lexicon ty[], usize ntoks) {
     for (usize i=0; ntoks > i; i++)
@@ -97,7 +94,7 @@ void __test__check_tokens(CuTest* tc) {
 
     for (uint8_t i=0; 6 > i; i++){
         mk_toks(toks, check_list[i], list_sz[i]);
-        CuAssertTrue(tc, seq_eql_ty(toks, check_list[i], list_sz[i]) == 0);
+        CuAssertTrue(tc, seq_eql_ty(toks, check_list[i], list_sz[i]) == true);
     }
 }
 
