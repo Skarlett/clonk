@@ -53,7 +53,7 @@ enum Lexicon tokenize_char(char c) {
             return CHAR;
     }
     
-    return UNDEFINED;
+    return TOKEN_UNDEFINED;
 }
 
 int8_t is_operator_complex(enum Lexicon compound_token) {
@@ -149,6 +149,10 @@ int8_t set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
     return 0;
 }
 
+usize token_len(struct Token *tok) {
+    return 1 + tok->end - tok->start;
+}
+
 /*
     Returns true if `compound_token`
     should continue consuming tokens
@@ -201,7 +205,7 @@ enum Lexicon invert_operator_token(enum Lexicon compound_token) {
         case MINUSEQ: return SUB;
         case PLUSEQ: return ADD;
         case ISNEQL: return NOT;
-        default: return UNDEFINED;
+        default: return TOKEN_UNDEFINED;
     }
 }
 
@@ -236,9 +240,13 @@ int8_t finalize_compound_token(struct Token *token, char * line, enum Lexicon le
         /*
           Error: string is missing a ending quote
         */
-        if (lexed != QUOTE)
+        if (lexed != QUOTE) {
+            err->msg = "String missing quote.";
+            err->type = Error;
+            err->base = token;
             return -1;
-        
+        }
+
         token->end += 1;
     }
     
@@ -253,8 +261,12 @@ int8_t finalize_compound_token(struct Token *token, char * line, enum Lexicon le
         token->type = invert_operator_token(token->type);
         
         /* Error: UNDEFINED/null token when inverted*/
-        if (token->type == UNDEFINED)
-            return -1; 
+        if (token->type == TOKEN_UNDEFINED) {
+            err->msg = "Unknown operator.";
+            err->type = Error;
+            err->base = token;
+            return -1;
+        }
     }
 
     return 0;
@@ -269,11 +281,10 @@ int8_t tokenize(
 ){
     struct Token token;
 
-    enum Lexicon lexed = UNDEFINED, 
-        compound_token = UNDEFINED;
+    enum Lexicon lexed = TOKEN_UNDEFINED, 
+        compound_token = TOKEN_UNDEFINED;
     
-    uint8_t operator_ctr = 0;
-
+    usize identifier = 0;
     usize start_at = 0;
     usize span_size = 0;
     usize new_tokens = 0;
@@ -286,7 +297,7 @@ int8_t tokenize(
 
         lexed = tokenize_char(line[i]);
         
-        if (compound_token == UNDEFINED && can_upgrade_token(lexed))
+        if (compound_token == TOKEN_UNDEFINED && can_upgrade_token(lexed))
         {
             set_compound_token(&compound_token, lexed); 
             start_at = i;
@@ -300,11 +311,11 @@ int8_t tokenize(
             continue;
         }
 
-        else if (compound_token != UNDEFINED)
+        else if (compound_token != TOKEN_UNDEFINED)
         {
             /* completion of complex token */
             if (compound_token == COMMENT) {
-                compound_token = UNDEFINED;
+                compound_token = TOKEN_UNDEFINED;
                 lexed = NEWLINE;
                 continue;
             }
@@ -312,14 +323,14 @@ int8_t tokenize(
             token.start = start_at;
             token.end = start_at+span_size;
             token.type = compound_token;
-            
+
             if (finalize_compound_token(&token, line, lexed, error) == -1)
                 return -1;
 
             tokens[new_tokens] = token;
-            
+            identifier += 1;
             new_tokens += 1;
-            compound_token = UNDEFINED;
+            compound_token = TOKEN_UNDEFINED;
             
             if (token.type == STRING_LITERAL) {
                 token.end += 1;
@@ -341,7 +352,7 @@ int8_t tokenize(
             because if a compound token is compleed, 
             the current token being lexed still needs to be added.
         */
-        else if (lexed != WHITESPACE && lexed != NEWLINE && lexed != UNDEFINED) 
+        else if (lexed != WHITESPACE && lexed != NEWLINE && lexed != TOKEN_UNDEFINED) 
         {
             struct Token token = {
                 .start = i,
@@ -349,10 +360,11 @@ int8_t tokenize(
                 .type = lexed
             };
 
-            compound_token = UNDEFINED;
+            compound_token = TOKEN_UNDEFINED;
             start_at = 0;
             tokens[new_tokens] = token;
             new_tokens += 1;
+            identifier += 1;
         }
     }
     
@@ -367,7 +379,7 @@ int8_t tokenize(
         
         This checks, and fixes it.
     */
-    if (compound_token != UNDEFINED && compound_token != COMMENT)
+    if (compound_token != TOKEN_UNDEFINED && compound_token != COMMENT)
     {
         struct Token token = {
             .start = start_at,
@@ -380,6 +392,7 @@ int8_t tokenize(
 
         tokens[new_tokens] = token;
         new_tokens += 1;
+        identifier += 1;
     }
     // add to counter
     *token_ctr += new_tokens;
