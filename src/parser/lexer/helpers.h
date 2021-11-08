@@ -6,9 +6,15 @@
 #include "lexer.h"
 #include <stdbool.h>
 
+/**
+ * returns true if token is of type COLON or COMMA
+ * @param token
+ * @return bool
+ */
+int8_t is_delimiter(enum Lexicon token);
 
 /**
- * Convert the parameter `token` into its inverse token type. 
+ * Return the parameter `token` into its inverse token type. 
  * parameter `token` is expected to be OPEN_BRACE 
  * CLOSE_BRACE, OPEN_BRACKET, CLOSE_BRACKET
  * OPEN_PARAM, CLOSE_PARAM.
@@ -18,15 +24,6 @@
  * @return enum Lexicon
  */
 enum Lexicon invert_brace_tok_ty(enum Lexicon token);
-
-
-/**
- * Check if the parameter `token` is equal the token type 
- * 
- * @param token
- * @return bool
- */
-bool is_fncall(struct Token tokens[], usize ntokens);
 
 
 /**
@@ -43,11 +40,12 @@ bool is_cmp_operator(enum Lexicon compound_token);
  *   ADD, SUB, DIV, MOD, MUL,
  *   AND, OR, ACCESS, DOT, 
  *   POW, LT, GT, ISEQL,
- *   LTEQ, GTEQ
+ *   LTEQ, GTEQ, EQUAL, PLUSEQ
+ *   MINUSEQ, NOT
  * @param token
  * @return bool
  */
-bool is_bin_operator(enum Lexicon compound_token);
+bool is_operator(enum Lexicon compound_token);
 
 
 /**

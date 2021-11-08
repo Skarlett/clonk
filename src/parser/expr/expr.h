@@ -3,20 +3,18 @@
 #define _HEADER_EXPR__
 
 #include <stdint.h>
+#include "../../utils/vec.h"
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
+
+#define ERR_SZ 256
 
 /*
     when defining a group, 
     it may not have more literal elements than
 */
-#define MAX_GROUP_SZ 256
-#define MAX_ARGS_SZ 24
-#define MAX_FUNC_NAME_SZ 256
-
 enum ExprType {
-    UndefinedExprT,
-    
+    NopExprT,
     // variable names
     // x
     // foo.max
@@ -32,11 +30,11 @@ enum ExprType {
     // x(a, ...)
     FnCallExprT,
 
-    
     // binary operation
     // 1 + 2 * foo.max - size_of(list)
-    BinaryExprT
-
+    BinaryExprT,
+    
+    UndefinedExprT
 };
 
 enum Operation {
@@ -59,23 +57,39 @@ enum Operation {
 
     And,
     Or,
-    
+
+    Assign,
+    AssignAdd,
+    AssignSub,
+
     /* dot operator */
     Access,
-    
 
     Not,
-    /* L[N:N:N] */
-    IdxAccess,
 
     UndefinedOp = 255
 };
 
-#define GROUPING_SZ 64
+enum GroupT {
+    GroupTUndef,
+
+    // {1:2, 3:4}
+    MapT,
+    
+    // [1, 2]
+    ListT,
+    
+    // (a, b)
+    TupleT,
+
+    // {a, b}
+    SetT
+
+};
+
 struct Grouping { 
-    usize capacity;
+    enum GroupT type;
     usize length;
-    enum Lexicon brace;
     struct Expr **ptr;
 };
 
@@ -97,12 +111,11 @@ struct Literals {
     } literal;
 };
 
-
-struct CallExpr {
+struct FnCallExpr {
     struct Expr *caller;
     char * func_name;
     uint8_t args_length;
-    struct Expr *args[MAX_ARGS_SZ];
+    struct Expr **args;
     enum DataType returns;
 };
 
@@ -118,7 +131,7 @@ struct NotExpr {
 };
 
 struct IdxExpr {
-    struct Expr *operand;
+    struct Expr * operand;
     struct Expr * start;
     struct Expr * end;
     struct Expr * skip;
@@ -127,12 +140,13 @@ struct IdxExpr {
 struct Expr {
     enum ExprType type;
     enum DataType datatype;
+    struct Token origin; 
     uint8_t free;
 
     union {
         char * symbol;
         struct Literals value;
-        struct CallExpr fncall;
+        struct FnCallExpr fncall;
         struct BinExpr bin;
         struct NotExpr not_;
         struct IdxExpr idx;
@@ -141,56 +155,7 @@ struct Expr {
 };
 
 
-#define FLAG_ERROR 65535
 typedef uint16_t FLAG_T; 
-
-
-/* if bit set, expects operand to be the next token */
-#define EXPECTING_SYMBOL         2
-
-#define EXPECTING_INTEGER        4
-
-#define EXPECTING_STRING         8
-
-/* if bit set, expects binary operator to be the next token */
-#define EXPECTING_OPERATOR       16
-
-/* if bit set, expects opening brace type be the next token */
-#define EXPECTING_OPEN_BRACKET   32   
-
-/* if bit set, expects closing brace type be the next token */
-#define EXPECTING_CLOSE_BRACKET  64
-
-/* if bit set, expects opening brace type be the next token */
-#define EXPECTING_OPEN_PARAM     128    
-
-/* if bit set, expects closing brace type be the next token */
-#define EXPECTING_CLOSE_PARAM    256
-
-/* if bit set, expects a comma be the next token */
-#define EXPECTING_COMMA          512   
-
-/* if bit set, expects a colon until bracket_brace token type is closed */
-#define EXPECTING_COLON          1024 
-
-/* hint that colons are acceptable */
-#define _EX_COLON_APPLICABLE     2048 
-
-/* if bit set, expects a token to follow */
-#define EXPECTING_NEXT           4096 
-
-
-/* If token stream contains an error */
-/* we'll attempt to recover, by discarding tokens */
-#define STATE_PANIC               1 
-
-/* If we ever paniced */
-/* we'll attempt to recover, by discarding tokens, 
-but keep this flag set for the rest of parsing */
-#define STATE_INCOMPLETE          2 
-
-/* too disastrous to recover from */
-#define INTERNAL_ERROR            4 
 
 /*
     The grouping stack is used to track the amount 
@@ -205,79 +170,144 @@ but keep this flag set for the rest of parsing */
     Once the closing brace is found and
     this stack's head is larger than 0,
     we have a set/grouping of expressions. 
+  
+    used in the group-stack exclusively
 */
+
+
+#define GSTATE_EMPTY        1
+#define GSTATE_CTX_BLOCK    2
+
+#define GSTATE_CTX_LIST     4
+#define GSTATE_CTX_TUPLE    8
+#define GSTATE_CTX_SET     16
+#define GSTATE_CTX_MAP     32
+#define GSTATE_CTX_IDX     64
+#define GSTATE_CTX_LOCK   128
+#define GSTATE_OP_IDX     256
+#define GSTATE_OP_APPLY   512
+#define GSTATE_OP_GROUP   1024
+#define GSTATE_OP_IF_COND 2048
+#define GSTATE_OP_IF_BODY 4092
 struct Group {
-    struct Token *postfix_group_token;
-
-    /* pointer of token in operation stack*/
-    //struct Token *operation_ptr;
-
-    // amount of delimiters + 1
+    // amount of delimiters
     uint16_t delimiter_cnt;
-    
-    // count symbols inside of group
-    // lamen terms, count every 
-    // token between braces
-    uint16_t atomic_symbols;
 
-    // count how many values have
-    // been placed in the output
-    // to account for the index/slice 
-    // operation arguments.
-    // This is so we know how many NULLs 
-    // to place
-    uint8_t arg_align_ctr;
+    /*
+        0 : Uninitialized state
+        1 : COLON token in group
+        2 : COMMA token in group
+        4 : List context mode
+        8 : Tuple context mode
+       16 : Set context mode
+       32 : Map context mode
+       64 : Index context mode
+      (?) : Tuple context mode (without bracing)
+      128 : lock context mode
+      256 : index marker operation
+      512 : apply marker operation
+     1024 : group marker operation
+    */
+    FLAG_T state;
 
-    // should be ',' ':' or `0`
-    enum Lexicon delimiter;
-
-    // should be `[` `(` or `0`
+    // should be `[` `(` '{' or `0`
     struct Token *origin;
-
-    // INDEX / APPLY
-    enum Lexicon tag_op;
+    struct Token *last_delim;
 };
 
-struct StageInfixState {
+
+#define FLAG_ERROR           65535
+
+#define STATE_INCOMPLETE          1
+#define STATE_PANIC               2 
+#define INTERNAL_ERROR            4
+
+/* if set - warning messages are present */
+#define STATE_WARNING             8
+#define STACK_SZ 512
+struct ExprParserState {
     struct Token *src;
     usize src_sz;
     usize *i;
+    char * line;
 
-    struct Token **out;
-    usize out_sz;
-    usize *out_ctr;
+    struct Expr *expr_stack[STACK_SZ];
+    usize expr_ctr;
+    usize expr_sz;
 
-    /*
-      quick bump-allocator pool
-      all tokens created in this stage will be
-      referenced from this pool
-    */
-    struct Token *pool;
-    usize pool_i;
-    usize pool_sz;
-
-    struct Group *set_stack;
-    usize set_ctr;
-    usize set_sz;
-
-    struct Token **operator_stack;
+    struct Token *operator_stack[STACK_SZ];
     uint16_t operators_ctr;
     uint16_t operator_stack_sz;
 
-    FLAG_T expecting;
-    FLAG_T state;
-};
+    struct Group *set_stack[STACK_SZ];
+    usize set_ctr;
+    usize set_sz;
 
-int8_t postfix_expr(
-    struct Token *tokens[],
+    /* Vec<struct Expr> */
+    struct Vec expr_pool;
+
+    /*Vec<struct Token>*/
+    struct Vec pool;
+    
+    /* Vec<struct Token *> */
+    struct Vec debug;
+
+    /*Vec<struct CompileTimeError>*/
+    struct Vec errors;
+
+    FLAG_T expecting;
+    FLAG_T panic_flags;
+};
+/*
+  Shunting yard expression parsing algorthim 
+  https://en.wikipedia.org/wiki/Shunting-yard_algorithm
+  --------------
+
+  This function takes takes a stream of token `tokens[]`
+  and writes an array of pointers (of type `struct Token`)
+  into `*output[]` in postfix notation.
+
+  The contents of `*output[]` will be a
+  POSTFIX notation referenced from the 
+  INFIX notation of `input[]`.
+
+    infix: 1 + 1
+  postfix: 1 1 +
+    input: [INT, ADD, INT]
+   output: [*INT, *INT, *ADD]
+
+  Further more, this function handles organizing operation precedense
+  based on shunting-yard algorthm.
+  This is in combination with arithmetic operations, and our custom operations
+  (GROUP, INDEX_ACCESS, APPLY, DOT).
+  
+  Upon completion, the result will be an ordered array of operands, 
+  and operators ready to be evaluated into a tree structure.
+
+    infix: (1+2) * (1 + 1)
+  postfix: 1 2 + 1 1 + *
+  To turn the output into a tree see `stage_postfix_parser`.
+
+  Digging deeper into the realm of this, 
+  you'll find I evaluate some custom operators
+  such as the DOT token, and provide 
+  extra operators to the output to describe
+  function calls (APPLY(N)).
+
+  infix:   foo(a, b+c).bar(1)
+  postfix  foo a b c + APPLY(3) bar 1 APPLY(2) .
+  pretty-postfix:
+           ((foo a (b c +) APPLY(3)) bar 1 APPLY(2) .)
+*/
+
+int8_t parse_expr(
+    char * line,
+    struct Token tokens[],
     usize expr_size,
-    
-    struct Token *output[],
-    usize output_sz,
-    usize *output_ctr,
-    
-    struct StageInfixState *state,
-    struct CompileTimeError *err
+    struct ExprParserState *state,
+    struct Expr *ret
 );
+
+
 
 #endif
