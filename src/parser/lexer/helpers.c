@@ -93,7 +93,7 @@ enum Lexicon invert_brace_tok_ty(enum Lexicon token) {
         case BRACE_CLOSE: return BRACE_OPEN;
         case BRACKET_CLOSE: return BRACKET_OPEN;
         case BRACKET_OPEN: return BRACKET_CLOSE;
-        default: return UNDEFINED;
+        default: return TOKEN_UNDEFINED;
     }
 }
 
