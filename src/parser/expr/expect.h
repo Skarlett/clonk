@@ -5,7 +5,9 @@
 
 FLAG_T expecting_next(enum Lexicon tok);
 int8_t is_token_unexpected(struct Token *current, struct Group *ghead, FLAG_T expecting);
-
+void unset_flag(FLAG_T *set, FLAG_T flag);
+void set_flag(FLAG_T *set, FLAG_T flag);
+FLAG_T check_flag(FLAG_T set, FLAG_T flag);
 #define EXPECTING_SYMBOL         2
 #define EXPECTING_INTEGER        4
 #define EXPECTING_STRING         8

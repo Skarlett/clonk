@@ -226,7 +226,7 @@ struct Group {
 struct ExprParserState {
     struct Token *src;
     usize src_sz;
-    usize *i;
+    usize *_i;
     char * line;
 
     struct Expr *expr_stack[STACK_SZ];
@@ -256,6 +256,8 @@ struct ExprParserState {
     FLAG_T expecting;
     FLAG_T panic_flags;
 };
+
+
 /*
   Shunting yard expression parsing algorthim 
   https://en.wikipedia.org/wiki/Shunting-yard_algorithm

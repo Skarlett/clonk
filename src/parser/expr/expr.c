@@ -15,26 +15,12 @@
 #include "expr.h"
 #include "expect.h"
 
-/*
-    check flag, and if present, unset it.
-*/
-FLAG_T check_flag(FLAG_T set, FLAG_T flag){
-    return set & flag;
-}
-void set_flag(FLAG_T *set, FLAG_T flag){
-    *set = *set | flag;
-}
-
-void unset_flag(FLAG_T *set, FLAG_T flag){
-    *set = *set & ~flag;
-}
-
 int8_t mk_error(struct ExprParserState *state, enum ErrorT type, const char * msg) {
   struct CompileTimeError *err;
   
   err->type = type;
   err->msg = msg;
-  if (vec_push(&state->errors, &state->src[*state->i]) == 0)
+  if (vec_push(&state->errors, &state->src[*state->_i]) == 0)
     return -1;
   
   set_flag(&state->panic_flags, STATE_PANIC | STATE_INCOMPLETE);
@@ -142,7 +128,7 @@ int8_t inc_stack(
   
   heap_ex = vec_push(&state->expr_pool, &ex);
 
-  if (heap_ex == 0 || (add_debug && vec_push(&state->debug, &state->src[*state->i]) == 0))
+  if (heap_ex == 0 || (add_debug && vec_push(&state->debug, &state->src[*state->_i]) == 0))
   {
     throw_internal_error(state, "vec pool returned null ptr.");
     return -1;
@@ -157,7 +143,7 @@ int8_t inc_stack(
 int8_t handle_int(struct ExprParserState* state)
 {
   struct Expr ex;
-  struct Token *current = &state->src[*state->i];
+  struct Token *current = &state->src[*state->_i];
   usize size = current->end - current->start;
 
   char * end;
@@ -189,7 +175,7 @@ int8_t handle_int(struct ExprParserState* state)
 */
 int8_t handle_symbol(struct ExprParserState* state) {
   struct Expr ex;
-  struct Token *current = &state->src[*state->i];
+  struct Token *current = &state->src[*state->_i];
   uint8_t size = current->end - current->start;
   
   ex.type = SymExprT;
@@ -223,7 +209,7 @@ void determine_return_ty(struct Expr *bin) {
 }
 
 int8_t mk_binop(struct ExprParserState *state, struct Expr *ex) {
-  struct Token *current = &state->src[*state->i];
+  struct Token *current = &state->src[*state->_i];
 
   if (1 > state->expr_ctr)
   {
@@ -281,7 +267,7 @@ int8_t mk_operator(
  *  This function will pop off the open brace token
  *  if one is found.
  */
-int8_t flush_ops(struct ExprParserState *state)
+int8_t flush_ops_until_br(struct ExprParserState *state)
 {
   struct Token *head;
   struct Expr ex;
@@ -295,7 +281,7 @@ int8_t flush_ops(struct ExprParserState *state)
   while (state->operators_ctr > 0) {
     memset(&ex, 0, sizeof(struct Expr));
     /* ends if tokens inverted brace is found*/
-    if (head->type == invert_brace_tok_ty(state->src[*state->i].type))
+    if (head->type == invert_brace_tok_ty(state->src[*state->_i].type))
       break;
     
     /* otherwise pop into output */
@@ -315,6 +301,31 @@ int8_t flush_ops(struct ExprParserState *state)
   
   /* discard opening brace yet */
   state->operators_ctr -= 1;
+  return 0;
+}
+
+int8_t flush_all_ops(struct ExprParserState *state) {
+  /* dump the remaining operators onto the output */
+  struct Token *head;
+  struct Expr ex;
+
+  while (state->operators_ctr > 0)
+  {
+    head = state->operator_stack[state->operators_ctr - 1];
+    /*
+        any remaining params/brackets/braces are unclosed
+        indiciate invalid expressions
+    */
+    if (is_open_brace(head->type))
+      return -1;
+
+    if (mk_operator(state, &ex, head) == -1
+        || inc_stack(state, &ex, true) == -1)
+        return -1;
+    
+    state->operators_ctr -= 1;
+  }
+
   return 0;
 }
 
@@ -395,7 +406,10 @@ int8_t handle_operator(struct ExprParserState *state) {
   struct Token *head=0, *current=0;
   int8_t precedense = 0, head_precedense = 0;
 
-  current = &state->src[*state->i];
+  current = &state->src[*state->_i];
+  if (state->operators_ctr > 0)
+    head = state->operator_stack[state->operators_ctr-1];
+  
   precedense = op_precedence(current->type);
 
   if (precedense == -1){
@@ -473,7 +487,7 @@ int8_t handle_operator(struct ExprParserState *state) {
     return -1;
   }    
   
-  state->operator_stack[state->operators_ctr] = &state->src[*state->i];
+  state->operator_stack[state->operators_ctr] = &state->src[*state->_i];
   state->operators_ctr += 1;
   return 0;
 }
@@ -502,13 +516,13 @@ int8_t handle_open_brace(struct ExprParserState *state) {
   struct Group *ghead = 0;
   struct Token *current, *prev = 0, *next = 0;
 
-  current = &state->src[*state->i];
+  current = &state->src[*state->_i];
 
-  if (*state->i > 0)
-    prev = &state->src[*state->i - 1];
+  if (*state->_i > 0)
+    prev = &state->src[*state->_i - 1];
   
-  if (state->src_sz - 1 > *state->i)
-    next = &state->src[*state->i + 1];
+  if (state->src_sz - 1 > *state->_i)
+    next = &state->src[*state->_i + 1];
 
   /* overflow check */
   if (state->set_ctr > state->set_sz ||
@@ -581,7 +595,7 @@ enum GroupT get_group_ty(FLAG_T group_state) {
 int8_t mk_group(struct ExprParserState *state, struct Expr *ex) {
   struct Expr **buf;
 
-  struct Token *current = &state->src[*state->i];
+  struct Token *current = &state->src[*state->_i];
   struct Group *ghead = state->set_stack[state->set_ctr - 1];
 
   usize elements = ghead->delimiter_cnt + 1;
@@ -637,13 +651,13 @@ int8_t mk_idx_access(struct ExprParserState *state, struct Expr *ex) {
 }
 
 int8_t mk_fncall(struct ExprParserState *state, struct Expr *ex) {
-  struct Token *current = &state->src[*state->i];
+  struct Token *current = &state->src[*state->_i];
   struct Group *ghead = state->set_stack[state->set_ctr - 1];
   usize argc = ghead->delimiter_cnt + 1;
   
   struct Expr *head;
 
-  if (state->expr_ctr > state->expr_sz || 1 > *state->i)
+  if (state->expr_ctr > state->expr_sz || 1 > *state->_i)
     return -1;
     
   ex->type = FnCallExprT;
@@ -701,7 +715,7 @@ void mk_null(struct ExprParserState *state, struct Expr *ex) {
 int8_t handle_idx_op(struct ExprParserState *state) {
   struct Expr ex;
   struct Group *ghead = state->set_stack[state->set_ctr - 1];
-  struct Token *prev = &state->src[*state->i - 1];
+  struct Token *prev = &state->src[*state->_i - 1];
 
   if (ghead->origin->type != BRACE_OPEN)
       return -1;
@@ -751,7 +765,7 @@ int8_t handle_fncall(struct ExprParserState *state) {
 int8_t handle_grouping(struct ExprParserState *state) {
   enum Lexicon marker_type;
   struct Group *ghead = state->set_stack[state->set_ctr - 1];
-  struct Token *current = &state->src[*state->i];
+  struct Token *current = &state->src[*state->_i];
   struct Expr ex;
 
   marker_type = get_dbg_group_token(current->type);
@@ -765,7 +779,7 @@ int8_t handle_grouping(struct ExprParserState *state) {
 }
 
 int8_t handle_close_brace(struct ExprParserState *state) {
-  struct Token *prev = 0, *ophead=0, *current = &state->src[*state->i];
+  struct Token *prev = 0, *ophead=0, *current = &state->src[*state->_i];
   struct Group *ghead;
   struct Expr ex;
   int8_t ret = 0;
@@ -784,8 +798,8 @@ int8_t handle_close_brace(struct ExprParserState *state) {
       || state->set_ctr > state->set_sz)
     return -1;
 
-  if (*state->i > 0)
-    prev = &state->src[*state->i - 1];
+  if (*state->_i > 0)
+    prev = &state->src[*state->_i - 1];
   else
     return -1;
 
@@ -804,7 +818,7 @@ int8_t handle_close_brace(struct ExprParserState *state) {
   }
 
   else {
-    if (flush_ops(state) == -1)
+    if (flush_ops_until_br(state) == -1)
       return -1;
     
     /* Grab the head of the operator stack */
@@ -837,7 +851,7 @@ int8_t handle_close_brace(struct ExprParserState *state) {
 int8_t handle_delimiter(struct ExprParserState *state) {
   struct Expr ex;
   struct Token *head = 0, 
-    *current = &state->src[*state->i],
+    *current = &state->src[*state->_i],
     *prev = 0,
     *next = 0;
 
@@ -856,11 +870,11 @@ int8_t handle_delimiter(struct ExprParserState *state) {
   ghead->delimiter_cnt += 1;
   ghead->last_delim = current;
   
-  if(*state->i > 0)
-    prev = &state->src[*state->i - 1];
+  if(*state->_i > 0)
+    prev = &state->src[*state->_i - 1];
   
-  if(state->src_sz > *state->i + 1)
-    next = &state->src[*state->i + 1];
+  if(state->src_sz > *state->_i + 1)
+    next = &state->src[*state->_i + 1];
 
   if (!next || !prev)
   {
@@ -913,7 +927,7 @@ int8_t handle_delimiter(struct ExprParserState *state) {
     }
   }
 
-  if (flush_ops(state) == -1)
+  if (flush_ops_until_br(state) == -1)
     return -1;
   
   return 0;
@@ -922,7 +936,7 @@ int8_t handle_delimiter(struct ExprParserState *state) {
 int8_t handle_str(struct ExprParserState *state) {
   struct Expr ex;
   char * str;
-  struct Token *current = &state->src[*state->i];
+  struct Token *current = &state->src[*state->_i];
   usize size = current->end - current->start;
 
   ex.type = LiteralExprT;
@@ -1009,7 +1023,7 @@ int8_t initalize_parser_state(
       return -1;
   
   state->line = line;
-  state->i = i;
+  state->_i = i;
 
   state->src = tokens;
   state->src_sz = ntokens;
@@ -1042,9 +1056,6 @@ int8_t parse_expr(
     struct ExprParserState *state,
     struct Expr *ret
 ){
-  struct Token *head;
-
-  int8_t precedense = 0;
   usize i = 0;
 
   if (initalize_parser_state(line, tokens, expr_size, &i, state) == -1)
@@ -1084,6 +1095,7 @@ int8_t parse_expr(
       handle_delimiter(state);
 
     else if (state->src[i].type == IF)
+      //todo
       nop;
     
     else if (state->src[i].type == ELSE)
@@ -1106,24 +1118,8 @@ int8_t parse_expr(
   }
   
   /* dump the remaining operators onto the output */
-  while (state->operators_ctr > 0) {
-    memset(ret, 0, sizeof(struct Expr));
-    head = state->operator_stack[state->operators_ctr - 1];
-    /*
-        any remaining params/brackets/braces are unclosed
-        indiciate invalid expressions
-    */
-    if (is_open_brace(head->type))
-      return -1;
-
-    if (mk_operator(state, ret, head) == -1
-        || inc_stack(state, ret, true) == -1)
-        return -1;
-    
-    state->operators_ctr -= 1;
-  }
-
-  if (state->expr_ctr != 1)
+  if (flush_all_ops(state) == -1
+    || state->expr_ctr != 1)
     return -1;
   
   ret = ((struct Expr **)(state->expr_pool.base))[0];
@@ -1138,6 +1134,7 @@ int8_t free_state(struct ExprParserState *state) {
   || vec_free(&state->pool) == -1
   || vec_free(&state->errors) == -1)
     return -1;
+  
   return 0;
 }
 
