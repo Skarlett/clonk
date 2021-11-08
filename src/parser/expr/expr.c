@@ -1131,6 +1131,16 @@ int8_t parse_expr(
   return 0;
 }
 
+int8_t free_state(struct ExprParserState *state) {
+  
+  if (vec_free(&state->expr_pool) == -1
+  || vec_free(&state->debug) == -1
+  || vec_free(&state->pool) == -1
+  || vec_free(&state->errors) == -1)
+    return -1;
+  return 0;
+}
+
 // int8_t new_expr(char *line, struct Token tokens[], usize ntokens, struct Expr *expr) {
 //     /*todo: create expr tree*/
 //     return 0;

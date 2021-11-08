@@ -7,8 +7,6 @@
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
 
-#define ERR_SZ 256
-
 /*
     when defining a group, 
     it may not have more literal elements than
@@ -299,7 +297,6 @@ struct ExprParserState {
   pretty-postfix:
            ((foo a (b c +) APPLY(3)) bar 1 APPLY(2) .)
 */
-
 int8_t parse_expr(
     char * line,
     struct Token tokens[],
@@ -308,6 +305,6 @@ int8_t parse_expr(
     struct Expr *ret
 );
 
-
+int8_t free_state(struct ExprParserState *state);
 
 #endif
