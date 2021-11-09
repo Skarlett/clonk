@@ -150,6 +150,7 @@ enum Lexicon {
 
     // static
     STATIC,
+
     // const
     CONST,
 
@@ -183,11 +184,7 @@ enum Lexicon {
     /*
         this is a 'pretend' token used 
         internally by expression
-        and should never been seen in the token stream
     */
-
-    MARKER,
-    
     /*
       INDEX_ACCESS acts as a function in the postfix representation
       that takes 4 arugments off the stack
@@ -264,6 +261,7 @@ enum Lexicon {
     RetMarker, // return
 
     DefMarker, // def
+
 };
 
 /*
@@ -294,7 +292,7 @@ struct Token {
 };
 
 int8_t tokenize(
-    char *line,
+    const char *line,
     struct Token tokens[],
     usize *token_ctr,
     usize token_sz,

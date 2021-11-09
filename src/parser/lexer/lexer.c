@@ -209,7 +209,7 @@ enum Lexicon invert_operator_token(enum Lexicon compound_token) {
     }
 }
 
-int8_t derive_keyword(char * line, struct Token *t) {
+int8_t derive_keyword(const char * line, struct Token *t) {
     static enum Lexicon lexicon[] = {
         STATIC, CONST, RETURN, EXTERN, 
         AS, IF, ELSE, FUNC_DEF, IMPORT, IMPL,
@@ -235,7 +235,7 @@ int8_t derive_keyword(char * line, struct Token *t) {
     return 0;
 }
 
-int8_t finalize_compound_token(struct Token *token, char * line, enum Lexicon lexed, struct CompileTimeError *err) {
+int8_t finalize_compound_token(struct Token *token, const char * line, enum Lexicon lexed, struct CompileTimeError *err) {
     if (token->type == STRING_LITERAL) {
         /*
           Error: string is missing a ending quote
@@ -273,7 +273,7 @@ int8_t finalize_compound_token(struct Token *token, char * line, enum Lexicon le
 }
 
 int8_t tokenize(
-    char *line,
+    const char *line,
     struct Token tokens[],
     usize *token_ctr,
     usize token_sz,
