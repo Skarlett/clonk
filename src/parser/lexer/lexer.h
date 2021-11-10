@@ -50,6 +50,9 @@ enum Lexicon {
     // -
     SUB,
 
+    // for -123 or -=
+    _COMPOUND_SUB,
+
     // >
     GT,
 

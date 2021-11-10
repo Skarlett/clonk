@@ -1,400 +1,446 @@
 #include "lexer.h"
-#include "helpers.h"
 #include "../../prelude.h"
 #include "../error.h"
+#include "debug.h"
+#include "helpers.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
 enum Lexicon tokenize_char(char c) {
-    uint8_t i=0;
+  uint8_t i = 0;
 
-    switch (c) {
-        case ' ': return WHITESPACE;
-        case '\n': return NEWLINE;
-        case '\t': return WHITESPACE;
-        case '\r': return WHITESPACE;
-        case '/':  return DIV;
-        case '=':  return EQUAL;
-        case '"':  return QUOTE;
-        case '{':  return BRACE_OPEN;
-        case '}':  return BRACE_CLOSE;
-        case '(':  return PARAM_OPEN;
-        case ')':  return PARAM_CLOSE;
-        case '[':  return BRACKET_OPEN;
-        case ']':  return BRACKET_CLOSE;
-        case ';':  return SEMICOLON;
-        case ',':  return COMMA;
-        case '+':  return ADD;
-        case '-':  return SUB;
-        case '*':  return MUL;
-        case '^':  return POW;
-        case '>':  return GT;
-        case '<':  return LT;
-        case '&':  return AMPER;
-        case '|':  return PIPE;
-        case '%':  return MOD;
-        case '_':  return UNDERSCORE;
-        case ':':  return COLON;
-        case '!':  return NOT;
-        case '#':  return POUND;
-        case '@':  return ATSYM;
-        case '.':  return DOT;
-        default :  break;
-    }
+  switch (c) {
+  case ' ':
+    return WHITESPACE;
+  case '\n':
+    return NEWLINE;
+  case '\t':
+    return WHITESPACE;
+  case '\r':
+    return WHITESPACE;
+  case '/':
+    return DIV;
+  case '=':
+    return EQUAL;
+  case '"':
+    return QUOTE;
+  case '{':
+    return BRACE_OPEN;
+  case '}':
+    return BRACE_CLOSE;
+  case '(':
+    return PARAM_OPEN;
+  case ')':
+    return PARAM_CLOSE;
+  case '[':
+    return BRACKET_OPEN;
+  case ']':
+    return BRACKET_CLOSE;
+  case ';':
+    return SEMICOLON;
+  case ',':
+    return COMMA;
+  case '+':
+    return ADD;
+  case '-':
+    return SUB;
+  case '*':
+    return MUL;
+  case '^':
+    return POW;
+  case '>':
+    return GT;
+  case '<':
+    return LT;
+  case '&':
+    return AMPER;
+  case '|':
+    return PIPE;
+  case '%':
+    return MOD;
+  case '_':
+    return UNDERSCORE;
+  case ':':
+    return COLON;
+  case '!':
+    return NOT;
+  case '#':
+    return POUND;
+  case '@':
+    return ATSYM;
+  case '.':
+    return DOT;
+  default:
+    break;
+  }
 
-    for (i = 0; sizeof(DIGITS) > i; i++) {
-        if (c == DIGITS[i])
-            return DIGIT;
-    }
+  for (i = 0; sizeof(DIGITS) > i; i++) {
+    if (c == DIGITS[i])
+      return DIGIT;
+  }
 
-    for (i = 0; sizeof(ALPHABET) > i; i++) {
-        if (c == ALPHABET[i])
-            return CHAR;
-    }
-    
-    return TOKEN_UNDEFINED;
+  for (i = 0; sizeof(ALPHABET) > i; i++) {
+    if (c == ALPHABET[i])
+      return CHAR;
+  }
+
+  return TOKEN_UNDEFINED;
+}
+int8_t is_compound_bin_op(enum Lexicon compound_token) {
+  return compound_token == ISEQL || compound_token == ISNEQL ||
+         compound_token == GTEQ || compound_token == LTEQ ||
+         compound_token == AND || compound_token == OR ||
+         compound_token == MINUSEQ || compound_token == PLUSEQ;
 }
 
-int8_t is_operator_complex(enum Lexicon compound_token) {
-    return (
-        compound_token == ISEQL
-        || compound_token == ISNEQL 
-        || compound_token == GTEQ 
-        || compound_token == LTEQ
-        || compound_token == AND
-        || compound_token == OR
-        || compound_token == MINUSEQ
-        || compound_token == PLUSEQ
-        || compound_token == GT
-        || compound_token == LT
-    );
+int8_t is_compound(enum Lexicon compound_token) {
+  return (compound_token == ISEQL || compound_token == ISNEQL ||
+          compound_token == GTEQ || compound_token == LTEQ ||
+          compound_token == AND || compound_token == OR ||
+          compound_token == MINUSEQ || compound_token == PLUSEQ ||
+          compound_token == INTEGER || compound_token == STRING_LITERAL ||
+          compound_token == COMMENT || compound_token == _COMPOUND_SUB);
 }
 
 int8_t can_upgrade_token(enum Lexicon token) {
-    return (
-        token == DIGIT
-        || token == CHAR
-        || token == UNDERSCORE
-        || token == QUOTE
-        || token == EQUAL
-        || token == NOT
-        || token == GT
-        || token == LT
-        || token == ADD
-        || token == SUB
-        || token == AMPER
-        || token == PIPE
-        || token == POUND
-    );
+  return (token == DIGIT || token == CHAR || token == UNDERSCORE ||
+          token == QUOTE || token == EQUAL || token == NOT || token == GT ||
+          token == LT || token == ADD || token == SUB || token == AMPER ||
+          token == PIPE || token == POUND);
+}
+int8_t can_ignore_token(enum Lexicon lexed) {
+  return lexed == WHITESPACE || lexed == NEWLINE || lexed == COMMENT;
+  //|| lexed == TOKEN_UNDEFINED;
 }
 
 int8_t set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
-    switch (token) {
-        case DIGIT: 
-            *compound_token = INTEGER;
-            break;
-        
-        case NOT: 
-            *compound_token = ISNEQL;
-            break;
+  switch (token) {
+  case DIGIT:
+    *compound_token = INTEGER;
+    break;
 
-        case CHAR:
-            *compound_token = WORD;
-            break;
-        
-        case UNDERSCORE:
-            *compound_token = WORD;
-            break;
+  case NOT:
+    *compound_token = ISNEQL;
+    break;
 
-        case QUOTE:
-            *compound_token = STRING_LITERAL;
-            break;
+  case CHAR:
+    *compound_token = WORD;
+    break;
 
-        case EQUAL:
-            *compound_token = ISEQL;
-            break;
+  case UNDERSCORE:
+    *compound_token = WORD;
+    break;
 
-        case GT:
-            *compound_token = GTEQ;
-            break;
-        
-        case LT:
-            *compound_token = LTEQ;
-            break;
-        
-        case ADD:
-            *compound_token = PLUSEQ;
-            break;
-        
-        case SUB:
-            *compound_token = MINUSEQ;
-            break;
-        
-        case AMPER:
-            *compound_token = AND;
-            break;
-        
-         case POUND:
-            *compound_token = COMMENT;
-            break;
+  case QUOTE:
+    *compound_token = STRING_LITERAL;
+    break;
 
-        case PIPE:
-            *compound_token = OR;
-            break;
+  case EQUAL:
+    *compound_token = ISEQL;
+    break;
 
-        default: return -1;
-    }
-    
-    return 0;
+  case GT:
+    *compound_token = GTEQ;
+    break;
+
+  case LT:
+    *compound_token = LTEQ;
+    break;
+
+  case ADD:
+    *compound_token = PLUSEQ;
+    break;
+
+  case SUB:
+    *compound_token = _COMPOUND_SUB;
+    break;
+
+  case AMPER:
+    *compound_token = AND;
+    break;
+
+  case POUND:
+    *compound_token = COMMENT;
+    break;
+
+  case PIPE:
+    *compound_token = OR;
+    break;
+
+  default:
+    return -1;
+  }
+
+  return 0;
 }
 
-usize token_len(struct Token *tok) {
-    return 1 + tok->end - tok->start;
-}
+usize token_len(struct Token *tok) { return 1 + tok->end - tok->start; }
 
 /*
     Returns true if `compound_token`
     should continue consuming tokens
 */
-int8_t continue_compound_token(enum Lexicon token, enum Lexicon compound_token, usize span_size) {
-    return (
-        // Integer
-        (compound_token == INTEGER && token == DIGIT) 
-        
-        // Variables
-        || (compound_token == WORD && token == CHAR)
-        || (compound_token == WORD && token == UNDERSCORE)
-        || (compound_token == WORD && token == DIGIT)
-        // ---
-        
-        // String literal
-        // "..."
-        || (compound_token == STRING_LITERAL && token != QUOTE)
-        // operators 
-        // !=
-        || (compound_token == ISNEQL && token == EQUAL && 1 > span_size)
-            // ==
-        || (compound_token == ISEQL && token == EQUAL && 1 > span_size)
-            // >=
-        || (compound_token == GTEQ && token == EQUAL && 1 > span_size)
-            // <=
-        || (compound_token == LTEQ && token == EQUAL && 1 > span_size)
-            // &&
-        || (compound_token == AND && token == AMPER && 1 > span_size)
-            // ||
-        || (compound_token == OR && token == PIPE && 1 > span_size)
-            // +=
-        || (compound_token == PLUSEQ && token == EQUAL && 1 > span_size)
-            // -=
-        || (compound_token == MINUSEQ && token == EQUAL && 1 > span_size)
-            // # ... \n
-        || (compound_token == COMMENT && token != NEWLINE)
-    );
+int8_t continue_compound_token(enum Lexicon token, enum Lexicon compound_token,
+                               usize span_size) {
+  return (
+      // Integer
+      (compound_token == INTEGER && token == DIGIT) ||
+      (compound_token == INTEGER && token == UNDERSCORE)
+      // Variables
+      || (compound_token == WORD && token == CHAR) ||
+      (compound_token == WORD && token == UNDERSCORE) ||
+      (compound_token == WORD && token == DIGIT)
+      // ---
+
+      // String literal
+      // "..."
+      || (compound_token == STRING_LITERAL && token != QUOTE)
+      // operators
+      // !=
+      || (compound_token == ISNEQL && token == EQUAL && 1 > span_size)
+      // ==
+      || (compound_token == ISEQL && token == EQUAL && 1 > span_size)
+      // >=
+      || (compound_token == GTEQ && token == EQUAL && 1 > span_size)
+      // <=
+      || (compound_token == LTEQ && token == EQUAL && 1 > span_size)
+      // &&
+      || (compound_token == AND && token == AMPER && 1 > span_size)
+      // ||
+      || (compound_token == OR && token == PIPE && 1 > span_size)
+      // +=
+      || (compound_token == PLUSEQ && token == EQUAL && 1 > span_size)
+      // -=
+      || (compound_token == MINUSEQ && token == EQUAL && 1 > span_size)
+      // # ... \n
+      || (compound_token == COMMENT && token != NEWLINE))
+      || (compound_token == _COMPOUND_SUB && (token == DIGIT || (token == EQUAL && 1 > span_size)));
 }
 
 /* used for downgrading compound tokens */
 enum Lexicon invert_operator_token(enum Lexicon compound_token) {
-    switch (compound_token) {
-        case COMMENT: return POUND;
-        case ISEQL: return EQUAL;
-        case GTEQ: return GT;
-        case LTEQ: return LT;
-        case AND: return AMPER;
-        case OR: return PIPE;
-        case MINUSEQ: return SUB;
-        case PLUSEQ: return ADD;
-        case ISNEQL: return NOT;
-        default: return TOKEN_UNDEFINED;
-    }
+  switch (compound_token) {
+  case COMMENT:
+    return POUND;
+  case ISEQL:
+    return EQUAL;
+  case GTEQ:
+    return GT;
+  case LTEQ:
+    return LT;
+  case AND:
+    return AMPER;
+  case OR:
+    return PIPE;
+  case MINUSEQ:
+    return SUB;
+  case _COMPOUND_SUB:
+    return SUB;
+  case PLUSEQ:
+    return ADD;
+  case ISNEQL:
+    return NOT;
+  default:
+    return TOKEN_UNDEFINED;
+  }
 }
 
-int8_t derive_keyword(const char * line, struct Token *t) {
-    static enum Lexicon lexicon[] = {
-        STATIC, CONST, RETURN, EXTERN, 
-        AS, IF, ELSE, FUNC_DEF, IMPORT, IMPL,
-        AND, OR
-    };
+int8_t derive_keyword(const char *line, struct Token *t) {
+  static enum Lexicon lexicon[] = {STATIC, CONST,    RETURN, EXTERN, AS,  IF,
+                                   ELSE,   FUNC_DEF, IMPORT, IMPL,   AND, OR};
 
-    static char *keywords[] = {
-        "static", "const", "return", "extern",
-        "as", "if", "else", "def", "import", "impl",
-        "and", "or", 0
-    };
+  static char *keywords[] = {"static", "const", "return", "extern", "as",
+                             "if",     "else",  "def",    "import", "impl",
+                             "and",    "or",    0};
 
-    for (int i=0; 12 > i; i++){
-        /*token.end+1 since the fields naturally are indexable*/
-        if (strlen(keywords[i]) == ((t->end+1) - t->start) 
-            && strncmp(line + t->start, keywords[i], t->end - t->start) == 0)
-        {
-            t->type = lexicon[i];
-            return 1;
-        }
+  for (int i = 0; 12 > i; i++) {
+    /*token.end+1 since the fields naturally are indexable*/
+    if (strlen(keywords[i]) == ((t->end + 1) - t->start) &&
+        strncmp(line + t->start, keywords[i], t->end - t->start) == 0) {
+      t->type = lexicon[i];
+      return 1;
     }
+  }
 
-    return 0;
+  return 0;
 }
 
-int8_t finalize_compound_token(struct Token *token, const char * line, enum Lexicon lexed, struct CompileTimeError *err) {
-    if (token->type == STRING_LITERAL) {
-        /*
-          Error: string is missing a ending quote
-        */
-        if (lexed != QUOTE) {
-            err->msg = "String missing quote.";
-            err->type = Error;
-            err->base = token;
-            return -1;
-        }
-
-        token->end += 1;
-    }
-    
-    else if (token->type == WORD)
-        derive_keyword(line, token);
-
+int8_t finalize_compound_token(struct Token *token, const char *line,
+                               enum Lexicon lexed,
+                               struct CompileTimeError *err) {
+  if (token->type == STRING_LITERAL) {
     /*
-    / check if its an operator, and that its lenth is 2
-    / if not - down grade the operator from its complex version
+      Error: string is missing a ending quote
     */
-    else if (is_operator_complex(token->type) && token->start - token->end == 0) {
-        token->type = invert_operator_token(token->type);
-        
-        /* Error: UNDEFINED/null token when inverted*/
-        if (token->type == TOKEN_UNDEFINED) {
-            err->msg = "Unknown operator.";
-            err->type = Error;
-            err->base = token;
-            return -1;
-        }
+    if (lexed != QUOTE) {
+      err->msg = "String missing quote.";
+      err->type = Error;
+      err->base = token;
+      return -1;
     }
 
-    return 0;
-}
+    token->end += 1;
+  }
 
-int8_t tokenize(
-    const char *line,
-    struct Token tokens[],
-    usize *token_ctr,
-    usize token_sz,
-    struct CompileTimeError *error
-){
-    struct Token token;
-
-    enum Lexicon lexed = TOKEN_UNDEFINED, 
-        compound_token = TOKEN_UNDEFINED;
-    
-    usize identifier = 0;
-    usize start_at = 0;
-    usize span_size = 0;
-    usize new_tokens = 0;
-
-    for (usize i=0; strlen(line) > i; i++)
+  else if (token->type == WORD)
+    derive_keyword(line, token);
+  
+  else if (token->type == _COMPOUND_SUB)
     {
-        if (line[i] == 0) continue;
-        else if (is_utf(line[i])) return -1;
-        else if (new_tokens > token_sz) return -1;
-
-        lexed = tokenize_char(line[i]);
-        
-        if (compound_token == TOKEN_UNDEFINED && can_upgrade_token(lexed))
-        {
-            set_compound_token(&compound_token, lexed); 
-            start_at = i;
-            span_size = 0;
-            continue;
-        }
-
-        /* continuation of complex token */
-        else if (continue_compound_token(lexed, compound_token, span_size)) {
-            span_size += 1;
-            continue;
-        }
-
-        else if (compound_token != TOKEN_UNDEFINED)
-        {
-            /* completion of complex token */
-            if (compound_token == COMMENT) {
-                compound_token = TOKEN_UNDEFINED;
-                lexed = NEWLINE;
-                continue;
-            }
-
-            token.start = start_at;
-            token.end = start_at+span_size;
-            token.type = compound_token;
-
-            if (finalize_compound_token(&token, line, lexed, error) == -1)
-                return -1;
-
-            tokens[new_tokens] = token;
-            identifier += 1;
-            new_tokens += 1;
-            compound_token = TOKEN_UNDEFINED;
+      if (token_len(token) > 1) {
+        if (tokenize_char(line[token->start+1]) == DIGIT)
+          token->type = INTEGER;
             
-            if (token.type == STRING_LITERAL) {
-                token.end += 1;
-                continue;
-            }
-        }
+        else if (tokenize_char(line[token->start+1]) == EQUAL)
+          token->type = MINUSEQ;
+        else
+          return -1;
+      }
+      else token->type = SUB;
+    }
+  /*
+  / check if its an operator, and that its lenth is 2
+  / if not - down grade the operator from its complex version
+  */
+  if (is_compound_bin_op(token->type) && 2 > token_len(token)) {
+    token->type = invert_operator_token(token->type);
+
+    /* Error: UNDEFINED/null token when inverted*/
+    if (token->type == TOKEN_UNDEFINED) {
+      err->msg = "Unknown operator.";
+      err->type = Error;
+      err->base = token;
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+int8_t tokenize(const char *line, struct Token tokens[], usize *token_ctr,
+                usize token_sz, struct CompileTimeError *error) {
+  struct Token token;
+  enum Lexicon current = TOKEN_UNDEFINED, compound_token = TOKEN_UNDEFINED;
+  size_t line_len = strlen(line);
+  usize start_at = 0;
+  usize span_size = 0;
+  usize new_tokens = 0;
+  bool repeating = false;
+
+  for (usize i = 0; line_len > i; i++) {
+    if (line[i] == 0)
+      continue;
+    else if (is_utf(line[i]))
+      return -1;
+    else if (new_tokens > token_sz)
+      return -1;
+
+    current = tokenize_char(line[i]);
+
+    if (compound_token == TOKEN_UNDEFINED && can_upgrade_token(current)) {
+      set_compound_token(&compound_token, current);
+      start_at = i;
+      span_size = 0;
+      continue;
+    }
+
+    /* continuation of complex token */
+    else if (continue_compound_token(current, compound_token, span_size)) {
+      if (compound_token == _COMPOUND_SUB)
+      {
+        if (current == DIGIT)
+            compound_token = INTEGER;
         
-        /* 
-            if the token can be upgraded,
-            restart the loop. 
-        */
-        if (can_upgrade_token(lexed)) {
-            i--;
-            continue;
-        }
-        /*
-            this fires for non-compound tokens,
-            this 'if statement' isn't inside an 'else-block', 
-            because if a compound token is compleed, 
-            the current token being lexed still needs to be added.
-        */
-        else if (lexed != WHITESPACE && lexed != NEWLINE && lexed != TOKEN_UNDEFINED) 
+        else if (current == EQUAL)
+            compound_token = MINUSEQ;
+        
+        else
         {
-            struct Token token = {
-                .start = i,
-                .end = i,
-                .type = lexed
-            };
-
-            compound_token = TOKEN_UNDEFINED;
-            start_at = 0;
-            tokens[new_tokens] = token;
-            new_tokens += 1;
-            identifier += 1;
-        }
-    }
-    
-    /*
-        the source code (char *line) sometimes 
-        doesn't run into a condition-branch
-        where it breaks a complex token's
-        continuation before the loop ends
-
-        so forth, if we we're minting a compound token
-        it was not stored. 
-        
-        This checks, and fixes it.
-    */
-    if (compound_token != TOKEN_UNDEFINED && compound_token != COMMENT)
-    {
-        struct Token token = {
-            .start = start_at,
-            .end = start_at+span_size,
-            .type = compound_token
-        };
-
-        if (finalize_compound_token(&token, line, lexed, error) == -1)
+            printf("%s\n", ptoken(current));
             return -1;
-
-        tokens[new_tokens] = token;
-        new_tokens += 1;
-        identifier += 1;
+        }
+      }
+      span_size += 1;
+      continue;
     }
-    // add to counter
-    *token_ctr += new_tokens;
-    return 0;
+
+    else if (compound_token != TOKEN_UNDEFINED) {
+      /* completion of complex token */
+      repeating = false;
+      if (compound_token == COMMENT) {
+        compound_token = TOKEN_UNDEFINED;
+        current = NEWLINE;
+        continue;
+      }
+
+      token.start = start_at;
+      token.end = start_at + span_size;
+      token.type = compound_token;
+
+      if (finalize_compound_token(&token, line, current, error) == -1)
+        return -1;
+
+      tokens[new_tokens] = token;
+      new_tokens += 1;
+      compound_token = TOKEN_UNDEFINED;
+
+      if (token.type == STRING_LITERAL) {
+        token.end += 1;
+        continue;
+      }
+    }
+
+    /*
+        if the token can be upgraded,
+        restart the loop.
+    */
+    if (can_upgrade_token(current)) {
+      i--;
+      continue;
+    }
+    /*
+        this fires for non-compound tokens,
+        this 'if statement' isn't inside an 'else-block',
+        because if a compound token is compleed,
+        the current token being lexed still needs to be added.
+    */
+    else if (current != WHITESPACE && current != NEWLINE &&
+             current != TOKEN_UNDEFINED) {
+      compound_token = TOKEN_UNDEFINED;
+
+      struct Token token = {.start = i, .end = i, .type = current};
+
+      start_at = 0;
+      tokens[new_tokens] = token;
+      new_tokens += 1;
+    }
+  }
+
+  /*
+      the source code (char *line) sometimes
+      doesn't run into a condition-branch
+      where it breaks a complex token's
+      continuation before the loop ends
+
+      so forth, if we we're minting a compound token
+      it was not stored.
+
+      This checks, and fixes it.
+  */
+  if (compound_token != TOKEN_UNDEFINED && compound_token != COMMENT) {
+    struct Token token = {
+        .start = start_at, .end = start_at + span_size, .type = compound_token};
+
+    if (finalize_compound_token(&token, line, current, error) == -1)
+      return -1;
+
+    tokens[new_tokens] = token;
+    new_tokens += 1;
+  }
+
+  // add to counter
+  *token_ctr += new_tokens;
+  return 0;
 }
