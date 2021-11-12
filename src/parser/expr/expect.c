@@ -18,25 +18,25 @@ void unset_flag(FLAG_T *set, FLAG_T flag){
 }
 
 FLAG_T expect_any_close_brace(){
-  return 0 | EXPECTING_CLOSE_BRACKET
+  return EXPECTING_CLOSE_BRACKET
     | EXPECTING_CLOSE_PARAM
     | EXPECTING_CLOSE_BRACE;
 }
 
 FLAG_T expect_any_open_brace(){
-  return 0 | EXPECTING_OPEN_BRACKET
+  return EXPECTING_OPEN_BRACKET
     | EXPECTING_OPEN_PARAM
     | EXPECTING_OPEN_BRACE;
 }
 
 FLAG_T expect_any_data(){
-  return 0 | EXPECTING_SYMBOL
+  return EXPECTING_SYMBOL
     | EXPECTING_INTEGER
     | EXPECTING_STRING;
 }
 
 FLAG_T expect_any_op(){
-  return 0 | EXPECTING_ARITHMETIC_OP
+  return EXPECTING_ARITHMETIC_OP
     | EXPECTING_APPLY_OPERATOR;
 }
 
@@ -55,8 +55,7 @@ FLAG_T expecting_next(enum Lexicon tok)
 
   if (is_symbolic_data(tok))
   {
-    set_flag(&ret, 0
-      | EXPECTING_ARITHMETIC_OP      
+    set_flag(&ret, EXPECTING_ARITHMETIC_OP      
       | expect_any_close_brace()
       | EXPECTING_DELIMITER);
 
@@ -73,13 +72,11 @@ FLAG_T expecting_next(enum Lexicon tok)
   
   else if (tok == DOT)
     //(a.b).
-    set_flag(&ret, 0 
-      | EXPECTING_SYMBOL
+    set_flag(&ret, EXPECTING_SYMBOL
       | EXPECTING_NEXT);
 
   else if (is_operator(tok)) {
-    set_flag(&ret, 0
-      | expect_any_data()
+    set_flag(&ret, expect_any_data()
       | expect_any_open_brace()
       | EXPECTING_NEXT
     );
@@ -90,15 +87,13 @@ FLAG_T expecting_next(enum Lexicon tok)
   }
 
   else if (tok == COMMA || tok == COLON)
-    set_flag(&ret, 0
-      | expect_any_data()
+    set_flag(&ret, expect_any_data()
       | expect_any_open_brace()
       | EXPECTING_NEXT
     );
   
   else if (is_open_brace(tok)) {
-      set_flag(&ret, 0
-        | expect_any_open_brace()
+      set_flag(&ret, expect_any_open_brace()
         | expect_any_data()
         | expect_opposite_brace(tok)
         | EXPECTING_NEXT
@@ -106,8 +101,7 @@ FLAG_T expecting_next(enum Lexicon tok)
     }
 
   else if (is_close_brace(tok))
-     set_flag(&ret, 0
-        | expect_any_close_brace()
+     set_flag(&ret, expect_any_close_brace()
         | EXPECTING_OPEN_BRACKET
         | EXPECTING_OPEN_PARAM
         | EXPECTING_DELIMITER

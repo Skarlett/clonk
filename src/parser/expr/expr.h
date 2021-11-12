@@ -215,14 +215,15 @@ struct Group {
 };
 
 
-#define FLAG_ERROR           65535
+#define FLAG_ERROR           0
 
-#define STATE_INCOMPLETE          1
-#define STATE_PANIC               2 
-#define INTERNAL_ERROR            4
+#define STATE_READY               1
+#define STATE_INCOMPLETE          2
+#define STATE_PANIC               4 
+#define INTERNAL_ERROR            8
+#define STATE_WARNING             16
 
 /* if set - warning messages are present */
-#define STATE_WARNING             8
 #define STACK_SZ 512
 struct ExprParserState {
     struct Token *src;
