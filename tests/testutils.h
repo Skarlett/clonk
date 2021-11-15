@@ -5,9 +5,6 @@
 #include "../src/prelude.h"
 #include "../src/parser/lexer/lexer.h"
 
-int8_t seq_eql_ty(struct Token tokens[], enum Lexicon lexicon[], usize len);
-int8_t seq_eql_ty_by_ref(struct Token *tokens[], enum Lexicon lexicon[], usize len);
-
 void AssertTokens(
     CuTest *tc,
     const char *src_code,
@@ -15,8 +12,7 @@ void AssertTokens(
     int line,
     const char *msg,
     const struct Token tokens[],
-    const enum Lexicon answer[],
-    usize len
+    const enum Lexicon answer[]
 );
 
 void AssertTokensByRef(
@@ -26,11 +22,28 @@ void AssertTokensByRef(
     int line,
     const char *msg,
     const struct Token *tokens[],
-    const enum Lexicon answer[],
-    usize len
+    const enum Lexicon answer[]
 );
 
-#define AssertTokensByRef(tc, src, msg, tokens, answer, len) AssertTokensByRef((tc), (src), __FILE__, __LINE__, (msg), (tokens), (answer), (len))
-#define AssertTokens(tc, src, msg, tokens, answer, len) AssertTokens((tc), (src), __FILE__, __LINE__, (msg), (tokens), (answer), (len))
+
+/**
+ *  Assert tokens match the type found in answer 
+ * @param tc: CU-test suite
+ * @param src: Source code
+ * @param msg: Error Message
+ * @param tokens: tokens to check against answers 
+ * @param answer: list of answers
+ */
+#define AssertTokensByRef(tc, src, msg, tokens, answer) AssertTokensByRef((tc), (src), __FILE__, __LINE__, (msg), (tokens), (answer))
+
+/**
+ *  Assert tokens match the type found in answer 
+ * @param tc: CU-test suite
+ * @param src: Source code
+ * @param msg: Error Message
+ * @param tokens: list of token pointers to check against answers 
+ * @param answer: list of answers
+ */
+#define AssertTokens(tc, src, msg, tokens, answer) AssertTokens((tc), (src), __FILE__, __LINE__, (msg), (tokens), (answer))
 
 #endif

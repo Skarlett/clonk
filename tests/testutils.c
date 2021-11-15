@@ -6,6 +6,9 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
+
+#define FMT_STR "%s\nexpected: \n%s\ngot: \n%s\nsrc: \"%s\""
 
 bool seq_eql_ty(
     const struct Token tokens[],
@@ -34,80 +37,70 @@ bool seq_eql_ty_by_ref(
     return true;
 }
 
-#define FMT_STR "%s\nexpected: \n%s\ngot: \n%s\nsrc:\n%s\n"
-
 void AssertTokens(
     CuTest *tc,
+    const char *source_code,
     const char *file,
     int line,
     const char *msg,
-    const char *source_code,
     const struct Token tokens[],
-    const enum Lexicon answer[],
-    usize len
+    const enum Lexicon answer[]
 ){
-    char buf[2048];
+    char uneql_msg[2048];
+    char uneql_len_msg[2048];
+    
     char got[512];
     char expected[512];
+    
+    usize len=0;
+    for (;; len++) {
+        if (answer[len] == 0){
+            break;
+        }
+    }
 
     sprintf_token_slice(tokens, len, got, 512);
     sprintf_lexicon_slice(answer, len, expected, 512);
-    sprintf(buf, FMT_STR, msg, expected, got, source_code);
+    sprintf(uneql_msg, FMT_STR, msg, expected, got, source_code);
+    sprintf(uneql_len_msg, "expected len: %ld <\n%s", len, uneql_msg);
 
-    CuAssert_Line(tc, file, line, buf, seq_eql_ty(tokens, answer) == 0);
+    CuAssert_Line(tc, file, line, uneql_len_msg, tokens[len-1].type == answer[len-1]);
+    CuAssert_Line(tc, file, line, uneql_msg, seq_eql_ty(tokens, answer) == 1);
 }
 
 void AssertTokensByRef(
     CuTest *tc,
+    const char *source_code,
     const char *file,
     int line,
     const char *msg,
-    const char *source_code,
     const struct Token *tokens[],
-    const enum Lexicon answer[],
-    usize len
+    const enum Lexicon answer[]
 ){
-    char buf[2048];
+    char uneql_msg[2048];
+    char uneql_len_msg[2048];
+    
     char got[512];
     char expected[512];
+    
+    memset(got, 0, sizeof(char[512]));
+    memset(expected, 0, sizeof(char[512]));
+    memset(uneql_len_msg, 0, sizeof(char[2048]));
+    memset(uneql_msg, 0, sizeof(char[2048]));
+
+    usize len=0;
+    for (;; len++) {
+        if (answer[len] == 0)
+            break;
+    }
+    if (len == 0)
+        return;
 
     sprintf_token_slice_by_ref(tokens, len, got, 512);
     sprintf_lexicon_slice(answer, len, expected, 512);
-    sprintf(buf, FMT_STR, msg, expected, got, source_code);
+    sprintf(uneql_msg, FMT_STR, msg, expected, got, source_code);
+    sprintf(uneql_len_msg, "%s: expected len: %ld <\n%s", msg, len, uneql_msg);
 
-    CuAssert_Line(tc, file, line, buf, seq_eql_ty_by_ref(tokens, answer) == 1);
-}
-
-void mk_toks(struct Token token[], const enum Lexicon ty[]) {
-  for (usize i = 0 ;; i++)
-    if (ty[i] == 0)
-      break;
-    else
-      token[i].type = ty[i];
-}
-
-void __test__check_tokens(CuTest* tc) {
-     struct Token toks[8];
-
-     const static enum Lexicon check_list[][16] = {
-        {INTEGER, INTEGER, ADD, 0},
-        {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},
-        {INTEGER, INTEGER, DIV, INTEGER, ADD, 0},
-        {WORD, WORD, ADD, WORD, WORD, MUL, SUB, 0},
-        {INTEGER, INTEGER, MUL, INTEGER, ADD, 0},
-        {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},
-    };
-
-
-    for (uint8_t i=0; 6 > i; i++){
-        mk_toks(toks, check_list[i]);
-        CuAssertTrue(tc, seq_eql_ty(toks, check_list[i]) == true);
-    }
-}
-
-
-CuSuite* TestUtilTestSuite(void) {
-	CuSuite* suite = CuSuiteNew();
-    SUITE_ADD_TEST(suite, __test__check_tokens);
-    return suite;
+    CuAssert_Line(tc, file, line, uneql_len_msg, tokens[len-1]->type == answer[len-1]);
+    CuAssert_Line(tc, file, line, uneql_msg, seq_eql_ty_by_ref(tokens, answer) == 1);
 }

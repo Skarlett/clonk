@@ -1,4 +1,3 @@
-#include <bits/types/__FILE.h>
 #include <string.h>
 #include <stdio.h>
 #include "../../src/utils/vec.h"
@@ -25,16 +24,18 @@ int8_t into_ref_array(
 
     return 0;
 }
+#define __SIM_ORD_PRECEDENSE_MSG_BUF_SZ 128
 
 void __test__simple_order_precedence(CuTest* tc) {
     struct Token tokens[32];
     struct ExprParserState state;
     struct Expr *ret;
 
-    char msg[128];
+    char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
     usize ntokens=0;
    
     static char * line[] = {
+        "(1 + 3) * 4",
         "1 + 2",
         "1 + 3 * 4",
         "1 / 2 + 2",
@@ -42,61 +43,65 @@ void __test__simple_order_precedence(CuTest* tc) {
         "1 * 2 + 3",
         "1 + 2 * 3",
         "(1 + 2)",
-        "(1 + 3) * 4",
-        "1 / (2 + 2)",
-        "a + (b - c) * d",
-        "1 * (2 + 3)",
-        "(1 + 2) * 3",
         "((1 + 2))",
         "(1 + 3) * 4",
         "1 / (2 + 2)",
         "a + (b - c) * d",
         "1 * (2 + 3)",
-        "(1 + 2) * 3",
         "foo.attr + 4",
         "4 + foo.attr",
         "foo.bar.attr + 2",
         "2 + foo.bar.attr",
+        "()",
+        "[]",
+        "{}",
+        "{1, 2, 3}",
+        "{1:2}",
+        "{1:2, 3:4}",
+        "{1:2+3, 3:4+5}",
+        "{(1, 2, 3):(4, 5, 6), 3:4+5}",
+        
         0
     };
 
-    static enum Lexicon check_list[][16] = {
-        {INTEGER, INTEGER, ADD},
-        {INTEGER, INTEGER, INTEGER, MUL, ADD},
-        {INTEGER, INTEGER, DIV, INTEGER, ADD},
-        {WORD, WORD, ADD, WORD, WORD, MUL, SUB},
-        {INTEGER, INTEGER, MUL, INTEGER, ADD},
-        {INTEGER, INTEGER, INTEGER, MUL, ADD},
-        {INTEGER, INTEGER, ADD},
-        {INTEGER, INTEGER, ADD, INTEGER, MUL},
-        {INTEGER, INTEGER, INTEGER, ADD, DIV},
-        {WORD, WORD, WORD, SUB, WORD, MUL, ADD},
-        {INTEGER, INTEGER, INTEGER, ADD, MUL},
-        {INTEGER, INTEGER, ADD, INTEGER, MUL},
-        {INTEGER, INTEGER, ADD},
-        {INTEGER, INTEGER, ADD, INTEGER, MUL},
-        {INTEGER, INTEGER, INTEGER, ADD, DIV},
-        {WORD, WORD, WORD, SUB, WORD, MUL, ADD},
-        {INTEGER, INTEGER, INTEGER, ADD, MUL},
-        {INTEGER, INTEGER, ADD, INTEGER, MUL},
-        {WORD, WORD, DOT, INTEGER, ADD},
-        {INTEGER, WORD, WORD, DOT, ADD},
-        {WORD, WORD, WORD, DOT, DOT, INTEGER, ADD}
+    static enum Lexicon check_list[][8] = {
+        {INTEGER, INTEGER, ADD, INTEGER, MUL, 0},
+        {INTEGER, INTEGER, ADD, 0},
+        {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},
+        {INTEGER, INTEGER, DIV, INTEGER, ADD, 0},
+        {WORD, WORD, ADD, WORD, WORD, MUL, SUB, 0},
+        {INTEGER, INTEGER, MUL, INTEGER, ADD, 0},
+        {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},
+        {INTEGER, INTEGER, ADD, 0},
+        {INTEGER, INTEGER, ADD, 0},
+        {INTEGER, INTEGER, ADD, INTEGER, MUL, 0},
+        {INTEGER, INTEGER, INTEGER, ADD, DIV, 0},
+        {WORD, WORD, WORD, SUB, WORD, MUL, ADD, 0},
+        {INTEGER, INTEGER, INTEGER, ADD, MUL, 0},
+        {WORD, WORD, DOT, INTEGER, ADD, 0},
+        {INTEGER, WORD, WORD, DOT, ADD, 0},
+        {WORD, WORD, DOT, WORD, DOT, INTEGER, ADD, 0},
+        {TupleGroup},
+        {ListGroup},
+        {SetGroup},
+        0
     };
 
-    for (usize i=0; 21 > i; i++) {
+    for (usize i=0 ;; i++) {
+        if (check_list[i][0] == 0)
+            break;
         ntokens=0;
-        memset(msg, 0, 128);
+        memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "%s:%d failed tokenizing", __FILE__, __LINE__);
         CuAssert(tc, msg, tokenize(line[i], tokens, &ntokens, 32, NULL) == 0);
         
-        memset(msg, 0, 128);
+        memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "failed on parsing expr (idx): %ld", i);
         CuAssert(tc, msg, parse_expr(line[i], tokens, ntokens, &state, ret) == 0); 
-        
-        memset(msg, 0, 128);
+
+        memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "failed on index %ld", i);
-        CuAssert(tc, msg, seq_eql_ty(state.debug.base, check_list[i], state.debug.len) == 0);
+        AssertTokensByRef(tc, line[i], msg, state.debug.base, check_list[i]);
         reset_state(&state);
     }
 }
