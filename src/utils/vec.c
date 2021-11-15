@@ -65,13 +65,3 @@ void * vec_push(struct Vec *vec, void *src)
 
     return ret;
 }
-
-void * vec_index(struct Vec *vec, usize idx)
-{
-    void * ret;
-    // realloc
-    if (idx > vec->capacity || vec->state != VEC_STATE_INITALIZED || vec->base == 0)
-        return 0;
-    
-    return vec->base + (vec->type_sz * idx);
-}
