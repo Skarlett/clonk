@@ -82,7 +82,10 @@ enum GroupT {
     TupleT,
 
     // {a, b}
-    SetT
+    SetT,
+
+    // {1; 2;}
+    CodeBlockT
 
 };
 
@@ -175,37 +178,38 @@ typedef uint16_t FLAG_T;
 
 
 #define GSTATE_EMPTY        1
-#define GSTATE_CTX_BLOCK    2
+#define GSTATE_CTX_DATA_GRP 2
+#define GSTATE_CTX_CODE_GRP 4
+#define GSTATE_CTX_MAP_GRP  8
+#define GSTATE_CTX_IDX     16
+#define GSTATE_CTX_LOCK    32
 
-#define GSTATE_CTX_LIST     4
-#define GSTATE_CTX_TUPLE    8
-#define GSTATE_CTX_SET     16
-#define GSTATE_CTX_MAP     32
-#define GSTATE_CTX_IDX     64
-#define GSTATE_CTX_LOCK   128
-#define GSTATE_OP_IDX     256
-#define GSTATE_OP_APPLY   512
-#define GSTATE_OP_GROUP   1024
-#define GSTATE_OP_IF_COND 2048
-#define GSTATE_OP_IF_BODY 4092
+
+#define GSTATE_OP_APPLY    64
+
+
+
 struct Group {
     // amount of delimiters
     uint16_t delimiter_cnt;
 
     /*
         0 : Uninitialized state
-        1 : COLON token in group
-        2 : COMMA token in group
-        4 : List context mode
-        8 : Tuple context mode
-       16 : Set context mode
-       32 : Map context mode
-       64 : Index context mode
-      (?) : Tuple context mode (without bracing)
-      128 : lock context mode
-      256 : index marker operation
-      512 : apply marker operation
-     1024 : group marker operation
+        1 : Empty grouping,
+        2 : CTX Comma data (lists, tuples, sets)
+        4 : CTX Code-block ( {a(); b();} )
+        8 : CTX Map mode {a : b};
+       16 : CTX Index mode 
+       32 : CTX Lock
+       64 : apply marker operation
+      
+      # Not in use yet
+      256 : if marker operation
+      512 : else marker operation
+     1024 : def-body operator
+     2048 : def-signature operator
+     4092 : s
+
     */
     FLAG_T state;
 
@@ -215,15 +219,13 @@ struct Group {
 };
 
 
-#define FLAG_ERROR           0
-
+#define FLAG_ERROR                0
 #define STATE_READY               1
 #define STATE_INCOMPLETE          2
 #define STATE_PANIC               4 
 #define INTERNAL_ERROR            8
 #define STATE_WARNING             16
 
-/* if set - warning messages are present */
 #define STACK_SZ 512
 struct ExprParserState {
     struct Token *src;

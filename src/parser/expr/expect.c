@@ -113,16 +113,16 @@ FLAG_T expecting_next(enum Lexicon tok)
 
 enum Lexicon get_expected_delimiter(struct Group *ghead) {
   /* setup delimiter expectation */
-  if(ghead->state == 0
-    ||check_flag(GSTATE_CTX_SET, ghead->state)
-    ||check_flag(GSTATE_CTX_LIST, ghead->state)
-    ||check_flag(GSTATE_CTX_TUPLE, ghead->state)
-  ) return COMMA;
+  if(check_flag(GSTATE_CTX_CODE_GRP, ghead->state))
+    return SEMICOLON;
+  
+  else if(check_flag(GSTATE_CTX_DATA_GRP, ghead->state))
+    return COMMA;
   
   else if (check_flag(GSTATE_CTX_IDX, ghead->state))
     return COLON;
   
-  else if (check_flag(GSTATE_CTX_MAP, ghead->state)) {
+  else if (check_flag(GSTATE_CTX_MAP_GRP, ghead->state)) {
     if (ghead->delimiter_cnt % 2 == 0)
       return COMMA;
     else
