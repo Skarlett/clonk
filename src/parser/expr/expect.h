@@ -3,7 +3,11 @@
 #include "../lexer/lexer.h"
 #include "expr.h"
 
-FLAG_T expecting_next(enum Lexicon tok);
+enum ExpectMode {
+  EMDefault,
+  EMCondBody
+};
+FLAG_T expecting_next(enum Lexicon tok, enum ExpectMode mode);
 int8_t is_token_unexpected(struct Token *current, struct Group *ghead, FLAG_T expecting);
 void unset_flag(FLAG_T *set, FLAG_T flag);
 void set_flag(FLAG_T *set, FLAG_T flag);

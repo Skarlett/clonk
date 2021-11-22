@@ -3,7 +3,6 @@
 #define _HEADER_EXPR__
 
 #include <stdint.h>
-#include <sys/types.h>
 #include "../../utils/vec.h"
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
@@ -28,6 +27,10 @@ enum ExprType {
 
     // x(a, ...)
     FnCallExprT,
+
+    // x(a, ...)
+    IfExprT,
+
 
     // binary operation
     // 1 + 2 * foo.max - size_of(list)
@@ -132,6 +135,12 @@ struct NotExpr {
     struct Expr *operand;
 };
 
+struct IfExpr {
+    struct Expr *cond;
+    struct Expr *body;
+    struct Expr *else_body;
+};
+
 struct IdxExpr {
     struct Expr * operand;
     struct Expr * start;
@@ -152,6 +161,7 @@ struct Expr {
         struct BinExpr bin;
         struct NotExpr not_;
         struct IdxExpr idx;
+        struct IfExpr cond;
 
     } inner;
 };
@@ -177,22 +187,32 @@ typedef uint16_t FLAG_T;
 */
 
 
-#define GSTATE_EMPTY        1
-#define GSTATE_CTX_DATA_GRP 2
-#define GSTATE_CTX_CODE_GRP 4
-#define GSTATE_CTX_MAP_GRP  8
-#define GSTATE_CTX_IDX     16
-#define GSTATE_CTX_LOCK    32
+#define GSTATE_EMPTY         1
+#define GSTATE_CTX_DATA_GRP  2
+#define GSTATE_CTX_CODE_GRP  4
+#define GSTATE_CTX_MAP_GRP   8
+#define GSTATE_CTX_IDX      16
+#define GSTATE_CTX_LOCK     32
+#define GSTATE_CTX_NO_DELIM 1024
+#define GSTATE_OP_APPLY     64
+#define GSTATE_CTX_IF_COND 128
+#define GSTATE_CTX_IF_BODY 256
+#define GSTATE_CTX_ELSE_BODY 512
 
-
-#define GSTATE_OP_APPLY    64
-
-
+struct Cond {
+    struct Token *origin;
+    // ';' or '{'
+    enum Lexicon expecting;
+    
+    /*
+        0 : Uninitialized state
+        1 : Condition Completed,
+        2 : Body Completed,
+    */
+    uint8_t flags;
+};
 
 struct Group {
-    // amount of delimiters
-    uint16_t delimiter_cnt;
-
     /*
         0 : Uninitialized state
         1 : Empty grouping,
@@ -212,12 +232,14 @@ struct Group {
 
     */
     FLAG_T state;
+    
+    // amount of delimiters
+    uint16_t delimiter_cnt;
 
     // should be `[` `(` '{' or `0`
     struct Token *origin;
     struct Token *last_delim;
 };
-
 
 #define FLAG_ERROR                0
 #define STATE_READY               1
@@ -226,29 +248,45 @@ struct Group {
 #define INTERNAL_ERROR            8
 #define STATE_WARNING             16
 
-#define STACK_SZ 512
+#define STATE_CTX_ERROR 0
+#define STATE_CTX_DEFAULT 1
+
+#define STATE_CTX_RETURN_BODY 2
+#define STATE_CTX_IF_HEAD 4
+#define STATE_CTX_IF_BODY 8
+#define STATE_CTX_ACCEPT_ELSE 16
+#define STATE_CTX_ELSE_BODY 32
+
+
+#define STACK_SZ                 512
 struct ExprParserState {
     struct Token *src;
     usize src_sz;
     usize *_i;
     char * line;
 
+    /* Tree construction happens in this stack */
     struct Expr *expr_stack[STACK_SZ];
-    u_int8_t canary_expr;
     
+    /* a stack of pending operations (see shunting yard) */
     struct Token *operator_stack[STACK_SZ];
-    u_int8_t canary_op;
     
+    /* tracks opening braces in the operator stack */
     struct Group set_stack[STACK_SZ];
-    u_int8_t canary_set;
     
-    usize set_ctr;
-    uint16_t operators_ctr;
-    usize expr_ctr;
+    struct Cond cond_stack[STACK_SZ];
 
-    usize expr_sz;
+    /* tracks opening braces in the operator stack */
+    struct Group prev_set_stack[16];
+
+    uint16_t set_ctr;
+    uint16_t operators_ctr;
+    uint16_t expr_ctr;
+    uint16_t cond_ctr;
+    
+    uint16_t expr_sz;
     uint16_t operator_stack_sz;
-    usize set_sz;
+    uint16_t set_sz;
 
     /* Vec<struct Expr> */
     struct Vec expr_pool;
@@ -261,6 +299,8 @@ struct ExprParserState {
 
     /*Vec<struct CompileTimeError>*/
     struct Vec errors;
+
+    FLAG_T ctx;
 
     FLAG_T expecting;
     FLAG_T panic_flags;

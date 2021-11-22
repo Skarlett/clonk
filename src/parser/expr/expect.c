@@ -3,6 +3,7 @@
 #include "../lexer/lexer.h"
 #include "../lexer/helpers.h"
 
+
 /*
     check flag, and if present, unset it.
 */
@@ -49,8 +50,11 @@ FLAG_T expect_opposite_brace(enum Lexicon brace){
   } 
 }
 
-FLAG_T expecting_next(enum Lexicon tok)
-{
+FLAG_T expecting_if_body() {
+  return expect_any_open_brace() | expect_any_data() | EXPECTING_NEXT;
+}
+
+FLAG_T expecting_mdefault(enum Lexicon tok){
   FLAG_T ret = FLAG_ERROR;
 
   if (is_symbolic_data(tok))
@@ -92,6 +96,10 @@ FLAG_T expecting_next(enum Lexicon tok)
       | EXPECTING_NEXT
     );
   
+  else if (tok == IF) {
+    set_flag(&ret, EXPECTING_OPEN_PARAM | EXPECTING_NEXT);
+  }
+
   else if (is_open_brace(tok)) {
       set_flag(&ret, expect_any_open_brace()
         | expect_any_data()
@@ -109,6 +117,18 @@ FLAG_T expecting_next(enum Lexicon tok)
     );
   
   return ret;
+}
+
+
+FLAG_T expecting_next(enum Lexicon tok, enum ExpectMode mode)
+{
+  if (mode == EMDefault) 
+    return expecting_mdefault(tok);
+
+  else if (mode == EMCondBody)
+    return expecting_if_body();
+  
+  else return FLAG_ERROR;
 }
 
 enum Lexicon get_expected_delimiter(struct Group *ghead) {
@@ -154,7 +174,7 @@ int8_t is_token_unexpected(struct Token *current, struct Group *ghead, FLAG_T ex
     if (delim == current->type)
       flag = EXPECTING_DELIMITER;
   }
-
+  
   else
   {  
     switch (current->type) {
