@@ -72,6 +72,8 @@ enum Lexicon tokenize_char(char c) {
     return ATSYM;
   case '.':
     return DOT;
+  case '~':
+    return TILDE;
   default:
     break;
   }
@@ -88,89 +90,105 @@ enum Lexicon tokenize_char(char c) {
 
   return TOKEN_UNDEFINED;
 }
-int8_t is_compound_bin_op(enum Lexicon compound_token) {
-  return compound_token == ISEQL || compound_token == ISNEQL ||
-         compound_token == GTEQ || compound_token == LTEQ ||
-         compound_token == AND || compound_token == OR ||
-         compound_token == MINUSEQ || compound_token == PLUSEQ;
-}
 
-int8_t is_compound(enum Lexicon compound_token) {
-  return (compound_token == ISEQL || compound_token == ISNEQL ||
-          compound_token == GTEQ || compound_token == LTEQ ||
-          compound_token == AND || compound_token == OR ||
-          compound_token == MINUSEQ || compound_token == PLUSEQ ||
-          compound_token == INTEGER || compound_token == STRING_LITERAL ||
-          compound_token == COMMENT || compound_token == _COMPOUND_SUB);
+int8_t is_compound_bin_op(enum Lexicon tok) {
+  return 
+    tok == ISEQL 
+    || tok == ISNEQL
+    || tok == GTEQ
+    || tok == LTEQ
+    || tok == AND
+    || tok == OR
+    || tok == MINUSEQ
+    || tok == PLUSEQ
+    || tok == PIPEOP
+    || tok == SHR
+    || tok == SHL
+    || tok == BOREQL
+    || tok == BANDEQL
+    || tok == BNEQL;
 }
 
 int8_t can_upgrade_token(enum Lexicon token) {
-  return (token == DIGIT || token == CHAR || token == UNDERSCORE ||
-          token == QUOTE || token == EQUAL || token == NOT || token == GT ||
-          token == LT || token == ADD || token == SUB || token == AMPER ||
-          token == PIPE || token == POUND);
+  return token == DIGIT
+    || token == CHAR
+    || token == UNDERSCORE
+    || token == QUOTE
+    || token == EQUAL
+    || token == NOT
+    || token == GT
+    || token == LT
+    || token == ADD
+    || token == SUB
+    || token == AMPER
+    || token == PIPE
+    || token == POUND
+    || token == TILDE;
 }
 int8_t can_ignore_token(enum Lexicon lexed) {
   return lexed == WHITESPACE || lexed == NEWLINE || lexed == COMMENT;
-  //|| lexed == TOKEN_UNDEFINED;
 }
 
 int8_t set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
   switch (token) {
-  case DIGIT:
-    *compound_token = INTEGER;
-    break;
+    case DIGIT:
+      *compound_token = INTEGER;
+      break;
 
-  case NOT:
-    *compound_token = ISNEQL;
-    break;
+    case NOT:
+      *compound_token = ISNEQL;
+      break;
 
-  case CHAR:
-    *compound_token = WORD;
-    break;
+    case CHAR:
+      *compound_token = WORD;
+      break;
 
-  case UNDERSCORE:
-    *compound_token = WORD;
-    break;
+    case UNDERSCORE:
+      *compound_token = WORD;
+      break;
 
-  case QUOTE:
-    *compound_token = STRING_LITERAL;
-    break;
+    case QUOTE:
+      *compound_token = STRING_LITERAL;
+      break;
 
-  case EQUAL:
-    *compound_token = ISEQL;
-    break;
+    case EQUAL:
+      *compound_token = ISEQL;
+      break;
 
-  case GT:
-    *compound_token = GTEQ;
-    break;
+    case ADD:
+      *compound_token = PLUSEQ;
+      break;
+    
+    case GT:
+      *compound_token = _COMPOUND_GT;
+      break;
 
-  case LT:
-    *compound_token = LTEQ;
-    break;
+    case LT:
+      *compound_token = _COMPOUND_LT;
+      break;
 
-  case ADD:
-    *compound_token = PLUSEQ;
-    break;
+    case SUB:
+      *compound_token = _COMPOUND_SUB;
+      break;
 
-  case SUB:
-    *compound_token = _COMPOUND_SUB;
-    break;
+    case AMPER:
+      *compound_token = _COMPOUND_AMPER;
+      break;
 
-  case AMPER:
-    *compound_token = AND;
-    break;
+    case PIPE:
+      *compound_token = _COMPOUND_PIPE;
+      break;
+    
+    case POUND:
+      *compound_token = COMMENT;
+      break;
 
-  case POUND:
-    *compound_token = COMMENT;
-    break;
-
-  case PIPE:
-    *compound_token = OR;
-    break;
-
-  default:
-    return -1;
+    case TILDE:
+      *compound_token = BNEQL;
+      break;
+    
+    default:
+      return -1;
   }
 
   return 0;
@@ -182,41 +200,45 @@ usize token_len(struct Token *tok) { return 1 + tok->end - tok->start; }
     Returns true if `compound_token`
     should continue consuming tokens
 */
-int8_t continue_compound_token(enum Lexicon token, enum Lexicon compound_token,
-                               usize span_size) {
+int8_t continue_compound_token(
+  enum Lexicon token,
+  enum Lexicon compound_token,
+  usize span_size
+){
   return (
-      // Integer
-      (compound_token == INTEGER && token == DIGIT) ||
-      (compound_token == INTEGER && token == UNDERSCORE)
-      // Variables
-      || (compound_token == WORD && token == CHAR) ||
-      (compound_token == WORD && token == UNDERSCORE) ||
-      (compound_token == WORD && token == DIGIT)
-      // ---
-
-      // String literal
-      // "..."
-      || (compound_token == STRING_LITERAL && token != QUOTE)
-      // operators
-      // !=
-      || (compound_token == ISNEQL && token == EQUAL && 1 > span_size)
-      // ==
-      || (compound_token == ISEQL && token == EQUAL && 1 > span_size)
-      // >=
-      || (compound_token == GTEQ && token == EQUAL && 1 > span_size)
-      // <=
-      || (compound_token == LTEQ && token == EQUAL && 1 > span_size)
-      // &&
-      || (compound_token == AND && token == AMPER && 1 > span_size)
-      // ||
-      || (compound_token == OR && token == PIPE && 1 > span_size)
-      // +=
-      || (compound_token == PLUSEQ && token == EQUAL && 1 > span_size)
-      // -=
-      || (compound_token == MINUSEQ && token == EQUAL && 1 > span_size)
       // # ... \n
-      || (compound_token == COMMENT && token != NEWLINE))
-      || (compound_token == _COMPOUND_SUB && (token == DIGIT || (token == EQUAL && 1 > span_size)));
+      compound_token == COMMENT && token != NEWLINE
+      || compound_token == INTEGER && token == DIGIT
+      
+      // ints
+      || compound_token == INTEGER && token == UNDERSCORE
+      
+      // Variables
+      || compound_token == WORD && token == CHAR
+      || compound_token == WORD && token == UNDERSCORE
+      || compound_token == WORD && token == DIGIT
+      
+      // String literal "..."
+      || compound_token == STRING_LITERAL && token != QUOTE
+      // !=
+      || compound_token == ISNEQL && token == EQUAL && 1 > span_size
+      // ==
+      || compound_token == ISEQL && token == EQUAL && 1 > span_size
+      // +=
+      || compound_token == PLUSEQ && token == EQUAL && 1 > span_size
+      // ~=
+      || compound_token == BNEQL && token == EQUAL && 1 > span_size
+      //  `-=` or `-123`
+      || compound_token == _COMPOUND_SUB && (token == DIGIT || token == EQUAL && 1 > span_size)
+      // `|=`, `|>`, `||`
+      || (compound_token == _COMPOUND_PIPE && (token == EQUAL || token == GT || token == PIPE) && 1 > span_size)
+      // `&=` `&&`
+      || (compound_token == _COMPOUND_AMPER && (token == AMPER || token == EQUAL) && 1 > span_size)
+      // `>=` `>>`
+      || (compound_token == _COMPOUND_GT && (token == GT || token == EQUAL) && 1 > span_size)
+      // `<<` `<=`
+      || (compound_token == _COMPOUND_LT && (token == LT || token == EQUAL) && 1 > span_size)
+  );    
 }
 
 /* used for downgrading compound tokens */
@@ -224,22 +246,48 @@ enum Lexicon invert_operator_token(enum Lexicon compound_token) {
   switch (compound_token) {
   case COMMENT:
     return POUND;
-  case ISEQL:
-    return EQUAL;
+  
+  case BNEQL:
+    return TILDE;
+  
+  case _COMPOUND_GT:
+    return GT;
+  case SHR:
+    return GT;
   case GTEQ:
     return GT;
+  
+  case _COMPOUND_LT:
+    return LT;
+  case SHL:
+    return LT;
   case LTEQ:
     return LT;
+  
+  case _COMPOUND_AMPER:
+    return AMPER;
   case AND:
     return AMPER;
+  case BANDEQL:
+    return AMPER;
+  
+  case _COMPOUND_PIPE:
+    return PIPE;
+  case PIPEOP:
+    return PIPE;
+  case BOREQL:
+    return PIPE;
   case OR:
     return PIPE;
-  case MINUSEQ:
-    return SUB;
+  
   case _COMPOUND_SUB:
     return SUB;
+  
   case PLUSEQ:
     return ADD;
+  
+  case ISEQL:
+    return EQUAL;
   case ISNEQL:
     return NOT;
   default:
@@ -248,12 +296,16 @@ enum Lexicon invert_operator_token(enum Lexicon compound_token) {
 }
 
 int8_t derive_keyword(const char *line, struct Token *t) {
-  static enum Lexicon lexicon[] = {STATIC, CONST,    RETURN, EXTERN, AS,  IF,
-                                   ELSE,   FUNC_DEF, IMPORT, IMPL,   AND, OR};
+  static enum Lexicon lexicon[] = {
+    STATIC, CONST,    RETURN, EXTERN, AS,  IF,
+    ELSE,   FUNC_DEF, IMPORT, IMPL,   AND, OR
+  };
 
-  static char *keywords[] = {"static", "const", "return", "extern", "as",
-                             "if",     "else",  "def",    "import", "impl",
-                             "and",    "or",    0};
+  static char *keywords[] = {
+    "static", "const", "return", "extern", "as",
+     "if",     "else",  "def",    "import", "impl",
+     "and",    "or",    0
+  };
 
   for (int i = 0; 12 > i; i++) {
     /*token.end+1 since the fields naturally are indexable*/
@@ -267,9 +319,11 @@ int8_t derive_keyword(const char *line, struct Token *t) {
   return 0;
 }
 
-int8_t finalize_compound_token(struct Token *token, const char *line,
-                               enum Lexicon lexed,
-                               struct CompileTimeError *err) {
+int8_t finalize_compound_token(
+  struct Token *token, const char *line,
+  enum Lexicon lexed,
+  struct CompileTimeError *err)
+{
   if (token->type == STRING_LITERAL) {
     /*
       Error: string is missing a ending quote
@@ -286,25 +340,12 @@ int8_t finalize_compound_token(struct Token *token, const char *line,
 
   else if (token->type == WORD)
     derive_keyword(line, token);
-  
-  else if (token->type == _COMPOUND_SUB)
-    {
-      if (token_len(token) > 1) {
-        if (tokenize_char(line[token->start+1]) == DIGIT)
-          token->type = INTEGER;
-            
-        else if (tokenize_char(line[token->start+1]) == EQUAL)
-          token->type = MINUSEQ;
-        else
-          return -1;
-      }
-      else token->type = SUB;
-    }
+
   /*
   / check if its an operator, and that its lenth is 2
   / if not - down grade the operator from its complex version
   */
-  if (is_compound_bin_op(token->type) && 2 > token_len(token)) {
+  if (2 > token_len(token) && is_compound_bin_op(token->type)) {
     token->type = invert_operator_token(token->type);
 
     /* Error: UNDEFINED/null token when inverted*/
@@ -319,8 +360,63 @@ int8_t finalize_compound_token(struct Token *token, const char *line,
   return 0;
 }
 
-int8_t tokenize(const char *line, struct Token tokens[], usize *token_ctr,
-                usize token_sz, struct CompileTimeError *error) {
+int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
+  if (ctok == _COMPOUND_SUB)
+  {
+    if (current == DIGIT)
+      return INTEGER;
+        
+    else if (current == EQUAL)
+      return MINUSEQ;
+  }
+
+  else if (ctok == _COMPOUND_PIPE)
+  {
+    if (current == PIPE)
+      return OR;
+
+    else if (current == GT)
+      return PIPEOP;
+
+    else if (current == EQUAL)
+      return BOREQL;
+  }
+
+  else if (ctok == _COMPOUND_AMPER)
+  {
+    if (current == AMPER)
+      return AND;
+
+    else if (current == EQUAL)
+      return BANDEQL;
+  }
+
+  else if (ctok == _COMPOUND_LT)
+  {
+    if(current == LT)
+      return SHL;
+
+    else if (current == EQUAL)
+      return LTEQ;
+  }
+
+  else if (ctok == _COMPOUND_GT)
+  {
+    if(current == GT)
+      return SHR;
+
+    else if (current == EQUAL)
+      return GTEQ;
+  }
+
+  return 0;
+}
+
+int8_t tokenize(
+  const char *line,
+  struct Token tokens[], usize *token_ctr,
+  usize token_sz, struct CompileTimeError *error
+){
   struct Token token;
   enum Lexicon current = TOKEN_UNDEFINED, compound_token = TOKEN_UNDEFINED;
   size_t line_len = strlen(line);
@@ -332,8 +428,10 @@ int8_t tokenize(const char *line, struct Token tokens[], usize *token_ctr,
   for (usize i = 0; line_len > i; i++) {
     if (line[i] == 0)
       continue;
+      
     else if (is_utf(line[i]))
       return -1;
+    
     else if (new_tokens > token_sz)
       return -1;
 
@@ -348,20 +446,7 @@ int8_t tokenize(const char *line, struct Token tokens[], usize *token_ctr,
 
     /* continuation of complex token */
     else if (continue_compound_token(current, compound_token, span_size)) {
-      if (compound_token == _COMPOUND_SUB)
-      {
-        if (current == DIGIT)
-            compound_token = INTEGER;
-        
-        else if (current == EQUAL)
-            compound_token = MINUSEQ;
-        
-        else
-        {
-            printf("%s\n", ptoken(current));
-            return -1;
-        }
-      }
+      compound_token = compose_compound(compound_token, current);
       span_size += 1;
       continue;
     }

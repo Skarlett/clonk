@@ -11,6 +11,8 @@
 #define DIGITS "1234567890"
 
 enum Lexicon {
+    // end of file
+    EOFT = 255,
     TOKEN_UNDEFINED = 0,
     
     NULLTOKEN,
@@ -40,7 +42,7 @@ enum Lexicon {
     
     // )
     PARAM_CLOSE,
-
+    
     // !
     NOT,
 
@@ -50,17 +52,26 @@ enum Lexicon {
     // -
     SUB,
 
-    // for -123 or -=
-    _COMPOUND_SUB,
+    //
+    _COMPOUND_GT,
 
     // >
     GT,
 
-    // <
-    LT,
+    // >>
+    SHR,
 
     // >=
     GTEQ,
+
+    //
+    _COMPOUND_LT,
+
+    // <
+    LT,
+    
+    // <<
+    SHL,
 
     // <=
     LTEQ,
@@ -91,18 +102,38 @@ enum Lexicon {
 
     // !=
     ISNEQL,
-    
-    // &
-    AMPER,
+
+    // may turn into BOREQL or PIPEOP or OR 
+    _COMPOUND_PIPE,
 
     // |
     PIPE,
 
-    // &&
-    AND,
+    // |>
+    PIPEOP,
+
+    // |=
+    BOREQL,
 
     // ||
     OR,
+
+    _COMPOUND_AMPER,
+
+    // &
+    AMPER,
+
+    // &=
+    BANDEQL,
+
+    // &&
+    AND,
+
+    // ~
+    TILDE,
+    
+    // ~=
+    BNEQL,
 
     // "
     QUOTE,
@@ -133,11 +164,15 @@ enum Lexicon {
     
     // ,
     COMMA,
-    //********* START OF COMPLEX TOKENS ********
-    // Complex tokens wont show up in the first round of lexer'ing
-    // they're generated from combinations of tokens
-    // "fn"
-    //********* START OF COMPLEX LEXICONS ********
+
+    /********* START OF COMPLEX TOKENS ********
+    * Complex tokens wont show up in the first round of lexer'ing
+    * they're generated from combinations of tokens
+    * "fn"
+    ********** START OF COMPLEX LEXICONS ********/
+
+    // -123 or -=
+    _COMPOUND_SUB,
 
     // [NUM, ..] WHITESPACE|SEMICOLON   
     // 20392
@@ -178,9 +213,6 @@ enum Lexicon {
     //import
     IMPORT,
     
-    // end of file
-    EOFT = 255,
-    
     //impl
     IMPL,
     
@@ -188,26 +220,7 @@ enum Lexicon {
         this is a 'pretend' token used 
         internally by expression
     */
-    /*
-      INDEX_ACCESS acts as a function in the postfix representation
-      that takes 4 arugments off the stack
-      'source, start, end, skip' in that order.
-      
-      when INDEX_ACCESS arguments maybe padded with NULLTOKENS
-      inserted by the first stage or the user.
-      NULLTOKENS when parsed into expression trees 
-      will assume their value based on position except
-      for the first argument (the source being index).
-      The 2nd argument (start) will assume 0 if NULLTOKEN is present.
-      The 3rd argument (end) will assume the length of the array if NULLTOKEN is present.
-      The 4th (skip) will assume 1 if NULLTOKEN is present.
-  
-      Examples:
-        token output: WORD   INTEGER INTEGER INTEGER INDEX_ACCESS 
-                      source start   end     skip    operator
-                text: foo[1::2]
-          postfix-IR: foo 1 NULL 2 INDEX_ACCESS
-    */
+
     _IdxAccess, 
 
     // foo(a)(b)
@@ -258,12 +271,7 @@ enum Lexicon {
     SetGroup,   // {x,x}
     
     CodeBlock,  // {x; x;} or {x; x}
-    IfMarker,
-    ElseMarker, 
-    EndMarker, // end if/else
-    RetMarker, // return
 
-    DefMarker, // def
 
 };
 
