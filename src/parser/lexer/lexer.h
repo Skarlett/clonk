@@ -272,7 +272,10 @@ enum Lexicon {
     
     CodeBlock,  // {x; x;} or {x; x}
 
-
+    IfCond,
+    IfBody,
+    DefSign,
+    DefBody
 };
 
 /*
