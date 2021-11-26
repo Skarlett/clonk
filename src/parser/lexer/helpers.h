@@ -36,6 +36,16 @@ bool is_cmp_operator(enum Lexicon compound_token);
 
 
 /**
+ * checks if `cmp` is inside of `buffer`
+ *
+ * @param cmp item being searched
+ * @param buffer collection to be searched
+ * @return bool
+ */
+bool contains_tok(enum Lexicon cmp, enum Lexicon *buffer);
+
+
+/**
  * Check if the parameter `token` is equal the token type 
  *   ADD, SUB, DIV, MOD, MUL,
  *   AND, OR, ACCESS, DOT, 

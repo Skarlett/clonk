@@ -131,7 +131,7 @@ enum Lexicon {
 
     // ~
     TILDE,
-    
+
     // ~=
     BNEQL,
 
@@ -159,7 +159,7 @@ enum Lexicon {
     // a-zA-Z
     CHAR,
 
-    // 0-9
+    // 0-9 *single digit
     DIGIT,
     
     // ,
