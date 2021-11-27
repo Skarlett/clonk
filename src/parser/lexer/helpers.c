@@ -47,18 +47,24 @@ bool is_assignment_operator(enum Lexicon token) {
         || token == PLUSEQ
     );
 }
+
 /*
-    returns bool if token is a binary operator
+   returns bool if token is a binary operator
 */
 bool is_operator(enum Lexicon token) {
-    return (token == ISEQL
+    return (
+        /* comparison operators */
+        token == ISEQL
         || token == ISNEQL 
         || token == GTEQ 
         || token == LTEQ
-        || token == AND
-        || token == OR
         || token == GT
         || token == LT
+        /* logic operators */
+        || token == OR
+        || token == AND
+        || token == NOT
+        /* arithmetic */
         || token == ADD
         || token == SUB
         || token == MUL
@@ -67,12 +73,32 @@ bool is_operator(enum Lexicon token) {
         || token == MOD
         || token == DIV
         || token == DOT
+        /* assignments */
         || token == EQUAL
         || token == MINUSEQ
         || token == PLUSEQ
-        || token == NOT
+	/* bitwise operations */
+	|| token == BOREQL
+	|| token == BANDEQL
+	|| token == PIPE
+	|| token == AMPER
+	|| token == SHL
+	|| token == SHR
+	/* experimental */
+	|| token == PIPEOP
     );
 }
+
+bool contains_tok(enum Lexicon cmp, enum Lexicon buffer[]) {
+  for (uint16_t i;;i++)
+    if(buffer[i] == 0) break;
+    else if (buffer[i] == cmp)
+      return true;
+  
+  return false;
+}
+
+
 
 /* is character utf encoded */
 bool is_utf(char ch) {
@@ -93,7 +119,7 @@ enum Lexicon invert_brace_tok_ty(enum Lexicon token) {
         case BRACE_CLOSE: return BRACE_OPEN;
         case BRACKET_CLOSE: return BRACKET_OPEN;
         case BRACKET_OPEN: return BRACKET_CLOSE;
-        default: return UNDEFINED;
+        default: return TOKEN_UNDEFINED;
     }
 }
 
@@ -130,9 +156,9 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
 }
 
 /* 
-    function determines if an expression is unbalanced.
-    an expression can be unbalanced 
-    if there is a nonmatching `[` / `(` / `{` character
+ *  function determines if an expression is unbalanced.
+ *  an expression can be unbalanced 
+ *  if there is a nonmatching `[` / `(` / `{` character
 */
 int8_t is_balanced(struct Token tokens[], usize ntokens) {
     enum Lexicon braces[BRACE_BUFFER_SZ];

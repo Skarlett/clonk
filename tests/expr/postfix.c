@@ -1,14 +1,14 @@
 #include <string.h>
 #include <stdio.h>
+#include "../../src/utils/vec.h"
 #include "../../src/parser/lexer/lexer.h"
 #include "../../src/parser/lexer/helpers.h"
 #include "../../src/parser/expr/expr.h"
 #include "../../src/parser/expr/debug.h"
 #include "../../src/prelude.h"
 #include "../../src/parser/error.h"
-#include "../common.h"
+#include "../testutils.h"
 #include "../CuTest.h"
-
 
 int8_t into_ref_array(
     struct Token input[],
@@ -24,129 +24,85 @@ int8_t into_ref_array(
 
     return 0;
 }
-
+#define __SIM_ORD_PRECEDENSE_MSG_BUF_SZ 128
 
 void __test__simple_order_precedence(CuTest* tc) {
-    usize ntokens=0, nqueue=0, nout = 0;
-    struct Token tokens[32],
-        *queue[32],
-        *output[32];
-    
+    struct Token tokens[32];
+    struct ExprParserState state;
+    struct Expr *ret;
+
+    char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
+    usize ntokens=0;
+   
     static char * line[] = {
+        "(1 + 3) * 4",
         "1 + 2",
         "1 + 3 * 4",
         "1 / 2 + 2",
         "a + b - c * d",
         "1 * 2 + 3",
         "1 + 2 * 3",
-        0
-    };
-    
-    char msg[64]; 
-
-    static enum Lexicon check_list[][16] = {
-        {INTEGER, INTEGER, ADD},
-        {INTEGER, INTEGER, INTEGER, MUL, ADD},
-        {INTEGER, INTEGER, DIV, INTEGER, ADD},
-        {WORD, WORD, ADD, WORD, WORD, MUL, SUB},
-        {INTEGER, INTEGER, MUL, INTEGER, ADD},
-        {INTEGER, INTEGER, INTEGER, MUL, ADD},
-
-    };
-
-    for (usize i=0; 6 > i; i++) {
-        ntokens=0;
-        CuAssertTrue(tc, tokenize(line[i], tokens, &ntokens, NULL) == 0);
-        CuAssertTrue(tc, into_ref_array(tokens, queue, ntokens, 32) == 0);
-
-        sprintf(msg, "failed on index %ld", i);
-
-        CuAssertTrue(tc, postfix_expr(queue, ntokens, output, 32, &nout, NULL) == 0);  
-        
-        AssertTokensByRef(tc, msg, output, check_list[i], nout);
-    }
-}
-
-void __test__order_precedence(CuTest* tc) {
-    usize ntokens=0, nqueue=0, nout = 0;
-    struct Token tokens[32],
-        *queue[32],
-        *output[32];
-    
-    static char * line[] = {
         "(1 + 2)",
-        "(1 + 3) * 4",
-        "1 / (2 + 2)",
-        "a + (b - c) * d",
-        "1 * (2 + 3)",
-        "(1 + 2) * 3",
-        0
-    };
-    
-    char msg[64]; 
-
-    static enum Lexicon check_list[][16] = {
-        {INTEGER, INTEGER, ADD},
-        {INTEGER, INTEGER, ADD, INTEGER, MUL},
-        {INTEGER, INTEGER, INTEGER, ADD, DIV},
-        {WORD, WORD, WORD, SUB, WORD, MUL, ADD},
-        {INTEGER, INTEGER, INTEGER, ADD, MUL},
-        {INTEGER, INTEGER, ADD, INTEGER, MUL},
-    };
-
-    for (usize i=0; 6 > i; i++) {
-        ntokens=0;
-        CuAssertTrue(tc, tokenize(line[i], tokens, &ntokens, NULL) == 0);
-        CuAssertTrue(tc, into_ref_array(tokens, queue, ntokens, 32) == 0);
-
-        sprintf(msg, "failed on index %ld", i);
-
-        CuAssertTrue(tc, postfix_expr(queue, ntokens, output, 32, &nout, NULL) == 0);  
-        
-        AssertTokensByRef(tc, msg, output, check_list[i], nout);
-    }
-}
-
-/*
-        TODO
-*/
-void __test__order_precedence_not(CuTest* tc) {
-    usize ntokens=0, nqueue=0, nout = 0;
-    struct Token tokens[32],
-        *queue[32],
-        *output[32];
-    
-    static char * line[] = {
         "((1 + 2))",
         "(1 + 3) * 4",
         "1 / (2 + 2)",
         "a + (b - c) * d",
         "1 * (2 + 3)",
-        "(1 + 2) * 3",
+        "foo.attr + 4",
+        "4 + foo.attr",
+        "foo.bar.attr + 2",
+        "2 + foo.bar.attr",
+        "()",
+        "[]",
+        "{}",
+        "{1, 2, 3}",
+        "{1:2}",
+        "{1:2, 3:4}",
+        "{1:2+3, 3:4+5}",
+        "{(1, 2, 3):(4, 5, 6), 3:4+5}",
+        
         0
     };
-    
-    char msg[64]; 
 
-    static enum Lexicon check_list[][16] = {
-        {INTEGER, INTEGER, ADD},
-        {INTEGER, INTEGER, ADD, INTEGER, MUL},
-        {INTEGER, INTEGER, INTEGER, ADD, DIV},
-        {WORD, WORD, WORD, SUB, WORD, MUL, ADD},
-        {INTEGER, INTEGER, INTEGER, ADD, MUL},
-        {INTEGER, INTEGER, ADD, INTEGER, MUL},
+    static enum Lexicon check_list[][8] = {
+        {INTEGER, INTEGER, ADD, INTEGER, MUL, 0},
+        {INTEGER, INTEGER, ADD, 0},
+        {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},
+        {INTEGER, INTEGER, DIV, INTEGER, ADD, 0},
+        {WORD, WORD, ADD, WORD, WORD, MUL, SUB, 0},
+        {INTEGER, INTEGER, MUL, INTEGER, ADD, 0},
+        {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},
+        {INTEGER, INTEGER, ADD, 0},
+        {INTEGER, INTEGER, ADD, 0},
+        {INTEGER, INTEGER, ADD, INTEGER, MUL, 0},
+        {INTEGER, INTEGER, INTEGER, ADD, DIV, 0},
+        {WORD, WORD, WORD, SUB, WORD, MUL, ADD, 0},
+        {INTEGER, INTEGER, INTEGER, ADD, MUL, 0},
+        {WORD, WORD, DOT, INTEGER, ADD, 0},
+        {INTEGER, WORD, WORD, DOT, ADD, 0},
+        {WORD, WORD, DOT, WORD, DOT, INTEGER, ADD, 0},
+        {TupleGroup},
+        {ListGroup},
+        {SetGroup},
+        0
     };
 
-    for (usize i=0; 6 > i; i++) {
+    for (usize i=0 ;; i++) {
+        if (check_list[i][0] == 0)
+            break;
         ntokens=0;
-        CuAssertTrue(tc, tokenize(line[i], tokens, &ntokens, NULL) == 0);
-        CuAssertTrue(tc, into_ref_array(tokens, queue, ntokens, 32) == 0);
-
-        sprintf(msg, "failed on index %ld", i);
-
-        CuAssertTrue(tc, postfix_expr(queue, ntokens, output, 32, &nout, NULL) == 0);  
+        memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
+        sprintf(msg, "%s:%d failed tokenizing", __FILE__, __LINE__);
+        CuAssert(tc, msg, tokenize(line[i], tokens, &ntokens, 32, NULL) == 0);
         
-        AssertTokensByRef(tc, msg, output, check_list[i], nout);
+        memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
+        sprintf(msg, "failed on parsing expr (idx): %ld", i);
+        CuAssert(tc, msg, parse_expr(line[i], tokens, ntokens, &state, ret) == 0); 
+
+        memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
+        sprintf(msg, "failed on index %ld", i);
+        AssertTokensByRef(tc, line[i], msg, state.debug.base, check_list[i]);
+        reset_state(&state);
     }
 }
 
@@ -230,25 +186,6 @@ void __test__order_precedence_not(CuTest* tc) {
 //     }
 // }
 
-void __test__apply_op(CuTest* tc) {
-    usize ntokens=0, nout=0;
-    char msg[128];
-    static enum Lexicon answer[] = {WORD, WORD, DOT, WORD, DOT};
-    static char * words[] = {"first", "middle", ".", "last", ".", 0};    
-    struct Token tokens[32],
-        *queue[32],
-        *output[32];
-    
-    static char * line = "first.middle.last";
-    CuAssertTrue(tc, tokenize(line, tokens, &ntokens, NULL) == 0);
-    CuAssertTrue(tc, ntokens == 5);
-
-    into_ref_array(tokens, queue, ntokens, 32);
-    CuAssertTrue(tc, postfix_expr(queue, ntokens, output, 32, &nout, NULL) == 0);
-    AssertTokensByRef(tc, "", output, answer, 5);
-    CuAssertTrue(tc, nout == 5);
-}
-
 // void __test__order_precedense_with_fncall(CuTest* tc) {
 //     usize ntokens, nqueue;
     
@@ -267,9 +204,7 @@ void __test__apply_op(CuTest* tc) {
 CuSuite* PostFixUnitTestSuite(void) {
 	CuSuite* suite = CuSuiteNew();
     
-    SUITE_ADD_TEST(suite, __test__apply_op);
     SUITE_ADD_TEST(suite, __test__simple_order_precedence);
-    SUITE_ADD_TEST(suite, __test__order_precedence);
 
     return suite;
 }

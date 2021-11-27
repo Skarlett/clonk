@@ -1,6 +1,6 @@
 #ifndef _HEADER__PARSER_ERROR__
 #define _HEADER__PARSER_ERROR__
-
+#include <stdbool.h>
 enum ErrorT {
     Warning,
     Error,
@@ -10,9 +10,8 @@ enum ErrorT {
 enum ComponentSource {
     Lexer,
     ExprParser,
-    AST,
+    AST
 };
-
 
 struct CompileTimeError {
     struct Token *base;

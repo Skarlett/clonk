@@ -1,7 +1,7 @@
 
-// #ifndef _HEADER__AST__
-// #define _HEADER__AST__
-// #include <stdlib.h>
+#ifndef _HEADER__AST__
+#define _HEADER__AST__
+#include <stdlib.h>
 
 // #include "../prelude.h"
 
@@ -113,4 +113,4 @@
 // uint32_t assemble_ast(char *line, Token tokens[], uint32_t ntokens, BlockStatement *block, int *trap);
 
 
-// #endif
+#endif

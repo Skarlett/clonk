@@ -11,7 +11,9 @@
 #define DIGITS "1234567890"
 
 enum Lexicon {
-    UNDEFINED = 0,
+    // end of file
+    EOFT = 255,
+    TOKEN_UNDEFINED = 0,
     
     NULLTOKEN,
     
@@ -40,7 +42,7 @@ enum Lexicon {
     
     // )
     PARAM_CLOSE,
-
+    
     // !
     NOT,
 
@@ -50,14 +52,26 @@ enum Lexicon {
     // -
     SUB,
 
+    //
+    _COMPOUND_GT,
+
     // >
     GT,
 
-    // <
-    LT,
+    // >>
+    SHR,
 
     // >=
     GTEQ,
+
+    //
+    _COMPOUND_LT,
+
+    // <
+    LT,
+    
+    // <<
+    SHL,
 
     // <=
     LTEQ,
@@ -88,18 +102,38 @@ enum Lexicon {
 
     // !=
     ISNEQL,
-    
-    // &
-    AMPER,
+
+    // may turn into BOREQL or PIPEOP or OR 
+    _COMPOUND_PIPE,
 
     // |
     PIPE,
 
-    // &&
-    AND,
+    // |>
+    PIPEOP,
+
+    // |=
+    BOREQL,
 
     // ||
     OR,
+
+    _COMPOUND_AMPER,
+
+    // &
+    AMPER,
+
+    // &=
+    BANDEQL,
+
+    // &&
+    AND,
+
+    // ~
+    TILDE,
+
+    // ~=
+    BNEQL,
 
     // "
     QUOTE,
@@ -125,16 +159,20 @@ enum Lexicon {
     // a-zA-Z
     CHAR,
 
-    // 0-9
+    // 0-9 *single digit
     DIGIT,
     
     // ,
     COMMA,
-    //********* START OF COMPLEX TOKENS ********
-    // Complex tokens wont show up in the first round of lexer'ing
-    // they're generated from combinations of tokens
-    // "fn"
-    //********* START OF COMPLEX LEXICONS ********
+
+    /********* START OF COMPLEX TOKENS ********
+    * Complex tokens wont show up in the first round of lexer'ing
+    * they're generated from combinations of tokens
+    * "fn"
+    ********** START OF COMPLEX LEXICONS ********/
+
+    // -123 or -=
+    _COMPOUND_SUB,
 
     // [NUM, ..] WHITESPACE|SEMICOLON   
     // 20392
@@ -150,6 +188,7 @@ enum Lexicon {
 
     // static
     STATIC,
+
     // const
     CONST,
 
@@ -174,19 +213,69 @@ enum Lexicon {
     //import
     IMPORT,
     
-    // end of file
-    EOFT = 255,
-    
     //impl
     IMPL,
     
     /*
         this is a 'pretend' token used 
         internally by expression
-        and should never been seen in the token stream
     */
 
-    MARKER,
+    _IdxAccess, 
+
+    // foo(a)(b)
+    // foo(a) -> func(b) -> T
+    // foo(a)(b) -> ((a foo), b G(2)) DyCall
+    // foo(a)(b)(c) -> a foo b G(2) DyCall c G(2) DyCall
+    // word|)|]|}(
+    Apply,
+
+    /*
+      GROUPING token are generated in the expression parser
+        
+      The GROUPING token is used to track the amount 
+      of sub-expressions inside an expression.
+        
+      - `start` 
+          points to its origin grouping token,
+          or 0 if not applicable
+        
+      - `end`
+          is the amount of arguments to pop from the stack
+
+      See example expression:
+          [1, 2, 3]
+      
+          where '1', '2', '3' are atomic expressions.
+          When grouped together by a comma to become 
+          "1,2,3" this is called grouping.
+
+          Groupings may not explicitly 
+          point to a brace type if none is present. 
+            
+          After postfix evaluation, 
+          a group token is added into the postfix output.
+
+          1 2 3 GROUP(3)
+        
+      it's `start` attribute will point to its origin grouping token
+      and its `end` attribute will determine the amount of arguments
+      it will take off of the stack
+    
+      tokens of this type will be spawned from a differing source
+      than the original token stream.
+    */
+    TupleGroup, // (x,x)
+    ListGroup,  // [x,x]
+    MapGroup,   // {x:x}
+    SetGroup,   // {x,x}
+    
+    CodeBlock,  // {x; x;} or {x; x}
+
+    IfCond,
+    IfBody,
+    DefSign,
+    DefBody
 };
 
 /*
@@ -217,7 +306,7 @@ struct Token {
 };
 
 int8_t tokenize(
-    char *line,
+    const char *line,
     struct Token tokens[],
     usize *token_ctr,
     usize token_sz,

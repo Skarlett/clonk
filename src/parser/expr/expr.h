@@ -7,8 +7,6 @@
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
 
-#define ERR_SZ 256
-
 /*
     when defining a group, 
     it may not have more literal elements than
@@ -29,6 +27,10 @@ enum ExprType {
 
     // x(a, ...)
     FnCallExprT,
+
+    // x(a, ...)
+    IfExprT,
+
 
     // binary operation
     // 1 + 2 * foo.max - size_of(list)
@@ -83,7 +85,10 @@ enum GroupT {
     TupleT,
 
     // {a, b}
-    SetT
+    SetT,
+
+    // {1; 2;}
+    CodeBlockT
 
 };
 
@@ -130,6 +135,12 @@ struct NotExpr {
     struct Expr *operand;
 };
 
+struct IfExpr {
+    struct Expr *cond;
+    struct Expr *body;
+    struct Expr *else_body;
+};
+
 struct IdxExpr {
     struct Expr * operand;
     struct Expr * start;
@@ -150,6 +161,7 @@ struct Expr {
         struct BinExpr bin;
         struct NotExpr not_;
         struct IdxExpr idx;
+        struct IfExpr cond;
 
     } inner;
 };
@@ -175,73 +187,106 @@ typedef uint16_t FLAG_T;
 */
 
 
-#define GSTATE_EMPTY        1
-#define GSTATE_CTX_BLOCK    2
+#define GSTATE_EMPTY         1
+#define GSTATE_CTX_DATA_GRP  2
+#define GSTATE_CTX_CODE_GRP  4
+#define GSTATE_CTX_MAP_GRP   8
+#define GSTATE_CTX_IDX      16
+#define GSTATE_CTX_LOCK     32
+#define GSTATE_CTX_NO_DELIM 1024
+#define GSTATE_OP_APPLY     64
+#define GSTATE_CTX_IF_COND 128
+#define GSTATE_CTX_IF_BODY 256
+#define GSTATE_CTX_ELSE_BODY 512
 
-#define GSTATE_CTX_LIST     4
-#define GSTATE_CTX_TUPLE    8
-#define GSTATE_CTX_SET     16
-#define GSTATE_CTX_MAP     32
-#define GSTATE_CTX_IDX     64
-#define GSTATE_CTX_LOCK   128
-#define GSTATE_OP_IDX     256
-#define GSTATE_OP_APPLY   512
-#define GSTATE_OP_GROUP   1024
-#define GSTATE_OP_IF_COND 2048
-#define GSTATE_OP_IF_BODY 4092
-struct Group {
-    // amount of delimiters
-    uint16_t delimiter_cnt;
-
+struct Cond {
+    struct Token *origin;
+    // ';' or '{'
+    enum Lexicon expecting;
+    
     /*
         0 : Uninitialized state
-        1 : COLON token in group
-        2 : COMMA token in group
-        4 : List context mode
-        8 : Tuple context mode
-       16 : Set context mode
-       32 : Map context mode
-       64 : Index context mode
-      (?) : Tuple context mode (without bracing)
-      128 : lock context mode
-      256 : index marker operation
-      512 : apply marker operation
-     1024 : group marker operation
+        1 : Condition Completed,
+        2 : Body Completed,
+    */
+    uint8_t flags;
+};
+
+struct Group {
+    /*
+        0 : Uninitialized state
+        1 : Empty grouping,
+        2 : CTX Comma data (lists, tuples, sets)
+        4 : CTX Code-block ( {a(); b();} )
+        8 : CTX Map mode {a : b};
+       16 : CTX Index mode 
+       32 : CTX Lock
+       64 : apply marker operation
+      
+      # Not in use yet
+      256 : if marker operation
+      512 : else marker operation
+     1024 : def-body operator
+     2048 : def-signature operator
+     4092 : s
+
     */
     FLAG_T state;
+    
+    // amount of delimiters
+    uint16_t delimiter_cnt;
 
     // should be `[` `(` '{' or `0`
     struct Token *origin;
     struct Token *last_delim;
 };
 
+#define FLAG_ERROR                0
+#define STATE_READY               1
+#define STATE_INCOMPLETE          2
+#define STATE_PANIC               4 
+#define INTERNAL_ERROR            8
+#define STATE_WARNING             16
 
-#define FLAG_ERROR           65535
+#define STATE_CTX_ERROR 0
+#define STATE_CTX_DEFAULT 1
 
-#define STATE_INCOMPLETE          1
-#define STATE_PANIC               2 
-#define INTERNAL_ERROR            4
+#define STATE_CTX_RETURN_BODY 2
+#define STATE_CTX_IF_HEAD 4
+#define STATE_CTX_IF_BODY 8
+#define STATE_CTX_ACCEPT_ELSE 16
+#define STATE_CTX_ELSE_BODY 32
 
-/* if set - warning messages are present */
-#define STATE_WARNING             8
-#define STACK_SZ 512
+
+#define STACK_SZ                 512
 struct ExprParserState {
     struct Token *src;
     usize src_sz;
-    usize *i;
+    usize *_i;
     char * line;
 
+    /* Tree construction happens in this stack */
     struct Expr *expr_stack[STACK_SZ];
-    usize expr_ctr;
-    usize expr_sz;
-
+    
+    /* a stack of pending operations (see shunting yard) */
     struct Token *operator_stack[STACK_SZ];
-    uint16_t operators_ctr;
-    uint16_t operator_stack_sz;
+    
+    /* tracks opening braces in the operator stack */
+    struct Group set_stack[STACK_SZ];
+    
+    struct Cond cond_stack[STACK_SZ];
 
-    struct Group *set_stack[STACK_SZ];
-    usize set_ctr;
-    usize set_sz;
+    /* tracks opening braces in the operator stack */
+    struct Group prev_set_stack[16];
+
+    uint16_t set_ctr;
+    uint16_t operators_ctr;
+    uint16_t expr_ctr;
+    uint16_t cond_ctr;
+    
+    uint16_t expr_sz;
+    uint16_t operator_stack_sz;
+    uint16_t set_sz;
 
     /* Vec<struct Expr> */
     struct Vec expr_pool;
@@ -254,6 +299,8 @@ struct ExprParserState {
 
     /*Vec<struct CompileTimeError>*/
     struct Vec errors;
+
+    FLAG_T ctx;
 
     FLAG_T expecting;
     FLAG_T panic_flags;
@@ -299,7 +346,6 @@ struct ExprParserState {
   pretty-postfix:
            ((foo a (b c +) APPLY(3)) bar 1 APPLY(2) .)
 */
-
 int8_t parse_expr(
     char * line,
     struct Token tokens[],
@@ -308,6 +354,6 @@ int8_t parse_expr(
     struct Expr *ret
 );
 
-
-
+int8_t free_state(struct ExprParserState *state);
+int8_t reset_state(struct ExprParserState *state);
 #endif

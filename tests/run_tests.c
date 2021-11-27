@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include "CuTest.h"
 
+CuSuite* CuGetSuite();
+CuSuite* TestUtilTestSuite();
+CuSuite* VecTestSuite();
 CuSuite* LexerUnitTestSuite();
 CuSuite* LexerHelpersUnitTestSuite();
-CuSuite* FnMaskUnitTestSuite();
 CuSuite* PostFixUnitTestSuite();
 
 void RunAllTests(void)
@@ -11,9 +13,11 @@ void RunAllTests(void)
 	CuString *output = CuStringNew();
 	CuSuite* suite = CuSuiteNew();
 
+	CuSuiteAddSuite(suite, CuGetSuite());
+	CuSuiteAddSuite(suite, TestUtilTestSuite());
+	CuSuiteAddSuite(suite, VecTestSuite());
 	CuSuiteAddSuite(suite, LexerUnitTestSuite());
 	CuSuiteAddSuite(suite, LexerHelpersUnitTestSuite());
-	CuSuiteAddSuite(suite, FnMaskUnitTestSuite());
 	CuSuiteAddSuite(suite, PostFixUnitTestSuite());
 
 	CuSuiteRun(suite);
