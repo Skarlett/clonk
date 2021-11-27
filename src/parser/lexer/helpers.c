@@ -1,34 +1,35 @@
+#include <stdbool.h>
 #include "lexer.h"
 #include "../../prelude.h"
 
 #define BRACE_BUFFER_SZ 256
 
-int8_t is_close_brace(enum Lexicon token) {
+
+bool is_delimiter(enum Lexicon token) {
+    return token == COLON || token == COMMA;
+}
+
+bool is_close_brace(enum Lexicon token) {
     return (token == PARAM_CLOSE 
     || token == BRACE_CLOSE  
     || token == BRACKET_CLOSE);
 }
 
-int8_t is_open_brace(enum Lexicon token) {
+bool is_open_brace(enum Lexicon token) {
     return (token == PARAM_OPEN 
     || token == BRACE_OPEN  
     || token == BRACKET_OPEN);
 }
 
-int8_t is_data(enum Lexicon token) {
+bool is_symbolic_data(enum Lexicon token) {
     return (token == WORD
         || token == INTEGER 
         || token == STRING_LITERAL
+        || token == NULLTOKEN
     );
 }
 
-int8_t is_fncall(struct Token tokens[], usize ntokens) {
-    return ntokens > 1 
-        && tokens[0].type == WORD 
-        || tokens[1].type == PARAM_OPEN;
-}
-
-int8_t is_cmp_operator(enum Lexicon token) {
+bool is_cmp_operator(enum Lexicon token) {
     return (
         token == ISEQL
         || token == ISNEQL  
@@ -39,25 +40,31 @@ int8_t is_cmp_operator(enum Lexicon token) {
     );
 }
 
-int8_t is_assignment_operator(enum Lexicon token) {
+bool is_assignment_operator(enum Lexicon token) {
     return (
         token == EQUAL
         || token == MINUSEQ
         || token == PLUSEQ
     );
 }
+
 /*
-    returns bool if token is a binary operator
+   returns bool if token is a binary operator
 */
-int8_t is_bin_operator(enum Lexicon token) {
-    return (token == ISEQL
+bool is_operator(enum Lexicon token) {
+    return (
+        /* comparison operators */
+        token == ISEQL
         || token == ISNEQL 
         || token == GTEQ 
         || token == LTEQ
-        || token == AND
-        || token == OR
         || token == GT
         || token == LT
+        /* logic operators */
+        || token == OR
+        || token == AND
+        || token == NOT
+        /* arithmetic */
         || token == ADD
         || token == SUB
         || token == MUL
@@ -66,11 +73,35 @@ int8_t is_bin_operator(enum Lexicon token) {
         || token == MOD
         || token == DIV
         || token == DOT
+        /* assignments */
+        || token == EQUAL
+        || token == MINUSEQ
+        || token == PLUSEQ
+	/* bitwise operations */
+	|| token == BOREQL
+	|| token == BANDEQL
+	|| token == PIPE
+	|| token == AMPER
+	|| token == SHL
+	|| token == SHR
+	/* experimental */
+	|| token == PIPEOP
     );
 }
 
+bool contains_tok(enum Lexicon cmp, enum Lexicon buffer[]) {
+  for (uint16_t i;;i++)
+    if(buffer[i] == 0) break;
+    else if (buffer[i] == cmp)
+      return true;
+  
+  return false;
+}
+
+
+
 /* is character utf encoded */
-int8_t is_utf(char ch) {
+bool is_utf(char ch) {
     return ((unsigned char)ch >= 0x80);
 }
 
@@ -88,7 +119,7 @@ enum Lexicon invert_brace_tok_ty(enum Lexicon token) {
         case BRACE_CLOSE: return BRACE_OPEN;
         case BRACKET_CLOSE: return BRACKET_OPEN;
         case BRACKET_OPEN: return BRACKET_CLOSE;
-        default: return UNDEFINED;
+        default: return TOKEN_UNDEFINED;
     }
 }
 
@@ -125,9 +156,9 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
 }
 
 /* 
-    function determines if an expression is unbalanced.
-    an expression can be unbalanced 
-    if there is a nonmatching `[` / `(` / `{` character
+ *  function determines if an expression is unbalanced.
+ *  an expression can be unbalanced 
+ *  if there is a nonmatching `[` / `(` / `{` character
 */
 int8_t is_balanced(struct Token tokens[], usize ntokens) {
     enum Lexicon braces[BRACE_BUFFER_SZ];
@@ -172,7 +203,7 @@ int8_t is_balanced_by_ref(struct Token *tokens[], usize ntokens) {
     return braces_ctr == 0;
 }
 
-int8_t is_keyword(enum Lexicon token) {
+bool is_keyword(enum Lexicon token) {
     static enum Lexicon keywords[10] = {
         STATIC, CONST, RETURN, EXTERN, 
         AS, IF, ELSE, FUNC_DEF, IMPORT, IMPL
@@ -180,12 +211,12 @@ int8_t is_keyword(enum Lexicon token) {
     
     for (int i=0; 10 > i; i++) {
         if (token == keywords[i])
-            return 1;
+            return true;
     }
     
-    return 0;
+    return false;
 }
 
-int8_t is_num_negative(const char * source, struct Token *token) {
+bool is_num_negative(const char * source, struct Token *token) {
     return token->type == INTEGER && *(source + token->start) == '-';
 }

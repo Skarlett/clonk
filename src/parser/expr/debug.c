@@ -1,7 +1,13 @@
+#include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "../lexer/lexer.h"
+#include "../lexer/debug.h"
+#include "../lexer/helpers.h"
+
 #include "expr.h"
+
 
 const char * print_datatype(enum DataType t) {
     switch (t) {
@@ -12,8 +18,7 @@ const char * print_datatype(enum DataType t) {
     }
 }
 
-
-const char * print_bin_operator(enum BinOp t) {
+const char * print_operator_name(enum Operation t) {
     switch (t) {
         case Add: return "addition";
         case Sub: return "subtract";
@@ -32,7 +37,8 @@ const char * print_bin_operator(enum BinOp t) {
         default: return "unknown";
     }
 }
-const char * p_bin_operator_sym(enum BinOp t) {
+
+const char * print_operator_symbol(enum Operation t) {
     switch (t) {
         case Add: return "+";
         case Sub: return "-";
@@ -48,160 +54,13 @@ const char * p_bin_operator_sym(enum BinOp t) {
         case LtEq: return ">=";
         case IsEq: return "==";
         case NotEq: return "!=";
+        case Access: return ".";
         default: return "unknown";
     }
 }
 
-// int print_expr(Expr *expr, short unsigned indent){
-//     tab_print(indent);
-//     printf("type: %s\n", print_expr_t(expr->type));
-//     tab_print(indent);
 
-//     if (expr->type == UniExprT) {
-//         //struct UniExpr *uni = expr->inner_data;
-//         if (expr->inner.uni.op == UniValue) {
-//             tab_print(indent);
-                
-//             printf("symbol type: %s\n", print_symbol_type(expr->inner.uni.interal_data.symbol.tag));
-//             tab_print(indent);
-//             printf("symbol val: ");
-                
-//             switch (expr->inner.uni.interal_data.symbol.tag) {
-//                 case VariableTag:
-//                     printf("symbol name: %s\n", expr->inner.uni.interal_data.symbol.inner.variable);
-//                     break;
-                    
-//                 case ValueTag:
-//                     switch (expr->inner.uni.interal_data.symbol.inner.value.type) {
-//                         case IntT:
-//                             printf("%d\n", expr->inner.uni.interal_data.symbol.inner.value.data.integer);
-//                             break;
-                            
-//                         case StringT:
-//                             printf("%s\n", expr->inner.uni.interal_data.symbol.inner.value.data.string.ptr);
-//                             break;
-                            
-//                         case NullT:
-//                             printf("null");
-//                             break;
-                            
-//                         default: 
-//                             printf("error: got unexpected datatype");
-//                             break;
-//                     }
-//                     break;
-                    
-//                     default:
-//                         printf("error: got unexpected tag");
-//                         break;
-//                 }
-//         }
-        
-
-//         else if (expr->inner.uni.op == UniCall) {
-//             tab_print(indent);
-//             printf("function call: %s\n", expr->inner.uni.interal_data.fncall.func_name);
-//             tab_print(indent);
-//             printf("parameters: [\n");                
-//             for (int i=0; expr->inner.uni.interal_data.fncall.args_length > i; i++){
-//                 tab_print(indent+1);
-//                 printf("{\n");
-//                 print_expr(expr->inner.uni.interal_data.fncall.args[i], indent+2);
-//                 tab_print(indent+1);
-//                 printf("}");
-//                 if (expr->inner.uni.interal_data.fncall.args_length-1 != i) {
-//                     printf(",");
-//                 }
-//                 printf("\n");
-//             }
-//             tab_print(indent);
-//             printf("]}\n");
-//         }
-//     }
-
-//     else if (expr->type == BinExprT) {
-//         tab_print(indent);
-//         printf("operator: %s (%s)\n", p_bin_operator_sym(expr->inner.bin.op), print_bin_operator(expr->inner.bin.op));
-//         tab_print(indent);
-
-        
-//         printf("left: {\n");
-//         if (expr != expr->inner.bin.lhs) 
-//             print_expr(expr->inner.bin.lhs, indent+1);
-        
-//         tab_print(indent);
-//         printf("},\n");
-
-//         tab_print(indent);
-//         printf("right: {\n");
-//         print_expr(expr->inner.bin.rhs, indent+1);
-//         tab_print(indent);
-//         printf("}\n");
-//     }
-
-//     else {
-//         printf("\n===============\nERROR \n===============\n");
-//         return -1;
-//     }
-
-//     return 0;
-// }
-
-// #define tb "├"
-// #define rb "─"
-// #define fb "└"
-
-// void small_tab(short unsigned indent) {
-//     for (int i = 0; indent > i; i++) 
-//         printf("  ");
-// }
-
-// void ptree_inner(struct Expr *expr, short unsigned indent){
-//     if (expr->type == BinExprT) {
-//         printf("%s ", p_bin_operator_sym(expr->inner.bin.op));
-//         tab_print(5-indent);
-//         small_tab(indent);
-//         printf("├─");
-//         ptree_inner(expr->inner.bin.lhs, indent+1);
-//         printf("\n");
-//         small_tab(indent);
-//         printf("└─");
-//         ptree_inner(expr->inner.bin.rhs, indent+1);
-        
-//     }
-//     else if (expr->type == UniExprT) {
-//         if (expr->inner.uni.op == UniValue) {
-//             if (expr->inner.uni.interal_data.symbol.tag == ValueTag) {
-//                 if (expr->inner.uni.interal_data.symbol.inner.value.type == IntT) {
-//                     printf("%d", expr->inner.uni.interal_data.symbol.inner.value.data.integer);
-//                 }
-//                 else if (expr->inner.uni.interal_data.symbol.inner.value.type == StringT) {
-//                     printf("STR");
-//                 }
-//             }
-//             else if (expr->inner.uni.interal_data.symbol.tag == VariableTag) {
-//                 printf("%s", expr->inner.uni.interal_data.symbol.inner.variable);
-//             }
-//         }
-
-//         else if (expr->inner.uni.op == UniCall) {
-//             printf("%s(..)\n", expr->inner.uni.interal_data.fncall.func_name);
-//             small_tab(indent);
-//             for (int i=0; expr->inner.uni.interal_data.fncall.args_length > i; i++) {
-//                 if (i+1 == expr->inner.uni.interal_data.fncall.args_length)
-//                     printf("└─");
-//                 else printf("├─");
-//                 ptree_inner(expr->inner.uni.interal_data.fncall.args[i], indent+1);
-//                 printf("\n");
-//                 small_tab(indent);
-//             }
-//             //printf("FCALLS UNSUPPORTED");
-//         }
-//     }
-// }
-
-
-void draw_token_error_at(char * line, struct Token *token) {
+void draw_token_error_at(const char * line, struct Token *token) {
     printf("'%s'\n", line);
     printf("-");
     for (int i = 0; token->start > i; i++) {
@@ -210,8 +69,3 @@ void draw_token_error_at(char * line, struct Token *token) {
     
     printf("^\n");
 }
-
-// void ptree(struct Expr *expr) {
-//     ptree_inner(expr, 0);
-//     printf("\n");
-// }

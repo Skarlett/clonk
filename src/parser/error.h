@@ -1,26 +1,24 @@
 #ifndef _HEADER__PARSER_ERROR__
 #define _HEADER__PARSER_ERROR__
+#include <stdbool.h>
+enum ErrorT {
+    Warning,
+    Error,
+    Fatal
+};
 
-typedef enum CompileTimeErrorT {
-    CTE_UNDEFINED = 0,
-    CTE_SYNTAX_EXPECTED = 1,
-    CTE_BAD_STRING_LITERAL = 2,
-    CTE_UNBALANCED_EXPR = 3,
-    CTE_BAD_OPERAND = 4
-} ErrorT;
+enum ComponentSource {
+    Lexer,
+    ExprParser,
+    AST
+};
 
 struct CompileTimeError {
-    enum CompileTimeErrorT kind;
-    const char * file_path;
-    
-    union {
-        struct {
-            struct Token *from;
-            struct Token *to;
-            const char * msg;
-        } syntax_error;
-    } error;
-
+    struct Token *base;
+    enum ErrorT type;
+    const char * file;
+    bool free_msg;
+    const char * msg;
 };
 
 #endif

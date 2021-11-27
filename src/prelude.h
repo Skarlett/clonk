@@ -6,20 +6,25 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 // Macro for checking bitness (safer macros borrowed from 
 // https://www.fluentcpp.com/2019/05/28/better-macros-better-flags/)
 #define SYS_ARCH( X ) SYS_ARCH_PRIVATE_DEFINITION_##X()
-
+#define nop
 // Bitness checks borrowed from https://stackoverflow.com/a/12338526/201787
 #if _WIN64 || ( __GNUC__ && __x86_64__ )
 #    define SYS_ARCH_PRIVATE_DEFINITION_64() 1
 #    define SYS_ARCH_PRIVATE_DEFINITION_32() 0
 #    define SYS_ARCH_IF_64_BIT_ELSE( x64, x86 ) (x64)
+#    define str_to_isize strtoll
+#    define str_to_usize strtoull
 #elif _WIN32 || __GNUC__
 #    define SYS_ARCH_PRIVATE_DEFINITION_64() 0
 #    define SYS_ARCH_PRIVATE_DEFINITION_32() 1
 #    define MYPROJ_IF_64_BIT_ELSE( x64, x86 ) (x86)
+#    define str_to_isize strtol
+#    define str_to_usize strtoul
 #else
 #    error "64/32bit machines only"
 #endif
@@ -39,12 +44,5 @@ typedef uint32_t usize;
 typedef int32_t isize;
 #endif
 
-
-#define TRUE 1;
-#define FALSE 0;
-
-void * xmalloc(usize size);
-void * xrealloc(usize size);
-void * tab_print(usize size);
 
 #endif

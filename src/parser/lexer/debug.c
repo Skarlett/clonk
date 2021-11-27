@@ -48,149 +48,177 @@ const char * ptoken(enum Lexicon t) {
         case ELSE: return "'else'";
         case IMPL: return "'impl'";
         case FUNC_DEF: return "'def'";
-        case FNMASK: return "fn_call(..)";
         case RETURN: return "'return'";
         case AS: return "'as'";
         case ATSYM: return "@";
         case IMPORT: return "'import'";
         case EXTERN: return "'extern'";
         case COMMENT: return "comment";
-        case UNDEFINED: return "undef";
+        case TOKEN_UNDEFINED: return "undef";
         case DOT: return "dot";
         default: return "PTOKEN_ERROR_UNKNOWN_TOKEN";
     };
 }
 
-int8_t __sprintf_token_ty_slice(char *output, usize output_sz, enum Lexicon token, usize *ctr) {
+char brace_as_char(enum Lexicon tok) {
+    switch(tok){
+        case BRACE_OPEN: return '{';
+        case BRACE_CLOSE: return '}';
+        case PARAM_OPEN: return '(';
+        case PARAM_CLOSE: return ')';
+        case BRACKET_OPEN: return '[';
+        case BRACKET_CLOSE: return ']';
+        default:
+            return -1;
+    }
+}
+
+char invert_brace_char(char brace) {
+    switch(brace){
+        case '{': return '}';
+        case '}': return '{';
+        case '(': return ')';
+        case ')': return '(';
+        case '[': return ']';
+        case ']': return '[';
+        default:
+            return -1;
+    }
+}
+
+
+char * __sprintf_token_ty_slice(char *output, usize output_sz, enum Lexicon token, usize *ctr) {
     char token_buf[64];
     const char *ptok;
 
     if (!ctr || !output)
-        return -1;
+        return 0;
     
     ptok = ptoken(token);
     sprintf(token_buf, "[%s], ", ptok);
-        
-    strncpy(
-        output + *ctr,
-        token_buf,
-        strlen(ptok) + 4
-    );
+    
+    return strncat(output, token_buf, strlen(ptok)+4);
+}
 
-    *ctr += strlen(ptok) + 4;
-    if (*ctr > output_sz)
-        return -1;
+enum SPFMode {
+    BTypeNull,
+    spf_lex_arr,
+    spf_tok_arr,
+    spf_tok_arr_by_ref
+};
+
+union SPFData {
+    const enum Lexicon *lex_arr;
+    const struct Token *tok_arr;
+    const struct Token **tok_arr_by_ref;
+};
+
+char * __sprintf_inner(
+    usize ntokens,
+    char *output, usize output_sz,
+    union SPFData *ptr, enum SPFMode spf_ty) {
+    usize ctr = 0;
+    enum Lexicon item = 0;
+
+    if (!ptr || !output)
+        return 0;
+    
+    output[0] = '[';
+
+    for (usize i=0; ntokens > i; i++) {
+
+        if (spf_ty == spf_lex_arr && ptr->lex_arr) 
+            item = ptr->lex_arr[i];
+        else if (spf_ty == spf_tok_arr && ptr->tok_arr)
+            item = ptr->tok_arr[i].type;
+        else if (spf_ty == spf_tok_arr_by_ref && ptr->tok_arr_by_ref)
+            item = ptr->tok_arr_by_ref[i]->type;
+        else return 0;
+        
+        if (__sprintf_token_ty_slice(
+          output,
+          output_sz,
+          item,
+          &ctr
+        ) == 0) return 0;
+
+    }
+
+    strncat(output, "]", 1);
     
     return 0;
 }
 
+
 int8_t sprintf_token_slice(
-    struct Token tokens[],
+    const struct Token tokens[],
     usize ntokens,
     char * output,
     usize output_sz    
 ){
     usize ctr=0;
-    
-    if (!tokens || !output)
-        return -1;
-    
-    output[0] = '[';
+    union SPFData input;
+    enum SPFMode mode = spf_tok_arr;
+    input.tok_arr = tokens;
 
-    for (usize i=0; ntokens > i; i++) {
-        if (__sprintf_token_ty_slice(
-                output+1,
-                output_sz,
-                tokens[i].type,
-                &ctr
-            ) == -1
-        ) return -1;
-    }
-
-    if (output_sz > strlen(output)+2) {
-        output[strlen(output)] = ']';
-        output[strlen(output)+1] = 0;
+    if (__sprintf_inner(ntokens, output, output_sz, &input, mode) == 0)
         return -1;
-    }
-    
+
     return 0;
 }
 
 int8_t sprintf_lexicon_slice(
-    enum Lexicon tokens[],
+    const enum Lexicon tokens[],
     usize ntokens,
     char * output,
-    usize output_sz    
+    usize output_sz
 ){
-    if (!tokens || !output)
+    union SPFData input;
+    enum SPFMode mode = spf_lex_arr;
+    input.lex_arr = tokens;
+
+    if (__sprintf_inner(ntokens, output, output_sz, &input, mode) == 0)
         return -1;
-    
-    usize ctr=0;
 
-    output[0] = '[';
-
-    for (usize i=0; ntokens > i; i++) {
-        if (__sprintf_token_ty_slice(
-                output+1,
-                output_sz,
-                tokens[i],
-                &ctr
-            ) == -1
-        ) return -1;
-    }
-
-    if (output_sz > strlen(output)+2) {
-        output[strlen(output)] = ']';
-        output[strlen(output)+1] = 0;
-        return -1;
-    }
-    
     return 0;
+
 }
 
 int8_t sprintf_token_slice_by_ref(
-    struct Token *tokens[],
+    const struct Token *tokens[],
     usize ntokens,
     char * output,
     usize output_sz    
 ){
-    if (!output || !tokens)
+    union SPFData input;
+    enum SPFMode mode = spf_tok_arr_by_ref;
+    input.tok_arr_by_ref = tokens;
+
+    if (__sprintf_inner(ntokens, output, output_sz, &input, mode) == 0)
         return -1;
 
-    usize ctr=0;
-    output[0] = '[';
-
-    for (usize i=0; ntokens > i; i++) {        
-        if (__sprintf_token_ty_slice(
-                output+1,
-                output_sz-1,
-                tokens[i]->type,
-                &ctr
-            ) == -1
-        ) return -1;
-    }
-
-    if (output_sz > strlen(output)+2) {
-        return -1;
-    }
-    output[strlen(output)] = ']';
-    output[strlen(output)+1] = 0;
-    
     return 0;
 }
 
-int8_t sprint_src_code(char * output, usize output_sz, const char * source, struct Token *token) {
-    if (!source 
-        || !output 
-        || !token 
-        || token->end - token->start > output_sz
-    ) return -1;
+int8_t sprint_src_code(
+    char * output,
+    usize output_sz,
+    usize *nbytes,
+    const char * source,
+    const struct Token *token
+
+) {
+    if (!source || !output || !token 
+        || token->start > token->end
+        || token->end - token->start > output_sz)
+        return -1;
     
-    strncpy(
+    memcpy(
         output,
         source+token->start,
         token->end-token->start
     );
-
+    
+    *nbytes = token->end - token->start;
     return 0;
 }
