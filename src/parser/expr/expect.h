@@ -1,32 +1,18 @@
+#ifndef _HEADER__EXPECT__
+#define _HEADER__EXPECT__
+
 #include <stdint.h>
 #include <sys/types.h>
 #include "../lexer/lexer.h"
 #include "expr.h"
 
-enum ExpectMode {
-  EMDefault,
-  EMCondBody
-};
-FLAG_T expecting_next(enum Lexicon tok, enum ExpectMode mode);
-int8_t is_token_unexpected(struct Token *current, struct Group *ghead, FLAG_T expecting);
+int8_t is_token_unexpected(struct ExprParserState *state);
+
+void init_expect_buffer(struct ExprParserState *state);
+
 void unset_flag(FLAG_T *set, FLAG_T flag);
 void set_flag(FLAG_T *set, FLAG_T flag);
 FLAG_T check_flag(FLAG_T set, FLAG_T flag);
 
-#define EXPECTING_SYMBOL         2
-#define EXPECTING_INTEGER        4
-#define EXPECTING_STRING         8
-#define EXPECTING_ARITHMETIC_OP 16
+#endif
 
-/* . */
-#define EXPECTING_APPLY_OPERATOR 32
-#define EXPECTING_OPEN_BRACKET   64   
-#define EXPECTING_CLOSE_BRACKET  128
-#define EXPECTING_OPEN_PARAM     256    
-#define EXPECTING_CLOSE_PARAM    512
-#define EXPECTING_OPEN_BRACE     1024
-#define EXPECTING_CLOSE_BRACE    2048
-
-#define EXPECTING_NEXT           4096 
-/* : , */
-#define EXPECTING_DELIMITER      8192

@@ -64,11 +64,24 @@ enum Operation {
     AssignAdd,
     AssignSub,
 
-    /* dot operator */
+    /* dot token */
     Access,
 
     Not,
 
+    BitOr,
+    BitAnd,
+    BitNot,
+    
+    BandEql,
+    BorEql,
+    BnotEql,
+
+    ShiftRight,
+    ShiftLeft,
+
+    PipeOp,
+    
     UndefinedOp = 255
 };
 
@@ -94,7 +107,7 @@ enum GroupT {
 
 struct Grouping { 
     enum GroupT type;
-    usize length;
+    uint16_t length;
     struct Expr **ptr;
 };
 
@@ -104,7 +117,7 @@ enum DataType {
     StringT,
     BoolT,
     GroupT,
-    NullT
+   NullT
 };
 
 struct Literals {
@@ -129,6 +142,11 @@ struct BinExpr {
     struct Expr *lhs;
     struct Expr *rhs;
     enum DataType returns;
+};
+
+struct UnaryExpr {
+    enum Operation op;
+    struct Expr *operand;
 };
 
 struct NotExpr {
@@ -187,41 +205,39 @@ typedef uint16_t FLAG_T;
 */
 
 
-#define GSTATE_EMPTY         1
-#define GSTATE_CTX_DATA_GRP  2
-#define GSTATE_CTX_CODE_GRP  4
-#define GSTATE_CTX_MAP_GRP   8
-#define GSTATE_CTX_IDX      16
-#define GSTATE_CTX_LOCK     32
-#define GSTATE_CTX_NO_DELIM 1024
-#define GSTATE_OP_APPLY     64
-#define GSTATE_CTX_IF_COND 128
-#define GSTATE_CTX_IF_BODY 256
-#define GSTATE_CTX_ELSE_BODY 512
+#define GSTATE_EMPTY             1
+#define GSTATE_CTX_DATA_GRP      1 << 1
+#define GSTATE_CTX_CODE_GRP      1 << 2
+#define GSTATE_CTX_MAP_GRP       1 << 3
+#define GSTATE_CTX_IDX           1 << 4
+#define GSTATE_CTX_LOCK          1 << 5
 
-struct Cond {
-    struct Token *origin;
-    // ';' or '{'
-    enum Lexicon expecting;
-    
-    /*
-        0 : Uninitialized state
-        1 : Condition Completed,
-        2 : Body Completed,
-    */
-    uint8_t flags;
-};
+#define GSTATE_CTX_NO_DELIM      1 << 6
+
+#define GSTATE_OP_APPLY          1 << 7
+#define GSTATE_CTX_IF_COND       1 << 8
+#define GSTATE_CTX_IF_BODY       1 << 9
+#define GSTATE_CTX_ELSE_BODY     1 << 10
+#define GSTATE_OP_RET            1 << 11
+#define GSTATE_CTX_DEF_SIGNATURE 1 << 12
+#define GSTATE_CTX_DEF_BODY      1 << 13
+
 
 struct Group {
     /*
-        0 : Uninitialized state
-        1 : Empty grouping,
-        2 : CTX Comma data (lists, tuples, sets)
-        4 : CTX Code-block ( {a(); b();} )
-        8 : CTX Map mode {a : b};
-       16 : CTX Index mode 
-       32 : CTX Lock
-       64 : apply marker operation
+                   0:           Uninitialized state
+        GSTATE_EMPTY:           signify empty grouping,
+        GSTATE_CTX_DATA_GRP:    parsing comma seperated data (lists, tuples, sets)
+        GSTATE_CTX_CODE_GRP:    parsing a set of instructions/code ( `{ a(); b(); }` )
+        GSTATE_CTX_MAP_GRP:     parsing literal datatype map ( `{ a:b, c:d };` )
+        GSTATE_CTX_IDX :        parsing index expression `[a:b:c]
+        GSTATE_CTX_LOCK :       set an immutable parsing context until this group ends
+        GSTATE_OP_APPLY :       after group completion, make into an fncall
+        GSTATE_CTX_IF_COND:     parsing an if conditional
+        GSTATE_CTX_IF_BODY      
+        GSTATE_CTX_ELSE_BODY
+        GSTATE_CTX_DEF_SIGNATURE
+        GSTATE_CTX_DEF_BODY 
       
       # Not in use yet
       256 : if marker operation
@@ -236,33 +252,34 @@ struct Group {
     // amount of delimiters
     uint16_t delimiter_cnt;
 
+    // amount of delimiters
+    uint16_t expr_cnt;
+
     // should be `[` `(` '{' or `0`
     struct Token *origin;
     struct Token *last_delim;
 };
 
-#define FLAG_ERROR                0
-#define STATE_READY               1
-#define STATE_INCOMPLETE          2
-#define STATE_PANIC               4 
-#define INTERNAL_ERROR            8
-#define STATE_WARNING             16
+#define FLAG_ERROR       0
+#define STATE_READY      1
+#define STATE_INCOMPLETE 1 << 1
+#define STATE_PANIC      1 << 2 
+#define INTERNAL_ERROR   1 << 3
+#define STATE_WARNING    1 << 4
+
+/* if/def/ret/else ends with ; */
+#define STATE_SHORT_BLOCK 1 << 5
 
 #define STATE_CTX_ERROR 0
-#define STATE_CTX_DEFAULT 1
-
-#define STATE_CTX_RETURN_BODY 2
-#define STATE_CTX_IF_HEAD 4
-#define STATE_CTX_IF_BODY 8
-#define STATE_CTX_ACCEPT_ELSE 16
-#define STATE_CTX_ELSE_BODY 32
 
 
-#define STACK_SZ                 512
+#define STACK_SZ 512
+#define EXP_SZ 32
+
 struct ExprParserState {
     struct Token *src;
-    usize src_sz;
-    usize *_i;
+    uint16_t src_sz;
+    uint16_t *_i;
     char * line;
 
     /* Tree construction happens in this stack */
@@ -274,7 +291,7 @@ struct ExprParserState {
     /* tracks opening braces in the operator stack */
     struct Group set_stack[STACK_SZ];
     
-    struct Cond cond_stack[STACK_SZ];
+    //struct Cond cond_stack[STACK_SZ];
 
     /* tracks opening braces in the operator stack */
     struct Group prev_set_stack[16];
@@ -282,7 +299,7 @@ struct ExprParserState {
     uint16_t set_ctr;
     uint16_t operators_ctr;
     uint16_t expr_ctr;
-    uint16_t cond_ctr;
+    // uint16_t cond_ctr;
     
     uint16_t expr_sz;
     uint16_t operator_stack_sz;
@@ -300,9 +317,8 @@ struct ExprParserState {
     /*Vec<struct CompileTimeError>*/
     struct Vec errors;
 
-    FLAG_T ctx;
-
-    FLAG_T expecting;
+    enum Lexicon expecting[EXP_SZ];
+    enum Lexicon *expecting_ref;
     FLAG_T panic_flags;
 };
 /*
@@ -349,7 +365,7 @@ struct ExprParserState {
 int8_t parse_expr(
     char * line,
     struct Token tokens[],
-    usize expr_size,
+    uint16_t expr_size,
     struct ExprParserState *state,
     struct Expr *ret
 );
