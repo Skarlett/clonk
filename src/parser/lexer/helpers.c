@@ -124,23 +124,25 @@ enum Lexicon invert_brace_tok_ty(enum Lexicon token) {
 }
 
 int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon current) {
-    //todo: check for int overflow & buffer
+    //TODO: check for int overflow & buffer
     enum Lexicon inverted;
 
-    if (is_close_brace(current)) {
+    if (is_close_brace(current))
+    {
         inverted = invert_brace_tok_ty(current);
 
         if (inverted == -1)
-            return -1;
+          return -1;
         
         /* 
-            return 1 to stop iteration,  and return `is_balanced` as false (0)
+            return 1 to stop iteration,
+	    and return `is_balanced` as false (0)
         */    
         else if (*tokens_ctr <= 0)
-            return 1;
+          return 1;
 
-        else if (tokens[(*tokens_ctr)-1] == inverted)
-            (*tokens_ctr)--;
+        else if (tokens[*tokens_ctr - 1] == inverted)
+          *tokens_ctr -= 1;
     }
 
     else if (is_open_brace(current)) {
@@ -160,19 +162,19 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
  *  an expression can be unbalanced 
  *  if there is a nonmatching `[` / `(` / `{` character
 */
-int8_t is_balanced(struct Token tokens[], usize ntokens) {
+int8_t is_balanced(struct Token tokens[], uint16_t ntokens) {
     enum Lexicon braces[BRACE_BUFFER_SZ];
     uint16_t braces_ctr = 0;
     int8_t ret;
 
-    for (usize i=0; ntokens > i; i++){
+    for (uint16_t i=0; ntokens > i; i++){
         ret = inner_balance(braces, &braces_ctr, tokens[i].type);
         if (ret == -1)
             return -1;
         
         // immediately unbalanced
         else if (ret == 1)
-            return 0;
+	   return 0;
     }
 
     return braces_ctr == 0;
@@ -184,13 +186,13 @@ int8_t is_balanced(struct Token tokens[], usize ntokens) {
     an expression can be unbalanced 
     if there is a nonmatching `[` / `(` / `{` character
 */
-int8_t is_balanced_by_ref(struct Token *tokens[], usize ntokens) {
+int8_t is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
     enum Lexicon braces[BRACE_BUFFER_SZ];
     uint16_t braces_ctr = 0;
 
     int8_t ret;
     
-    for (usize i=0; ntokens > i; i++){
+    for (uint16_t i=0; ntokens > i; i++){
         ret = inner_balance(braces, &braces_ctr, tokens[i]->type);
         
         if (ret == -1)

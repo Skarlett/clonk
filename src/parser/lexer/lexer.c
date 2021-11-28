@@ -78,12 +78,12 @@ enum Lexicon tokenize_char(char c) {
     break;
   }
 
-  for (i = 0; sizeof(DIGITS) > i; i++) {
+  for (i = 0; strlen(DIGITS) > i; i++) {
     if (c == DIGITS[i])
       return DIGIT;
   }
 
-  for (i = 0; sizeof(ALPHABET) > i; i++) {
+  for (i = 0; strlen(ALPHABET) > i; i++) {
     if (c == ALPHABET[i])
       return CHAR;
   }
@@ -125,6 +125,7 @@ int8_t can_upgrade_token(enum Lexicon token) {
     || token == POUND
     || token == TILDE;
 }
+
 int8_t can_ignore_token(enum Lexicon lexed) {
   return lexed == WHITESPACE || lexed == NEWLINE || lexed == COMMENT;
 }
@@ -194,7 +195,7 @@ int8_t set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
   return 0;
 }
 
-usize token_len(struct Token *tok) { return 1 + tok->end - tok->start; }
+uint16_t token_len(struct Token *tok) { return 1 + tok->end - tok->start; }
 
 /*
     Returns true if `compound_token`
@@ -203,7 +204,7 @@ usize token_len(struct Token *tok) { return 1 + tok->end - tok->start; }
 int8_t continue_compound_token(
   enum Lexicon token,
   enum Lexicon compound_token,
-  usize span_size
+  uint16_t span_size
 ){
   return (
       // # ... \n
@@ -307,7 +308,7 @@ int8_t derive_keyword(const char *line, struct Token *t) {
      "and",    "or",    0
   };
 
-  for (int i = 0; 12 > i; i++) {
+  for (uint8_t i = 0; 12 > i; i++) {
     /*token.end+1 since the fields naturally are indexable*/
     if (strlen(keywords[i]) == ((t->end + 1) - t->start) &&
         strncmp(line + t->start, keywords[i], t->end - t->start) == 0) {
@@ -414,18 +415,18 @@ int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
 
 int8_t tokenize(
   const char *line,
-  struct Token tokens[], usize *token_ctr,
-  usize token_sz, struct CompileTimeError *error
+  struct Token tokens[], uint16_t *token_ctr,
+  uint16_t token_sz, struct CompileTimeError *error
 ){
   struct Token token;
   enum Lexicon current = TOKEN_UNDEFINED, compound_token = TOKEN_UNDEFINED;
   size_t line_len = strlen(line);
-  usize start_at = 0;
-  usize span_size = 0;
-  usize new_tokens = 0;
+  uint16_t start_at = 0;
+  uint16_t span_size = 0;
+  uint16_t new_tokens = 0;
   bool repeating = false;
 
-  for (usize i = 0; line_len > i; i++) {
+  for (uint16_t i = 0; line_len > i; i++) {
     if (line[i] == 0)
       continue;
       

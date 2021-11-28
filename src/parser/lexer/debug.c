@@ -87,7 +87,7 @@ char invert_brace_char(char brace) {
 }
 
 
-char * __sprintf_token_ty_slice(char *output, usize output_sz, enum Lexicon token, usize *ctr) {
+char * __sprintf_token_ty_slice(char *output, uint16_t output_sz, enum Lexicon token, uint16_t *ctr) {
     char token_buf[64];
     const char *ptok;
 
@@ -114,10 +114,10 @@ union SPFData {
 };
 
 char * __sprintf_inner(
-    usize ntokens,
-    char *output, usize output_sz,
+    uint16_t ntokens,
+    char *output, uint16_t output_sz,
     union SPFData *ptr, enum SPFMode spf_ty) {
-    usize ctr = 0;
+    uint16_t ctr = 0;
     enum Lexicon item = 0;
 
     if (!ptr || !output)
@@ -125,7 +125,7 @@ char * __sprintf_inner(
     
     output[0] = '[';
 
-    for (usize i=0; ntokens > i; i++) {
+    for (uint16_t i=0; ntokens > i; i++) {
 
         if (spf_ty == spf_lex_arr && ptr->lex_arr) 
             item = ptr->lex_arr[i];
@@ -152,11 +152,11 @@ char * __sprintf_inner(
 
 int8_t sprintf_token_slice(
     const struct Token tokens[],
-    usize ntokens,
+    uint16_t ntokens,
     char * output,
-    usize output_sz    
+    uint16_t output_sz    
 ){
-    usize ctr=0;
+    uint16_t ctr=0;
     union SPFData input;
     enum SPFMode mode = spf_tok_arr;
     input.tok_arr = tokens;
@@ -169,9 +169,9 @@ int8_t sprintf_token_slice(
 
 int8_t sprintf_lexicon_slice(
     const enum Lexicon tokens[],
-    usize ntokens,
+    uint16_t ntokens,
     char * output,
-    usize output_sz
+    uint16_t output_sz
 ){
     union SPFData input;
     enum SPFMode mode = spf_lex_arr;
@@ -186,9 +186,9 @@ int8_t sprintf_lexicon_slice(
 
 int8_t sprintf_token_slice_by_ref(
     const struct Token *tokens[],
-    usize ntokens,
+    uint16_t ntokens,
     char * output,
-    usize output_sz    
+    uint16_t output_sz    
 ){
     union SPFData input;
     enum SPFMode mode = spf_tok_arr_by_ref;
@@ -202,8 +202,8 @@ int8_t sprintf_token_slice_by_ref(
 
 int8_t sprint_src_code(
     char * output,
-    usize output_sz,
-    usize *nbytes,
+    uint16_t output_sz,
+    uint16_t *nbytes,
     const char * source,
     const struct Token *token
 

@@ -300,16 +300,16 @@ enum Lexicon {
         The position is directly indexable against its source (tokens[]).
 */
 struct Token {
-    usize start;
-    usize end;
+    uint16_t start;
+    uint16_t end;
     enum Lexicon type;
 };
 
 int8_t tokenize(
     const char *line,
     struct Token tokens[],
-    usize *token_ctr,
-    usize token_sz,
+    uint16_t *token_ctr,
+    uint16_t token_sz,
     struct CompileTimeError *error
 );
 

@@ -121,7 +121,7 @@ bool is_keyword(enum Lexicon token);
  *
  * @return bool
  */
-bool is_balanced(struct Token tokens[], usize ntokens);
+bool is_balanced(struct Token tokens[], uint16_t ntokens);
 
 
 /**
@@ -132,7 +132,7 @@ bool is_balanced(struct Token tokens[], usize ntokens);
  *
  * @return bool
  */
-bool is_balanced_by_ref(struct Token *tokens[], usize ntokens);
+bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens);
 
 
 /**
