@@ -23,7 +23,7 @@ int8_t mk_error(struct ExprParserState *state, enum ErrorT type, const char * ms
   if (vec_push(&state->errors, &state->src[*state->_i]) == 0)
     return -1;
   
-  set_flag(&state->panic_flags, STATE_PANIC | STATE_INCOMPLETE);
+  state->panic_flags |= STATE_PANIC | STATE_INCOMPLETE;
   return 0;
 }
 
@@ -39,7 +39,7 @@ int8_t throw_internal_error(struct ExprParserState *state, const char * meta, co
 #else
   internal_msg = msg;
 #endif
-  set_flag(&state->panic_flags, STATE_PANIC | STATE_INCOMPLETE | INTERNAL_ERROR);
+  state->panic_flags |= STATE_PANIC | STATE_INCOMPLETE | INTERNAL_ERROR;
   if (mk_error(state, Fatal, internal_msg) == -1)
     return -1;
   return 0;
@@ -618,7 +618,7 @@ int8_t handle_grouping(struct ExprParserState *state)
   /* only add groups if they're not singular item paramethesis braced */
   if (ghead->origin->type != PARAM_OPEN 
       || ghead->delimiter_cnt > 0
-      || check_flag(ghead->state, GSTATE_EMPTY))
+      || ghead->state & GSTATE_EMPTY)
       if (mk_group(state, &ex) == -1
         || add_dbg_sym(state, grp_dbg_sym(ex.inner.value.literal.grouping.type), ghead->delimiter_cnt + 1) == -1
         || inc_stack(state, &ex, 0) == -1)
@@ -740,7 +740,7 @@ struct Group * mk_short_block(struct ExprParserState *state)
   if(!ghead)
      return 0;
 
-  set_flag(&ghead->state, GSTATE_CTX_SHORT_BLOCK);
+  ghead->state |= GSTATE_CTX_SHORT_BLOCK;
   
   return ghead;
 }
@@ -863,7 +863,7 @@ int8_t handle_close_brace(struct ExprParserState *state) {
   
   /* is empty ? */
   if (prev->type == invert_brace_tok_ty(current->type)) {
-    set_flag(&ghead->state, GSTATE_EMPTY);
+    ghead->state |= GSTATE_EMPTY;
     
     /* on index ctx throw error */
     if (prev->type == _IdxAccess) {
@@ -876,10 +876,7 @@ int8_t handle_close_brace(struct ExprParserState *state) {
   }
   
   /* handle grouping */
-  if (ghead->state &
-     (GSTATE_CTX_CODE_GRP 
-     | GSTATE_CTX_DATA_GRP
-     | GSTATE_CTX_MAP_GRP))
+  if (!(ghead->state & GSTATE_CTX_IDX))
      ret = handle_grouping(state); 
   
   /* drop open brace */
@@ -908,52 +905,50 @@ int8_t handle_close_brace(struct ExprParserState *state) {
     state->operators_ctr -= 1;
   }
   
+  if (pop_block_operator(state) == -1)
+    return -1;
+
   return ret; 
 }
 
 int8_t update_ctx(enum Lexicon delimiter, struct Group *ghead){
-  if (check_flag(ghead->state, GSTATE_CTX_LOCK))
+  if (ghead->state & GSTATE_CTX_LOCK)
     return 0;
   
   if (delimiter == COMMA)
-    set_flag(&ghead->state, GSTATE_CTX_DATA_GRP | GSTATE_CTX_LOCK);
+    ghead->state |= GSTATE_CTX_DATA_GRP | GSTATE_CTX_LOCK;
 
   else if (delimiter == SEMICOLON)
-    set_flag(&ghead->state, GSTATE_CTX_CODE_GRP | GSTATE_CTX_LOCK);
+    ghead->state |= GSTATE_CTX_CODE_GRP | GSTATE_CTX_LOCK;
 
   else if (delimiter == COLON) {
     if(ghead->origin->type == BRACE_OPEN)
-      set_flag(&ghead->state, GSTATE_CTX_MAP_GRP | GSTATE_CTX_LOCK);
+      ghead->state |= GSTATE_CTX_MAP_GRP | GSTATE_CTX_LOCK;
     else return -1;
   }
+
   else return -1;
   return 0;
 }
 
+//TODO no delimiters in IF condition
 int8_t handle_delimiter(struct ExprParserState *state) {
   struct Expr ex;
   struct Token *head = 0, 
     *current = &state->src[*state->_i],
     *prev = 0,
-    *next = 0;
+    *next = 0,
+    *ophead = 0;
   struct Group *ghead = 0;
 
   FLAG_T ret_flag;
   
-  /* Setup group group head ptr */
-  if (state->set_ctr > 0)
-    ghead = &state->set_stack[state->set_ctr - 1];
-  else
-    ghead = &state->set_stack[0];
-
+  ghead = group_head(state);
   ghead->delimiter_cnt += 1;
   ghead->last_delim = current;
   
   prev = prev_token(state);
   next = next_token(state);  
-
-  //if (check_flag(ghead->state, GSTATE_CTX_IF_COND))
-  //  return -1;
 
   if (!next || !prev) {
     mk_error(state, Fatal, "Expected token before & after delimiter.");
@@ -964,24 +959,30 @@ int8_t handle_delimiter(struct ExprParserState *state) {
     return -1;
   
   if(ghead->state & GSTATE_CTX_SHORT_BLOCK)
-  { 
-    
+  {
     if(state->set_ctr == 0)
       return -1;
 
     // remove pretend group
     state->set_ctr -= 1;
+
+    if (ophead->type != BRACE_OPEN)
+      return -1;
+    
     // remove pretend brace
     state->operators_ctr -= 1;
     
-    state->set_stack[state->set_ctr - 1]
-    
+    ophead = state->operator_stack[state->operators_ctr-1];
+
     if(pop_block_operator(state) == -1)
       return -1;  
   }
 
   else if (ghead->state & GSTATE_CTX_IDX)
   {
+    // TODO make error condition
+    /* if(ghead->delimiter_cnt > 2)*/
+    
     if (prev->type == COLON)
     { 
       mk_null(&ex);
@@ -993,46 +994,6 @@ int8_t handle_delimiter(struct ExprParserState *state) {
 
   else return -1;
 
-  // TODO use operator stack instead of context 
-  /* 
-    IDX/APPLY operations will already have the context locked.
-  */
-  /* if (update_ctx(current->type, ghead) == -1) */
-  /*   return -1; */
-  
-  /* /* peek behind and add NULL if no */*/
-  /* if (check_flag(ghead->state, GSTATE_CTX_IDX))*/
-  /* {*/
-  /*   if(ghead->delimiter_cnt > 2)*/
-  /*   {*/
-  /*     throw_internal_error(state, "Not enough items to create idx operation.");*/
-  /*     return -1;*/
-  /*   }*/
-
-  /*   /* add NOP to the output if no position argument present*/*/
-  /*   if (prev == ghead->origin || prev->type == COLON)*/
-  /*   {*/ 
-  /*     mk_null(&ex);*/
-  /*     if (add_dbg_sym(state, NULLTOKEN, 0) == -1*/
-  /*        ||inc_stack(state, &ex, 0))*/
-  /*       return -1;*/
-  /*   }*/
-  /* }*/
-
-  // assumes brace 
-
-  /* syntax sugar for if/else */
-  /* if((ret_flag = check_flag(state->ctx, STATE_CTX_IF_BODY | STATE_CTX_ELSE_BODY))) { */
-  /*   if(ret_flag & STATE_CTX_IF_BODY) { */
-  /*     unset_flag(&state->ctx, STATE_CTX_IF_BODY); */
-  /*     handle_if_body_grp(state); */
-  /*   } */
-  /*   else */
-  /*   { */
-  /*     unset_flag(&state->ctx, STATE_CTX_ELSE_BODY); */
-  /*     handle_else(state); */
-  /*   } */
-  /* } */
   return 0;
 }
 
@@ -1110,7 +1071,7 @@ int8_t initalize_parser_state(
   state->expecting_ref = state->expecting;
   init_expect_buffer(state);
   
-  set_flag(&state->panic_flags, STATE_READY);
+  state->panic_flags = STATE_READY;
   return 0;
 }
 
@@ -1140,7 +1101,7 @@ int8_t parse_expr(
         || state->panic_flags == FLAG_ERROR)
         return -1;
 
-    if (check_flag(state->panic_flags, STATE_PANIC) || is_token_unexpected(state))
+    if ((state->panic_flags & STATE_PANIC) || is_token_unexpected(state))
     {
       // TODO
       return -1;
@@ -1185,7 +1146,7 @@ int8_t parse_expr(
     }
   }
   
-  if(check_flag(state->panic_flags, STATE_INCOMPLETE))
+  if(state->panic_flags & STATE_INCOMPLETE)
     return -1;
   
   /* -1 from state._i so that it points to the last item in the input */

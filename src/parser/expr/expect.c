@@ -36,16 +36,16 @@
 /*
     check flag, and if present, unset it.
 */
-FLAG_T check_flag(FLAG_T set, FLAG_T flag){
-    return set & flag;
-}
-void set_flag(FLAG_T *set, FLAG_T flag){
-    *set = *set | flag;
-}
+/* FLAG_T check_flag(FLAG_T set, FLAG_T flag){ */
+/*     return set & flag; */
+/* } */
+/* void set_flag(FLAG_T *set, FLAG_T flag){ */
+/*     *set = *set | flag; */
+/* } */
 
-void unset_flag(FLAG_T *set, FLAG_T flag){
-    *set = *set & ~flag;
-}
+/* void unset_flag(FLAG_T *set, FLAG_T flag){ */
+/*     *set = *set & ~flag; */
+/* } */
 
 enum Lexicon exp_default[] = {
   _EX_EXPR,
