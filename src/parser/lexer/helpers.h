@@ -144,4 +144,8 @@ bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens);
  */
 bool is_num_negative(struct Token *token);
 
+
+bool is_operator(enum Lexicon token);
+
+
 #endif

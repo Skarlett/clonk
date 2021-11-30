@@ -28,9 +28,14 @@ enum ExprType {
     // x(a, ...)
     FnCallExprT,
 
-    // x(a, ...)
+    // if(a, ...) x;|{x} (?else) x;|{x}
     IfExprT,
 
+    // def foo(a) x;|{x}
+    FuncDefExprT,
+
+    // return x|{x};
+    ReturnExprT,
 
     // binary operation
     // 1 + 2 * foo.max - size_of(list)
@@ -40,8 +45,9 @@ enum ExprType {
 };
 
 enum Operation {
-    Nop,
     /* no operation */
+    Nop,
+
     /* math */
     Add,
     Sub,
@@ -49,6 +55,7 @@ enum Operation {
     Divide,
     Pow,
     Modolus,
+
     /* cmp */
     IsEq,
     NotEq,
@@ -57,6 +64,7 @@ enum Operation {
     GtEq,
     LtEq,
 
+    /* logical operator */
     And,
     Or,
 
@@ -117,7 +125,7 @@ enum DataType {
     StringT,
     BoolT,
     GroupT,
-   NullT
+    NullT
 };
 
 struct Literals {
@@ -159,6 +167,15 @@ struct IfExpr {
     struct Expr *else_body;
 };
 
+struct FnDefExpr {
+    struct Expr *signature;
+    struct Expr *body;
+};
+
+struct ReturnExpr {
+    struct Expr *body;
+};
+
 struct IdxExpr {
     struct Expr * operand;
     struct Expr * start;
@@ -180,7 +197,8 @@ struct Expr {
         struct NotExpr not_;
         struct IdxExpr idx;
         struct IfExpr cond;
-
+        struct ReturnExpr ret;
+	struct FnDefExpr func;
     } inner;
 };
 
@@ -204,24 +222,16 @@ typedef uint16_t FLAG_T;
     used in the group-stack exclusively
 */
 
-
 #define GSTATE_EMPTY             1
+
 #define GSTATE_CTX_DATA_GRP      1 << 1
 #define GSTATE_CTX_CODE_GRP      1 << 2
 #define GSTATE_CTX_MAP_GRP       1 << 3
 #define GSTATE_CTX_IDX           1 << 4
+
 #define GSTATE_CTX_LOCK          1 << 5
-
 #define GSTATE_CTX_NO_DELIM      1 << 6
-
-#define GSTATE_OP_APPLY          1 << 7
-#define GSTATE_CTX_IF_COND       1 << 8
-#define GSTATE_CTX_IF_BODY       1 << 9
-#define GSTATE_CTX_ELSE_BODY     1 << 10
-#define GSTATE_OP_RET            1 << 11
-#define GSTATE_CTX_DEF_SIGNATURE 1 << 12
-#define GSTATE_CTX_DEF_BODY      1 << 13
-
+#define GSTATE_CTX_SHORT_BLOCK   1 << 7
 
 struct Group {
     /*
@@ -234,17 +244,6 @@ struct Group {
         GSTATE_CTX_LOCK :       set an immutable parsing context until this group ends
         GSTATE_OP_APPLY :       after group completion, make into an fncall
         GSTATE_CTX_IF_COND:     parsing an if conditional
-        GSTATE_CTX_IF_BODY      
-        GSTATE_CTX_ELSE_BODY
-        GSTATE_CTX_DEF_SIGNATURE
-        GSTATE_CTX_DEF_BODY 
-      
-      # Not in use yet
-      256 : if marker operation
-      512 : else marker operation
-     1024 : def-body operator
-     2048 : def-signature operator
-     4092 : s
 
     */
     FLAG_T state;
@@ -254,13 +253,15 @@ struct Group {
 
     // amount of delimiters
     uint16_t expr_cnt;
-
+    
+    uint16_t operator_idx;
     // should be `[` `(` '{' or `0`
     struct Token *origin;
     struct Token *last_delim;
 };
 
 #define FLAG_ERROR       0
+
 #define STATE_READY      1
 #define STATE_INCOMPLETE 1 << 1
 #define STATE_PANIC      1 << 2 
@@ -269,9 +270,6 @@ struct Group {
 
 /* if/def/ret/else ends with ; */
 #define STATE_SHORT_BLOCK 1 << 5
-
-#define STATE_CTX_ERROR 0
-
 
 #define STACK_SZ 512
 #define EXP_SZ 32
@@ -291,15 +289,12 @@ struct ExprParserState {
     /* tracks opening braces in the operator stack */
     struct Group set_stack[STACK_SZ];
     
-    //struct Cond cond_stack[STACK_SZ];
-
     /* tracks opening braces in the operator stack */
-    struct Group prev_set_stack[16];
+    // struct Group prev_set_stack[16];
 
     uint16_t set_ctr;
     uint16_t operators_ctr;
     uint16_t expr_ctr;
-    // uint16_t cond_ctr;
     
     uint16_t expr_sz;
     uint16_t operator_stack_sz;
@@ -373,3 +368,4 @@ int8_t parse_expr(
 int8_t free_state(struct ExprParserState *state);
 int8_t reset_state(struct ExprParserState *state);
 #endif
+

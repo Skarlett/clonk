@@ -96,6 +96,28 @@ int8_t mk_str(struct ExprParserState *state, struct Expr *ex) {
   return 0;
 }
 
+enum GroupT get_group_ty(struct Group *ghead)
+{
+  if (ghead->state & GSTATE_CTX_MAP_GRP)
+    return MapT;
+
+  else if(ghead->state & GSTATE_CTX_CODE_GRP)
+    return CodeBlockT;
+
+  if (ghead->origin->type == BRACKET_OPEN)
+    return ListT;
+
+  else if (ghead->origin->type == PARAM_OPEN)
+    return TupleT;
+
+  else if(ghead->origin->type == BRACE_OPEN && (ghead->state & GSTATE_CTX_DATA_GRP))
+    return SetT;
+  
+  else
+    return GroupTUndef;
+}
+
+
 int8_t mk_group(struct ExprParserState *state, struct Expr *ex) {
   struct Expr **buf;
   struct Token *current = &state->src[*state->_i];
@@ -116,7 +138,7 @@ int8_t mk_group(struct ExprParserState *state, struct Expr *ex) {
   ex->inner.value.literal.grouping.ptr = 0;
   ex->inner.value.literal.grouping.length = 0;
 
-  if (ghead->state & GSTATE_EMPTY == 0)
+  if ((ghead->state & GSTATE_EMPTY) == 0)
   {
     buf = calloc(elements, sizeof(void *));
     
@@ -270,16 +292,18 @@ int8_t mk_fncall(struct ExprParserState *state, struct Expr *ex) {
   ex->type = FnCallExprT;
   ex->datatype = 0;
 
-  if (check_flag(ghead->state, GSTATE_EMPTY))
+  if (ghead->state & GSTATE_EMPTY)
   {
     ex->inner.fncall.args = 0;
     ex->inner.fncall.args_length = 0;
   }
-  else {
+  else
+  {
     ex->inner.fncall.args = calloc(argc, sizeof(void *));
 
     /* fill in arguments popping them off the stack */
-    for (uint16_t x=0; argc > x; x++){
+    for (uint16_t x=0; argc > x; x++)
+    {
       ex->inner.fncall.args[ex->inner.fncall.args_length] = head;
       ex->inner.fncall.args_length += 1;
       state->expr_ctr -= 1;
@@ -299,18 +323,6 @@ int8_t mk_fncall(struct ExprParserState *state, struct Expr *ex) {
   if (head->type == SymExprT)
     ex->inner.fncall.func_name = head->inner.symbol;
 
-
-  // /* this is usually the function name, but could be a grouping */
-  
-  // else if (head->type == LiteralExprT &&
-  //          head->datatype == GroupT)
-  //   nop;
-  // else if (head->type == FnCallExprT)
-  //   nop;
-  // else
-  //   /*expected a group, or symbol as last item on the stack*/
-  //   return -1;
-
   return 0;
 }
 
@@ -329,7 +341,7 @@ int8_t mk_if_cond(struct ExprParserState *state, struct Expr *ex)
   return 0;
 }
 
-int8_t mk_if_body(struct ExprParserState *state, struct Expr *ex)
+int8_t mk_if_body(struct ExprParserState *state)
 {
   struct Expr *body, *cond = 0;
   
@@ -348,7 +360,7 @@ int8_t mk_if_body(struct ExprParserState *state, struct Expr *ex)
   return 0;
 }
 
-int8_t mk_else_body(struct ExprParserState *state, struct Expr *ex)
+int8_t mk_else_body(struct ExprParserState *state)
 {
   struct Expr *body, *cond = 0;
   
@@ -366,5 +378,36 @@ int8_t mk_else_body(struct ExprParserState *state, struct Expr *ex)
 
   return 0;
 }
+
+
+int8_t mk_return(struct ExprParserState *state, struct Expr *ex)
+{
+  // TODO
+  struct Expr *body = 0;
+  
+  if (state->expr_ctr == 0)
+    return -1;
+  
+  ex->type = ReturnExprT; 
+  return 0;
+}
+
+int8_t mk_def_sig(struct ExprParserState *state, struct Expr *ex)
+{
+  //TODO
+  struct Expr *sig = 0;
+  return 0;
+}
+
+int8_t mk_def_body(struct ExprParserState *state)
+{
+  //TODO
+  struct Expr *body = 0;
+  return 0;
+}
+
+
+
+
 
 
