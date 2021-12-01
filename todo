@@ -1,6 +1,10 @@
 
 TODO (lexer):
   make lexer always end with eof when finished
+TODO
+  new expr counting in blocks
+  every time the stack collapses on a non-associative operator
+  we increment the expr counter
 
 TODO (expr):
   keyword import
