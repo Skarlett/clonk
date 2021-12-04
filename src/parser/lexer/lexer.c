@@ -415,7 +415,9 @@ int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
 int8_t tokenize(
   const char *line,
   struct Token tokens[], uint16_t *token_ctr,
-  uint16_t token_sz, struct CompileTimeError *error
+  uint16_t token_sz, 
+  bool add_eoft,
+  struct CompileTimeError *error
 ){
   struct Token token;
   enum Lexicon current = TOKEN_UNDEFINED, compound_token = TOKEN_UNDEFINED;
@@ -526,12 +528,15 @@ int8_t tokenize(
     new_tokens += 1;
   }
   
-  token.type = EOFT;
-  token.start = i;
-  token.end = i;
+  if (add_eoft)
+  {
+    token.type = EOFT;
+    token.start = i;
+    token.end = i;
 
-  tokens[new_tokens] = token;
-  new_tokens += 1;
+    tokens[new_tokens] = token;
+    new_tokens += 1;
+  }
   
   // add to counter
   *token_ctr += new_tokens;

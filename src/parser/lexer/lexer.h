@@ -312,6 +312,7 @@ int8_t tokenize(
     struct Token tokens[],
     uint16_t *token_ctr,
     uint16_t token_sz,
+    bool add_eoft,
     struct CompileTimeError *error
 );
 
