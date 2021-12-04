@@ -444,12 +444,10 @@ struct Group * mk_short_block(struct ExprParserState *state)
   struct Group *ghead;
 
   ophead = op_push(BRACE_OPEN, 0, 0, state);
-  if (!ophead)
-     return 0;
- 
+  assert(ophead);
+
   ghead = new_grp(state, ophead);
-  if(!ghead)
-     return 0;
+  assert(ghead);
 
   ghead->state |= GSTATE_CTX_SHORT_BLOCK;
   
@@ -473,8 +471,8 @@ int8_t pop_block_operator(struct ExprParserState *state)
   next = next_token(state);
   
   //TODO: ensure its not a data-collection
-  if (!next)
-    return 0;
+  //if (!next)
+  //  return 0;
     
   // specify short block
   //mk_short_blk = next 
@@ -548,10 +546,11 @@ int8_t handle_close_brace(struct ExprParserState *state) {
   prev = prev_token(state);
 
   if (state->set_ctr == 0) {
-    mk_error(state, Fatal, "Unexpected closing brace.");
+    //mk_error(state, Fatal, "Unexpected closing brace.");
     return -1;
   }
-   /* Operators stack is empty */
+  
+  /* Operators stack is empty */
   else if (0 == state->operators_ctr
     || !prev
     /* unbalanced brace, extra closing brace.*/
@@ -562,14 +561,6 @@ int8_t handle_close_brace(struct ExprParserState *state) {
   /* Grab the head of the group stack */
   ghead = &state->set_stack[state->set_ctr - 1];
   state->set_ctr -= 1;
-
-  /*
-    flush out operators, until the 
-    open-brace type is found 
-    in the operator-stack.
-  */
-  if (flush_ops_until_delim(state) == -1)
-      return -1;
 
   /* is empty ? */
   if (prev->type == invert_brace_tok_ty(current->type)) {
@@ -584,7 +575,14 @@ int8_t handle_close_brace(struct ExprParserState *state) {
     state->operators_ctr -= 1;
     return 0; 
   }
-  
+  /*
+    flush out operators, until the 
+    open-brace type is found 
+    in the operator-stack.
+  */
+  if (flush_ops_until_delim(state) == -1)
+      return -1;
+
   /* handle grouping */
   if (!(ghead->state & GSTATE_CTX_IDX))
      ret = handle_grouping(state); 
@@ -707,48 +705,6 @@ int8_t handle_delimiter(struct ExprParserState *state) {
   return 0;
 }
 
-// int8_t unwind_operator(struct ExprParserState *state, struct Expr *ex) {
-//   struct Expr *op = state->expr_stack[state->expr_ctr - 1];
-
-//   state->expr_stack[state->expr_ctr - 1] = ex->inner.bin.lhs;
-//   state->expr_stack[state->expr_ctr] = ex->inner.bin.rhs;
-//   state->expr_ctr += 1;
-//   //struct Token *current = &state->src[*state->i - 1];
-// }
-
-/*
-int8_t handle_unwind(struct ExprParserState *state) {
-
-  struct Token *prev = &state->src[*state->i - 1],
-              *start, *end;
-  struct Group *ghead = 0;
-   
-  if (state->set_ctr > 0)
-    ghead = &state->set_stack[state->set_ctr - 1];
-  else
-   return -1;
-
-  //struct Token *spool_head = state->debug[*state->debug_ctr - 1];
-  
-  if (ghead->last_delim != 0)
-    start = ghead->last_delim;
-
-  else if (ghead->origin != 0)
-    start = ghead->origin;
-
-  else {}
-
-  for (uint16_t i = *state->i; state->src_sz > i; i++)
-  {
-
-    if (state->src[i].type == COLON || state->src[i].type == COMMA)
-    {
-      
-    }
-  }
-  return 0;
-}
-*/
 int8_t initalize_parser_state(
     char * line,
     struct Token tokens[],
@@ -797,6 +753,7 @@ int8_t parse_expr(
     struct ExprParserState *state,
     struct Expr *ret
 ){
+  int8_t ret_flag = 0;
   uint16_t i = 0;
   
   if (expr_size != 0 || ~state->panic_flags & STATE_READY)
@@ -805,6 +762,8 @@ int8_t parse_expr(
   for (i = 0; expr_size > i; i++) {
     assert(state->expr_ctr < state->expr_sz);
     assert(state->operators_ctr > state->operator_stack_sz);
+
+    ret_flag = -1;
 
     if(state->panic_flags == FLAG_ERROR)
       return -1;
@@ -817,32 +776,32 @@ int8_t parse_expr(
     
     /* string, word, integers */
     else if(is_unit_expr(state->src[i].type))
-      handle_unit_expr(state);
+      ret_flag = handle_unit_expr(state);
 
     else if (is_operator(state->src[i].type)
       || state->src[i].type == RETURN
       || state->src[i].type == IMPORT)
-      handle_operator(state);
+      ret_flag = handle_operator(state);
     
     else if (is_close_brace(state->src[i].type))
-      handle_close_brace(state);
+      ret_flag = handle_close_brace(state);
 
     else if (is_open_brace(state->src[i].type))
-      handle_open_brace(state);
+      ret_flag = handle_open_brace(state);
 
     else if (state->src[i].type == COLON 
       || state->src[i].type == COMMA
       || state->src[i].type == SEMICOLON)
-      handle_delimiter(state);
+      ret_flag = handle_delimiter(state);
 
     else if (state->src[i].type == IF)
-      handle_if(state);
+      ret_flag = handle_if(state);
     
     else if (state->src[i].type == ELSE)
-      handle_else(state);
+      ret_flag = handle_else(state);
     
     else if(state->src[i].type == FUNC_DEF)
-      handle_def(state);
+      ret_flag = handle_def(state);
 
     else if(state->src[i].type == EOFT)
     	break;
