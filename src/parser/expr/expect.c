@@ -167,17 +167,6 @@ uint8_t prevision_keywords(enum Lexicon *buf, struct Expr *expr_head) {
   return offset;
 }
 
-uint16_t buf_len(enum Lexicon *buf) {
-  uint16_t i;
-  
-  for (i=0;;i++)
-    if(buf[i] == 0) break;
-  return i;
-}
-
-int8_t extend_exp_buffer() {
-
-}
 /* 
  * @param ref NULL terminated  
  */
@@ -339,9 +328,8 @@ enum ModeResult mode_func_def(enum Lexicon current, struct Previsioner *state)
       return (current == WORD && mod) || (current == COMMA && !mod);
   }
 
-  return mod;
+  return ret;
 }
-
 
 enum ModeResult mode_import(enum Lexicon current,  struct Previsioner *state)
 {
@@ -370,7 +358,7 @@ enum ModeResult mode_import(enum Lexicon current,  struct Previsioner *state)
     return 2;
 
   else return -1;
-  
+  return -1;
 }
 
 int8_t mode_default(enum Lexicon current, enum Lexicon grp_delim, struct Previsioner *expecting)
@@ -413,7 +401,6 @@ int8_t is_token_unexpected(struct ExprParserState *state)
 	    return false;
     }
     else return -1;
-
   }
   /* expecting buffers contain all delimiters, 
    * so we may check any */
