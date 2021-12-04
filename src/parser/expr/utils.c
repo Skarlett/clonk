@@ -1,5 +1,41 @@
+
+#include <string.h>
 #include "expr.h"
+#include "utils.h"
 #include "../../utils/vec.h"
+
+
+int8_t mk_error(struct ExprParserState *state, enum ErrorT type, const char * msg) {
+  struct CompileTimeError *err;
+  
+  err->type = type;
+  err->msg = msg;
+  if (vec_push(&state->errors, &state->src[*state->_i]) == 0)
+    return -1;
+  
+  state->panic_flags |= STATE_PANIC | STATE_INCOMPLETE;
+  return 0;
+}
+
+int8_t throw_internal_error(struct ExprParserState *state, const char * meta, const char * msg)
+{
+  char * internal_msg;
+  //TODO
+
+#ifdef DEBUG
+  internal_msg = malloc(strlen(meta) + strlen(msg));
+  strcat(internal_msg, meta);
+  strcat(internal_msg, msg);
+#else
+  internal_msg = msg;
+#endif
+  state->panic_flags |= STATE_PANIC | STATE_INCOMPLETE | INTERNAL_ERROR;
+  if (mk_error(state, Fatal, internal_msg) == -1)
+    return -1;
+  return 0;
+}
+
+#define throw_internal_error(X, MSG) throw_internal_error(X, FILE_LINE, MSG)
 
 int8_t add_dbg_sym(
   struct ExprParserState *state,

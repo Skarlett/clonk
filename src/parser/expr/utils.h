@@ -33,5 +33,9 @@ int8_t push_many_ops(enum Lexicon *ops, struct ExprParserState *state);
 int8_t is_short_blockable(enum Lexicon tok);
 bool is_unit_expr(enum Lexicon tok);
 
+int8_t mk_error(struct ExprParserState *state, enum ErrorT type, const char * msg);
+
+int8_t throw_internal_error(struct ExprParserState *state, const char * meta, const char * msg);
+
 #endif
 
