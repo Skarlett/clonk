@@ -4,10 +4,6 @@
 #include "../../prelude.h"
 #include "lexer.h"
 
-const char * ptoken(enum Lexicon t);
-
-char invert_brace_char(char brace);
-
 int8_t sprintf_token_slice(
     const struct Token tokens[],
     uint16_t ntokens,

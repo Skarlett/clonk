@@ -4,7 +4,6 @@
 
 #define BRACE_BUFFER_SZ 256
 
-
 bool is_delimiter(enum Lexicon token) {
     return token == COLON || token == COMMA;
 }
@@ -77,15 +76,15 @@ bool is_operator(enum Lexicon token) {
         || token == EQUAL
         || token == MINUSEQ
         || token == PLUSEQ
-	/* bitwise operations */
-	|| token == BOREQL
-	|| token == BANDEQL
-	|| token == PIPE
-	|| token == AMPER
-	|| token == SHL
-	|| token == SHR
-	/* experimental */
-	|| token == PIPEOP
+        /* bitwise operations */
+        || token == BOREQL
+        || token == BANDEQL
+        || token == PIPE
+        || token == AMPER
+        || token == SHL
+        || token == SHR
+        /* experimental */
+        || token == PIPEOP
     );
 }
 
@@ -97,7 +96,6 @@ bool contains_tok(enum Lexicon cmp, enum Lexicon buffer[]) {
   
   return false;
 }
-
 
 
 /* is character utf encoded */
@@ -162,7 +160,7 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
  *  an expression can be unbalanced 
  *  if there is a nonmatching `[` / `(` / `{` character
 */
-int8_t is_balanced(struct Token tokens[], uint16_t ntokens) {
+bool is_balanced(struct Token tokens[], uint16_t ntokens) {
     enum Lexicon braces[BRACE_BUFFER_SZ];
     uint16_t braces_ctr = 0;
     int8_t ret;
@@ -186,7 +184,7 @@ int8_t is_balanced(struct Token tokens[], uint16_t ntokens) {
     an expression can be unbalanced 
     if there is a nonmatching `[` / `(` / `{` character
 */
-int8_t is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
+bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
     enum Lexicon braces[BRACE_BUFFER_SZ];
     uint16_t braces_ctr = 0;
 

@@ -2,7 +2,6 @@
 #include "../../prelude.h"
 #include "../error.h"
 #include "debug.h"
-#include "helpers.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -421,12 +420,13 @@ int8_t tokenize(
   struct Token token;
   enum Lexicon current = TOKEN_UNDEFINED, compound_token = TOKEN_UNDEFINED;
   size_t line_len = strlen(line);
+  uint16_t i = 0;
   uint16_t start_at = 0;
   uint16_t span_size = 0;
   uint16_t new_tokens = 0;
   bool repeating = false;
 
-  for (uint16_t i = 0; line_len > i; i++) {
+  for (i = 0; line_len > i; i++) {
     if (line[i] == 0)
       continue;
       
@@ -525,7 +525,14 @@ int8_t tokenize(
     tokens[new_tokens] = token;
     new_tokens += 1;
   }
+  
+  token.type = EOFT;
+  token.start = i;
+  token.end = i;
 
+  tokens[new_tokens] = token;
+  new_tokens += 1;
+  
   // add to counter
   *token_ctr += new_tokens;
   return 0;

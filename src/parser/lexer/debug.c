@@ -116,7 +116,8 @@ union SPFData {
 char * __sprintf_inner(
     uint16_t ntokens,
     char *output, uint16_t output_sz,
-    union SPFData *ptr, enum SPFMode spf_ty) {
+    union SPFData *ptr, enum SPFMode spf_ty
+){
     uint16_t ctr = 0;
     enum Lexicon item = 0;
 
@@ -207,7 +208,7 @@ int8_t sprint_src_code(
     const char * source,
     const struct Token *token
 
-) {
+){
     if (!source || !output || !token 
         || token->start > token->end
         || token->end - token->start > output_sz)

@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -5,15 +6,14 @@
 #include "../../src/prelude.h"
 #include "../../src/parser/lexer/lexer.h"
 #include "../../src/parser/lexer/debug.h"
-#include "../../src/parser/lexer/helpers.h"
 #include "../../src/parser/error.h"
 #include "../testutils.h"
 
 
 void __test__basic_perthensis(CuTest* tc)
 {
-    static usize tokens_sz[] = {5, 7, 7, 9, 9, 11, 13};
-    usize ntokens=0;
+    static uint16_t tokens_sz[] = {5, 7, 7, 9, 9, 11, 13};
+    uint16_t ntokens=0;
 
     struct Token tokens[16];
     char msg[1028];
@@ -38,17 +38,17 @@ void __test__basic_perthensis(CuTest* tc)
     };
     
     static enum Lexicon check_list[][16] = {
-        {PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, 0},
-        {PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, INTEGER, 0},
-        {INTEGER, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, 0},
-        {PARAM_OPEN, INTEGER, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, PARAM_CLOSE, 0},
-        {PARAM_OPEN, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, INTEGER, PARAM_CLOSE, 0},
-        {PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, 0},
-        {PARAM_OPEN, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, PARAM_CLOSE, 0},
+        {PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, EOFT, 0},
+        {PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, INTEGER, EOFT, 0},
+        {INTEGER, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, EOFT, 0},
+        {PARAM_OPEN, INTEGER, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, PARAM_CLOSE, EOFT, 0},
+        {PARAM_OPEN, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, INTEGER, PARAM_CLOSE, EOFT, 0},
+        {PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, EOFT, 0},
+        {PARAM_OPEN, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, PARAM_CLOSE, EOFT, 0},
         0
     };
 
-    for (usize i=0 ;; i++) {
+    for (uint16_t i=0 ;; i++) {
         if (check_list[i][0] == 0 || line[i] == 0)
             break;
         ntokens = 0;
@@ -64,24 +64,24 @@ void __test__basic_perthensis(CuTest* tc)
 void __test__collapse_integer(CuTest* tc)
 { 
     struct Token tokens[16];
-    usize i=0;
+    uint16_t i=0;
 
     CuAssertTrue(tc, tokenize("1234", tokens, &i, 16, NULL) == 0);
-    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, i == 2);
     CuAssertTrue(tc, tokens[0].type == INTEGER);
     CuAssertTrue(tc, tokens[0].start == 0);
     CuAssertTrue(tc, tokens[0].end == 3);
     i=0;
 
     CuAssertTrue(tc, tokenize("1", tokens, &i, 16, NULL) == 0);
-    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, i == 2);
     CuAssertTrue(tc, tokens[0].type == INTEGER);
     CuAssertTrue(tc, tokens[0].start == 0);
     CuAssertTrue(tc, tokens[0].end == 0);
     i=0;
 
     CuAssertTrue(tc, tokenize(" 1 ", tokens, &i, 16, NULL) == 0);
-    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, i == 2);
     CuAssertTrue(tc, tokens[0].type == INTEGER);
     CuAssertTrue(tc, tokens[0].start == 1);
     CuAssertTrue(tc, tokens[0].end == 1);
@@ -90,37 +90,37 @@ void __test__collapse_integer(CuTest* tc)
 void __test__destroy_whitespace(CuTest* tc)
 {
     struct Token tokens[16];
-    usize i=0;
+    uint16_t i=0;
     
     CuAssertTrue(tc, tokenize("  1234  ", tokens, &i, 16, NULL) == 0);
     CuAssertTrue(tc, tokens[0].start == 2);
     CuAssertTrue(tc, tokens[0].end == 5);
     CuAssertTrue(tc, tokens[0].type == INTEGER);
-    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, i == 2);
 }
 
 void __test__destroy_comment(CuTest* tc)
 {
     struct Token tokens[16];
-    usize i=0;
+    uint16_t i=0;
 
     CuAssertTrue(tc, tokenize("1234 # a very long comment", tokens, &i, 16, NULL) == 0);
     CuAssertTrue(tc, tokens[0].type == INTEGER);
     CuAssertTrue(tc, tokens[0].start == 0);
     CuAssertTrue(tc, tokens[0].end == 3);
-    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, i == 2);
 }
 
 void __test__collapse_string(CuTest* tc)
 {
     struct Token tokens[16];
-    usize i=0;
+    uint16_t i=0;
 
     CuAssertTrue(tc, tokenize("\"1234\"", tokens, &i, 16, NULL) == 0);
     CuAssertTrue(tc, tokens[0].start == 0);
     CuAssertTrue(tc, tokens[0].end == 5);
     CuAssertTrue(tc, tokens[0].type == STRING_LITERAL);
-    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, i == 2);
 
 }
 
@@ -128,16 +128,16 @@ void __test__fails_on_partial_string(CuTest* tc)
 {
     struct CompileTimeError error;
     struct Token tokens[16];
-    usize i=0;
+    uint16_t i=0;
     CuAssertTrue(tc, tokenize("\"1234", tokens, &i, 16, &error) == -1);
 }
 
 void __test__num_var(CuTest* tc)
 {
     struct Token tokens[16];
-    usize i = 0;
+    uint16_t i = 0;
     CuAssertTrue(tc, tokenize("5a", tokens, &i, 16, NULL) == 0);    
-    CuAssertTrue(tc, i == 2);
+    CuAssertTrue(tc, i == 3);
     CuAssertTrue(tc, tokens[0].type == INTEGER);
     CuAssertTrue(tc, tokens[1].type == WORD);
     
@@ -146,65 +146,68 @@ void __test__num_var(CuTest* tc)
 void __test__collapse_word(CuTest* tc)
 {
     struct Token tokens[16];
-    usize i = 0;
+    uint16_t i = 0;
     CuAssertTrue(tc, tokenize("abc", tokens, &i, 16, NULL) == 0);    
     
-    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, i == 2);
     CuAssertTrue(tc, tokens[0].type == WORD);
     CuAssertTrue(tc, tokens[0].start == 0);
     CuAssertTrue(tc, tokens[0].end == 2);
     i=0;
 
     CuAssertTrue(tc, tokenize("a", tokens, &i, 16, NULL) == 0);
-    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, i == 2);
     CuAssertTrue(tc, tokens[0].type == WORD);
     CuAssertTrue(tc, tokens[0].start == 0);
     CuAssertTrue(tc, tokens[0].end == 0);
     i=0;
 
     CuAssertTrue(tc, tokenize(" a ", tokens, &i, 16, NULL) == 0);
-    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, i == 2);
     CuAssertTrue(tc, tokens[0].type == WORD);
     CuAssertTrue(tc, tokens[0].start == 1);
     CuAssertTrue(tc, tokens[0].end == 1);
     i=0;
 
     CuAssertTrue(tc, tokenize("a1_", tokens, &i, 16, NULL) == 0);
-    CuAssertTrue(tc, i == 1);
-    CuAssertTrue(tc, tokens[0].type == WORD);
-    CuAssertTrue(tc, tokens[0].start == 0);
-    CuAssertTrue(tc, tokens[0].end == 2);
-    i=0;
-
-    CuAssertTrue(tc, tokenize("a1_", tokens, &i, 16, NULL) == 0);
-    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, i == 2);
     CuAssertTrue(tc, tokens[0].type == WORD);
     CuAssertTrue(tc, tokens[0].start == 0);
     CuAssertTrue(tc, tokens[0].end == 2);
     i=0;
 
     CuAssertTrue(tc, tokenize("a_1", tokens, &i, 16, NULL) == 0);
-    CuAssertTrue(tc, i == 1);
+    CuAssertTrue(tc, i == 2);
     CuAssertTrue(tc, tokens[0].type == WORD);
     CuAssertTrue(tc, tokens[0].start == 0);
     CuAssertTrue(tc, tokens[0].end == 2);
+
+    CuAssertTrue(tc, tokenize("_", tokens, &i, 16, NULL) == 0);
+    CuAssertTrue(tc, i == 2);
+    CuAssertTrue(tc, tokens[0].type == WORD);
+    CuAssertTrue(tc, tokens[0].start == 0);
+    CuAssertTrue(tc, tokens[0].end == 0);
 }
 
 void __test__collapse_operator(CuTest* tc)
 {
-    
-    usize sz=0;
+    uint16_t sz=0;
     struct Token tokens[16];
     static enum Lexicon answers[] = {
         LTEQ,
         GTEQ,
         ISEQL,
         ISNEQL,
-
         PLUSEQ,
         MINUSEQ,
         AND,
-        OR
+        OR,
+        SHR,
+        SHL,
+        BOREQL,
+        BANDEQL,
+        BNEQL,
+        PIPEOP
     };
 
     static char * line[] =  {
@@ -216,14 +219,20 @@ void __test__collapse_operator(CuTest* tc)
         "-=",
         "&&",
         "||",
+        ">>",
+        "<<",
+        "|=",
+        "&=",
+        "~=",
+        "|>",
         0
     };
 
     char msg[64];
-    for (usize i=0; 8 > i; i++) {
-        sprintf(msg, "failed on idx %ld \"%s\"", i, line[i]);
+    for (uint16_t i=0; 14 > i; i++) {
+        sprintf(msg, "failed on idx %d \"%s\"", i, line[i]);
         CuAssert(tc, msg, tokenize(line[i], tokens, &sz, 16, NULL) == 0);
-        CuAssert(tc, msg, sz == 1);
+        CuAssert(tc, msg, sz == 2);
         CuAssert(tc, msg, tokens[0].end == 1);
         CuAssert(tc, msg, tokens[0].start == 0);
         
@@ -237,11 +246,11 @@ void __test__collapse_operator(CuTest* tc)
 
 void __test__position(CuTest* tc)
 {
-    usize i=0;
+    uint16_t i=0;
     struct Token tokens[16];
     CuAssertTrue(tc, tokenize("1234 + 1234", tokens, &i, 16, NULL) == 0);
 
-    CuAssertTrue(tc, i == 3);
+    CuAssertTrue(tc, i == 4);
     CuAssertTrue(tc, tokens[0].start == 0);
     CuAssertTrue(tc, tokens[0].end == 3);
     CuAssertTrue(tc, tokens[0].type == INTEGER);
@@ -259,13 +268,13 @@ void __test__fails_on_utf(CuTest* tc)
 {
     struct Token tokens[2];
     char buf[2] = {0xC3, 0xff};
-    usize i=0;    
+    uint16_t i=0; 
     CuAssertTrue(tc, tokenize(buf, tokens, &i, 2, NULL) == -1);
 }
 
 void __test__oversized_bin_ops(CuTest* tc)
 {
-    usize sz=0;
+    uint16_t sz=0;
     struct Token tokens[16];
     char msg[1024];
 
@@ -278,12 +287,14 @@ void __test__oversized_bin_ops(CuTest* tc)
         3, 2, 2, 2,
         2, 2, 2
     };
-    static enum Lexicon answers[][4] = {
-        {LTEQ, EQUAL, 0}, {GTEQ, EQUAL, 0}, {ISEQL, LT, 0}, {ISEQL, GT, 0}, 
-        {GTEQ, EQUAL, 0}, {LTEQ, EQUAL, 0}, {ISEQL, EQUAL, 0}, {ISNEQL, EQUAL, 0},
-        {ISEQL, NOT, 0}, {ADD, PLUSEQ, 0}, {SUB, MINUSEQ, 0}, {EQUAL, ADD, ADD, 0},
-        {EQUAL, SUB, SUB, 0}, {PLUSEQ, EQUAL, 0}, {MINUSEQ, EQUAL, 0}, {ISEQL, ADD, 0}, 
-        {ISEQL, SUB, 0}, {AND, AMPER, 0}, {OR, PIPE, 0}, 0
+    static enum Lexicon answers[][8] = {
+        {LTEQ, EQUAL, EOFT, 0}, {GTEQ, EQUAL, EOFT, 0}, {ISEQL, LT, EOFT, 0}, {ISEQL, GT, EOFT, 0}, 
+        {GTEQ, EQUAL, EOFT, 0}, {LTEQ, EQUAL, EOFT, 0}, {ISEQL, EQUAL, EOFT, 0}, {ISNEQL, EQUAL, EOFT, 0},
+        {ISEQL, NOT, EOFT, 0}, {ADD, PLUSEQ, EOFT, 0}, {SUB, MINUSEQ, EOFT, 0}, {EQUAL, ADD, ADD, EOFT, 0},
+        {EQUAL, SUB, SUB, EOFT, 0}, {PLUSEQ, EQUAL, EOFT, 0}, {MINUSEQ, EQUAL, EOFT, 0}, {ISEQL, ADD, EOFT, 0}, 
+        {ISEQL, SUB, EOFT, 0}, {AND, AMPER, EOFT, 0}, {OR, PIPE, EOFT, 0}, {SHR, GT, EOFT, 0}, {SHR, EQUAL, EOFT, 0},
+        {SHL, EQUAL, EOFT, 0}, {SHL, LT, EOFT, 0}, {BOREQL, EQUAL, EOFT, 0}, {ISEQL, PIPE, EOFT, 0},
+        {OR, GT, EOFT, 0}, 0
     };
 
     static char * line[] =  {
@@ -291,10 +302,14 @@ void __test__oversized_bin_ops(CuTest* tc)
         ">==", "<==", "===", "!==",
         "==!", "++=", "--=", "=++",
         "=--", "+==", "-==", "==+",
-        "==-", "&&&", "|||", 0
+        "==-", "&&&", "|||", 
+        ">>>", ">>=", "<<=",
+        "<<<", "|==", "==|",
+        "~~=", "~==",
+        "|>>", "||>", 0
     };
    
-    for (int i=0;; i++) {
+    for (int i=0 ;; i++) {
         if (answers[i] == 0 || line[i] == 0)
             break;
         
@@ -310,7 +325,7 @@ void __test__oversized_bin_ops(CuTest* tc)
 
 void __test__derive_keywords(CuTest* tc)
 {
-    usize sz=0;
+    uint16_t sz=0;
     struct Token tokens[16];
     static enum Lexicon answers[] = {
         IF,
@@ -343,7 +358,7 @@ void __test__derive_keywords(CuTest* tc)
     };
     
     char msg[64];
-    for (usize i=0; 11 > i; i++) {
+    for (uint16_t i=0; 11 > i; i++) {
         CuAssertTrue(tc, tokenize(line[i], tokens, &sz, 16, NULL) == 0);
         
         CuAssertTrue(tc, sz == 1);
@@ -357,7 +372,7 @@ void __test__derive_keywords(CuTest* tc)
 
 void __test__correct_tokenization(CuTest* tc)
 {
-    static char * line = "[]{}()!+- ><*/^%=&|:;_ 5a,";    
+    static char * line = "[]{}()!+- ><*/^%=&|:;_ 5a,~";    
     static enum Lexicon answers[] = {
         BRACKET_OPEN, BRACKET_CLOSE, 
         BRACE_OPEN, BRACE_CLOSE,
@@ -368,18 +383,17 @@ void __test__correct_tokenization(CuTest* tc)
         EQUAL, AMPER, PIPE,
         COLON, SEMICOLON,
         WORD, INTEGER, WORD,
-        COMMA, 0
+        COMMA, TILDE, EOFT, 0
     };
 
-    usize sz=0, temp=0;
+    uint16_t sz=0, temp=0;
     struct Token tokens[32];
     char msg[64];
 
     CuAssertTrue(tc, tokenize(line, tokens, &sz, 32, NULL) == 0);
-    CuAssertTrue(tc, sz == 24);
-    //AssertTokens(tc, line, "", tokens, answers);
+    CuAssertTrue(tc, sz == 25);
     
-    for (usize i=0; sz > i; i++) {
+    for (uint16_t i=0; sz > i; i++) {
         sprintf(msg, "expected <%s>, got <%s> [%ld]", ptoken(answers[i]), ptoken(tokens[i].type), i);
 
         CuAssert(tc, msg, tokens[i].type == answers[i]);
@@ -388,39 +402,51 @@ void __test__correct_tokenization(CuTest* tc)
 }
 
 void __test__negative_num_var(CuTest* tc) {
-    usize ntokens=0;
+    uint16_t ntokens=0;
     struct Token tokens[8];
-    enum Lexicon answer_1[2] = {INTEGER, 0};
-    enum Lexicon answer_2[4] = {INTEGER, SUB, INTEGER, 0};
+    enum Lexicon answer_1[8] = {INTEGER, EOFT, 0};
+    enum Lexicon answer_2[8] = {INTEGER, SUB, INTEGER, EOFT, 0};
 
     CuAssertTrue(tc, tokenize("-1234", tokens, &ntokens, 8, NULL) == 0);
     AssertTokens(tc, "-1234", "", tokens, answer_1);
-    CuAssertTrue(tc, ntokens == 1);
+    CuAssertTrue(tc, ntokens == 2);
     
     ntokens = 0;
     CuAssertTrue(tc, tokenize("1234 - 1234", tokens, &ntokens, 8, NULL) == 0);
     AssertTokens(tc, "1234 - 1234", "", tokens, answer_2);
-    CuAssertTrue(tc, ntokens == 3);
+    CuAssertTrue(tc, ntokens == 4);
     
     ntokens = 0;
     CuAssertTrue(tc, tokenize("1234- -1234", tokens, &ntokens, 8, NULL) == 0);
     AssertTokens(tc, "1234- -1234", "", tokens, answer_2);
-    CuAssertTrue(tc, ntokens == 3);    
+    CuAssertTrue(tc, ntokens == 4);    
     
     ntokens = 0;
     CuAssertTrue(tc, tokenize("-1234--1234", tokens, &ntokens, 8, NULL) == 0);
     AssertTokens(tc, "-1234--1234", "", tokens, answer_2);
-    CuAssertTrue(tc, ntokens == 3);    
+    CuAssertTrue(tc, ntokens == 4);    
 }
 
 void __test__underscored_number(CuTest* tc) {
-    usize ntokens=0;
+    uint16_t ntokens=0;
     const char *src = "1_234";
     struct Token tokens[8];
-    enum Lexicon answer[4] = {INTEGER, 0};
+    enum Lexicon answer[4] = {INTEGER, EOFT, 0};
 
     CuAssertTrue(tc, tokenize(src, tokens, &ntokens, 8, NULL) == 0);
-    CuAssertTrue(tc, ntokens == 1);    
+    CuAssertTrue(tc, ntokens == 2);    
+    AssertTokens(tc, src, "", tokens, answer);
+}
+
+
+void __test__string_nested_quoted(CuTest* tc) {
+    uint16_t ntokens=0;
+    const char *src = "\"\\\"\""; /* "\"" */
+    struct Token tokens[8];
+    enum Lexicon answer[4] = {STRING_LITERAL, EOFT, 0};
+
+    CuAssertTrue(tc, tokenize(src, tokens, &ntokens, 8, NULL) == 0);
+    CuAssertTrue(tc, ntokens == 2);
     AssertTokens(tc, src, "", tokens, answer);
 }
 
@@ -441,7 +467,7 @@ CuSuite* LexerUnitTestSuite(void) {
     
     SUITE_ADD_TEST(suite, __test__basic_perthensis);
     SUITE_ADD_TEST(suite, __test__derive_keywords);
-
+    SUITE_ADD_TEST(suite, __test__string_nested_quoted);
     SUITE_ADD_TEST(suite, __test__correct_tokenization);
     return suite;
 }

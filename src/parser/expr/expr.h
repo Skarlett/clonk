@@ -36,12 +36,21 @@ enum ExprType {
 
     // return x|{x};
     ReturnExprT,
+    
+    // import x.y, z, ..pkg.b;
+    // import a;
+    // import ..a;
+    // import ..a.;
+    ImportExprT,
 
     // binary operation
     // 1 + 2 * foo.max - size_of(list)
     BinaryExprT,
     
-    UndefinedExprT
+    // !a ~a
+    UnaryExprT,
+
+    UndefinedExprT,
 };
 
 enum Operation {
@@ -157,10 +166,6 @@ struct UnaryExpr {
     struct Expr *operand;
 };
 
-struct NotExpr {
-    struct Expr *operand;
-};
-
 struct IfExpr {
     struct Expr *cond;
     struct Expr *body;
@@ -168,6 +173,7 @@ struct IfExpr {
 };
 
 struct FnDefExpr {
+    struct Token name; 
     struct Expr *signature;
     struct Expr *body;
 };
@@ -186,7 +192,9 @@ struct IdxExpr {
 struct Expr {
     enum ExprType type;
     enum DataType datatype;
+    // ****
     struct Token origin; 
+    // ****
     uint8_t free;
 
     union {
@@ -194,8 +202,8 @@ struct Expr {
         struct Literals value;
         struct FnCallExpr fncall;
         struct BinExpr bin;
-        struct NotExpr not_;
-        struct IdxExpr idx;
+        struct UnaryExpr unary;
+	struct IdxExpr idx;
         struct IfExpr cond;
         struct ReturnExpr ret;
 	struct FnDefExpr func;
@@ -204,6 +212,55 @@ struct Expr {
 
 
 typedef uint16_t FLAG_T; 
+
+enum PrevisionerModeT {
+  /* give list of next possible 
+   * tokens based on the input */
+  EXM_Default,
+  
+  /* follow a sequence of 
+   * tokens until completed */  
+  EXM_DefSignature,
+  EXM_Import
+};
+
+/* Predicts the next possible tokens
+ * from the current token.
+ * Used to check for unexpected tokens.
+ * functionality is
+*/
+
+#define PREVISION_SZ 64
+union PrevisionerData {
+  // default mode
+  struct {
+    enum Lexicon *ref;
+  } default_mode;
+
+  struct {
+    uint16_t ctr;
+  } fndef_mode;
+
+  struct {
+    bool has_word;
+    bool expecting_junction;
+  } import_mode;
+};
+
+
+//TODO if top of operator stack has 0 precedense, you can push ret/if/else/import
+struct Previsioner {
+  enum Lexicon buffer[PREVISION_SZ];
+  enum PrevisionerModeT mode;
+  union PrevisionerData data;
+};
+
+void init_expect_buffer(struct Previsioner *state);
+
+/* void unset_flag(FLAG_T *set, FLAG_T flag); */
+/* void set_flag(FLAG_T *set, FLAG_T flag); */
+/* FLAG_T check_flag(FLAG_T set, FLAG_T flag); */
+
 
 /*
     The grouping stack is used to track the amount 
@@ -311,9 +368,8 @@ struct ExprParserState {
 
     /*Vec<struct CompileTimeError>*/
     struct Vec errors;
-
-    enum Lexicon expecting[EXP_SZ];
-    enum Lexicon *expecting_ref;
+    
+    struct Previsioner expecting;
     FLAG_T panic_flags;
 };
 /*
@@ -365,7 +421,39 @@ int8_t parse_expr(
     struct Expr *ret
 );
 
+int8_t is_token_unexpected(struct ExprParserState *state);
+
 int8_t free_state(struct ExprParserState *state);
 int8_t reset_state(struct ExprParserState *state);
+
+
+
+void mk_null(struct Expr *ex);
+
+int8_t mk_str(struct ExprParserState *state, struct Expr *ex); 
+int8_t mk_int(struct ExprParserState *state, struct Expr *ex);
+int8_t mk_symbol(struct ExprParserState *state, struct Expr *ex);
+
+int8_t mk_operator(struct ExprParserState *state, struct Expr *ex, struct Token *op_head);
+int8_t mk_group(struct ExprParserState *state, struct Expr *ex);
+
+int8_t mk_binop(struct Token *op, struct ExprParserState *state, struct Expr *ex);
+int8_t mk_not(struct ExprParserState *state, struct Expr *ex);
+int8_t mk_idx_access(struct ExprParserState *state, struct Expr *ex);
+int8_t mk_fncall(struct ExprParserState *state, struct Expr *ex);
+
+enum Operation operation_from_token(enum Lexicon token);
+void determine_return_ty(struct Expr *bin);
+
+int8_t mk_if_cond(struct ExprParserState *state, struct Expr *ex);
+int8_t mk_if_body(struct ExprParserState *state);
+int8_t mk_else_body(struct ExprParserState *state);
+
+int8_t mk_return(struct ExprParserState *state, struct Expr *ex);
+int8_t mk_def_sig(struct ExprParserState *state, struct Expr *ex);
+int8_t mk_def_body(struct ExprParserState *state);
+int8_t mk_import(struct ExprParserState *state, struct Expr *ex);
+
+
 #endif
 

@@ -1,5 +1,5 @@
-#include "handlers.h"
 #include "expr.h"
+#include "utils.h"
 #include <string.h>
 #include <errno.h>
 
@@ -26,6 +26,7 @@ int8_t mk_int(struct ExprParserState* state, struct Expr *ex)
   
   ex->type = LiteralExprT;
   ex->datatype = IntT;
+  memcpy(&ex->origin, current, sizeof(struct Token));
   errno = 0;
 
   ex->inner.value.literal.integer =
@@ -45,8 +46,10 @@ int8_t mk_int(struct ExprParserState* state, struct Expr *ex)
 int8_t mk_symbol(struct ExprParserState* state, struct Expr *ex) 
 {
   struct Token *current = &state->src[*state->_i];
-  uint8_t size = current->end - current->start;
   
+  uint8_t size = current->end - current->start;
+   
+  memcpy(&ex->origin, current, sizeof(struct Token));
   ex->type = SymExprT;
   ex->datatype = UndefT;
   ex->inner.symbol = calloc(1, size+1);
@@ -120,9 +123,9 @@ enum GroupT get_group_ty(struct Group *ghead)
 
 int8_t mk_group(struct ExprParserState *state, struct Expr *ex) {
   struct Expr **buf;
-  struct Token *current = &state->src[*state->_i];
   struct Group *ghead = &state->set_stack[state->set_ctr - 1];
-
+  
+  memcpy(&ex->origin, ghead->origin, sizeof(struct Token));
   uint16_t elements = ghead->delimiter_cnt + 1;
 
   enum GroupT group_ty = get_group_ty(ghead);
@@ -159,54 +162,57 @@ int8_t mk_group(struct ExprParserState *state, struct Expr *ex) {
 
 enum Operation operation_from_token(enum Lexicon t)
 {
-    switch (t) {
-        /* arithmetic */
-	case ADD: return Add;
-        case SUB: return Sub;
-        case MUL: return Multiply;
-        case DIV: return Divide;
-        case MOD: return Modolus;
-        case POW: return Pow;
-	/* boolean logic */
-        case AND: return And;
-        case OR: return Or;
-	/* case NOT: return Not; */
-	/* comparison */
-        case ISEQL: return IsEq;
-        case ISNEQL: return NotEq;
-        case GTEQ: return GtEq;
-        case LTEQ: return LtEq;
-        case LT: return Lt;
-        case GT: return Gt;
-	/* access operator */
-        case DOT: return Access;
-	/* assignments */
-        case EQUAL: return Assign;
-        case PLUSEQ: return AssignAdd;
-        case MINUSEQ: return AssignSub;
-	/* bitwise assignments */
-	case BANDEQL: return BandEql;
-	case BOREQL: return BorEql;
-	case BNEQL: return BnotEql;
-	/* bitwise boolean logic */
-	case PIPE: return BitOr;
-	case AMPER: return BitAnd;
-	case TILDE: return BitNot;
-	/* bit shifting */
-	case SHL: return ShiftLeft;
-	case SHR: return ShiftRight;
-        default: return UndefinedOp;
-    }
+  switch (t) {
+    /* arithmetic */
+    case ADD: return Add;
+    case SUB: return Sub;
+    case MUL: return Multiply;
+    case DIV: return Divide;
+    case MOD: return Modolus;
+    case POW: return Pow;
+    /* boolean logic */
+    case AND: return And;
+    case OR: return Or;
+    /* case NOT: return Not; */
+    /* comparison */
+    case ISEQL: return IsEq;
+    case ISNEQL: return NotEq;
+    case GTEQ: return GtEq;
+    case LTEQ: return LtEq;
+    case LT: return Lt;
+    case GT: return Gt;
+    /* access operator */
+    case DOT: return Access;
+    /* assignments */
+    case EQUAL: return Assign;
+    case PLUSEQ: return AssignAdd;
+    case MINUSEQ: return AssignSub;
+    /* bitwise assignments */
+    case BANDEQL: return BandEql;
+    case BOREQL: return BorEql;
+    case BNEQL: return BnotEql;
+    /* bitwise boolean logic */
+    case PIPE: return BitOr;
+    case AMPER: return BitAnd;
+    case TILDE: return BitNot;
+    /* bit shifting */
+    case SHL: return ShiftLeft;
+    case SHR: return ShiftRight;
+    default: return UndefinedOp;
+  }
 }
 
 
 int8_t mk_binop(struct Token *operator, struct ExprParserState *state, struct Expr *ex) { 
-  if (1 > state->expr_ctr)
+  
+  if (state->expr_ctr == 0)
   {
     throw_internal_error(state, "Not enough items on expr stack to build a binop");
     return -1;
   }
-
+  
+  memcpy(&ex->origin, operator, sizeof(struct Token));
+  
   ex->type = BinaryExprT;
   ex->inner.bin.lhs = 
     state->expr_stack[state->expr_ctr - 1];
@@ -224,16 +230,22 @@ int8_t mk_binop(struct Token *operator, struct ExprParserState *state, struct Ex
   return 0;
 }
 
-int8_t mk_not(struct ExprParserState *state, struct Expr *ex) {
+bool is_unary(enum Lexicon tok)
+{
+  return tok == TILDE || tok == NOT;
+}
 
-  if (0 > state->expr_ctr)
+int8_t mk_unary(struct ExprParserState *state, struct Expr *ex, struct Token *ophead) {
+
+  if (state->expr_ctr == 0)
   {
     throw_internal_error(state, "Not enough items on expr stack to build a binop");
     return -1;
   }
   
-  ex->type = NopExprT;
-  ex->inner.not_.operand = state->expr_stack[state->expr_ctr - 1];
+  memcpy(&ex->origin, ophead, sizeof(struct Token));
+  ex->inner.unary.op = operation_from_token(ophead->type);
+  ex->inner.unary.operand = state->expr_stack[state->expr_ctr - 1];
   state->expr_ctr -= 1;
 
   return 0;
@@ -241,7 +253,7 @@ int8_t mk_not(struct ExprParserState *state, struct Expr *ex) {
 
 int8_t mk_operator(struct ExprParserState *state, struct Expr *ex, struct Token *op_head)
 {
-  if (op_head->type == NOT && mk_not(state, ex) == -1
+  if (is_unary(op_head->type) && mk_unary(state, ex, op_head) == -1
      || mk_binop(op_head, state, ex) == -1)
      return -1;
   return 0;
@@ -250,12 +262,12 @@ int8_t mk_operator(struct ExprParserState *state, struct Expr *ex, struct Token 
 int8_t mk_idx_access(struct ExprParserState *state, struct Expr *ex) {
   ex->type = FnCallExprT;
   ex->datatype = 0;
-
+  
   if (3 > state->expr_ctr) {
       throw_internal_error(state, "Not enough arguments on stack to create idx operation.");
       return -1;
   }
-
+  
   ex->inner.idx.start   = state->expr_stack[state->expr_ctr - 1];
   ex->inner.idx.end     = state->expr_stack[state->expr_ctr - 2];
   ex->inner.idx.skip    = state->expr_stack[state->expr_ctr - 3];
@@ -291,6 +303,7 @@ int8_t mk_fncall(struct ExprParserState *state, struct Expr *ex) {
     
   ex->type = FnCallExprT;
   ex->datatype = 0;
+  memcpy(&ex->origin, current, sizeof(struct Token));
 
   if (ghead->state & GSTATE_EMPTY)
   {
@@ -330,10 +343,13 @@ int8_t mk_if_cond(struct ExprParserState *state, struct Expr *ex)
 {
   struct Expr *exhead = 0;
   
-  if (1 > state->expr_ctr)
+  if (state->expr_ctr == 0)
     return -1;
 
   exhead = state->expr_stack[state->expr_ctr - 1];
+  state->expr_ctr -= 1;
+
+  memcpy(&ex->origin, op_head(state), sizeof(struct Token));
 
   ex->type = IfExprT;
   ex->inner.cond.cond = exhead;
@@ -348,6 +364,7 @@ int8_t mk_if_body(struct ExprParserState *state)
   if (2 > state->expr_ctr)
     return -1;
 
+  //memcpy(&ex->origin, , sizeof(struct Token));
   cond = state->expr_stack[state->expr_ctr - 2];
   body = state->expr_stack[state->expr_ctr - 1];
   
@@ -366,12 +383,14 @@ int8_t mk_else_body(struct ExprParserState *state)
   
   if (2 > state->expr_ctr)
     return -1;
-
+  
+  // todo
+  //memcpy(&ex->origin, op_head(state), sizeof(struct Token));
   cond = state->expr_stack[state->expr_ctr - 2];
   body = state->expr_stack[state->expr_ctr - 1];
   
-  if (cond->type != IfExprT)
-    return -1;
+  // if (cond->type != IfExprT)
+  //   return -1;
   
   cond->inner.cond.else_body = body;
   state->expr_ctr -= 1;
@@ -379,35 +398,76 @@ int8_t mk_else_body(struct ExprParserState *state)
   return 0;
 }
 
-
 int8_t mk_return(struct ExprParserState *state, struct Expr *ex)
 {
-  // TODO
-  struct Expr *body = 0;
+  struct Expr *inner;
   
   if (state->expr_ctr == 0)
     return -1;
   
+  memcpy(&ex->origin, op_head(state), sizeof(struct Token));
+  ex->inner.ret.body = state->expr_stack[state->expr_ctr - 1];
   ex->type = ReturnExprT; 
   return 0;
 }
 
-int8_t mk_def_sig(struct ExprParserState *state, struct Expr *ex)
+int8_t mk_import(struct ExprParserState *state, struct Expr *ex)
 {
-  //TODO
-  struct Expr *sig = 0;
+  
+  //TODO 
+  struct Expr *body = 0;
+  ex->type = ImportExprT;
+  
+  memcpy(&ex->origin, op_head(state), sizeof(struct Token));
   return 0;
 }
 
+
+int8_t mk_def_sig(struct ExprParserState *state, struct Expr *ex)
+{
+  struct Expr *ident;
+  
+  // Grab the function name
+  ident = state->expr_stack[state->expr_ctr - 2]; 
+  ident->free = 1;
+
+  if(ident->type != SymExprT)
+    return -1;
+  
+  ex->type = FuncDefExprT;
+  ex->inner.func.name = ident->origin;
+  
+  /* top of the stack will be either a group (a, b, c) or a single (a) parameter */
+  ex->inner.func.signature = state->expr_stack[state->expr_ctr - 1];
+  
+  memcpy(&ex->origin, op_head(state), sizeof(struct Token));
+  state->expr_ctr -= 2;
+  
+  //over write old signature with out own
+  //state->expr_stack[state->expr_ctr - 1] = sig;
+
+  return 0;
+}
+
+/*
+ * def word(param, param) x; | { x };
+ * */
 int8_t mk_def_body(struct ExprParserState *state)
 {
   //TODO
-  struct Expr *body = 0;
+  struct Expr *func = 0, *body;
+  
+  if(2 > state->expr_ctr)
+    return -1;
+  
+  func = state->expr_stack[state->expr_ctr - 2];
+  body = state->expr_stack[state->expr_ctr - 1];
+  
+  if(func->type != FuncDefExprT)
+    return -1;
+  
+  func->inner.func.body = body;
+  state->expr_ctr -= 1;
   return 0;
 }
-
-
-
-
-
 

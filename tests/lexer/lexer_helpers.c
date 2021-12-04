@@ -1,14 +1,14 @@
+#include <stdint.h>
 #include <stdio.h>
 
 #include "../../src/prelude.h"
 #include "../../src/parser/lexer/lexer.h"
-#include "../../src/parser/lexer/helpers.h"
 
 #include "../CuTest.h"
 
 void __test__is_balanced(CuTest* tc)
 {
-    usize sz=0;
+    uint16_t sz=0;
     char msg[64];
     struct Token tokens[32];
 
