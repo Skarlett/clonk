@@ -323,7 +323,7 @@ struct Group {
 #define STATE_INCOMPLETE 1 << 1
 #define STATE_PANIC      1 << 2 
 #define INTERNAL_ERROR   1 << 3
-#define STATE_WARNING    1 << 4
+#define STATE_PUSH_GLOB_SCOPE 1 << 4
 
 /* if/def/ret/else ends with ; */
 #define STATE_SHORT_BLOCK 1 << 5

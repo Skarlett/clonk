@@ -1,41 +1,9 @@
 
 #include <string.h>
+#include <assert.h>
 #include "expr.h"
 #include "utils.h"
 #include "../../utils/vec.h"
-
-
-int8_t mk_error(struct ExprParserState *state, enum ErrorT type, const char * msg) {
-  struct CompileTimeError *err;
-  
-  err->type = type;
-  err->msg = msg;
-  if (vec_push(&state->errors, &state->src[*state->_i]) == 0)
-    return -1;
-  
-  state->panic_flags |= STATE_PANIC | STATE_INCOMPLETE;
-  return 0;
-}
-
-int8_t throw_internal_error(struct ExprParserState *state, const char * meta, const char * msg)
-{
-  char * internal_msg;
-  //TODO
-
-#ifdef DEBUG
-  internal_msg = malloc(strlen(meta) + strlen(msg));
-  strcat(internal_msg, meta);
-  strcat(internal_msg, msg);
-#else
-  internal_msg = msg;
-#endif
-  state->panic_flags |= STATE_PANIC | STATE_INCOMPLETE | INTERNAL_ERROR;
-  if (mk_error(state, Fatal, internal_msg) == -1)
-    return -1;
-  return 0;
-}
-
-#define throw_internal_error(X, MSG) throw_internal_error(X, FILE_LINE, MSG)
 
 int8_t add_dbg_sym(
   struct ExprParserState *state,
@@ -43,11 +11,7 @@ int8_t add_dbg_sym(
   uint16_t argc
 ){
   struct Token marker, *ret;
-  if (type == TOKEN_UNDEFINED)
-  {
-    throw_internal_error(state, "got null token.");
-    return -1;
-  }
+  assert(type != TOKEN_UNDEFINED);
 
   marker.type = type;
   marker.start = 0;
@@ -55,13 +19,8 @@ int8_t add_dbg_sym(
   
   // push debug token in the pool
   ret = vec_push(&state->pool, &marker);
-  
-  // push pool ref into debug output
-  if (ret == 0 || vec_push(&state->debug, &ret) == 0)  
-  {
-    throw_internal_error(state, "allocation failure in vec.");
-    return -1;
-  }
+  assert(ret != 0);
+  assert(vec_push(&state->debug, &ret) != 0);
   return 0;
 }
 
@@ -71,20 +30,13 @@ int8_t inc_stack(
   struct Token *dbg_out
 ){
   struct Expr * heap_ex;
-  
-  if (state->expr_ctr > state->expr_sz)
-  {
-    throw_internal_error(state, "Expr/debug ctr overflowed.");
-    return -1;
-  }
+  assert(state->expr_ctr < state->expr_sz);
   
   heap_ex = vec_push(&state->expr_pool, &ex);
-
-  if (heap_ex == 0 || (dbg_out && vec_push(&state->debug, &dbg_out) == 0))
-  {
-    throw_internal_error(state, "vec pool returned null ptr.");
-    return -1;
-  }
+  assert(heap_ex != 0);
+  
+  if (dbg_out)
+    assert(vec_push(&state->debug, &dbg_out) != 0);
   
   state->expr_stack[state->expr_ctr] = heap_ex;
   state->expr_ctr += 1;
@@ -137,10 +89,8 @@ bool is_op_keyword(enum Lexicon token)
 struct Group * new_grp(struct ExprParserState *state, struct Token * origin) 
 {
   struct Group *ghead;
+  assert(state->set_ctr < state->set_sz);
   
-  if(state->set_ctr > state->set_sz)
-    return 0;
-
   ghead = &state->set_stack[state->set_ctr];
   ghead->operator_idx = state->set_ctr;
   state->set_ctr += 1;
@@ -161,9 +111,7 @@ struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, struct Exp
   new.start = start;
 
   heap = vec_push(&state->pool, &new);
-  
-  if (!heap)
-    return 0;
+  assert(heap);
   
   state->operator_stack[state->operators_ctr] = heap;  
   state->operators_ctr += 1;
@@ -182,23 +130,22 @@ enum Lexicon grp_dbg_sym(enum GroupT type)
   };
 }
 
-int8_t push_many_ops(enum Lexicon *ops, struct ExprParserState *state)
+int8_t push_many_ops(enum Lexicon *ops, struct Token *origin, struct ExprParserState *state)
 {
   struct Expr ex; 
   struct Token tmp, *heap;
-  tmp.start = 0;
-  tmp.end = 0;
+  tmp.start = origin->start;
+  tmp.end = origin->end;
 
   for (uint16_t i = 0 ;; i++)
   {
+    assert(state->operators_ctr < state->operator_stack_sz);
     if(ops[i] == 0)
       break;
 
     tmp.type = ops[i];
     heap = vec_push(&state->pool, &tmp);
-    
-    if (state->operators_ctr > state->operator_stack_sz)
-      return -1;
+    assert(heap);
 
     state->operator_stack[state->operators_ctr] = heap;
     state->operators_ctr += 1;
@@ -220,6 +167,7 @@ bool is_unit_expr(enum Lexicon tok)
     || tok == INTEGER
     || tok == WORD;
 }
+
 /*
     precendense table:
       ") ] }"   : 127 non-assoc

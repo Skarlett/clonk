@@ -29,7 +29,7 @@ int8_t op_precedence(enum Lexicon token);
 
 enum Lexicon grp_dbg_sym(enum GroupT type);
 
-int8_t push_many_ops(enum Lexicon *ops, struct ExprParserState *state);
+int8_t push_many_ops(enum Lexicon *ops, struct Token *origin, struct ExprParserState *state);
 int8_t is_short_blockable(enum Lexicon tok);
 bool is_unit_expr(enum Lexicon tok);
 

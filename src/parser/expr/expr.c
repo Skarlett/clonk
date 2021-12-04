@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
@@ -14,39 +15,6 @@
 #include "utils.h"
 
 //#include "handlers.h"
-
-int8_t mk_error(struct ExprParserState *state, enum ErrorT type, const char * msg) {
-  struct CompileTimeError *err;
-  
-  err->type = type;
-  err->msg = msg;
-  if (vec_push(&state->errors, &state->src[*state->_i]) == 0)
-    return -1;
-  
-  state->panic_flags |= STATE_PANIC | STATE_INCOMPLETE;
-  return 0;
-}
-
-int8_t throw_internal_error(struct ExprParserState *state, const char * meta, const char * msg)
-{
-  char * internal_msg;
-  //TODO
-
-#ifdef DEBUG
-  internal_msg = malloc(strlen(meta) + strlen(msg));
-  strcat(internal_msg, meta);
-  strcat(internal_msg, msg);
-#else
-  internal_msg = msg;
-#endif
-  state->panic_flags |= STATE_PANIC | STATE_INCOMPLETE | INTERNAL_ERROR;
-  if (mk_error(state, Fatal, internal_msg) == -1)
-    return -1;
-  return 0;
-}
-
-#define throw_internal_error(X, MSG) throw_internal_error(X, FILE_LINE, MSG)
-
 
 /****
  *  Flushes operators out of stack 
@@ -186,10 +154,7 @@ int8_t handle_operator(struct ExprParserState *state) {
   head = state->operator_stack[state->operators_ctr-1];
   head_precedense = op_precedence(head->type);
 
-  if (precedense == -1 || head_precedense == -1){
-    throw_internal_error(state, "Unrecognized operator");
-    return -1;
-  }
+  assert(precedense != -1 || head_precedense != -1);
 
   /*
     while `head` has higher precedence
@@ -232,7 +197,6 @@ int8_t handle_operator(struct ExprParserState *state) {
 
   state->operator_stack[state->operators_ctr] = current;
   state->operators_ctr += 1;
-
   return 0;
 }
 
@@ -293,11 +257,7 @@ int8_t handle_open_brace(struct ExprParserState *state)
   current = &state->src[*state->_i];
 
   /* overflow check */
-  if (state->operators_ctr > state->operator_stack_sz)
-  {
-    throw_internal_error(state, "Internal group/operator stack overflowed.");
-    return -1;
-  }
+  assert(state->operators_ctr < state->operator_stack_sz);
   
   /* look behind to determine special operators (apply/idx_access) */
   if (handle_brace_op(state) == -1 
@@ -350,9 +310,6 @@ int8_t handle_idx_op(struct ExprParserState *state)
   struct Expr ex;
   struct Group *ghead = &state->set_stack[state->set_ctr - 1];
   struct Token *prev = &state->src[*state->_i - 1];
-
-  if (ghead->origin->type != BRACE_OPEN)
-      return -1;
     
   mk_null(&ex);
     
@@ -443,19 +400,16 @@ int8_t handle_unit_expr(struct ExprParserState *state)
  */
 int8_t handle_if(struct ExprParserState *state)
 {
+  struct Token *current = &state->src[*state->_i];
   enum Lexicon ops[] = {IfBody, IfCond, 0};
-  struct Token *ophead = op_head(state);
   
-  if(ophead != 0 && op_precedence(ophead->type) != 0)
-    return -1;
-  
-  return push_many_ops(ops, state);
+  return push_many_ops(ops, current, state);
 }
 
 int8_t handle_else(struct ExprParserState *state)
 {
   struct Token *current = &state->src[*state->_i];
-   
+
   state->operator_stack[state->operators_ctr] = current;
   state->operators_ctr += 1;
   return 0;
@@ -463,10 +417,10 @@ int8_t handle_else(struct ExprParserState *state)
 
 int8_t handle_def(struct ExprParserState *state)
 {
-  struct Token *ophead = op_head(state);
+  struct Token *current = &state->src[*state->_i];
   enum Lexicon ops[] = {DefBody, DefSign, 0};
   
-  return push_many_ops(ops, state);
+  return push_many_ops(ops, current, state);
 }
 
 /*
@@ -567,11 +521,9 @@ int8_t pop_block_operator(struct ExprParserState *state)
 
     case IMPORT:
       if(mk_import(state, &ex) == -1
-	 || inc_stack(state, &ex, ophead) == -1)
-	 return -1;
+	      || inc_stack(state, &ex, ophead) == -1)
+	      return -1;
       break;
-
-
     default: return -1;
   }
  
@@ -650,8 +602,8 @@ int8_t handle_close_brace(struct ExprParserState *state) {
   if (ophead->type == Apply)
   {
     if (mk_fncall(state, &ex) == -1
-	|| inc_stack(state, &ex, ophead) == -1)
-	return -1;
+	     || inc_stack(state, &ex, ophead) == -1)
+	     return -1;
     state->operators_ctr -= 1;
   }
 
@@ -802,6 +754,7 @@ int8_t initalize_parser_state(
     struct Token tokens[],
     uint16_t ntokens,
     uint16_t *i,
+    bool push_global_scope,
     struct ExprParserState *state
 ){
   if (init_vec(&state->expr_pool, 2048, sizeof(struct Expr)) == -1
@@ -825,10 +778,14 @@ int8_t initalize_parser_state(
   state->operators_ctr = 0;
   state->operator_stack_sz = STACK_SZ;
   state->panic_flags = 0;
-
+  
   //state->expecting_ref = state->expecting;
   init_expect_buffer(&state->expecting);
   
+  if(push_global_scope) {
+    assert(op_push(BRACE_OPEN, 0, 0, state) != 0);
+    state->panic_flags |= STATE_PUSH_GLOB_SCOPE;
+  }
   state->panic_flags = STATE_READY;
   return 0;
 }
@@ -841,15 +798,16 @@ int8_t parse_expr(
     struct Expr *ret
 ){
   uint16_t i = 0;
-
-  if (expr_size == 0 || initalize_parser_state(line, tokens, expr_size, &i, state) == -1)
+  
+  if (expr_size != 0 || ~state->panic_flags & STATE_READY)
     return -1;
 
   for (i = 0; expr_size > i; i++) {
-    if (state->expr_ctr > state->expr_sz
-        || state->operators_ctr > state->operator_stack_sz
-        || state->panic_flags == FLAG_ERROR)
-        return -1;
+    assert(state->expr_ctr < state->expr_sz);
+    assert(state->operators_ctr > state->operator_stack_sz);
+
+    if(state->panic_flags == FLAG_ERROR)
+      return -1;
 
     if ((state->panic_flags & STATE_PANIC) || is_token_unexpected(state))
     {
@@ -887,7 +845,7 @@ int8_t parse_expr(
       handle_def(state);
 
     else if(state->src[i].type == EOFT)
-	break;
+    	break;
 
     else {
 #ifdef DEBUG
