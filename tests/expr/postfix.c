@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 #include "../../src/utils/vec.h"
@@ -11,13 +12,13 @@
 int8_t into_ref_array(
     struct Token input[],
     struct Token *out[],
-    const usize input_sz,
-    const usize out_sz
+    const uint16_t input_sz,
+    const uint16_t out_sz
 ){
     if (input_sz > out_sz)
         return -1;
     
-    for (usize i=0; input_sz > i; i++)
+    for (uint16_t i=0; input_sz > i; i++)
         out[i] = &input[i];
 
     return 0;
@@ -31,7 +32,7 @@ void __test__tuple_collection(CuTest* tc) {
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
-    usize ntokens=0;
+    uint16_t ntokens=0;
    
     static char * line[] = {
         "()",
@@ -63,7 +64,7 @@ void __test__fncall(CuTest* tc) {
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
-    usize ntokens=0;
+    uint16_t ntokens=0;
     
     static char * line[] = {
         "foo()",
@@ -94,16 +95,16 @@ void __test__fncall(CuTest* tc) {
         0
     };
 
-    for (usize i=0 ;; i++) {
+    for (uint16_t i=0 ;; i++) {
         if (check_list[i][0] == 0)
             break;
         ntokens=0;
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "%s:%d failed tokenizing", __FILE__, __LINE__);
-        CuAssert(tc, msg, tokenize(line[i], tokens, &ntokens, 32, NULL) == 0);
+        CuAssert(tc, msg, tokenize(line[i], tokens, &ntokens, 32, false, NULL) == 0);
         
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
-        sprintf(msg, "failed on parsing expr (idx): %ld", i);
+        sprintf(msg, "failed on parsing expr (idx): %d", i);
         CuAssert(tc, msg, parse_expr(line[i], tokens, ntokens, &state, ret) == 0); 
 
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
@@ -119,7 +120,7 @@ void __test__list_collection(CuTest* tc) {
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
-    usize ntokens=0;
+    uint16_t ntokens=0;
    
     static char * line[] = {
         "[]",
@@ -154,7 +155,7 @@ void __test__index_operation(CuTest* tc) {
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
-    usize ntokens=0;
+    uint16_t ntokens=0;
    
     static char * line[] = {
         "[1, 2][3]",
@@ -187,7 +188,7 @@ void __test__set_collection(CuTest* tc) {
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
-    usize ntokens=0;
+    uint16_t ntokens=0;
    
     static char * line[] = {
         "{1, 2}",
@@ -201,7 +202,7 @@ void __test__map_collection(CuTest* tc) {
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
-    usize ntokens=0;
+    uint16_t ntokens=0;
    
     static char * line[] = {
         "{1}", // expression, not collection
@@ -219,7 +220,7 @@ void __test__code_block(CuTest* tc) {
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
-    usize ntokens=0;
+    uint16_t ntokens=0;
    
     static char * line[] = {
         "{}",
@@ -236,7 +237,7 @@ void __test__simple_order_precedence(CuTest* tc) {
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
-    usize ntokens=0;
+    uint16_t ntokens=0;
    
     static char * line[] = {
         "(1 + 3) * 4",
@@ -291,20 +292,20 @@ void __test__simple_order_precedence(CuTest* tc) {
         0
     };
 
-    for (usize i=0 ;; i++) {
+    for (uint16_t i=0 ;; i++) {
         if (check_list[i][0] == 0)
             break;
         ntokens=0;
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "%s:%d failed tokenizing", __FILE__, __LINE__);
-        CuAssert(tc, msg, tokenize(line[i], tokens, &ntokens, 32, NULL) == 0);
+        CuAssert(tc, msg, tokenize(line[i], tokens, &ntokens, 32, false, NULL) == 0);
         
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
-        sprintf(msg, "failed on parsing expr (idx): %ld", i);
+        sprintf(msg, "failed on parsing expr (idx): %d", i);
         CuAssert(tc, msg, parse_expr(line[i], tokens, ntokens, &state, ret) == 0); 
 
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
-        sprintf(msg, "failed on index %ld", i);
+        sprintf(msg, "failed on index %d", i);
         AssertTokensByRef(tc, line[i], msg, state.debug.base, check_list[i]);
         reset_state(&state);
     }
@@ -316,7 +317,7 @@ void __test__effectively_empty_group(CuTest* tc) {
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
-    usize ntokens=0;
+    uint16_t ntokens=0;
     
     static char * line[] = {
         "()",
@@ -344,13 +345,13 @@ void __test__effectively_empty_group(CuTest* tc) {
         0
     };
 
-    for (usize i=0 ;; i++) {
+    for (uint16_t i=0 ;; i++) {
         if (check_list[i][0] == 0)
             break;
         ntokens=0;
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "%s:%d failed tokenizing", __FILE__, __LINE__);
-        CuAssert(tc, msg, tokenize(line[i], tokens, &ntokens, 32, NULL) == 0);
+        CuAssert(tc, msg, tokenize(line[i], tokens, &ntokens, 32, false, NULL) == 0);
         
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "failed on parsing expr (idx): %ld", i);
@@ -368,7 +369,7 @@ void __test__you_know_too_much(CuTest* tc) {
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
-    usize ntokens=0;
+    uint16_t ntokens=0;
    
     static char * line[] = {
         "()()",
@@ -386,7 +387,7 @@ void __test__you_know_too_much(CuTest* tc) {
 //     static enum Lexicon answer[] = {INTEGER, INTEGER, INTEGER, POW, POW};
 //     static char * words[] = {"3", "2", "1", "^", "^", 0};
 
-//     usize ntokens=0,
+//     uint16_t ntokens=0,
 //         nqueue=0;
 
 //     struct Token tokens[32],
@@ -403,7 +404,7 @@ void __test__you_know_too_much(CuTest* tc) {
 // }
 
 // void __test__order_precedence_not_op(CuTest* tc) {
-//     usize ntokens=0,
+//     uint16_t ntokens=0,
 //         nqueue=0;
 //     static enum Lexicon answers[] = {NOT, WORD, WORD, ADD, NOT, WORD, SUB};
 
@@ -417,13 +418,13 @@ void __test__you_know_too_much(CuTest* tc) {
 
 //     nqueue = postfix_expr(tokens, ntokens, queue, 32, masks, 2);
     
-//     for (usize i=0; nqueue > i; i++) {
+//     for (uint16_t i=0; nqueue > i; i++) {
 //         CuAssertTrue(tc, queue[i]->type == answers[i]);
 //     }
 // }
 
 // void __test__order_precedense_with_fncall(CuTest* tc) {
-//     usize ntokens, nqueue;
+//     uint16_t ntokens, nqueue;
     
 //     struct Token tokens[32],
 //         *queue[32],

@@ -40,7 +40,7 @@ void __test__is_balanced(CuTest* tc)
     };
     
     for (int i=0; 16 > i; i++) {
-        CuAssertTrue(tc, tokenize(line[i], tokens, &sz, 32, NULL) == 0);
+        CuAssertTrue(tc, tokenize(line[i], tokens, &sz, 32, false, NULL) == 0);
         sprintf(msg, "failed on `line[%d]`", i);
         CuAssert(tc, msg, is_balanced(tokens, sz) == answers[i]);
         sz=0;
