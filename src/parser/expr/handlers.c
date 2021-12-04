@@ -2,6 +2,7 @@
 #include "utils.h"
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 
 /* no special algorithms, just an equality test */
 void determine_return_ty(struct Expr *bin) {
@@ -31,12 +32,9 @@ int8_t mk_int(struct ExprParserState* state, struct Expr *ex)
 
   ex->inner.value.literal.integer =
     str_to_isize(state->line + current->start, &_, 10);
-
-  if (errno != 0) {
-    throw_internal_error(state, "Didn't convert integer correctly");
-    return -1;
-  }
- 
+  
+  assert(errno != 0);
+  
   return 0;
 }
 
@@ -54,11 +52,7 @@ int8_t mk_symbol(struct ExprParserState* state, struct Expr *ex)
   ex->datatype = UndefT;
   ex->inner.symbol = calloc(1, size+1);
   
-  /*bad alloc*/
-  if (ex->inner.symbol == 0) {
-    throw_internal_error(state,  "Allocation failure");
-    return -1;
-  }
+  assert(ex->inner.symbol != 0);
     
   memcpy(ex->inner.symbol,
     state->line + current->start,
@@ -82,10 +76,7 @@ int8_t mk_str(struct ExprParserState *state, struct Expr *ex) {
   memcpy(&ex->origin, current, sizeof(struct Token));
 
   str = malloc(size+1);
-  if (str == 0) {
-    throw_internal_error(state, "Allocation failure.");
-    return -1;
-  }
+  assert(str != 0);
   
   ex->inner.value.literal.string = str;
 
@@ -130,10 +121,7 @@ int8_t mk_group(struct ExprParserState *state, struct Expr *ex) {
 
   enum GroupT group_ty = get_group_ty(ghead);
   
-  if (group_ty == GroupTUndef || elements > state->expr_ctr) {
-    throw_internal_error(state, "Internal group/operator stack overflowed.");
-    return -1;
-  }
+  assert(elements < state->expr_ctr && group_ty != GroupTUndef);
 
   ex->type = LiteralExprT;
   ex->datatype = GroupT;
@@ -204,12 +192,7 @@ enum Operation operation_from_token(enum Lexicon t)
 
 
 int8_t mk_binop(struct Token *operator, struct ExprParserState *state, struct Expr *ex) { 
-  
-  if (state->expr_ctr == 0)
-  {
-    throw_internal_error(state, "Not enough items on expr stack to build a binop");
-    return -1;
-  }
+  assert(state->expr_ctr > 0);
   
   memcpy(&ex->origin, operator, sizeof(struct Token));
   
@@ -236,12 +219,7 @@ bool is_unary(enum Lexicon tok)
 }
 
 int8_t mk_unary(struct ExprParserState *state, struct Expr *ex, struct Token *ophead) {
-
-  if (state->expr_ctr == 0)
-  {
-    throw_internal_error(state, "Not enough items on expr stack to build a binop");
-    return -1;
-  }
+  assert(state->expr_ctr > 0);
   
   memcpy(&ex->origin, ophead, sizeof(struct Token));
   ex->inner.unary.op = operation_from_token(ophead->type);
@@ -260,13 +238,10 @@ int8_t mk_operator(struct ExprParserState *state, struct Expr *ex, struct Token 
 }
 
 int8_t mk_idx_access(struct ExprParserState *state, struct Expr *ex) {
+  assert(state->expr_ctr > 3);
+  
   ex->type = FnCallExprT;
   ex->datatype = 0;
-  
-  if (3 > state->expr_ctr) {
-      throw_internal_error(state, "Not enough arguments on stack to create idx operation.");
-      return -1;
-  }
   
   ex->inner.idx.start   = state->expr_stack[state->expr_ctr - 1];
   ex->inner.idx.end     = state->expr_stack[state->expr_ctr - 2];
@@ -342,10 +317,8 @@ int8_t mk_fncall(struct ExprParserState *state, struct Expr *ex) {
 int8_t mk_if_cond(struct ExprParserState *state, struct Expr *ex)
 {
   struct Expr *exhead = 0;
+  assert(state->expr_ctr > 0);
   
-  if (state->expr_ctr == 0)
-    return -1;
-
   exhead = state->expr_stack[state->expr_ctr - 1];
   state->expr_ctr -= 1;
 
@@ -360,10 +333,8 @@ int8_t mk_if_cond(struct ExprParserState *state, struct Expr *ex)
 int8_t mk_if_body(struct ExprParserState *state)
 {
   struct Expr *body, *cond = 0;
+  assert(state->expr_ctr > 1);
   
-  if (2 > state->expr_ctr)
-    return -1;
-
   //memcpy(&ex->origin, , sizeof(struct Token));
   cond = state->expr_stack[state->expr_ctr - 2];
   body = state->expr_stack[state->expr_ctr - 1];
@@ -380,9 +351,7 @@ int8_t mk_if_body(struct ExprParserState *state)
 int8_t mk_else_body(struct ExprParserState *state)
 {
   struct Expr *body, *cond = 0;
-  
-  if (2 > state->expr_ctr)
-    return -1;
+  assert(state->expr_ctr > 1);
   
   // todo
   //memcpy(&ex->origin, op_head(state), sizeof(struct Token));
@@ -401,9 +370,7 @@ int8_t mk_else_body(struct ExprParserState *state)
 int8_t mk_return(struct ExprParserState *state, struct Expr *ex)
 {
   struct Expr *inner;
-  
-  if (state->expr_ctr == 0)
-    return -1;
+  assert(state->expr_ctr > 0);
   
   memcpy(&ex->origin, op_head(state), sizeof(struct Token));
   ex->inner.ret.body = state->expr_stack[state->expr_ctr - 1];
