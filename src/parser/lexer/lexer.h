@@ -493,5 +493,13 @@ const char * ptoken(enum Lexicon t);
 
 char invert_brace_char(char brace);
 
+/**
+ * Checks if token is a unitary expression
+ *
+ * @param tokens stream of tokens
+ *
+ * @return bool
+ */
+bool is_unit_expr(enum Lexicon tok);
 #endif
 

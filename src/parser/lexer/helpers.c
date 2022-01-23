@@ -220,3 +220,14 @@ bool is_keyword(enum Lexicon token) {
 bool is_num_negative(const char * source, struct Token *token) {
     return token->type == INTEGER && *(source + token->start) == '-';
 }
+
+
+
+bool is_unit_expr(enum Lexicon tok)
+{
+    
+  return \
+    tok == STRING_LITERAL 
+    || tok == INTEGER
+    || tok == WORD;
+}
