@@ -192,19 +192,19 @@ enum Lexicon {
     STRING_LITERAL,
 
     // static
-    STATIC,
+    //STATIC,
 
     // const
-    CONST,
+    //CONST,
 
     // return
     RETURN,
     
     // extern
-    EXTERN,
+    //EXTERN,
     
     // as
-    AS,
+    //AS,
     
     // if
     IF,
@@ -338,6 +338,12 @@ struct Token {
     enum Lexicon type;
 };
 
+struct TokenSpan {
+    struct Token start;
+    struct Token end;
+};
+
+/* added for patch purposes, todo: remove */
 extern struct CompileTimeError;
 int8_t tokenize(
     const char *line,
@@ -455,10 +461,10 @@ bool is_keyword(enum Lexicon token);
  * following it eventually.
  * The follow are examples:
  *
- *   (a + b + (2 + 5)) Is balanced
+ *    a + b + (2 + 5)  Is balanced
  *   (a + b            Is unbalanced.
  *
- * @param tokens stream of tokens
+ * @param tokens array of tokens
  * @param ntokens amount of tokens to read
  *
  * @return bool
@@ -469,7 +475,7 @@ bool is_balanced(struct Token tokens[], uint16_t ntokens);
 /**
  * Checks if token stream is balanced by reference. see (src/parser/lexer/helpers.h#is_balance)
  *
- * @param tokens stream of referenced tokens
+ * @param tokens array of referenced tokens
  * @param ntokens amount of tokens to read
  *
  * @return bool
@@ -480,7 +486,8 @@ bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens);
 /**
  * Checks if token is an INTEGER, and is a negative notation.
  *
- * @param tokens stream of tokens
+ * @param token token to compare
+ * @param src source code
  *
  * @return bool
  */
@@ -496,10 +503,20 @@ char invert_brace_char(char brace);
 /**
  * Checks if token is a unitary expression
  *
- * @param tokens stream of tokens
+ * @param tok token to compare
  *
  * @return bool
  */
 bool is_unit_expr(enum Lexicon tok);
+
+
+/**
+ * Checks if token is a group expression
+ *
+ * @param tok token to compare
+ *
+ * @return bool
+ */
+bool is_grp(enum Lexicon tok);
 #endif
 

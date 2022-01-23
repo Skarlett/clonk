@@ -1,5 +1,6 @@
 #include "expr.h"
 #include "utils.h"
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
@@ -9,29 +10,30 @@ void determine_return_ty(struct Expr *bin) {
   if (bin->inner.bin.rhs->datatype == bin->inner.bin.lhs->datatype)
     bin->inner.bin.returns = bin->inner.bin.rhs->datatype;
   else
-    bin->inner.bin.returns = UndefT;
+    bin->inner.bin.returns = DT_UndefT;
 }
 
 void mk_null(struct Expr *ex) {
   ex->type = NopExprT;
-  ex->datatype = NullT;
+  ex->datatype = DT_NullT;
 }
 
 /*
   integers are placed directly into the output.
 */
-int8_t mk_int(struct ExprParserState* state, struct Expr *ex)
-{
-  struct Token *current = &state->src[*state->_i];
+int8_t mk_int(
+  struct Expr *ex,
+  const struct Token *int_tok,
+  const char * src_code
+){
   char * _; 
-  
   ex->type = LiteralExprT;
-  ex->datatype = IntT;
-  memcpy(&ex->origin, current, sizeof(struct Token));
+  ex->datatype = DT_IntT;
+  memcpy(&ex->origin, int_tok, sizeof(struct Token));
   errno = 0;
 
   ex->inner.value.literal.integer =
-    str_to_isize(state->line + current->start, &_, 10);
+    str_to_isize(src_code + int_tok->start, &_, 10);
   
   assert(errno != 0);
   
@@ -41,21 +43,22 @@ int8_t mk_int(struct ExprParserState* state, struct Expr *ex)
 /*
   symbols are placed directly into the output.
 */
-int8_t mk_symbol(struct ExprParserState* state, struct Expr *ex) 
-{
-  struct Token *current = &state->src[*state->_i];
-  
-  uint8_t size = current->end - current->start;
+int8_t mk_symbol(
+  struct Expr *ex,
+  struct Token *word_tok,
+  const char * src_code
+){
+  uint8_t size = word_tok->end - word_tok->start;
    
-  memcpy(&ex->origin, current, sizeof(struct Token));
+  memcpy(&ex->origin, word_tok, sizeof(struct Token));
   ex->type = SymExprT;
-  ex->datatype = UndefT;
+  ex->datatype = DT_UndefT;
   ex->inner.symbol = calloc(1, size+1);
   
   assert(ex->inner.symbol != 0);
-    
+  
   memcpy(ex->inner.symbol,
-    state->line + current->start,
+    src_code + word_tok->start,
     size + 1
   );
   
@@ -66,14 +69,17 @@ int8_t mk_symbol(struct ExprParserState* state, struct Expr *ex)
 /*
   strings are placed directly into the output.
 */
-int8_t mk_str(struct ExprParserState *state, struct Expr *ex) {
+int8_t mk_str(
+  struct Expr *ex,
+  struct Token *str_token,
+  const char * src_code
+){
   char * str;
-  struct Token *current = &state->src[*state->_i];
-  uint16_t size = current->end - current->start;
+  uint16_t size = str_token->end - str_token->start;
 
   ex->type = LiteralExprT;
-  ex->datatype = StringT;
-  memcpy(&ex->origin, current, sizeof(struct Token));
+  ex->datatype = DT_StringT;
+  memcpy(&ex->origin, str_token, sizeof(struct Token));
 
   str = malloc(size+1);
   assert(str != 0);
@@ -82,7 +88,7 @@ int8_t mk_str(struct ExprParserState *state, struct Expr *ex) {
 
   memcpy(
     ex->inner.value.literal.string,
-    &state->line[current->start],
+    &src_code[str_token->start],
     size
   );
 
@@ -90,125 +96,108 @@ int8_t mk_str(struct ExprParserState *state, struct Expr *ex) {
   return 0;
 }
 
-enum GroupT get_group_ty(struct Group *ghead)
-{
-  if (ghead->state & GSTATE_CTX_MAP_GRP)
-    return MapT;
-
-  else if(ghead->state & GSTATE_CTX_CODE_GRP)
-    return CodeBlockT;
-
-  if (ghead->origin->type == BRACKET_OPEN)
-    return ListT;
-
-  else if (ghead->origin->type == PARAM_OPEN)
-    return TupleT;
-
-  else if(ghead->origin->type == BRACE_OPEN && (ghead->state & GSTATE_CTX_DATA_GRP))
-    return SetT;
-  
-  else
-    return GroupTUndef;
+enum GroupType get_group_ty(struct Token *tok) {
+  switch (tok->type) {
+    case TupleGroup: return MapT;
+    case ListGroup: return ListT;
+    case MapGroup: return MapT;
+    case SetGroup: return SetT;
+    case CodeBlock: return CodeBlockT;
+    default: return GroupTUndef;
+  }
 }
 
-
-int8_t mk_group(struct ExprParserState *state, struct Expr *ex) {
-  struct Expr **buf;
-  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
-  
-  memcpy(&ex->origin, ghead->origin, sizeof(struct Token));
-  uint16_t elements = ghead->delimiter_cnt + 1;
-
-  enum GroupT group_ty = get_group_ty(ghead);
-  
-  assert(elements < state->expr_ctr && group_ty != GroupTUndef);
+int8_t mk_group(
+  struct Expr *ex,
+  struct PostfixStageState *state,
+  struct Token *group_tok
+){
+  struct Expr **buf = 0;
+  /* in Grouping tokens, the `end` parameter determines group size */
+  uint16_t elements = group_tok->end;
 
   ex->type = LiteralExprT;
-  ex->datatype = GroupT;
-  ex->inner.value.literal.grouping.type = group_ty;
-  ex->inner.value.literal.grouping.ptr = 0;
-  ex->inner.value.literal.grouping.length = 0;
+  ex->datatype = DT_CollectionT;
+  ex->inner.grp.type = get_group_ty(group_tok);
+  ex->inner.grp.ptr = 0;
+  ex->inner.grp.length = elements;
 
-  if ((ghead->state & GSTATE_EMPTY) == 0)
+  memcpy(&ex->origin, group_tok, sizeof(struct Token));  
+  
+  if (elements > 0 && state->stack_ctr > elements)
   {
+    /* allocate a space for the pointers */
     buf = calloc(elements, sizeof(void *));
     
     if (!buf)
       return -1;
     
-    ex->inner.value.literal.grouping.ptr = buf;
-    ex->inner.value.literal.grouping.length = elements;
+    ex->inner.grp.ptr = buf;
+    ex->inner.grp.length = elements;
 
     for (uint16_t j = 0; elements > j; j++) {
-      ex->inner.value.literal.grouping.ptr[j] = state->expr_stack[state->expr_ctr - 1];
-      state->expr_ctr -= 1;
+      ex->inner.grp.ptr[j] = state->stack[state->stack_ctr - 1];
+      state->stack_ctr -= 1;
     }
   }
 
   return 0;
 }
 
-enum Operation operation_from_token(enum Lexicon t)
+
+int8_t argc_map(struct Token *tok)
 {
-  switch (t) {
-    /* arithmetic */
-    case ADD: return Add;
-    case SUB: return Sub;
-    case MUL: return Multiply;
-    case DIV: return Divide;
-    case MOD: return Modolus;
-    case POW: return Pow;
-    /* boolean logic */
-    case AND: return And;
-    case OR: return Or;
-    /* case NOT: return Not; */
-    /* comparison */
-    case ISEQL: return IsEq;
-    case ISNEQL: return NotEq;
-    case GTEQ: return GtEq;
-    case LTEQ: return LtEq;
-    case LT: return Lt;
-    case GT: return Gt;
-    /* access operator */
-    case DOT: return Access;
-    /* assignments */
-    case EQUAL: return Assign;
-    case PLUSEQ: return AssignAdd;
-    case MINUSEQ: return AssignSub;
-    /* bitwise assignments */
-    case BANDEQL: return BandEql;
-    case BOREQL: return BorEql;
-    case BNEQL: return BnotEql;
-    /* bitwise boolean logic */
-    case PIPE: return BitOr;
-    case AMPER: return BitAnd;
-    case TILDE: return BitNot;
-    /* bit shifting */
-    case SHL: return ShiftLeft;
-    case SHR: return ShiftRight;
-    default: return UndefinedOp;
+
+  if (is_grp(tok->type))
+    return tok->end;
+  
+  if (is_operator(tok->type))
+    return 2;
+
+  switch (tok->type) {
+    case DefSign: return 1;
+    case DefBody: return 2;
+    case IfCond: return 1;
+    case IfBody: return 2;
+
+    case Apply: return 2;
+
+    case NOT: return 1;
+    case BitNot: return 1;
+    
+    case _IdxAccess: return 4;
+    
+    case IMPORT: return 1;
+
+    
+    default:
+      return 0;
   }
 }
 
 
-int8_t mk_binop(struct Token *operator, struct ExprParserState *state, struct Expr *ex) { 
-  assert(state->expr_ctr > 0);
+int8_t mk_binop(
+  struct Expr *ex,
+  struct Token *operator,
+  struct PostfixStageState *state
+){ 
+  assert(state->stack_ctr > 0);
   
   memcpy(&ex->origin, operator, sizeof(struct Token));
   
   ex->type = BinaryExprT;
   ex->inner.bin.lhs = 
-    state->expr_stack[state->expr_ctr - 1];
+    state->stack[state->stack_ctr - 1];
 
   ex->inner.bin.rhs = 
-    state->expr_stack[state->expr_ctr - 2];
+    state->stack[state->stack_ctr - 2];
   
   ex->inner.bin.op = operation_from_token(operator->type);
   if (ex->inner.bin.op == UndefinedOp)
     return -1;
   
   determine_return_ty(ex);
-  state->expr_ctr -= 2;
+  state->stack_ctr -= 2;
 
   return 0;
 }
@@ -218,37 +207,41 @@ bool is_unary(enum Lexicon tok)
   return tok == TILDE || tok == NOT;
 }
 
-int8_t mk_unary(struct ExprParserState *state, struct Expr *ex, struct Token *ophead) {
-  assert(state->expr_ctr > 0);
-  
+int8_t mk_unary(
+  struct Expr *ex,
+  struct PostfixStageState *state,
+  struct Token *ophead
+){
+  assert(state->stack_ctr > 0);
   memcpy(&ex->origin, ophead, sizeof(struct Token));
-  ex->inner.unary.op = operation_from_token(ophead->type);
-  ex->inner.unary.operand = state->expr_stack[state->expr_ctr - 1];
-  state->expr_ctr -= 1;
-
-  return 0;
-}
-
-int8_t mk_operator(struct ExprParserState *state, struct Expr *ex, struct Token *op_head)
-{
-  if (is_unary(op_head->type) && mk_unary(state, ex, op_head) == -1
-     || mk_binop(op_head, state, ex) == -1)
-     return -1;
-  return 0;
-}
-
-int8_t mk_idx_access(struct ExprParserState *state, struct Expr *ex) {
-  assert(state->expr_ctr > 3);
   
+  ex->inner.unary.op = operation_from_token(ophead->type);
+  ex->inner.unary.operand = state->stack[state->stack_ctr - 1];
+  state->stack_ctr -= 1;
+
+  return 0;
+}
+
+/* 
+ * 
+ * TODO fix:
+ *    Currently `x[1]` produces the same as `x[1:]`
+ *    by placing `NULLTOKEN` as the `end` attr
+ *
+ */
+int8_t mk_idx_access(
+  struct Expr *ex,
+  struct PostfixStageState *state
+){  
   ex->type = FnCallExprT;
   ex->datatype = 0;
-  
-  ex->inner.idx.start   = state->expr_stack[state->expr_ctr - 1];
-  ex->inner.idx.end     = state->expr_stack[state->expr_ctr - 2];
-  ex->inner.idx.skip    = state->expr_stack[state->expr_ctr - 3];
-  ex->inner.idx.operand = state->expr_stack[state->expr_ctr - 4];
+    
+  ex->inner.idx.start   = state->stack[state->stack_ctr - 1];
+  ex->inner.idx.end     = state->stack[state->stack_ctr - 2];
+  ex->inner.idx.skip    = state->stack[state->stack_ctr - 3];
+  ex->inner.idx.operand = state->stack[state->stack_ctr - 4];
 
-  state->expr_ctr -= 4;
+  state->stack_ctr -= 4;
   return 0;
 }
 
@@ -266,152 +259,146 @@ int8_t mk_idx_access(struct ExprParserState *state, struct Expr *ex) {
  * dbg: <name> <args> ... Apply
  *
  */
-int8_t mk_fncall(struct ExprParserState *state, struct Expr *ex) {
-  struct Token *current = &state->src[*state->_i];
-  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
-  uint16_t argc = ghead->delimiter_cnt + 1;
+int8_t mk_fncall(
+  struct Expr *ex,
+  struct PostfixStageState *state
+){
+  /* assumes current token is APPLY */
+  /*
+    grab the previous expression (TupleGroup parsing-object), 
+    and use it's length to determine the amount of arguments
+    in the function call.
+  */
+  struct Expr *args = state->stack[state->stack_ctr - 1];
+  struct Expr *caller = state->stack[state->stack_ctr - 2];
   
-  struct Expr *head;
-
-  if (state->expr_ctr > state->expr_sz || 1 > *state->_i)
-    return -1;
-    
+  /* assert its a group and of tuple type*/
+  assert(args->datatype == GroupT && args->inner.grp.type == TupleT);
+  
+  
   ex->type = FnCallExprT;
   ex->datatype = 0;
-  memcpy(&ex->origin, current, sizeof(struct Token));
+  ex->inner.fncall.args = args;
 
-  if (ghead->state & GSTATE_EMPTY)
-  {
-    ex->inner.fncall.args = 0;
-    ex->inner.fncall.args_length = 0;
-  }
-  else
-  {
-    ex->inner.fncall.args = calloc(argc, sizeof(void *));
-
-    /* fill in arguments popping them off the stack */
-    for (uint16_t x=0; argc > x; x++)
-    {
-      ex->inner.fncall.args[ex->inner.fncall.args_length] = head;
-      ex->inner.fncall.args_length += 1;
-      state->expr_ctr -= 1;
-      head = state->expr_stack[state->expr_ctr - 1];
-    }
-  }
-  
-  // TODO
-  // something feels off right here
-  // like we're not pointing at the caller yet 
-  head = state->expr_stack[state->expr_ctr - 1];
-  state->expr_ctr -= 1;
-  
   ex->inner.fncall.func_name = "anonymous";
-  ex->inner.fncall.caller = head;
+  ex->inner.fncall.caller = caller;
+  ex->inner.fncall.returns = DT_UndefT;
   
-  if (head->type == SymExprT)
-    ex->inner.fncall.func_name = head->inner.symbol;
+  /* add function name */
+  if (caller->type == SymExprT)
+    ex->inner.fncall.func_name = caller->inner.symbol;
 
   return 0;
 }
 
-int8_t mk_if_cond(struct ExprParserState *state, struct Expr *ex)
-{
-  struct Expr *exhead = 0;
-  assert(state->expr_ctr > 0);
+int8_t mk_if_cond(
+  struct Expr *ex,
+  struct PostfixStageState *state
+){
+  struct Expr *cond = state->stack[state->stack_ctr - 1];
   
-  exhead = state->expr_stack[state->expr_ctr - 1];
-  state->expr_ctr -= 1;
-
-  memcpy(&ex->origin, op_head(state), sizeof(struct Token));
+  assert(state->stack_ctr > 0);  
+  state->stack_ctr -= 1;
+  
+  // todo
+  //memcpy(&ex->origin, op_head(state), sizeof(struct Token));
 
   ex->type = IfExprT;
-  ex->inner.cond.cond = exhead;
+  ex->inner.cond.cond = cond;
 
   return 0;
 }
 
-int8_t mk_if_body(struct ExprParserState *state)
+int8_t mk_if_body(struct PostfixStageState *state)
 {
   struct Expr *body, *cond = 0;
-  assert(state->expr_ctr > 1);
+  assert(state->stack_ctr > 1);
   
   //memcpy(&ex->origin, , sizeof(struct Token));
-  cond = state->expr_stack[state->expr_ctr - 2];
-  body = state->expr_stack[state->expr_ctr - 1];
+  cond = state->stack[state->stack_ctr - 2];
+  body = state->stack[state->stack_ctr - 1];
   
   if (cond->type != IfExprT)
     return -1;
   
   cond->inner.cond.body = body;
-  state->expr_ctr -= 1;
+  state->stack_ctr -= 1;
 
   return 0;
 }
 
-int8_t mk_else_body(struct ExprParserState *state)
+int8_t mk_else_body(struct PostfixStageState *state)
 {
   struct Expr *body, *cond = 0;
-  assert(state->expr_ctr > 1);
+  assert(state->stack_ctr > 1);
   
   // todo
   //memcpy(&ex->origin, op_head(state), sizeof(struct Token));
-  cond = state->expr_stack[state->expr_ctr - 2];
-  body = state->expr_stack[state->expr_ctr - 1];
+  cond = state->stack[state->stack_ctr - 2];
+  body = state->stack[state->stack_ctr - 1];
   
   // if (cond->type != IfExprT)
   //   return -1;
   
   cond->inner.cond.else_body = body;
-  state->expr_ctr -= 1;
+  state->stack_ctr -= 1;
 
   return 0;
 }
 
-int8_t mk_return(struct ExprParserState *state, struct Expr *ex)
+int8_t mk_return(struct PostfixStageState *state, struct Expr *ex)
 {
   struct Expr *inner;
-  assert(state->expr_ctr > 0);
+  assert(state->stack_ctr > 0);
   
-  memcpy(&ex->origin, op_head(state), sizeof(struct Token));
-  ex->inner.ret.body = state->expr_stack[state->expr_ctr - 1];
+  // todo: fix
+  //memcpy(&ex->origin, op_head(state), sizeof(struct Token));
+  
+  ex->inner.ret.body = state->stack[state->stack_ctr - 1];
   ex->type = ReturnExprT; 
   return 0;
 }
 
-int8_t mk_import(struct ExprParserState *state, struct Expr *ex)
+int8_t mk_import(struct PostfixStageState *state, struct Expr *ex)
 {
-  
   //TODO 
   struct Expr *body = 0;
   ex->type = ImportExprT;
   
-  memcpy(&ex->origin, op_head(state), sizeof(struct Token));
+  // todo: fix
+  //memcpy(&ex->origin, op_head(state), sizeof(struct Token));
   return 0;
 }
 
 
-int8_t mk_def_sig(struct ExprParserState *state, struct Expr *ex)
-{
-  struct Expr *ident;
-  
-  // Grab the function name
-  ident = state->expr_stack[state->expr_ctr - 2]; 
+int8_t mk_def_sig(
+  struct Expr *ex,
+  struct PostfixStageState *state
+){
+  /* get group */
+  struct Expr *params = state->stack[state->stack_ctr - 1];
+
+  /* Grab the function name */
+  struct Expr *ident = state->stack[state->stack_ctr - 2];
+
+  /* free it since it will be thrown away afterwards */
   ident->free = 1;
 
-  if(ident->type != SymExprT)
-    return -1;
+  assert(ident->type == SymExprT);
+  assert(params->type == GroupT && params->inner.grp.type == TupleGroup);
   
   ex->type = FuncDefExprT;
-  ex->inner.func.name = ident->origin;
+  ex->inner.func.name = strdup(ident->inner.symbol);
+  ex->inner.func.signature = params;
+
+  ex->origin.span.start = ident->origin.unit;
+  // todo
+  // ex->origin.span.end = ???;
   
-  /* top of the stack will be either a group (a, b, c) or a single (a) parameter */
-  ex->inner.func.signature = state->expr_stack[state->expr_ctr - 1];
-  
-  memcpy(&ex->origin, op_head(state), sizeof(struct Token));
-  state->expr_ctr -= 2;
+  state->stack_ctr -= 2;
   
   //over write old signature with out own
-  //state->expr_stack[state->expr_ctr - 1] = sig;
+  //state->stack[state->stack_ctr] = sig;
 
   return 0;
 }
@@ -419,22 +406,127 @@ int8_t mk_def_sig(struct ExprParserState *state, struct Expr *ex)
 /*
  * def word(param, param) x; | { x };
  * */
-int8_t mk_def_body(struct ExprParserState *state)
+int8_t mk_def_body(struct PostfixStageState *state)
 {
-  //TODO
-  struct Expr *func = 0, *body;
+  struct Expr 
+    *header = state->stack[state->stack_ctr - 2],
+    *code_block = state->stack[state->stack_ctr - 1];
   
-  if(2 > state->expr_ctr)
-    return -1;
+  assert(header->type == FuncDefExprT);
   
-  func = state->expr_stack[state->expr_ctr - 2];
-  body = state->expr_stack[state->expr_ctr - 1];
-  
-  if(func->type != FuncDefExprT)
-    return -1;
-  
-  func->inner.func.body = body;
-  state->expr_ctr -= 1;
+  header->inner.func.body = code_block;
+  state->stack_ctr -= 1;
   return 0;
 }
 
+int inc_stack(struct PostfixStageState *stage, struct Expr *ex)
+{
+    struct Expr * ret = vec_push(&stage->pool, ex);
+    assert(ret != 0);
+
+    stage->stack[stage->stack_ctr] = ret;
+    stage->stack_ctr += 1;
+    
+    return 0;
+}
+
+int init_postfix_stage(struct PostfixStageState *stage) {
+    stage->stack_ctr = 0;
+    init_vec(&stage->pool, 2048, sizeof(struct Expr));
+}
+
+
+int handle_keyword(
+  struct Token *keyword, 
+  struct PostfixStageState *state,
+  const char * src_code
+){
+  
+}
+
+
+int parse_postfix_stage(
+    struct ExprParserState *expr_stage,
+    struct PostfixStageState *postfix_stage
+){
+    const char * src_code = expr_stage->line;
+    struct Token *current = 0;
+    struct Expr ex;
+    bool add_expr = false;
+
+    uint8_t ret_flag = 0;
+    uint16_t i = 0;
+    postfix_stage->_i = &i; 
+
+    for (uint16_t i=0; i > expr_stage->debug.len; i++) 
+    {
+        add_expr = true;
+        current = ((struct Token **) expr_stage->debug.base)[i];
+
+        if (is_operator(current->type))
+          mk_binop(&ex, current, postfix_stage);
+
+        else if(is_unary(current->type))
+          mk_unary(&ex, postfix_stage, current);
+
+        else if(is_grp(current->type))
+          mk_group(&ex, postfix_stage, current);
+
+        else {
+          switch (current->type) {
+            case STRING_LITERAL:
+              assert(mk_str(&ex, current, src_code) == 0);
+              break;
+            
+            case INTEGER:
+              assert(mk_int(&ex, current, src_code) == 0);
+              break;
+
+            case WORD:
+              assert(mk_symbol(&ex, current, src_code) == 0);
+              break;
+
+            case NULLTOKEN:
+              mk_null(&ex);
+              break;
+
+            case DefSign:
+              mk_def_sig(&ex, postfix_stage);
+              break;
+
+            case DefBody:
+              mk_def_body(postfix_stage);
+              add_expr = false;
+              break;
+
+            case IfCond:
+              mk_if_cond(&ex, postfix_stage);
+              break;
+
+            case IfBody:
+              mk_if_body(postfix_stage);
+              add_expr = false;
+              break;
+
+            case Apply:
+              mk_fncall(&ex, postfix_stage);
+              break;
+
+            case _IdxAccess:
+              mk_idx_access(&ex, postfix_stage);
+              break;
+
+            case IMPORT:
+              //mk_import(, struct Expr *ex)            
+              break;
+
+            case RETURN:
+              // mk_return
+              break;
+            
+            default: return -1;
+
+          }
+        }
+    }
+}

@@ -5,44 +5,6 @@
 #include "utils.h"
 #include "../../utils/vec.h"
 
-int8_t add_dbg_sym(
-  struct ExprParserState *state,
-  enum Lexicon type,
-  uint16_t argc
-){
-  struct Token marker, *ret;
-  assert(type != TOKEN_UNDEFINED);
-
-  marker.type = type;
-  marker.start = 0;
-  marker.end = argc;
-  
-  // push debug token in the pool
-  ret = vec_push(&state->pool, &marker);
-  assert(ret != 0);
-  assert(vec_push(&state->debug, &ret) != 0);
-  return 0;
-}
-
-int8_t inc_stack(
-  struct ExprParserState *state,
-  struct Expr *ex,
-  struct Token *dbg_out
-){
-  struct Expr * heap_ex;
-  assert(state->expr_ctr < state->expr_sz);
-  
-  heap_ex = vec_push(&state->expr_pool, &ex);
-  assert(heap_ex != 0);
-  
-  if (dbg_out)
-    assert(vec_push(&state->debug, &dbg_out) != 0);
-  
-  state->expr_stack[state->expr_ctr] = heap_ex;
-  state->expr_ctr += 1;
-
-  return 0;
-}
 
 struct Token * prev_token(struct ExprParserState *state) 
 {
@@ -118,7 +80,7 @@ struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, struct Exp
   return heap;
 }
 
-enum Lexicon grp_dbg_sym(enum GroupT type)
+enum Lexicon grp_dbg_sym(enum GroupType type)
 {
   switch (type) {
     case ListT: return ListGroup;
@@ -158,14 +120,6 @@ int8_t is_short_blockable(enum Lexicon tok)
 {
   enum Lexicon buf[] = {IfBody, RETURN, ELSE, DefBody, 0};
   return contains_tok(tok, buf);
-}
-
-bool is_unit_expr(enum Lexicon tok)
-{
-  return \
-    tok == STRING_LITERAL 
-    || tok == INTEGER
-    || tok == WORD;
 }
 
 /*

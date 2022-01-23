@@ -51,6 +51,8 @@ enum ExprType {
     UnaryExprT,
 
     UndefinedExprT,
+    GroupT,
+    
 };
 
 enum Operation {
@@ -102,7 +104,7 @@ enum Operation {
     UndefinedOp = 255
 };
 
-enum GroupT {
+enum GroupType {
     GroupTUndef,
 
     // {1:2, 3:4}
@@ -116,25 +118,26 @@ enum GroupT {
 
     // {a, b}
     SetT,
+     
 
     // {1; 2;}
     CodeBlockT
 
 };
 
-struct Grouping { 
-    enum GroupT type;
+struct GroupExpr { 
+    enum GroupType type;
     uint16_t length;
     struct Expr **ptr;
 };
 
 enum DataType {
-    UndefT,
-    IntT,
-    StringT,
-    BoolT,
-    GroupT,
-    NullT
+    DT_UndefT,
+    DT_IntT,
+    DT_StringT,
+    DT_BoolT,
+    DT_CollectionT,
+    DT_NullT
 };
 
 struct Literals {
@@ -142,15 +145,14 @@ struct Literals {
         isize integer;
         char * string;
         uint8_t boolean;
-        struct Grouping grouping;
     } literal;
 };
 
 struct FnCallExpr {
-    struct Expr *caller;
     char * func_name;
-    uint8_t args_length;
-    struct Expr **args;
+    struct Expr *caller;
+    // TupleGroup(N)
+    struct Expr *args;
     enum DataType returns;
 };
 
@@ -173,7 +175,7 @@ struct IfExpr {
 };
 
 struct FnDefExpr {
-    struct Token name; 
+    const char * name; 
     struct Expr *signature;
     struct Expr *body;
 };
@@ -189,11 +191,27 @@ struct IdxExpr {
     struct Expr * skip;
 };
 
+
+/* can be a single token or a string of congruent tokens*/
+enum ExprSizeType {
+    /* singular */
+    _ExprSzTy_Singlar,
+    
+    /* multiple */
+    _ExprSzTy_Span
+};
+
 struct Expr {
     enum ExprType type;
     enum DataType datatype;
     // ****
-    struct Token origin; 
+
+    union {
+        struct Token unit;
+        struct TokenSpan span; 
+    } origin;
+
+    //struct Token origin; 
     // ****
     uint8_t free;
 
@@ -203,10 +221,11 @@ struct Expr {
         struct FnCallExpr fncall;
         struct BinExpr bin;
         struct UnaryExpr unary;
-	struct IdxExpr idx;
+	    struct IdxExpr idx;
         struct IfExpr cond;
         struct ReturnExpr ret;
-	struct FnDefExpr func;
+	    struct FnDefExpr func;
+        struct GroupExpr grp;
     } inner;
 };
 
@@ -323,22 +342,62 @@ struct Group {
 #define STATE_INCOMPLETE 1 << 1
 #define STATE_PANIC      1 << 2 
 #define INTERNAL_ERROR   1 << 3
+
+/* 
+  if set - there is an extra 
+    OPEN_BRACK inside of the operator stack 
+    and will be popped off at the EOF
+*/
 #define STATE_PUSH_GLOB_SCOPE 1 << 4
 
 /* if/def/ret/else ends with ; */
-#define STATE_SHORT_BLOCK 1 << 5
+// #define STATE_SHORT_BLOCK 1 << 5
 
 #define STACK_SZ 512
 #define EXP_SZ 32
+
+enum ParserMode {
+    PM_Uninitialized,
+    PM_Parsing,
+    PM_Unwinding
+};
+
+struct PostfixStageState {
+    
+    /* Vec<struct Expr> */
+    struct Vec pool;
+
+    struct Expr * stack[STACK_SZ];
+    uint16_t stack_ctr;
+    uint16_t *_i;
+};
+
+struct GroupBookKeeper {
+    uint16_t next_id;
+    /* Vec<struct GroupBooklet> */
+    struct Vec tabs;
+};
+
+struct GroupBooklet {
+    struct Token *start;
+    struct Token *end;
+};
+
 
 struct ExprParserState {
     struct Token *src;
     uint16_t src_sz;
     uint16_t *_i;
     char * line;
+    enum ParserMode mode;
 
-    /* Tree construction happens in this stack */
-    struct Expr *expr_stack[STACK_SZ];
+    /*
+        Must be on top level tree
+    */
+    struct Expr *restoration_point;
+
+    // /* Tree construction happens in this stack */
+    // struct Expr *expr_stack[STACK_SZ];
     
     /* a stack of pending operations (see shunting yard) */
     struct Token *operator_stack[STACK_SZ];
@@ -357,12 +416,12 @@ struct ExprParserState {
     uint16_t operator_stack_sz;
     uint16_t set_sz;
 
-    /* Vec<struct Expr> */
-    struct Vec expr_pool;
-
+    /* todo, to get group spans */
+    struct GroupBookKeeper grp_keeper;
+    
     /*Vec<struct Token>*/
     struct Vec pool;
-    
+
     /* Vec<struct Token *> */
     struct Vec debug;
 
@@ -426,33 +485,31 @@ int8_t is_token_unexpected(struct ExprParserState *state);
 int8_t free_state(struct ExprParserState *state);
 int8_t reset_state(struct ExprParserState *state);
 
+// void mk_null(struct Expr *ex);
 
+// int8_t mk_str(struct PostfixStageState *state, struct Expr *ex); 
+// int8_t mk_int(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_symbol(struct PostfixStageState *state, struct Expr *ex);
 
-void mk_null(struct Expr *ex);
+// int8_t mk_operator(struct PostfixStageState *state, struct Expr *ex, struct Token *op_head);
+// int8_t mk_group(struct PostfixStageState *state, struct Expr *ex);
 
-int8_t mk_str(struct ExprParserState *state, struct Expr *ex); 
-int8_t mk_int(struct ExprParserState *state, struct Expr *ex);
-int8_t mk_symbol(struct ExprParserState *state, struct Expr *ex);
+// int8_t mk_binop(struct Token *op, struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_not(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_idx_access(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_fncall(struct PostfixStageState *state, struct Expr *ex);
 
-int8_t mk_operator(struct ExprParserState *state, struct Expr *ex, struct Token *op_head);
-int8_t mk_group(struct ExprParserState *state, struct Expr *ex);
+// enum Operation operation_from_token(enum Lexicon token);
+// void determine_return_ty(struct Expr *bin);
 
-int8_t mk_binop(struct Token *op, struct ExprParserState *state, struct Expr *ex);
-int8_t mk_not(struct ExprParserState *state, struct Expr *ex);
-int8_t mk_idx_access(struct ExprParserState *state, struct Expr *ex);
-int8_t mk_fncall(struct ExprParserState *state, struct Expr *ex);
+// int8_t mk_if_cond(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_if_body(struct PostfixStageState *state);
+// int8_t mk_else_body(struct PostfixStageState *state);
 
-enum Operation operation_from_token(enum Lexicon token);
-void determine_return_ty(struct Expr *bin);
-
-int8_t mk_if_cond(struct ExprParserState *state, struct Expr *ex);
-int8_t mk_if_body(struct ExprParserState *state);
-int8_t mk_else_body(struct ExprParserState *state);
-
-int8_t mk_return(struct ExprParserState *state, struct Expr *ex);
-int8_t mk_def_sig(struct ExprParserState *state, struct Expr *ex);
-int8_t mk_def_body(struct ExprParserState *state);
-int8_t mk_import(struct ExprParserState *state, struct Expr *ex);
+// int8_t mk_return(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_def_sig(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_def_body(struct PostfixStageState *state);
+// int8_t mk_import(struct PostfixStageState *state, struct Expr *ex);
 
 
 #endif

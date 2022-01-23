@@ -1,6 +1,6 @@
 #include "lexer.h"
 #include "../../prelude.h"
-#include "../error.h"
+#include "../../error.h"
 #include "debug.h"
 
 #include <stdint.h>
@@ -297,17 +297,25 @@ enum Lexicon invert_operator_token(enum Lexicon compound_token) {
 
 int8_t derive_keyword(const char *line, struct Token *t) {
   static enum Lexicon lexicon[] = {
-    STATIC, CONST,    RETURN, EXTERN, AS,  IF,
-    ELSE,   FUNC_DEF, IMPORT, IMPL,   AND, OR
+    //STATIC, CONST,
+    RETURN,
+    // EXTERN, AS,
+    IF,
+    ELSE, FUNC_DEF, IMPORT, IMPL, AND, OR, 0
   };
 
   static char *keywords[] = {
-    "static", "const", "return", "extern", "as",
-     "if",     "else",  "def",    "import", "impl",
-     "and",    "or",    0
+    // "static", "const",
+    "return",
+    //"extern", "as",
+     "if", "else",  "def", "import", "impl",
+     "and", "or", 0
   };
 
-  for (uint8_t i = 0; 12 > i; i++) {
+  for (uint8_t i = 0; 8 > i; i++) {
+    if (lexicon[i] == 0)
+      break;
+
     /*token.end+1 since the fields naturally are indexable*/
     if (strlen(keywords[i]) == ((t->end + 1) - t->start) &&
         strncmp(line + t->start, keywords[i], t->end - t->start) == 0) {
@@ -329,9 +337,9 @@ int8_t finalize_compound_token(
       Error: string is missing a ending quote
     */
     if (lexed != QUOTE) {
-      err->msg = "String missing quote.";
-      err->type = Error;
-      err->base = token;
+      // err->msg = "String missing quote.";
+      // err->type = Error;
+      // err->base = token;
       return -1;
     }
 
@@ -350,9 +358,9 @@ int8_t finalize_compound_token(
 
     /* Error: UNDEFINED/null token when inverted*/
     if (token->type == TOKEN_UNDEFINED) {
-      err->msg = "Unknown operator.";
-      err->type = Error;
-      err->base = token;
+      // err->msg = "Unknown operator.";
+      // err->type = Error;
+      // err->base = token;
       return -1;
     }
   }
@@ -414,7 +422,8 @@ int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
 
 int8_t tokenize(
   const char *line,
-  struct Token tokens[], uint16_t *token_ctr,
+  struct Token tokens[], 
+  uint16_t *token_ctr,
   uint16_t token_sz, 
   bool add_eoft,
   struct CompileTimeError *error
@@ -423,9 +432,13 @@ int8_t tokenize(
   enum Lexicon current = TOKEN_UNDEFINED, compound_token = TOKEN_UNDEFINED;
   size_t line_len = strlen(line);
   uint16_t i = 0;
+
   uint16_t start_at = 0;
   uint16_t span_size = 0;
   uint16_t new_tokens = 0;
+
+  uint16_t seq_ctr = 0;
+
   bool repeating = false;
 
   for (i = 0; line_len > i; i++) {
@@ -466,6 +479,7 @@ int8_t tokenize(
       token.start = start_at;
       token.end = start_at + span_size;
       token.type = compound_token;
+      token.seq = new_tokens;
 
       if (finalize_compound_token(&token, line, current, error) == -1)
         return -1;
@@ -498,7 +512,7 @@ int8_t tokenize(
              current != TOKEN_UNDEFINED) {
       compound_token = TOKEN_UNDEFINED;
 
-      struct Token token = {.start = i, .end = i, .type = current};
+      struct Token token = {.start = i, .end = i, .type = current, .seq = seq_ctr};
 
       start_at = 0;
       tokens[new_tokens] = token;
@@ -533,7 +547,8 @@ int8_t tokenize(
     token.type = EOFT;
     token.start = i;
     token.end = i;
-
+    token.seq = new_tokens;
+    
     tokens[new_tokens] = token;
     new_tokens += 1;
   }

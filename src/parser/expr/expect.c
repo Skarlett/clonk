@@ -4,33 +4,6 @@
 #include "expr.h"
 #include "utils.h"
 
-#define _EX_BIN_OPERATOR \
-    ADD, MUL, SUB, DIV, POW, MOD, \
-    ISEQL, ISNEQL, LT, LTEQ, OR, AND,\
-    GTEQ, GT, SHL, SHR, AMPER, PIPE, PIPEOP
-
-#define _EX_UNARY_OPERATOR \
-    TILDE, NOT
-
-#define _EX_DELIM \
-    COMMA, COLON, SEMICOLON
-
-#define _EX_ASN_OPERATOR \
-    EQUAL, PLUSEQ, MINUSEQ, \
-    BANDEQL, BOREQL, BNEQL
-
-#define _EX_OPEN_BRACE \
-    PARAM_OPEN, BRACE_OPEN, BRACKET_OPEN
-
-#define _EX_CLOSE_BRACE \
-    PARAM_CLOSE, BRACE_CLOSE, BRACKET_CLOSE
-
-#define _EX_DATA \
-    STRING_LITERAL, WORD, INTEGER
-
-#define _EX_EXPR \
-    _EX_DATA, _EX_OPEN_BRACE, _EX_UNARY_OPERATOR
-
 enum Lexicon _PV_default[] = {
   _EX_EXPR,
   0
@@ -130,6 +103,7 @@ uint16_t lex_arr_len(enum Lexicon *arr)
  */
 void init_expect_buffer(struct Previsioner *state)
 {   
+  
     memcpy(state->buffer, _PV_default, sizeof(enum Lexicon) * 8);
     state->buffer[9] = 0;
     /* cast removes cc warning */
@@ -303,12 +277,6 @@ enum ModeResult {
   _MRError = -1
 };
 
-
-/* 2 = completed
- * 1 = input good, continue going
- * 0 = failure to match token
- * -1 = error
- * */
 enum ModeResult mode_func_def(enum Lexicon current, struct Previsioner *state)
 {
   enum ModeResult ret = _MRMatchFailure;
@@ -325,7 +293,9 @@ enum ModeResult mode_func_def(enum Lexicon current, struct Previsioner *state)
 	    
       if (current == PARAM_CLOSE)
 	      return _MRComplete;	
-      return (current == WORD && mod) || (current == COMMA && !mod);
+      
+      return (current == WORD && mod) 
+        || (current == COMMA && !mod);
   }
 
   return ret;

@@ -205,16 +205,12 @@ bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
 
 bool is_keyword(enum Lexicon token) {
     static enum Lexicon keywords[10] = {
-        STATIC, CONST, RETURN, EXTERN, 
-        AS, IF, ELSE, FUNC_DEF, IMPORT, IMPL
-    };
-    
-    for (int i=0; 10 > i; i++) {
-        if (token == keywords[i])
-            return true;
-    }
-    
-    return false;
+        // STATIC, CONST,
+        RETURN,
+        // EXTERN, AS,
+        IF, ELSE, FUNC_DEF, IMPORT, IMPL, 0
+    };    
+    return contains_tok(token, keywords);
 }
 
 bool is_num_negative(const char * source, struct Token *token) {
@@ -230,4 +226,17 @@ bool is_unit_expr(enum Lexicon tok)
     tok == STRING_LITERAL 
     || tok == INTEGER
     || tok == WORD;
+}
+
+
+
+bool is_grp(enum Lexicon tok)
+{
+  return \
+    tok == TupleGroup 
+    ||tok == ListGroup
+    ||tok == IndexGroup
+    ||tok == MapGroup  
+    ||tok == SetGroup 
+    ||tok == CodeBlock;
 }
