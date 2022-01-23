@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 #include "../../prelude.h"
-#include "../error.h"
+#include "../../error.h"
 
 
 #define ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
@@ -104,6 +104,9 @@ enum Lexicon {
 
     // !=
     ISNEQL,
+
+    // ..
+    // ELLISPES
 
     // may turn into BOREQL or PIPEOP or OR 
     _COMPOUND_PIPE,
@@ -269,9 +272,9 @@ enum Lexicon {
     */
     TupleGroup, // (x,x)
     ListGroup,  // [x,x]
+    IndexGroup, // [x:x]
     MapGroup,   // {x:x}
     SetGroup,   // {x,x}
-    
     CodeBlock,  // {x; x;} or {x; x}
 
     IfCond,
@@ -279,6 +282,33 @@ enum Lexicon {
     DefSign,
     DefBody
 };
+
+#define _EX_BIN_OPERATOR \
+    ADD, MUL, SUB, DIV, POW, MOD, \
+    ISEQL, ISNEQL, LT, LTEQ, OR, AND,\
+    GTEQ, GT, SHL, SHR, AMPER, PIPE, PIPEOP
+
+#define _EX_UNARY_OPERATOR \
+    TILDE, NOT
+
+#define _EX_DELIM \
+    COMMA, COLON, SEMICOLON
+
+#define _EX_ASN_OPERATOR \
+    EQUAL, PLUSEQ, MINUSEQ, \
+    BANDEQL, BOREQL, BNEQL
+
+#define _EX_OPEN_BRACE \
+    PARAM_OPEN, BRACE_OPEN, BRACKET_OPEN
+
+#define _EX_CLOSE_BRACE \
+    PARAM_CLOSE, BRACE_CLOSE, BRACKET_CLOSE
+
+#define _EX_DATA \
+    STRING_LITERAL, WORD, INTEGER
+
+#define _EX_EXPR \
+    _EX_DATA, _EX_OPEN_BRACE, _EX_UNARY_OPERATOR
 
 /*
     Tokens reference symbols derived from the 
@@ -304,9 +334,11 @@ enum Lexicon {
 struct Token {
     uint16_t start;
     uint16_t end;
+    uint16_t seq;
     enum Lexicon type;
 };
 
+extern struct CompileTimeError;
 int8_t tokenize(
     const char *line,
     struct Token tokens[],
