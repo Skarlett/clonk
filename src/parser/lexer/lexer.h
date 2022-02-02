@@ -376,13 +376,16 @@ struct LexerOutput {
 
 enum LexerError_t {
     lex_err_missing_end_quote,
-    // lex_err
+    lex_err_non_ascii_token,
+    lex_err_input_too_big
 };
 
 struct LexerError {
     enum LexerError_t type;
     union {
         struct Token bad_str;
+        struct Token non_ascii_token;
+        //struct UnexpectedErrT unexpected_tok;
     } type_data;
 };
 

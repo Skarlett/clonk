@@ -21,7 +21,8 @@ struct OpenQueue8_t {
 
 void init_queue8(
     struct OpenQueue8_t *queue,
-    uint16_t item_z,
+    void * buffer,
+    uint16_t item_sz,
     uint8_t capacity
 );
 

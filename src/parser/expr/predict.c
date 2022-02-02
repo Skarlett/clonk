@@ -144,7 +144,7 @@ uint8_t prevision_keywords(enum Lexicon *buf, struct Expr *expr_head) {
 /* 
  * @param ref NULL terminated  
  */
-int8_t prevision_next(struct ExprParserState *state)
+int8_t prevision_next(struct Parser *state)
 {
   enum Lexicon current = state->src[*state->_i].type;
   enum Lexicon *ref = 0;
@@ -344,7 +344,7 @@ int8_t mode_default(enum Lexicon current, enum Lexicon grp_delim, struct Previsi
   return 0;
 }
 
-int8_t is_token_unexpected(struct ExprParserState *state)
+int8_t is_token_unexpected(struct Parser *state)
 {
   struct Token *current = &state->src[*state->_i];
   struct Group *ghead = 0;

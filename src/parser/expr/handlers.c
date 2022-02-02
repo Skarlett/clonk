@@ -435,7 +435,7 @@ int init_postfix_stage(struct PostfixStageState *stage) {
 }
 
 int parse_postfix_stage(
-  struct ExprParserState *expr_stage,
+  struct Parser *expr_stage,
   struct PostfixStageState *postfix_stage
 ){
   const char *src_code = expr_stage->line;

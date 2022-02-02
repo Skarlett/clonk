@@ -27,7 +27,7 @@ int8_t into_ref_array(
 void __test__effectively_empty_group(CuTest* tc)
 {
     struct Token tokens[32];
-    struct ExprParserState state;
+    struct Parser state;
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
@@ -48,7 +48,7 @@ void __test__effectively_empty_group(CuTest* tc)
 void __test__you_know_too_much(CuTest* tc)
 {
     struct Token tokens[32];
-    struct ExprParserState state;
+    struct Parser state;
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];

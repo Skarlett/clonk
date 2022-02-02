@@ -1,4 +1,3 @@
-
 #ifndef _HEADER_EXPR__
 #define _HEADER_EXPR__
 
@@ -51,8 +50,7 @@ enum ExprType {
     UnaryExprT,
 
     UndefinedExprT,
-    GroupT,
-    
+    GroupT
 };
 
 enum Operation {
@@ -309,25 +307,10 @@ void init_expect_buffer(struct Previsioner *state);
 #define GSTATE_CTX_NO_DELIM      1 << 6
 #define GSTATE_CTX_SHORT_BLOCK   1 << 7
 
-
-struct Stage {
-    enum Stage_t type;
-
-    // args deterined by self.type
-    void ** init_hook;
-
-    //
-    void ** process_hook;
-};
-
-int8_t lexer_hook_init_api_call(void *);
-int8_t lexer_hook_process_api_call(void * state, struct Token);
-
-
 struct ParserInput {
     const char * src_code;
     uint16_t src_code_sz;
-    struct Token *tokens;
+    struct Vec tokens;
 
     bool add_glob_scope;
 };
@@ -425,7 +408,7 @@ struct GroupBooklet {
 };
 
 
-struct ExprParserState {
+struct Parser {
     struct Token *src;
     uint16_t src_sz;
     uint16_t *_i;
@@ -515,13 +498,13 @@ int8_t parse_expr(
     char * line,
     struct Token tokens[],
     uint16_t expr_size,
-    struct ExprParserState *state
+    struct Parser *state
 );
 
-int8_t is_token_unexpected(struct ExprParserState *state);
+int8_t is_token_unexpected(struct Parser *state);
 
-int8_t free_state(struct ExprParserState *state);
-int8_t reset_state(struct ExprParserState *state);
+int8_t free_state(struct Parser *state);
+int8_t reset_state(struct Parser *state);
 
 // void mk_null(struct Expr *ex);
 

@@ -42,7 +42,9 @@ int parse_code(
     struct ParseOutput *output
 ){
 
-    struct ExprParserState prefix_stage;
+    struct Parser prefix_stage;
+    struct LexerInput lex_input;
+
 
     assert(tokenize(
         input->source_code,
@@ -60,6 +62,4 @@ int parse_code(
         &prefix_stage
         
         )
-
-
 }

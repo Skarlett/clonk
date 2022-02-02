@@ -6,28 +6,28 @@
 #include "../../utils/vec.h"
 
 
-struct Token * prev_token(struct ExprParserState *state) 
+struct Token * prev_token(struct Parser *state) 
 {
   if (*state->_i != 0)
     return &state->src[*state->_i - 1];
   return 0;
 }
 
-struct Token * next_token(struct ExprParserState *state) 
+struct Token * next_token(struct Parser *state) 
 {
   if(UINT16_MAX > *state->_i && state->src_sz > *state->_i)
     return &state->src[*state->_i + 1];
   return 0;
 }
 
-struct Group * group_head(struct ExprParserState *state)
+struct Group * group_head(struct Parser *state)
 {
   if (STACK_SZ - 1 > state->set_ctr && state->set_ctr > 0)
     return &state->set_stack[state->set_ctr - 1];
   return 0;
 }
 
-struct Token * op_head(struct ExprParserState *state)
+struct Token * op_head(struct Parser *state)
 {
   if(state->operators_ctr > 0)
     return state->operator_stack[state->operators_ctr - 1];
@@ -48,7 +48,7 @@ bool is_op_keyword(enum Lexicon token)
      || token == DefBody;
 }
 
-struct Group * new_grp(struct ExprParserState *state, struct Token * origin) 
+struct Group * new_grp(struct Parser *state, struct Token * origin) 
 {
   struct Group *ghead;
   assert(state->set_ctr < state->set_sz);
@@ -65,7 +65,7 @@ struct Group * new_grp(struct ExprParserState *state, struct Token * origin)
 }
 
 
-struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, struct ExprParserState *state)
+struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, struct Parser *state)
 {
   struct Token new, *heap = 0;
   new.type = op;
@@ -92,7 +92,7 @@ enum Lexicon grp_dbg_sym(enum GroupType type)
   };
 }
 
-int8_t push_many_ops(enum Lexicon *ops, struct Token *origin, struct ExprParserState *state)
+int8_t push_many_ops(enum Lexicon *ops, struct Token *origin, struct Parser *state)
 {
   struct Expr ex; 
   struct Token tmp, *heap;

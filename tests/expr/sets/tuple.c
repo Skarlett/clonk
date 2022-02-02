@@ -1,7 +1,7 @@
 
 void __test__tuple_collection(CuTest* tc) {
     struct Token tokens[32];
-    struct ExprParserState state;
+    struct Parser state;
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
