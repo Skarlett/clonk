@@ -219,10 +219,10 @@ struct Expr {
         struct FnCallExpr fncall;
         struct BinExpr bin;
         struct UnaryExpr unary;
-	    struct IdxExpr idx;
+        struct IdxExpr idx;
         struct IfExpr cond;
         struct ReturnExpr ret;
-	    struct FnDefExpr func;
+        struct FnDefExpr func;
         struct GroupExpr grp;
     } inner;
 };
@@ -356,7 +356,7 @@ struct Group {
     
     uint16_t operator_idx;
     // should be `[` `(` '{' or `0`
-    struct Token *origin;
+    const struct Token *origin;
     struct Token *last_delim;
 };
 
@@ -380,6 +380,19 @@ struct Group {
 #define STACK_SZ 512
 #define EXP_SZ 32
 
+enum ParserError_t {
+    parse_err_unexpected_token,
+    parse_err_
+};
+
+struct ParseError {
+    enum ParserError_t type;
+    union {
+        struct Token unexpected_token;
+    } data;
+};
+
+
 enum ParserMode {
     PM_Uninitialized,
     PM_Parsing,
@@ -398,6 +411,7 @@ struct PostfixStageState {
 
 struct GroupBookKeeper {
     uint16_t next_id;
+
     /* Vec<struct GroupBooklet> */
     struct Vec tabs;
 };
@@ -409,16 +423,11 @@ struct GroupBooklet {
 
 
 struct Parser {
-    struct Token *src;
+    const struct Token *src;
+    const char * src_code;
+    enum ParserMode mode;
     uint16_t src_sz;
     uint16_t *_i;
-    char * line;
-    enum ParserMode mode;
-
-    /*
-        Must be on top level tree
-    */
-    struct Expr *restoration_point;
 
     /* a stack of pending operations (see shunting yard) */
     struct Token *operator_stack[STACK_SZ];
@@ -431,22 +440,25 @@ struct Parser {
 
     uint16_t set_ctr;
     uint16_t operators_ctr;
-    // uint16_t expr_ctr;
-    
-    //uint16_t expr_sz;
+
     uint16_t operator_stack_sz;
     uint16_t set_sz;
 
     /* todo, to get group spans */
     struct GroupBookKeeper grp_keeper;
-    
+
+    /*
+    ** Keep generated tokens in `pool`.
+    ** Generated meaning they were not previously
+    ** created in the previous stage (lexing)
+    */
     /*Vec<struct Token>*/
     struct Vec pool;
 
     /* Vec<struct Token *> */
     struct Vec debug;
 
-    /*Vec<struct CompileTimeError>*/
+    /*Vec<struct ParseError>*/
     struct Vec errors;
     
     bool use_previson;
@@ -494,11 +506,9 @@ struct Parser {
   pretty-postfix:
            ((foo a (b c +) APPLY(3)) bar 1 APPLY(2) .)
 */
-int8_t parse_expr(
-    char * line,
-    struct Token tokens[],
-    uint16_t expr_size,
-    struct Parser *state
+int8_t parse(
+    struct ParserInput *input,
+    struct ParserOutput *out
 );
 
 int8_t is_token_unexpected(struct Parser *state);

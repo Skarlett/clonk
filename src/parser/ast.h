@@ -61,8 +61,8 @@
 // typedef struct ReturnStatement {
 //     struct Expr * value;
 // } ReturnStatement;
-// int is_return_statement(char *line, struct Token tokens[], uint32_t nstmt);
-// int construct_ret_statement(char *line, struct Token tokens[], uint32_t nstmt, struct Statement *stmt);
+// int is_return_statement(char *src_code, struct Token tokens[], uint32_t nstmt);
+// int construct_ret_statement(char *src_code, struct Token tokens[], uint32_t nstmt, struct Statement *stmt);
 
 // typedef struct FunctionDefinition {
 //     uint32_t name_sz;
@@ -73,8 +73,8 @@
 // } FunctionDefinition;
 
 // void init_func_def(struct FunctionDefinition *fn);
-// int is_func_definition(char *line, struct Token tokens[], uint32_t nstmt);
-// int construct_func_definition(char *line, struct Token tokens[], uint32_t nstmt, struct Statement *stmt);
+// int is_func_definition(char *src_code, struct Token tokens[], uint32_t nstmt);
+// int construct_func_definition(char *src_code, struct Token tokens[], uint32_t nstmt, struct Statement *stmt);
 
 
 // typedef struct DeclareStatement {
@@ -83,7 +83,7 @@
 //     char name[STR_STACK_SIZE];
 // } DeclareStatement;
 // int is_declare_statement(struct Token tokens[], int ntokens);
-// int construct_declare_statement(char *line, struct Token tokens[], uint32_t nstmt, struct Statement *stmt);
+// int construct_declare_statement(char *src_code, struct Token tokens[], uint32_t nstmt, struct Statement *stmt);
 
 // enum ConditionState {
 //     If,
@@ -95,7 +95,7 @@
 //     Expr *expr;
 //     enum ConditionState state;
 // } ConditionalStatement;
-// int is_conditional_definition(char *line, struct Token tokens[], uint32_t nstmt);
+// int is_conditional_definition(char *src_code, struct Token tokens[], uint32_t nstmt);
 // void init_condition_stmt(struct ConditionalStatement *stmt);
 
 
@@ -109,8 +109,8 @@
 // void print_ast(BlockStatement *tree);
 // void print_ast_block(BlockStatement *tree, short unsigned indent);
 
-// //int construct_statement(char *line, struct Token tokens[], uint32_t nstmt, struct BlockStatement *block);
-// uint32_t assemble_ast(char *line, Token tokens[], uint32_t ntokens, BlockStatement *block, int *trap);
+// //int construct_statement(char *src_code, struct Token tokens[], uint32_t nstmt, struct BlockStatement *block);
+// uint32_t assemble_ast(char *src_code, Token tokens[], uint32_t ntokens, BlockStatement *block, int *trap);
 
 
 #endif

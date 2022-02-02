@@ -19,12 +19,10 @@ enum Lexicon {
     
     NULLTOKEN,
     
-    // Ignore token (whitespace, newline, carriage return)
     WHITESPACE,
     
     NEWLINE,
 
-    // Ignore token (whitespace, newline, carriage return)
     COMMENT,
 
     // [
@@ -331,10 +329,10 @@ enum Lexicon {
     except when `type` is equal to FNMASK, or COMPOSITE.
     
     `start` correlates to the starting position the token inside the source code string.
-    The position is directly indexable against its source (char *line).
+    The position is directly indexable against its source (char *src_code).
 
     `end` correlates to the ending position of the token inside the source code string.
-    The position is directly indexable against its source (char *line). 
+    The position is directly indexable against its source (char *src_code). 
 
     `type` defines what kind of token it is.
 

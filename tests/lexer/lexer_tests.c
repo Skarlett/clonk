@@ -26,7 +26,7 @@ void __test__basic_perthensis(CuTest* tc)
     int offset_expected = 0;
     int tmp = 0;
 
-    const char * line[] =  {
+    const char * src_code[] =  {
         "(1 + 2)",        // 5
         "(1 + 2) + 3",    // 7
         "1 + (2 + 3)",    // 7
@@ -49,15 +49,15 @@ void __test__basic_perthensis(CuTest* tc)
     };
 
     for (uint16_t i=0 ;; i++) {
-        if (check_list[i][0] == 0 || line[i] == 0)
+        if (check_list[i][0] == 0 || src_code[i] == 0)
             break;
         ntokens = 0;
-        CuAssertTrue(tc, tokenize(line[i], tokens, &ntokens, 16, false, NULL) == 0);
+        CuAssertTrue(tc, tokenize(src_code[i], tokens, &ntokens, 16, false, NULL) == 0);
         CuAssertTrue(tc, ntokens == tokens_sz[i]);
 
 
         sprintf(msg, "failed on idx [%d] ", i);
-        AssertTokens(tc, line[i], msg, tokens, check_list[i]);
+        AssertTokens(tc, src_code[i], msg, tokens, check_list[i]);
     }
 }
 
@@ -211,7 +211,7 @@ void __test__collapse_operator(CuTest* tc)
         0
     };
 
-    static char * line[] =  {
+    static char * src_code[] =  {
         "<=",
         ">=",
         "==",
@@ -231,8 +231,8 @@ void __test__collapse_operator(CuTest* tc)
 
     char msg[64];
     for (uint16_t i=0; 14 > i; i++) {
-        sprintf(msg, "failed on idx %d \"%s\"", i, line[i]);
-        CuAssert(tc, msg, tokenize(line[i], tokens, &sz, 16, false, NULL) == 0);
+        sprintf(msg, "failed on idx %d \"%s\"", i, src_code[i]);
+        CuAssert(tc, msg, tokenize(src_code[i], tokens, &sz, 16, false, NULL) == 0);
         CuAssert(tc, msg, sz == 2);
         CuAssert(tc, msg, tokens[0].end == 1);
         CuAssert(tc, msg, tokens[0].start == 0);
@@ -298,7 +298,7 @@ void __test__oversized_bin_ops(CuTest* tc)
         {OR, GT, 0}, 0
     };
 
-    static char * line[] =  {
+    static char * src_code[] =  {
         "<==", ">==", "==<", "==>",
         ">==", "<==", "===", "!==",
         "==!", "++=", "--=", "=++",
@@ -311,13 +311,13 @@ void __test__oversized_bin_ops(CuTest* tc)
     };
    
     for (int i=0 ;; i++) {
-        if (answers[i] == 0 || line[i] == 0)
+        if (answers[i] == 0 || src_code[i] == 0)
             break;
         
-        CuAssertTrue(tc, tokenize(line[i], tokens, &sz, 16, false, NULL) == 0);
+        CuAssertTrue(tc, tokenize(src_code[i], tokens, &sz, 16, false, NULL) == 0);
     
         sprintf(msg, "failed on %d (size: %d)", i, sz);
-        AssertTokens(tc, line[i], msg, tokens, answers[i]);
+        AssertTokens(tc, src_code[i], msg, tokens, answers[i]);
         CuAssert(tc, msg, sizes[i] == sz);
         sz=0;
         memset(msg, 0, 1024);
@@ -343,7 +343,7 @@ void __test__derive_keywords(CuTest* tc)
         0
     };
 
-    static char * line[] =  {
+    static char * src_code[] =  {
         "if",
         "else",
         "def",
@@ -360,7 +360,7 @@ void __test__derive_keywords(CuTest* tc)
     
     char msg[64];
     for (uint16_t i=0; 11 > i; i++) {
-        CuAssertTrue(tc, tokenize(line[i], tokens, &sz, 16, false, NULL) == 0);
+        CuAssertTrue(tc, tokenize(src_code[i], tokens, &sz, 16, false, NULL) == 0);
         
         CuAssertTrue(tc, sz == 1);
         sprintf(msg, "expected <%s>, got <%s>", ptoken(answers[i]), ptoken(tokens[0].type));
@@ -373,7 +373,7 @@ void __test__derive_keywords(CuTest* tc)
 
 void __test__correct_tokenization(CuTest* tc)
 {
-    static char * line = "[]{}()!+- ><*/^%=&|:;_ 5a,~";    
+    static char * src_code = "[]{}()!+- ><*/^%=&|:;_ 5a,~";    
     static enum Lexicon answers[] = {
         BRACKET_OPEN, BRACKET_CLOSE, 
         BRACE_OPEN, BRACE_CLOSE,
@@ -391,7 +391,7 @@ void __test__correct_tokenization(CuTest* tc)
     struct Token tokens[32];
     char msg[64];
 
-    CuAssertTrue(tc, tokenize(line, tokens, &sz, 32, false, NULL) == 0);
+    CuAssertTrue(tc, tokenize(src_code, tokens, &sz, 32, false, NULL) == 0);
     CuAssertTrue(tc, sz == 25);
     
     for (uint16_t i=0; sz > i; i++) {

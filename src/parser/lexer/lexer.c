@@ -85,7 +85,6 @@ enum Lexicon tokenize_char(char c) {
   case ' ':
     return WHITESPACE;
   case '\n':
-    return NEWLINE;
   case '\t':
     return WHITESPACE;
   case '\r':
@@ -199,7 +198,6 @@ int8_t can_upgrade_token(enum Lexicon token) {
 }
 
 int8_t can_ignore_token(enum Lexicon lexed) {
-  return lexed == WHITESPACE || lexed == NEWLINE || lexed == COMMENT;
 }
 
 int8_t set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
@@ -289,8 +287,8 @@ int8_t continue_compound_token(
      prev = queue8_head(&state->previous);
 
   return (
-      // # ... \n
       compound_token == COMMENT && token != NEWLINE
+      // # ... \n
       || compound_token == INTEGER && token == DIGIT
       
       // ints
@@ -383,7 +381,7 @@ enum Lexicon invert_operator_token(enum Lexicon compound_token) {
   }
 }
 
-int8_t derive_keyword(const char *line, struct Token *t) {
+int8_t derive_keyword(const char *src_code, struct Token *t) {
   static enum Lexicon lexicon[] = {
     //STATIC, CONST,
     RETURN,
@@ -409,7 +407,7 @@ int8_t derive_keyword(const char *line, struct Token *t) {
     
     /*token.end+1 since the fields naturally are indexable*/
     if (strlen(keywords[i]) == ((t->end + 1) - t->start) &&
-        strncmp(line + t->start, keywords[i], t->end - t->start) == 0) {
+        strncmp(src_code + t->start, keywords[i], t->end - t->start) == 0) {
       t->type = lexicon[i];
       return 1;
     }
@@ -471,7 +469,7 @@ int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
 
 int8_t finalize_compound_token(
   struct Token *token,
-  const char *line,
+  const char *src_code,
 
   enum Lexicon lexed,
   struct LexerError *err,
@@ -503,7 +501,7 @@ int8_t finalize_compound_token(
   }
 
   else if (token->type == WORD)
-    derive_keyword(line, token);
+    derive_keyword(src_code, token);
 
   /*
   / check if its an operator, and that its lenth is 2
@@ -553,7 +551,7 @@ int8_t push_tok(
  * TODO: single quote strings `'hello world'`
  * TODO: triple quoted string that
  *       interprets carriage return literallty
- *       `'''this lets new lines'''`
+ *       `'''this lets new src_codes'''`
  * TODO: whitespace interpretation `\n\t\r`
  * TODO: negative numbers
  * ----
@@ -646,7 +644,6 @@ int8_t tokenize(
       if (state.compound == COMMENT)
       {
         state.compound = TOKEN_UNDEFINED;
-        state.current = NEWLINE;
         continue;
       }
 
@@ -683,7 +680,6 @@ int8_t tokenize(
         the current token being lexed still needs to be added.
     */
     else if (state.current != WHITESPACE
-             && state.current != NEWLINE
              && state.current != TOKEN_UNDEFINED)
     {
       state.compound = TOKEN_UNDEFINED;
@@ -699,7 +695,7 @@ int8_t tokenize(
   }
 
   /*
-      the source code (char *line) sometimes
+      the source code (char *src_code) sometimes
       doesn't run into a condition-branch
       where it breaks a complex token's
       continuation before the loop ends

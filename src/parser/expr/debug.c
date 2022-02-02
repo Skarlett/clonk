@@ -59,8 +59,7 @@ const char * print_operator_symbol(enum Operation t) {
 }
 
 
-void draw_token_error_at(const char * line, struct Token *token) {
-    printf("'%s'\n", line);
+    printf("'%s'\n", src_code);
     printf("-");
     for (int i = 0; token->start > i; i++) {
         printf("-");

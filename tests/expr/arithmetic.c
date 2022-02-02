@@ -7,7 +7,7 @@ void __test__simple_order_precedence(CuTest* tc) {
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
     uint16_t ntokens=0;
    
-    static char * line[] = {
+    static char * src_code[] = {
         "(1 + 3) * 4",
         "1 + 2",
         "1 + 3 * 4",
@@ -65,16 +65,15 @@ void __test__simple_order_precedence(CuTest* tc) {
             break;
         ntokens=0;
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
-        sprintf(msg, "%s:%d failed tokenizing", __FILE__, __LINE__);
-        CuAssert(tc, msg, tokenize(line[i], tokens, &ntokens, 32, false, NULL) == 0);
+        CuAssert(tc, msg, tokenize(src_code[i], tokens, &ntokens, 32, false, NULL) == 0);
         
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "failed on parsing expr (idx): %d", i);
-        CuAssert(tc, msg, parse_expr(line[i], tokens, ntokens, &state, ret) == 0); 
+        CuAssert(tc, msg, parse_expr(src_code[i], tokens, ntokens, &state, ret) == 0); 
 
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "failed on index %d", i);
-        AssertTokensByRef(tc, line[i], msg, state.debug.base, check_list[i]);
+        AssertTokensByRef(tc, src_code[i], msg, state.debug.base, check_list[i]);
         reset_state(&state);
     }
 }

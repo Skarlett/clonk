@@ -145,11 +145,9 @@ void CuTestRun(CuTest* tc)
 	tc->jumpBuf = 0;
 }
 
-static void CuFailInternal(CuTest* tc, const char* file, int line, CuString* string)
 {
 	char buf[HUGE_STRING_LEN];
 
-	sprintf(buf, "%s:%d: ", file, line);
 	CuStringInsert(string, buf, 0);
 
 	tc->failed = 1;
@@ -157,7 +155,6 @@ static void CuFailInternal(CuTest* tc, const char* file, int line, CuString* str
 	if (tc->jumpBuf != 0) longjmp(*(tc->jumpBuf), 0);
 }
 
-void CuFail_Line(CuTest* tc, const char* file, int line, const char* message2, const char* message)
 {
 	CuString string;
 
@@ -168,16 +165,12 @@ void CuFail_Line(CuTest* tc, const char* file, int line, const char* message2, c
 		CuStringAppend(&string, ": ");
 	}
 	CuStringAppend(&string, message);
-	CuFailInternal(tc, file, line, &string);
 }
 
-void CuAssert_Line(CuTest* tc, const char* file, int line, const char* message, int condition)
 {
 	if (condition) return;
-	CuFail_Line(tc, file, line, NULL, message);
 }
 
-void CuAssertStrEquals_LineMsg(CuTest* tc, const char* file, int line, const char* message, 
 	const char* expected, const char* actual)
 {
 	CuString string;
@@ -199,35 +192,28 @@ void CuAssertStrEquals_LineMsg(CuTest* tc, const char* file, int line, const cha
 	CuStringAppend(&string, "> but was <");
 	CuStringAppend(&string, actual);
 	CuStringAppend(&string, ">");
-	CuFailInternal(tc, file, line, &string);
 }
 
-void CuAssertIntEquals_LineMsg(CuTest* tc, const char* file, int line, const char* message, 
 	int expected, int actual)
 {
 	char buf[STRING_MAX];
 	if (expected == actual) return;
 	sprintf(buf, "expected <%d> but was <%d>", expected, actual);
-	CuFail_Line(tc, file, line, message, buf);
 }
 
-void CuAssertDblEquals_LineMsg(CuTest* tc, const char* file, int line, const char* message, 
 	double expected, double actual, double delta)
 {
 	char buf[STRING_MAX];
 	if (fabs(expected - actual) <= delta) return;
 	sprintf(buf, "expected <%f> but was <%f>", expected, actual); 
 
-	CuFail_Line(tc, file, line, message, buf);
 }
 
-void CuAssertPtrEquals_LineMsg(CuTest* tc, const char* file, int line, const char* message, 
 	void* expected, void* actual)
 {
 	char buf[STRING_MAX];
 	if (expected == actual) return;
 	sprintf(buf, "expected pointer <0x%p> but was <0x%p>", expected, actual);
-	CuFail_Line(tc, file, line, message, buf);
 }
 
 

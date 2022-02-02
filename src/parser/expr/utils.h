@@ -5,12 +5,12 @@
 #include "../lexer/lexer.h"
 #include "expr.h"
 
-struct Token * prev_token(struct Parser *state) ;
-struct Token * next_token(struct Parser *state);
-struct Token * op_head(struct Parser *state);
-struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, struct Parser *state);
+const struct Token * prev_token(struct Parser *state) ;
+const struct Token * next_token(struct Parser *state);
+const struct Token * op_head(struct Parser *state);
+const struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, struct Parser *state);
 struct Group * group_head(struct Parser *state);
-struct Group * new_grp(struct Parser *state, struct Token * origin);
+struct Group * new_grp(struct Parser *state, const struct Token * origin);
 
 bool is_op_keyword(enum Lexicon token);
 int8_t op_precedence(enum Lexicon token);

@@ -9,7 +9,6 @@ const char * ptoken(enum Lexicon t) {
         case CHAR: return "char";
         case NULLTOKEN: return "nulltoken";
         case WHITESPACE: return "whitespace";
-        case NEWLINE: return "newline";
         case BRACE_OPEN: return "brace_open";
         case BRACE_CLOSE: return "brace_close";
         case PARAM_OPEN: return "param_open";

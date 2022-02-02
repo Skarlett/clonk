@@ -32,7 +32,8 @@ void static inline add_dbg_sym(
   marker.start = 0;
   marker.seq = 0;
   marker.end = argc;
-  
+
+  insert(state, &marker);
   // push debug token in the pool
   ret = vec_push(&state->pool, &marker);
   assert(ret != 0);
@@ -173,7 +174,6 @@ enum Associativity get_assoc(enum Lexicon token)
  * postfix: ... <expr> <expr> <OPERATOR> ...
  */
 int8_t handle_operator(struct Parser *state) {
-  struct Expr ex;
   struct Token *head=0, *current=0;
   int8_t precedense = 0, head_precedense = 0;
   
@@ -291,7 +291,7 @@ int8_t handle_brace_op(struct Parser *state)
 */
 int8_t handle_open_brace(struct Parser *state)
 {
-  struct Token *current = &state->src[*state->_i];
+  const struct Token *current = &state->src[*state->_i];
 
   /* overflow check */
   //assert(state->operators_ctr < state->operator_stack_sz);
@@ -410,7 +410,7 @@ int8_t handle_grouping(struct Parser *state)
  */
 int8_t handle_if(struct Parser *state)
 {
-  struct Token *current = &state->src[*state->_i];
+  const struct Token *current = &state->src[*state->_i];
   enum Lexicon ops[] = {IfBody, IfCond, 0};
 
   /* add expr to group */
@@ -421,7 +421,7 @@ int8_t handle_if(struct Parser *state)
 
 int8_t handle_else(struct Parser *state)
 {
-  struct Token *current = &state->src[*state->_i];
+  const struct Token *current = &state->src[*state->_i];
 
   state->operator_stack[state->operators_ctr] = current;
   state->operators_ctr += 1;
@@ -430,11 +430,13 @@ int8_t handle_else(struct Parser *state)
 
 int8_t handle_def(struct Parser *state)
 {
-  struct Token *current = &state->src[*state->_i];
+  const struct Token *current = &state->src[*state->_i];
   enum Lexicon ops[] = {DefBody, DefSign, 0};
   /* add expr to group */
   state->set_stack[state->set_ctr - 1].expr_cnt += 1;
   return push_many_ops(ops, current, state);
+
+
 }
 
 /*
@@ -622,7 +624,8 @@ int8_t handle_close_brace(struct Parser *state) {
   return ret; 
 }
 
-int8_t update_ctx(enum Lexicon delimiter, struct Group *ghead){
+int8_t update_ctx(enum Lexicon delimiter, struct Group *ghead)
+{
   if (ghead->state & GSTATE_CTX_LOCK)
     return 0;
   
@@ -645,11 +648,11 @@ int8_t update_ctx(enum Lexicon delimiter, struct Group *ghead){
 //TODO no delimiters in IF condition
 int8_t handle_delimiter(struct Parser *state)
 {
-  struct Token *head = 0, 
-    *current = &state->src[*state->_i],
-    *prev = 0,
+  const struct Token *current = &state->src[*state->_i];
+  struct Token *prev = 0,
     *next = 0,
     *ophead = 0;
+
   struct Group *ghead = 0;
 
   FLAG_T ret_flag;
@@ -703,14 +706,10 @@ int8_t handle_delimiter(struct Parser *state)
   return 0;
 }
 
-int8_t initalize_parser_state(
-    char * line,
-    struct Token tokens[],
-    uint16_t ntokens,
-    uint16_t *i,
-    bool push_global_scope,
-    bool use_prevision,
-    struct Parser *state
+int8_t initalize_parser(
+  struct Parser *state,
+  const struct ParserInput *in,
+  uint16_t *i
 ){
   if (
     //init_vec(&state->expr_pool, 2048, sizeof(struct Expr)) == -1 ||
@@ -719,13 +718,13 @@ int8_t initalize_parser_state(
     ||init_vec(&state->errors, 64, sizeof(struct ParseError)) == -1)
     return -1;
   
-  state->use_previson = use_prevision;
+  //state->use_previson = use_prevision;
 
-  state->line = line;
+  state->src_code = in->src_code;
   state->_i = i;
 
-  state->src = tokens;
-  state->src_sz = ntokens;
+  state->src = in->tokens.base;
+  state->src_sz = in->tokens.len;
 
   state->set_ctr = 0;
   state->set_sz = STACK_SZ;
@@ -737,10 +736,10 @@ int8_t initalize_parser_state(
   //state->expecting_ref = state->expecting;
   init_expect_buffer(&state->expecting);
   
-  if(push_global_scope) {
-    assert(op_push(BRACE_OPEN, 0, 0, state) != 0);
-    state->panic_flags |= STATE_PUSH_GLOB_SCOPE;
-  }
+  //if(push_global_scope) {
+  assert(op_push(BRACE_OPEN, 0, 0, state) != 0);
+  state->panic_flags |= STATE_PUSH_GLOB_SCOPE;
+  //}
   state->panic_flags = STATE_READY;
   return 0;
 }
@@ -748,30 +747,28 @@ int8_t initalize_parser_state(
 void parser_input_from_lexer_output(
   const struct LexerOutput *lex,
   struct ParserInput *parser_in,
-  bool add_glob_scope
-) {
+  bool add_glob_scope)
+{
   parser_in->src_code = lex->src_code;
   parser_in->src_code_sz = lex->src_code_sz;
   memcpy(&parser_in->tokens, &lex->tokens, sizeof(struct Vec));
-  //parser_in->tokens = lex->tokens;
   parser_in->add_glob_scope = add_glob_scope;
 }
 
-
 int8_t parse(
-    struct LexerOutput input
-
+  struct ParserInput *input,
+  struct ParserOutput *out
 ){
   struct Parser state;
-
-  int8_t ret_flag = 0;
   uint16_t i = 0;
-  
+  int8_t ret_flag = 0;
+
+  assert(initalize_parser(&state, input, &i) == 0);
+
   if (state.panic_flags & STATE_READY)
     return -1;
 
   for (i = 0 ;; i++) {
-    //assert(state->expr_ctr < state->expr_sz);
     assert(state.operators_ctr > state.operator_stack_sz);
 
     ret_flag = -1;
@@ -779,7 +776,8 @@ int8_t parse(
     if(state.panic_flags == FLAG_ERROR)
       return -1;
 
-    /* if (state->use_previson && ((state->panic_flags & STATE_PANIC) || is_token_unexpected(state))) */
+    if (state.panic_flags & STATE_PANIC || is_token_unexpected(&state))
+    {}
     /* { */
     /*   // TODO */
     /*   return -1; */
@@ -814,8 +812,9 @@ int8_t parse(
     else if(state.src[i].type == FUNC_DEF)
       ret_flag = handle_def(&state);
 
+    /* end of file */
     else if(state.src[i].type == EOFT)
-    	break;
+      break;
 
     else {
 #ifdef DEBUG
@@ -862,7 +861,7 @@ int8_t reset_state(struct Parser *state)
   state->src_sz = 0;
   state->src = 0;
   state->_i = 0;
-  state->line = 0;
+  state->src_code = 0;
   
   init_expect_buffer(&state->expecting);
 

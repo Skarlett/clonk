@@ -7,7 +7,7 @@ void __test__map_collection(CuTest* tc) {
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
     uint16_t ntokens=0;
    
-    static char * line[] = {
+    static char * src_code[] = {
         "{1}", // expression, not collection
         "{1: 2}",
         "{1+2:{1:3+4}}",

@@ -13,8 +13,8 @@
 //         *queue[32],
 //         *masks[2];
     
-//     static char * line = "first().middle.last()";
-//     CuAssertTrue(tc, tokenize(line, tokens, &ntokens, NULL) == 0);
+//     static char * src_code = "first().middle.last()";
+//     CuAssertTrue(tc, tokenize(src_code, tokens, &ntokens, NULL) == 0);
 //     CuAssertTrue(tc, ntokens == 9);
 
 //     postfix_expr(tokens, ntokens, queue, 32, masks, 2);
@@ -29,7 +29,7 @@ void __test__fncall(CuTest* tc) {
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
     uint16_t ntokens=0;
     
-    static char * line[] = {
+    static char * src_code[] = {
         "foo()",
         "(foo())",
         "(foo)()()",
@@ -63,16 +63,16 @@ void __test__fncall(CuTest* tc) {
             break;
         ntokens=0;
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
-        sprintf(msg, "%s:%d failed tokenizing", __FILE__, __LINE__);
-        CuAssert(tc, msg, tokenize(line[i], tokens, &ntokens, 32, false, NULL) == 0);
+        sprintf(msg, "%s:%d failed tokenizing", __FILE__, __SRC_CODE__);
+        CuAssert(tc, msg, tokenize(src_code[i], tokens, &ntokens, 32, false, NULL) == 0);
         
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "failed on parsing expr (idx): %d", i);
-        CuAssert(tc, msg, parse_expr(line[i], tokens, ntokens, &state, ret) == 0); 
+        CuAssert(tc, msg, parse_expr(src_code[i], tokens, ntokens, &state, ret) == 0); 
 
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "failed on index %ld", i);
-        AssertTokensByRef(tc, line[i], msg, state.debug.base, check_list[i]);
+        AssertTokensByRef(tc, src_code[i], msg, state.debug.base, check_list[i]);
         reset_state(&state);
     }
 }

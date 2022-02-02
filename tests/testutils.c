@@ -40,7 +40,6 @@ void AssertTokens(
     CuTest *tc,
     const char *source_code,
     const char *file,
-    int line,
     const char *msg,
     const struct Token tokens[],
     const enum Lexicon answer[]
@@ -63,15 +62,12 @@ void AssertTokens(
     sprintf(uneql_msg, FMT_STR, msg, expected, got, source_code);
     sprintf(uneql_len_msg, "expected len: %ld <\n%s", len, uneql_msg);
 
-    CuAssert_Line(tc, file, line, uneql_len_msg, tokens[len-1].type == answer[len-1]);
-    CuAssert_Line(tc, file, line, uneql_msg, seq_eql_ty(tokens, answer) == 1);
 }
 
 void AssertTokensByRef(
     CuTest *tc,
     const char *source_code,
     const char *file,
-    int line,
     const char *msg,
     const struct Token *tokens[],
     const enum Lexicon answer[]
@@ -100,6 +96,4 @@ void AssertTokensByRef(
     sprintf(uneql_msg, FMT_STR, msg, expected, got, source_code);
     sprintf(uneql_len_msg, "%s: expected len: %ld <\n%s", msg, len, uneql_msg);
 
-    CuAssert_Line(tc, file, line, uneql_len_msg, tokens[len-1]->type == answer[len-1]);
-    CuAssert_Line(tc, file, line, uneql_msg, seq_eql_ty_by_ref(tokens, answer) == 1);
 }

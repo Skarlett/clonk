@@ -438,7 +438,7 @@ int parse_postfix_stage(
   struct Parser *expr_stage,
   struct PostfixStageState *postfix_stage
 ){
-  const char *src_code = expr_stage->line;
+  const char *src_code = expr_stage->src_code;
   struct Token *current = 0;
   struct Expr ex;
   bool add_expr = false;

@@ -33,7 +33,7 @@ void __test__effectively_empty_group(CuTest* tc)
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
     uint16_t ntokens=0;
     
-    static char * line[] = {
+    static char * src_code[] = {
         "()",
         "(())",
         "(())()",
@@ -54,7 +54,7 @@ void __test__you_know_too_much(CuTest* tc)
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
     uint16_t ntokens=0;
    
-    static char * line[] = {
+    static char * src_code[] = {
         "()()",
         "a[:][:]",
         "(1,2,3)()",
@@ -77,9 +77,9 @@ void __test__you_know_too_much(CuTest* tc)
 //         *queue[32],
 //         *masks[2];
 
-//     static char * line = "1 ^ 2 ^ 3"; /* 8 */
+//     static char * src_code = "1 ^ 2 ^ 3"; /* 8 */
 
-//     CuAssertTrue(tc, tokenize(line, tokens, &ntokens, NULL) == 0);
+//     CuAssertTrue(tc, tokenize(src_code, tokens, &ntokens, NULL) == 0);
 //     CuAssertTrue(tc, ntokens == 5);
 //     nqueue = postfix_expr(tokens, ntokens, queue, 32, masks, 2);
 //     CuAssertTrue(tc, __check_tokens_by_ref(queue, answer));
@@ -94,8 +94,8 @@ void __test__you_know_too_much(CuTest* tc)
 //     struct Token tokens[32],
 //         *queue[32],
 //         *masks[2];
-//     static char * line = "!a + b - !c";
-//     CuAssertTrue(tc, tokenize(line, tokens, &ntokens, NULL) == 0);
+//     static char * src_code = "!a + b - !c";
+//     CuAssertTrue(tc, tokenize(src_code, tokens, &ntokens, NULL) == 0);
 //     CuAssertTrue(tc, ntokens == 7);
 //     nqueue = postfix_expr(tokens, ntokens, queue, 32, masks, 2);
 //     for (uint16_t i=0; nqueue > i; i++) {
