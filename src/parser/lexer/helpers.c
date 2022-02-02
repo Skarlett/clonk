@@ -208,7 +208,9 @@ bool is_keyword(enum Lexicon token) {
         // STATIC, CONST,
         RETURN,
         // EXTERN, AS,
-        IF, ELSE, FUNC_DEF, IMPORT, IMPL, 0
+        IF, ELSE, FUNC_DEF, IMPORT,
+        // IMPL,
+        0
     };    
     return contains_tok(token, keywords);
 }

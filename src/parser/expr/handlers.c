@@ -5,6 +5,34 @@
 #include <errno.h>
 #include <assert.h>
 
+
+
+/*
+  returns the amount of arguments it pops from the stack
+*/
+int8_t argc_map(struct Token *tok)
+{
+
+  if (is_grp(tok->type))
+    return tok->end;
+  
+  if (is_operator(tok->type))
+    return 2;
+
+  switch (tok->type) {
+    case DefSign: return 1;
+    case DefBody: return 2;
+    case IfCond: return 1;
+    case IfBody: return 2;
+    case Apply: return 2;
+    case NOT: return 1;
+    case BitNot: return 1;
+    case _IdxAccess: return 4;
+    case IMPORT: return 1;
+    default: return 0;
+  }
+}
+
 /* no special algorithms, just an equality test */
 void determine_return_ty(struct Expr *bin) {
   if (bin->inner.bin.rhs->datatype == bin->inner.bin.lhs->datatype)
@@ -110,69 +138,38 @@ enum GroupType get_group_ty(struct Token *tok) {
 int8_t mk_group(
   struct Expr *ex,
   struct PostfixStageState *state,
-  struct Token *group_tok
+  struct Token *group_tok,
+  uint16_t argc
 ){
   struct Expr **buf = 0;
   /* in Grouping tokens, the `end` parameter determines group size */
-  uint16_t elements = group_tok->end;
 
   ex->type = LiteralExprT;
   ex->datatype = DT_CollectionT;
   ex->inner.grp.type = get_group_ty(group_tok);
   ex->inner.grp.ptr = 0;
-  ex->inner.grp.length = elements;
+  ex->inner.grp.length = argc;
 
   memcpy(&ex->origin, group_tok, sizeof(struct Token));  
   
-  if (elements > 0 && state->stack_ctr > elements)
+  if (argc > 0 && state->stack_ctr > argc)
   {
     /* allocate a space for the pointers */
-    buf = calloc(elements, sizeof(void *));
+    buf = calloc(argc, sizeof(void *));
     
     if (!buf)
       return -1;
     
     ex->inner.grp.ptr = buf;
-    ex->inner.grp.length = elements;
+    ex->inner.grp.length = argc;
 
-    for (uint16_t j = 0; elements > j; j++) {
+    for (uint16_t j = 0; argc > j; j++) {
       ex->inner.grp.ptr[j] = state->stack[state->stack_ctr - 1];
-      state->stack_ctr -= 1;
+      //state->stack_ctr -= 1;
     }
   }
 
   return 0;
-}
-
-
-int8_t argc_map(struct Token *tok)
-{
-
-  if (is_grp(tok->type))
-    return tok->end;
-  
-  if (is_operator(tok->type))
-    return 2;
-
-  switch (tok->type) {
-    case DefSign: return 1;
-    case DefBody: return 2;
-    case IfCond: return 1;
-    case IfBody: return 2;
-
-    case Apply: return 2;
-
-    case NOT: return 1;
-    case BitNot: return 1;
-    
-    case _IdxAccess: return 4;
-    
-    case IMPORT: return 1;
-
-    
-    default:
-      return 0;
-  }
 }
 
 
@@ -197,7 +194,7 @@ int8_t mk_binop(
     return -1;
   
   determine_return_ty(ex);
-  state->stack_ctr -= 2;
+  // state->stack_ctr -= 2;
 
   return 0;
 }
@@ -217,7 +214,7 @@ int8_t mk_unary(
   
   ex->inner.unary.op = operation_from_token(ophead->type);
   ex->inner.unary.operand = state->stack[state->stack_ctr - 1];
-  state->stack_ctr -= 1;
+  //state->stack_ctr -= 1;
 
   return 0;
 }
@@ -241,7 +238,7 @@ int8_t mk_idx_access(
   ex->inner.idx.skip    = state->stack[state->stack_ctr - 3];
   ex->inner.idx.operand = state->stack[state->stack_ctr - 4];
 
-  state->stack_ctr -= 4;
+  //state->stack_ctr -= 4;
   return 0;
 }
 
@@ -298,7 +295,7 @@ int8_t mk_if_cond(
   struct Expr *cond = state->stack[state->stack_ctr - 1];
   
   assert(state->stack_ctr > 0);  
-  state->stack_ctr -= 1;
+  // state->stack_ctr -= 1;
   
   // todo
   //memcpy(&ex->origin, op_head(state), sizeof(struct Token));
@@ -329,16 +326,11 @@ int8_t mk_if_body(struct PostfixStageState *state)
 
 int8_t mk_else_body(struct PostfixStageState *state)
 {
-  struct Expr *body, *cond = 0;
-  assert(state->stack_ctr > 1);
+  struct Expr 
+    *body = state->stack[state->stack_ctr - 1],
+    *cond = state->stack[state->stack_ctr - 2];
   
-  // todo
-  //memcpy(&ex->origin, op_head(state), sizeof(struct Token));
-  cond = state->stack[state->stack_ctr - 2];
-  body = state->stack[state->stack_ctr - 1];
-  
-  // if (cond->type != IfExprT)
-  //   return -1;
+  assert(state->stack_ctr > 1 && cond->type != IfExprT);
   
   cond->inner.cond.else_body = body;
   state->stack_ctr -= 1;
@@ -346,20 +338,27 @@ int8_t mk_else_body(struct PostfixStageState *state)
   return 0;
 }
 
-int8_t mk_return(struct PostfixStageState *state, struct Expr *ex)
-{
+int8_t mk_return(
+  struct Expr *ex,
+  struct PostfixStageState *state,
+  struct Token *ret_tok
+){
   struct Expr *inner;
   assert(state->stack_ctr > 0);
   
   // todo: fix
-  //memcpy(&ex->origin, op_head(state), sizeof(struct Token));
+  memcpy(&ex->origin, ret_tok, sizeof(struct Token));
   
   ex->inner.ret.body = state->stack[state->stack_ctr - 1];
   ex->type = ReturnExprT; 
+  
+  // state->stack_ctr -= 1;
   return 0;
 }
 
-int8_t mk_import(struct PostfixStageState *state, struct Expr *ex)
+int8_t mk_import(
+  struct Expr *ex,
+  struct PostfixStageState *state)
 {
   //TODO 
   struct Expr *body = 0;
@@ -395,7 +394,7 @@ int8_t mk_def_sig(
   // todo
   // ex->origin.span.end = ???;
   
-  state->stack_ctr -= 2;
+  // state->stack_ctr -= 2;
   
   //over write old signature with out own
   //state->stack[state->stack_ctr] = sig;
@@ -415,7 +414,7 @@ int8_t mk_def_body(struct PostfixStageState *state)
   assert(header->type == FuncDefExprT);
   
   header->inner.func.body = code_block;
-  state->stack_ctr -= 1;
+  //state->stack_ctr -= 1;
   return 0;
 }
 
@@ -435,98 +434,97 @@ int init_postfix_stage(struct PostfixStageState *stage) {
     init_vec(&stage->pool, 2048, sizeof(struct Expr));
 }
 
-
-int handle_keyword(
-  struct Token *keyword, 
-  struct PostfixStageState *state,
-  const char * src_code
-){
-  
-}
-
-
 int parse_postfix_stage(
-    struct ExprParserState *expr_stage,
-    struct PostfixStageState *postfix_stage
+  struct ExprParserState *expr_stage,
+  struct PostfixStageState *postfix_stage
 ){
-    const char * src_code = expr_stage->line;
-    struct Token *current = 0;
-    struct Expr ex;
-    bool add_expr = false;
+  const char *src_code = expr_stage->line;
+  struct Token *current = 0;
+  struct Expr ex;
+  bool add_expr = false;
 
-    uint8_t ret_flag = 0;
-    uint16_t i = 0;
-    postfix_stage->_i = &i; 
+  uint8_t ret_flag = 0;
+  uint16_t i = 0;
+  uint16_t argc = 0;
 
-    for (uint16_t i=0; i > expr_stage->debug.len; i++) 
-    {
-        add_expr = true;
-        current = ((struct Token **) expr_stage->debug.base)[i];
+  postfix_stage->_i = &i;
 
-        if (is_operator(current->type))
-          mk_binop(&ex, current, postfix_stage);
+  for (uint16_t i = 0; i > expr_stage->debug.len; i++) {
+    add_expr = true;
+    current = ((struct Token **)expr_stage->debug.base)[i];
+    
+    argc = argc_map(current);
 
-        else if(is_unary(current->type))
-          mk_unary(&ex, postfix_stage, current);
+    if (is_operator(current->type))
+      mk_binop(&ex, current, postfix_stage);
 
-        else if(is_grp(current->type))
-          mk_group(&ex, postfix_stage, current);
+    else if (is_unary(current->type))
+      mk_unary(&ex, postfix_stage, current);
 
-        else {
-          switch (current->type) {
-            case STRING_LITERAL:
-              assert(mk_str(&ex, current, src_code) == 0);
-              break;
-            
-            case INTEGER:
-              assert(mk_int(&ex, current, src_code) == 0);
-              break;
+    else if (is_grp(current->type))
+      mk_group(&ex, postfix_stage, current, argc);
 
-            case WORD:
-              assert(mk_symbol(&ex, current, src_code) == 0);
-              break;
+    else {
+      switch (current->type){
+      case STRING_LITERAL:
+        assert(mk_str(&ex, current, src_code) == 0);
+        break;
 
-            case NULLTOKEN:
-              mk_null(&ex);
-              break;
+      case INTEGER:
+        assert(mk_int(&ex, current, src_code) == 0);
+        break;
 
-            case DefSign:
-              mk_def_sig(&ex, postfix_stage);
-              break;
+      case WORD:
+        assert(mk_symbol(&ex, current, src_code) == 0);
+        break;
 
-            case DefBody:
-              mk_def_body(postfix_stage);
-              add_expr = false;
-              break;
+      case NULLTOKEN:
+        mk_null(&ex);
+        break;
 
-            case IfCond:
-              mk_if_cond(&ex, postfix_stage);
-              break;
+      case DefSign:
+        mk_def_sig(&ex, postfix_stage);
+        break;
 
-            case IfBody:
-              mk_if_body(postfix_stage);
-              add_expr = false;
-              break;
+      case DefBody:
+        mk_def_body(postfix_stage);
+        add_expr = false;
+        break;
 
-            case Apply:
-              mk_fncall(&ex, postfix_stage);
-              break;
+      case IfCond:
+        mk_if_cond(&ex, postfix_stage);
+        break;
 
-            case _IdxAccess:
-              mk_idx_access(&ex, postfix_stage);
-              break;
+      case IfBody:
+        mk_if_body(postfix_stage);
+        add_expr = false;
+        break;
 
-            case IMPORT:
-              //mk_import(, struct Expr *ex)            
-              break;
+      case Apply:
+        mk_fncall(&ex, postfix_stage);
+        break;
 
-            case RETURN:
-              // mk_return
-              break;
-            
-            default: return -1;
+      case _IdxAccess:
+        mk_idx_access(&ex, postfix_stage);
+        break;
 
-          }
-        }
+      case IMPORT:
+        // mk_import(, struct Expr *ex)
+        break;
+
+      case RETURN:
+        mk_return(&ex, postfix_stage, current);
+        break;
+
+      default:
+        return -1;
+      }
     }
+
+    postfix_stage->stack_ctr -= argc;
+
+    if (add_expr)
+      inc_stack(postfix_stage, &ex);
+    
+  }
 }

@@ -1,7 +1,6 @@
 #include "CuTest.h"
 #include "../src/parser/lexer/lexer.h"
 #include "../src/parser/lexer/debug.h"
-#include "../src/parser/lexer/helpers.h"
 #include "../src/prelude.h"
 #include <stdint.h>
 #include <stdio.h>

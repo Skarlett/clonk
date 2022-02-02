@@ -7,7 +7,7 @@
 
 #include "../../prelude.h"
 #include "../../error.h"
-
+#include "../../utils/vec.h"
 
 #define ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
 #define DIGITS "1234567890"
@@ -141,7 +141,10 @@ enum Lexicon {
     BNEQL,
 
     // "
-    QUOTE,
+    D_QUOTE,
+
+    // '
+    S_QUOTE,
     
     // ;
     SEMICOLON,
@@ -170,6 +173,9 @@ enum Lexicon {
     // ,
     COMMA,
 
+    /* \ */
+    BACKSLASH,
+
     /********* START OF COMPLEX TOKENS ********
     * Complex tokens wont show up in the first round of lexer'ing
     * they're generated from combinations of tokens
@@ -180,7 +186,7 @@ enum Lexicon {
     _COMPOUND_SUB,
 
     // [NUM, ..] WHITESPACE|SEMICOLON   
-    // 20392
+    // 20_392 
     INTEGER,
 
     // [CHARACTER, ..] WHITESPACE|SEMICOLON
@@ -190,6 +196,14 @@ enum Lexicon {
     // [QUOTE, ... QUOTE]
     // something
     STRING_LITERAL,
+
+    /*
+     * Replaces STRING_LITERAL
+     * in the case of missing single quote.
+     *
+     * README: throws error
+     */
+    //BAD_COMPOUND,
 
     // static
     //STATIC,
@@ -219,7 +233,7 @@ enum Lexicon {
     IMPORT,
     
     //impl
-    IMPL,
+    //IMPL,
     
     /*
         this is a 'pretend' token used 
@@ -343,15 +357,44 @@ struct TokenSpan {
     struct Token end;
 };
 
-/* added for patch purposes, todo: remove */
-extern struct CompileTimeError;
+enum LexerOutput_t {
+  lex_OK,
+  lex_ERR
+};
+
+/* Output of lexer function */
+struct LexerOutput {
+    const char * src_code;
+    uint16_t src_code_sz;
+
+    /* Vec<Token> */
+    const struct Vec tokens;
+
+    /* Vec<LexerError> */
+    const struct Vec errors;
+};
+
+enum LexerError_t {
+    lex_err_missing_end_quote,
+    // lex_err
+};
+
+struct LexerError {
+    enum LexerError_t type;
+    union {
+        struct Token bad_str;
+    } type_data;
+};
+
+struct LexerInput {
+    const char *src_code;
+    struct Vec tokens;
+    bool add_eoft;
+};
+
 int8_t tokenize(
-    const char *line,
-    struct Token tokens[],
-    uint16_t *token_ctr,
-    uint16_t token_sz,
-    bool add_eoft,
-    struct CompileTimeError *error
+    struct LexerInput *in,
+    struct LexerOutput *out
 );
 
 /**

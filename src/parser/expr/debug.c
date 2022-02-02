@@ -10,9 +10,9 @@
 
 const char * print_datatype(enum DataType t) {
     switch (t) {
-        case StringT: return "string";
-        case IntT: return "integer";
-        case NullT: return "null";
+        case DT_StringT: return "string";
+        case DT_IntT: return "integer";
+        case DT_NullT: return "null";
         default: return "undefined";
     }
 }

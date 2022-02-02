@@ -235,12 +235,12 @@ typedef uint16_t FLAG_T;
 enum PrevisionerModeT {
   /* give list of next possible 
    * tokens based on the input */
-  EXM_Default,
+  PV_Default,
   
   /* follow a sequence of 
    * tokens until completed */  
-  EXM_DefSignature,
-  EXM_Import
+  PV_DefSignature,
+  PV_Import
 };
 
 /* Predicts the next possible tokens
@@ -309,6 +309,30 @@ void init_expect_buffer(struct Previsioner *state);
 #define GSTATE_CTX_NO_DELIM      1 << 6
 #define GSTATE_CTX_SHORT_BLOCK   1 << 7
 
+
+struct Stage {
+    enum Stage_t type;
+
+    // args deterined by self.type
+    void ** init_hook;
+
+    //
+    void ** process_hook;
+};
+
+int8_t lexer_hook_init_api_call(void *);
+int8_t lexer_hook_process_api_call(void * state, struct Token);
+
+
+struct ParserInput {
+    const char * src_code;
+    uint16_t src_code_sz;
+    struct Token *tokens;
+
+    bool add_glob_scope;
+};
+
+
 struct Group {
     /*
                    0:           Uninitialized state
@@ -327,7 +351,24 @@ struct Group {
     // amount of delimiters
     uint16_t delimiter_cnt;
 
-    // amount of delimiters
+    /* 
+     * amount of expressions
+     * to consume off the stack 
+     *****************
+     * TODO: since its unreliable 
+     * to measure the amount of delimiters
+     * and use that to determine 
+     * how many elements to take of the stack.
+     ****
+     * We will have to keep a counter,
+     * expressions such as 
+     *   * inner groups,
+     *   * if statements,
+     *   * function defining
+     * should count as 1 expressions, since 
+     * thats how they're represented in the stack 
+     * this is essential to ensure code-blocks work
+    */
     uint16_t expr_cnt;
     
     uint16_t operator_idx;
@@ -396,9 +437,6 @@ struct ExprParserState {
     */
     struct Expr *restoration_point;
 
-    // /* Tree construction happens in this stack */
-    // struct Expr *expr_stack[STACK_SZ];
-    
     /* a stack of pending operations (see shunting yard) */
     struct Token *operator_stack[STACK_SZ];
     
@@ -410,9 +448,9 @@ struct ExprParserState {
 
     uint16_t set_ctr;
     uint16_t operators_ctr;
-    uint16_t expr_ctr;
+    // uint16_t expr_ctr;
     
-    uint16_t expr_sz;
+    //uint16_t expr_sz;
     uint16_t operator_stack_sz;
     uint16_t set_sz;
 
@@ -428,6 +466,7 @@ struct ExprParserState {
     /*Vec<struct CompileTimeError>*/
     struct Vec errors;
     
+    bool use_previson;
     struct Previsioner expecting;
     FLAG_T panic_flags;
 };
@@ -476,8 +515,7 @@ int8_t parse_expr(
     char * line,
     struct Token tokens[],
     uint16_t expr_size,
-    struct ExprParserState *state,
-    struct Expr *ret
+    struct ExprParserState *state
 );
 
 int8_t is_token_unexpected(struct ExprParserState *state);

@@ -1,9 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
-
 #include "../../src/prelude.h"
 #include "../../src/parser/lexer/lexer.h"
-
 #include "../CuTest.h"
 
 void __test__is_balanced(CuTest* tc)
@@ -44,6 +42,7 @@ void __test__is_balanced(CuTest* tc)
         sprintf(msg, "failed on `line[%d]`", i);
         CuAssert(tc, msg, is_balanced(tokens, sz) == answers[i]);
         sz=0;
+
     }
 }
 
@@ -51,6 +50,5 @@ void __test__is_balanced(CuTest* tc)
 CuSuite* LexerHelpersUnitTestSuite(void) {
 	CuSuite* suite = CuSuiteNew();
 	SUITE_ADD_TEST(suite, __test__is_balanced);
-    
     return suite;
 }

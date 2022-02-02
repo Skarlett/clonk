@@ -1,11 +1,70 @@
 #include "lexer.h"
 #include "../../prelude.h"
 #include "../../error.h"
+#include "../../utils/vec.h"
+
 #include "debug.h"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
+
+#define PREV_BUF_SZ 8
+
+struct LexerStage {
+    const char * src_code;
+    uint16_t src_code_sz;
+
+    enum Lexicon previous_tokens[PREV_BUF_SZ];
+    enum Lexicon current;
+    enum Lexicon compound;
+
+    const uint16_t *i;
+    uint16_t cmpd_span_size;
+    uint16_t cmpd_start_at;
+
+    /* struct Vec<Token> *ptr */
+    struct Vec *tokens;
+
+    /* struct Vec<LexerError> */
+    struct Vec errors;
+
+    bool add_eof_tok;
+/*     bool _is_repeating; */
+};
+
+void init_lexer_stage(
+  struct LexerStage * stage,
+  struct Vec * tokens,
+  const char * src_code,
+  const uint16_t * i,
+  bool add_eof_tok
+){
+  stage->tokens = tokens;
+  stage->i = i;
+  stage->src_code = src_code;
+  stage->add_eof_tok = add_eof_tok;
+
+  /* stage->_is_repeating = false; */
+  stage->current = TOKEN_UNDEFINED;
+  stage->compound = TOKEN_UNDEFINED;
+  stage->cmpd_span_size = 0;
+  stage->cmpd_start_at = 0;
+  stage->src_code_sz = 0;
+};
+
+void init_lexer_output(
+  const struct LexerStage *state,
+  struct LexerOutput *out
+)
+{
+  /* avoid const warnings with (void *) */
+  assert(memcpy((void *)&out->tokens, &state->tokens, sizeof(struct Vec)) != 0);
+  assert(memcpy((void *)&out->errors, &state->errors, sizeof(struct Vec)) != 0);
+  out->src_code = state->src_code;
+  out->src_code_sz = state->src_code_sz;
+}
 
 enum Lexicon tokenize_char(char c) {
   uint8_t i = 0;
@@ -24,7 +83,7 @@ enum Lexicon tokenize_char(char c) {
   case '=':
     return EQUAL;
   case '"':
-    return QUOTE;
+    return D_QUOTE;
   case '{':
     return BRACE_OPEN;
   case '}':
@@ -73,6 +132,8 @@ enum Lexicon tokenize_char(char c) {
     return DOT;
   case '~':
     return TILDE;
+  case '\\':
+    return BACKSLASH;
   default:
     break;
   }
@@ -112,7 +173,7 @@ int8_t can_upgrade_token(enum Lexicon token) {
   return token == DIGIT
     || token == CHAR
     || token == UNDERSCORE
-    || token == QUOTE
+    || token == D_QUOTE
     || token == EQUAL
     || token == NOT
     || token == GT
@@ -147,7 +208,7 @@ int8_t set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
       *compound_token = WORD;
       break;
 
-    case QUOTE:
+    case D_QUOTE:
       *compound_token = STRING_LITERAL;
       break;
 
@@ -194,17 +255,22 @@ int8_t set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
   return 0;
 }
 
-uint16_t token_len(struct Token *tok) { return 1 + tok->end - tok->start; }
+uint16_t token_len(struct Token *tok)
+{
+  return 1 + tok->end - tok->start;
+}
 
 /*
     Returns true if `compound_token`
     should continue consuming tokens
 */
 int8_t continue_compound_token(
-  enum Lexicon token,
-  enum Lexicon compound_token,
-  uint16_t span_size
+  struct LexerStage state
 ){
+  enum Lexicon compound_token = state.compound,
+    token = state.current;
+  uint16_t span_size = state.cmpd_span_size;
+
   return (
       // # ... \n
       compound_token == COMMENT && token != NEWLINE
@@ -219,7 +285,12 @@ int8_t continue_compound_token(
       || compound_token == WORD && token == DIGIT
       
       // String literal "..."
-      || compound_token == STRING_LITERAL && token != QUOTE
+      || compound_token == STRING_LITERAL
+        && (
+          (token != D_QUOTE || token == D_QUOTE && prev == BACKSLASH)
+          // TODO:
+          //|| (token != S_QUOTE || token == S_QUOTE && prev == BACKSLASH)
+          )
       // !=
       || compound_token == ISNEQL && token == EQUAL && 1 > span_size
       // ==
@@ -301,21 +372,24 @@ int8_t derive_keyword(const char *line, struct Token *t) {
     RETURN,
     // EXTERN, AS,
     IF,
-    ELSE, FUNC_DEF, IMPORT, IMPL, AND, OR, 0
+    ELSE, FUNC_DEF, IMPORT,
+    // IMPL,
+    AND, OR, 0
   };
 
   static char *keywords[] = {
     // "static", "const",
     "return",
     //"extern", "as",
-     "if", "else",  "def", "import", "impl",
-     "and", "or", 0
+    "if", "else",  "def", "import",
+    // "impl",
+    "and", "or", 0
   };
 
   for (uint8_t i = 0; 8 > i; i++) {
     if (lexicon[i] == 0)
       break;
-
+    
     /*token.end+1 since the fields naturally are indexable*/
     if (strlen(keywords[i]) == ((t->end + 1) - t->start) &&
         strncmp(line + t->start, keywords[i], t->end - t->start) == 0) {
@@ -323,51 +397,8 @@ int8_t derive_keyword(const char *line, struct Token *t) {
       return 1;
     }
   }
-
   return 0;
 }
-
-int8_t finalize_compound_token(
-  struct Token *token, const char *line,
-  enum Lexicon lexed,
-  struct CompileTimeError *err)
-{
-  if (token->type == STRING_LITERAL) {
-    /*
-      Error: string is missing a ending quote
-    */
-    if (lexed != QUOTE) {
-      // err->msg = "String missing quote.";
-      // err->type = Error;
-      // err->base = token;
-      return -1;
-    }
-
-    token->end += 1;
-  }
-
-  else if (token->type == WORD)
-    derive_keyword(line, token);
-
-  /*
-  / check if its an operator, and that its lenth is 2
-  / if not - down grade the operator from its complex version
-  */
-  if (2 > token_len(token) && is_compound_bin_op(token->type)) {
-    token->type = invert_operator_token(token->type);
-
-    /* Error: UNDEFINED/null token when inverted*/
-    if (token->type == TOKEN_UNDEFINED) {
-      // err->msg = "Unknown operator.";
-      // err->type = Error;
-      // err->base = token;
-      return -1;
-    }
-  }
-
-  return 0;
-}
-
 int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
   if (ctok == _COMPOUND_SUB)
   {
@@ -420,75 +451,148 @@ int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
   return 0;
 }
 
-int8_t tokenize(
+int8_t finalize_compound_token(
+  struct Token *token,
   const char *line,
-  struct Token tokens[], 
-  uint16_t *token_ctr,
-  uint16_t token_sz, 
-  bool add_eoft,
-  struct CompileTimeError *error
+
+  enum Lexicon lexed,
+  struct LexerError *err,
+  /* Vec<LexerError> */
+  struct Vec * err_alloc
 ){
-  struct Token token;
-  enum Lexicon current = TOKEN_UNDEFINED, compound_token = TOKEN_UNDEFINED;
-  size_t line_len = strlen(line);
+  if (token->type == STRING_LITERAL) {
+    /*
+      Error: string is missing a ending quote
+    */
+    if (lexed != D_QUOTE) {
+      err->type = lex_err_missing_end_quote;
+
+      assert(memcpy(
+        &err->type_data.bad_str,
+        token,
+        sizeof(struct Token))
+      );
+
+      vec_push(err_alloc, token);
+      return -1;
+    }
+
+    token->end += 1;
+  }
+
+  else if (token->type == WORD)
+    derive_keyword(line, token);
+
+  /*
+  / check if its an operator, and that its lenth is 2
+  / if not - down grade the operator from its complex version
+  */
+  if (2 > token_len(token) && is_compound_bin_op(token->type)) {
+    token->type = invert_operator_token(token->type);
+
+    /* Error: UNDEFINED/null token when inverted*/
+    assert(token->type != TOKEN_UNDEFINED);
+  }
+
+  return 0;
+}
+
+int8_t push_tok(struct LexerStage *state, struct Token *tok) {
+  enum Lexicon type = state->current;
+
+  if (state->compound != TOKEN_UNDEFINED)
+    type = state->compound;
+
+  finalize_compound_token(
+    tok,
+    state->src_code,
+    type,
+
+  )
+  return 0;
+}
+
+
+/******
+ * ----
+ * ~~TODO: escape quotes `\"` and `\'`
+ * TODO: single quote strings `'hello world'`
+ * TODO: triple quoted string that
+ *       interprets carriage return literallty
+ *       `'''this lets new lines'''`
+ * TODO: whitespace interpretation `\n\t\r`
+ * TODO: negative numbers
+ * ----
+ ******/
+int8_t tokenize(
+  struct LexerInput *in,
+  struct LexerOutput *out
+){
   uint16_t i = 0;
 
-  uint16_t start_at = 0;
-  uint16_t span_size = 0;
-  uint16_t new_tokens = 0;
+  struct Token token;
+  struct LexerStage state;
 
-  uint16_t seq_ctr = 0;
+  init_lexer_stage(
+    &state,
+    &in->tokens,
+    in->src_code,
+    &i,
+    true
+  );
 
-  bool repeating = false;
-
-  for (i = 0; line_len > i; i++) {
-    if (line[i] == 0)
-      continue;
+  for (i = 0 ;; i++) {
+    if (state.src_code[i] == 0)
+      break;
       
-    else if (is_utf(line[i]))
-      return -1;
-    
-    else if (new_tokens > token_sz)
+    else if (is_utf(state.src_code[i]))
       return -1;
 
-    current = tokenize_char(line[i]);
+    else
+      state.src_code_sz += 1;
 
-    if (compound_token == TOKEN_UNDEFINED && can_upgrade_token(current)) {
-      set_compound_token(&compound_token, current);
-      start_at = i;
-      span_size = 0;
+    memset(&token, 0, sizeof(struct Token));
+    state.current = tokenize_char(state.src_code[i]);
+
+    /* create compound token*/
+    if (state.compound == TOKEN_UNDEFINED && can_upgrade_token(state.current)) {
+      set_compound_token(&state.compound, state.current);
+      state.cmpd_start_at = i;
+      state.cmpd_span_size = 0;
       continue;
     }
 
     /* continuation of complex token */
-    else if (continue_compound_token(current, compound_token, span_size)) {
-      compound_token = compose_compound(compound_token, current);
-      span_size += 1;
+    else if (continue_compound_token(state)) {
+      state.compound = compose_compound(state.compound, state.current);
+      state.cmpd_span_size += 1;
       continue;
     }
 
-    else if (compound_token != TOKEN_UNDEFINED) {
-      /* completion of complex token */
-      repeating = false;
-      if (compound_token == COMMENT) {
-        compound_token = TOKEN_UNDEFINED;
-        current = NEWLINE;
+    /* completed compound token */
+    else if (state.compound != TOKEN_UNDEFINED) {
+      // state._is_repeating = false;
+
+      if (state.compound == COMMENT)
+      {
+        state.compound = TOKEN_UNDEFINED;
+        state.current = NEWLINE;
         continue;
       }
 
-      token.start = start_at;
-      token.end = start_at + span_size;
-      token.type = compound_token;
-      token.seq = new_tokens;
+      token.start = state.cmpd_start_at;
+      token.end = state.cmpd_start_at + state.cmpd_span_size;
+      token.type = state.compound;
+      token.seq = state.tokens->len;
 
-      if (finalize_compound_token(&token, line, current, error) == -1)
+      if (finalize_compound_token(&token, state.src_code, state.current, error) == -1)
         return -1;
+      
+      vec_push(state.tokens, &token);
+      state.compound = TOKEN_UNDEFINED;
 
-      tokens[new_tokens] = token;
-      new_tokens += 1;
-      compound_token = TOKEN_UNDEFINED;
-
-      if (token.type == STRING_LITERAL) {
+      if (token.type == STRING_LITERAL)
+      {
         token.end += 1;
         continue;
       }
@@ -496,27 +600,36 @@ int8_t tokenize(
 
     /*
         if the token can be upgraded,
-        restart the loop.
+        step the loop back by 1.
+        This allows the token to fall
+        through the entire loop.
+        So that it may be upgraded
+        (turned into a compound token).
     */
-    if (can_upgrade_token(current)) {
+    if (can_upgrade_token(state.current)) {
       i--;
       continue;
     }
+
     /*
         this fires for non-compound tokens,
         this 'if statement' isn't inside an 'else-block',
         because if a compound token is compleed,
         the current token being lexed still needs to be added.
     */
-    else if (current != WHITESPACE && current != NEWLINE &&
-             current != TOKEN_UNDEFINED) {
-      compound_token = TOKEN_UNDEFINED;
+    else if (state.current != WHITESPACE
+             && state.current != NEWLINE
+             && state.current != TOKEN_UNDEFINED)
+    {
+      state.compound = TOKEN_UNDEFINED;
 
-      struct Token token = {.start = i, .end = i, .type = current, .seq = seq_ctr};
+      token.start = i;
+      token.end = i;
+      token.type = state.current;
+      token.seq = state.tokens->len;
 
-      start_at = 0;
-      tokens[new_tokens] = token;
-      new_tokens += 1;
+      vec_push(state.tokens, &token);
+      state.cmpd_start_at = 0;
     }
   }
 
@@ -531,29 +644,33 @@ int8_t tokenize(
 
       This checks, and fixes it.
   */
-  if (compound_token != TOKEN_UNDEFINED && compound_token != COMMENT) {
-    struct Token token = {
-        .start = start_at, .end = start_at + span_size, .type = compound_token};
+  if (state.compound != TOKEN_UNDEFINED && state.compound != COMMENT)
+  {
+    token.start = state.cmpd_start_at;
+    token.end = state.cmpd_start_at + state.cmpd_span_size;
+    token.type = state.compound;
+    token.seq = state.tokens->len;
 
-    if (finalize_compound_token(&token, line, current, error) == -1)
+    if (finalize_compound_token(&token, state.src_code, state.current, error) == -1)
       return -1;
 
-    tokens[new_tokens] = token;
-    new_tokens += 1;
+    vec_push(state.tokens, &token);
   }
   
-  if (add_eoft)
+  if (state.add_eof_tok)
   {
     token.type = EOFT;
     token.start = i;
     token.end = i;
-    token.seq = new_tokens;
-    
-    tokens[new_tokens] = token;
-    new_tokens += 1;
+    token.seq = state.tokens->len;
+    vec_push(state.tokens, &token);
   }
-  
-  // add to counter
-  *token_ctr += new_tokens;
+
+  /* add null terminator */
+  memset(&token, 0, sizeof(struct Token));
+  vec_push(state.tokens, &token);
+
+  /* setup return values */
+  init_lexer_output(&state, out);
   return 0;
 }

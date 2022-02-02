@@ -59,7 +59,6 @@ void static inline add_grp(
   assert(vec_push(&state->debug, &ret) != 0);
 }
 
-
 /*
   returns true if this token operates after closing group expressions
 */
@@ -71,7 +70,6 @@ bool is_postfix_operator(enum Lexicon tok) {
   || tok == DefBody
   || tok == DefSign;
 }
-
 
 /****
  *  Flushes operators out of stack 
@@ -293,12 +291,10 @@ int8_t handle_brace_op(struct ExprParserState *state)
 */
 int8_t handle_open_brace(struct ExprParserState *state)
 {
-  struct Token *current;
-
-  current = &state->src[*state->_i];
+  struct Token *current = &state->src[*state->_i];
 
   /* overflow check */
-  assert(state->operators_ctr < state->operator_stack_sz);
+  //assert(state->operators_ctr < state->operator_stack_sz);
   
   /* look behind to determine special operators (apply/idx_access) */
   /*   out: foo Apply/Idx open_param */
@@ -307,10 +303,9 @@ int8_t handle_open_brace(struct ExprParserState *state)
       /* then create a new scope/group */
       || new_grp(state, current) == 0)
       return -1;
-
+  
   // Place opening brace on operator stack
   state->operator_stack[state->operators_ctr] = current;
-
   state->operators_ctr += 1;
 
   return 0;
@@ -417,7 +412,10 @@ int8_t handle_if(struct ExprParserState *state)
 {
   struct Token *current = &state->src[*state->_i];
   enum Lexicon ops[] = {IfBody, IfCond, 0};
-  
+
+  /* add expr to group */
+  state->set_stack[state->set_ctr - 1].expr_cnt += 1;
+
   return push_many_ops(ops, current, state);
 }
 
@@ -434,7 +432,8 @@ int8_t handle_def(struct ExprParserState *state)
 {
   struct Token *current = &state->src[*state->_i];
   enum Lexicon ops[] = {DefBody, DefSign, 0};
-  
+  /* add expr to group */
+  state->set_stack[state->set_ctr - 1].expr_cnt += 1;
   return push_many_ops(ops, current, state);
 }
 
@@ -710,6 +709,7 @@ int8_t initalize_parser_state(
     uint16_t ntokens,
     uint16_t *i,
     bool push_global_scope,
+    bool use_prevision,
     struct ExprParserState *state
 ){
   if (
@@ -719,6 +719,8 @@ int8_t initalize_parser_state(
     ||init_vec(&state->errors, 64, sizeof(struct ParseError)) == -1)
     return -1;
   
+  state->use_previson = use_prevision;
+
   state->line = line;
   state->_i = i;
 
@@ -750,8 +752,8 @@ int8_t parse_expr(
     char * line,
     struct Token tokens[],
     uint16_t expr_size,
-    struct ExprParserState *state,
-    struct Expr *ret
+    
+    struct ExprParserState *state
 ){
   int8_t ret_flag = 0;
   uint16_t i = 0;
@@ -760,21 +762,20 @@ int8_t parse_expr(
     return -1;
 
   for (i = 0; expr_size > i; i++) {
-    assert(state->expr_ctr < state->expr_sz);
+    //assert(state->expr_ctr < state->expr_sz);
     assert(state->operators_ctr > state->operator_stack_sz);
-
 
     ret_flag = -1;
 
     if(state->panic_flags == FLAG_ERROR)
       return -1;
 
-    if ((state->panic_flags & STATE_PANIC) || is_token_unexpected(state))
-    {
-      // TODO
-      return -1;
-    }
-    
+    /* if (state->use_previson && ((state->panic_flags & STATE_PANIC) || is_token_unexpected(state))) */
+    /* { */
+    /*   // TODO */
+    /*   return -1; */
+    /* } */
+
     /* string, word, integers */
     else if(is_unit_expr(state->src[i].type))
       insert(state, &state->src[i]);

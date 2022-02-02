@@ -108,7 +108,7 @@ void init_expect_buffer(struct Previsioner *state)
     state->buffer[9] = 0;
     /* cast removes cc warning */
     state->data.default_mode.ref = (enum Lexicon *)&state->buffer;
-    state->mode = EXM_Default; 
+    state->mode = PV_Default; 
 }
 
 bool can_addon_keywords(struct Token *ophead)
@@ -194,13 +194,13 @@ int8_t prevision_next(struct ExprParserState *state)
       offset = 1;
       state->expecting.buffer[0] = WORD;
       state->expecting.buffer[1] = 0;
-      state->expecting.mode = EXM_DefSignature;
+      state->expecting.mode = PV_DefSignature;
       break;
 
     case IMPORT:
       offset = _PV_import_init_len  - 1;
       ref = _PV_import_init;
-      state->expecting.mode = EXM_Import; 
+      state->expecting.mode = PV_Import; 
       break;
 
     default:
@@ -235,7 +235,7 @@ int8_t prevision_next(struct ExprParserState *state)
     memcpy(state->expecting.buffer + sizeof(enum Lexicon) * offset, _PV_kw, _PV_kw_len - 1);
     offset += _PV_kw_len - 1;
   }
-
+  // TODO: use operator stack head instead
   if(state->expr_ctr > 0 && is_expecting_else(state->expr_stack[state->expr_ctr - 1]))
   {
     state->expecting.buffer[offset + 1] = ELSE;
@@ -351,11 +351,11 @@ int8_t is_token_unexpected(struct ExprParserState *state)
   int8_t mode_ret = 0;
   enum Lexicon delim = 0;
   
-  if(state->expecting.mode == EXM_Default
+  if(state->expecting.mode == PV_Default
      && mode_default(current->type, get_expected_delimiter(ghead), &state->expecting) == -1)
      return -1;
   
-  else if(state->expecting.mode == EXM_DefSignature)
+  else if(state->expecting.mode == PV_DefSignature)
   {
     mode_ret = mode_func_def(current->type, &state->expecting);
     
@@ -367,7 +367,7 @@ int8_t is_token_unexpected(struct ExprParserState *state)
     
     else if(mode_ret == 2)
     {
-	    state->expecting.mode = EXM_Default;
+	    state->expecting.mode = PV_Default;
 	    return false;
     }
     else return -1;
