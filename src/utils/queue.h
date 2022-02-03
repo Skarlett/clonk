@@ -1,3 +1,6 @@
+#ifndef __QUEUE__HEADER__
+#define __QUEUE__HEADER__
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -46,3 +49,5 @@ void * queue8_prev(
     const struct OpenQueue8_t *self,
     uint8_t i
 );
+
+#endif
