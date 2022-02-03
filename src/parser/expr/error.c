@@ -5,52 +5,6 @@
 #include <assert.h>
 #include <stdint.h>
 
-int8_t mk_parser_error(
-    struct Parser *state,
-    enum Severity severity,
-    const char * msg
-){
-    struct ParseError in;
-    struct Error err;
-    
-    // in.span_start = 
-    // in.span_end =
-
-    mk_error(&err, &in, ErrorParserT, severity, msg);
-    vec_push(&state->errors, &err);
-    return 0;
-}
-
-int8_t mk_unexpected_error(
-    struct Parser *state,
-    const char * msg
-) {
-    struct ParseError in;
-    struct Error err;
-    
-//    in.span_start;
-
-    mk_error(&err, &in, ErrorParserT, Error, msg);
-    vec_push(&state->errors, &err);
-
-
-}
-
-/**
- * @param tok: comparsion token
- * @param start_or_end: 0 (start) or 1 (end)
- */
-int8_t is_restorable(enum Lexicon tok) {
-    static enum Lexicon __BREAK_POINTS[] = {
-        _EX_CLOSE_BRACE,
-        _EX_OPEN_BRACE,
-        _EX_DELIM,
-        0
-    };
-
-    return contains_tok(tok, __BREAK_POINTS);
-}
-
 /**
  * @param tok: comparsion token
  */
@@ -67,32 +21,14 @@ int8_t is_continuable(enum Lexicon tok) {
 }
 
 /*
-    Walk forewards until continue point is found.
-*/
-int8_t find_continue_point(const struct Parser *state, uint16_t *ptr)
-{
-    *ptr = 0;
-
-    for (uint16_t i=*state->_i; state->set_sz > i; i++) {
-        if (is_continuable(state->src[i].type)) {
-            *ptr = i;
-        }
-    }
-
-    if (is_continuable(state->src[0].type))
-        return 0;
-    return -1;
-}
-
-
-/*
+** restoration works by destroying a
+** portion of the upper part of the stack.
 **
-**
+** It will slice the top (newest) portion of the stack
+** mark INCOMPLETE, and continue.
 */
 struct RestorationFrame {
-    /*
-    ** sits behind current operator, jumps
-    */
+    /* points to storation point  */
     const struct Token * operator_stack_tok;
     const struct Token * output_tok;
     const struct Token * current;
@@ -107,7 +43,6 @@ const struct RestorationFrame * restoration_head(const struct Parser *state) {
     return &((struct RestorationFrame *)state->restoration_stack.base)[(state->restoration_ctr || 1) - 1];
 }
 
-
 /*
 ** Returns boolean if restoration hook should be ran
 **
@@ -121,8 +56,8 @@ bool run_hook(enum Lexicon current){
 
 void restoration_hook(struct Parser *state)
 {
-    const struct Token *current = &state->src[*state->_i];
     struct RestorationFrame rframe;
+    const struct Token *current = &state->src[*state->_i];
 
     if (run_hook(current->type))
     {
@@ -156,18 +91,25 @@ void restoration_hook(struct Parser *state)
 int8_t handle_unwind(
     struct Parser *state,
     struct ParserError *err,
-    bool unexpected_char
+    bool unexpected_token
 ){
-    struct Token buf;
-    struct TokenSpan buf_span;
-
+    const struct Token *start, *token;
     const struct RestorationFrame *rframe;
-    const struct Token *token;
     struct Group *grp;
-    uint16_t i = 0;
+    uint16_t continue_ctr = 0;
     uint16_t head = 0;
-    // err->type = parse_err_unexpected_token;
 
+
+    // word + {1, 22 w}
+
+    /* all other errors complete the main
+    ** loop before panicing
+    */
+    start = &state->src[*state->_i - 1];
+    if (unexpected_token)
+      start = &state->src[*state->_i];
+
+    /* if restoration point available */
     if (state->restoration_ctr > 0)
     {
         /* get last good restoration */
@@ -201,49 +143,31 @@ int8_t handle_unwind(
             grp = &state->set_stack[state->set_ctr];
         }
 
-
-        for (uint16_t i=*state->_i + 1; state->src_sz; i++)
+        for (continue_ctr=*state->_i + 1; state->src_sz; continue_ctr++)
         {
-            if (is_continuable(state->src[i].type))
+            if (is_continuable(state->src[continue_ctr].type))
                 break;
         }
 
-        if (i - *state->_i > 1)
+        if (continue_ctr - *state->_i > 1)
         {
-            err->span_t = Span;
-            err->inner.span.start = ;
-        }
-        else {
+            err->span_t = ET_Span;
+            err->inner.span.start = *start;
+            err->inner.span.end = state->src[continue_ctr - 1];
+            *state->_i = continue_ctr;
+        } else {
+            err->span_t = ET_Scalar;
             err->inner.scalar = state->src[(*state->_i) + 1];
+            *state->_i += 1;
         }
 
-
-
-
+        state->panic_flags |= STATE_INCOMPLETE;
+        vec_push(&state->errors, err);
     }
-    //else {
-//
-//    }
 
-    if (restore_point == 0)
-
-
-      //todo
-      //destory_state();
-
-    /* [OPEN_PARAM, ADD, SUB, ...]*/
-    state->operator_stack;
-
-
-    /* [BinOpExpr,  ...]*/
-    //state->expr_stack;
-
-}
-
-/*
-** Keeps track of restoration points
-**
-*/
-int8_t unwind_process_hook() {
-
+    else {
+        state->set_ctr = 0;
+        state->operators_ctr = 0;
+        vec_clear(&state->debug);
+    }
 }

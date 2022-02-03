@@ -149,7 +149,8 @@ struct Literals {
 struct FnCallExpr {
     char * func_name;
     struct Expr *caller;
-    // TupleGroup(N)
+
+    /* TupleGroup(N) expr */
     struct Expr *args;
     enum DataType returns;
 };
@@ -387,14 +388,14 @@ enum ParserError_t {
     parse_err_
 };
 
-enum Span_t {
-  Scalar,
-  Span
+enum ErrTok_t {
+  ET_Scalar,
+  ET_Span
 };
 
 struct ParserError {
     enum ParserError_t type;
-    enum Span_t span_t;
+    enum ErrTok_t span_t;
 
     union {
         struct Token scalar;
@@ -556,7 +557,12 @@ int8_t reset_state(struct Parser *state);
 // int8_t mk_def_sig(struct PostfixStageState *state, struct Expr *ex);
 // int8_t mk_def_body(struct PostfixStageState *state);
 // int8_t mk_import(struct PostfixStageState *state, struct Expr *ex);
-
+void restoration_hook(struct Parser *state);
+int8_t handle_unwind(
+    struct Parser *state,
+    struct ParserError *err,
+    bool unexpected_token
+);
 
 #endif
 
