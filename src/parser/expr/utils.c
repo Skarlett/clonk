@@ -5,14 +5,14 @@
 #include "utils.h"
 #include "../../utils/vec.h"
 
-const struct Token * prev_token(struct Parser *state)
+const struct Token * prev_token(struct Parser *state) 
 {
   if (*state->_i != 0)
     return &state->src[*state->_i - 1];
   return 0;
 }
 
-const struct Token * next_token(struct Parser *state)
+const struct Token * next_token(struct Parser *state) 
 {
   if(UINT16_MAX > *state->_i && state->src_sz > *state->_i)
     return &state->src[*state->_i + 1];
@@ -64,7 +64,7 @@ struct Group * new_grp(struct Parser *state, const struct Token * origin)
 }
 
 
-struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, struct Parser *state)
+const struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, struct Parser *state)
 {
   struct Token new, *heap = 0;
   new.type = op;
