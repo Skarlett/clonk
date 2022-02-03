@@ -22,4 +22,5 @@ int8_t vec_free(struct Vec *vec);
 const void * vec_head(const struct Vec *vec);
 int8_t vec_pop(struct Vec *vec, void * dest);
 int8_t vec_clear(struct Vec *vec);
+
 #endif

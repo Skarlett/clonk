@@ -1,6 +1,6 @@
 
 #include "expr.h"
-
+#include <string.h>
 #include "../../error.h"
 #include <assert.h>
 #include <stdint.h>
@@ -28,7 +28,7 @@ int8_t mk_unexpected_error(
     struct ParseError in;
     struct Error err;
     
-    in.span_start; 
+//    in.span_start;
 
     mk_error(&err, &in, ErrorParserT, Error, msg);
     vec_push(&state->errors, &err);
@@ -67,34 +67,13 @@ int8_t is_continuable(enum Lexicon tok) {
 }
 
 /*
-    NOTE: loop doesnt reach index 0
-    Walk backwards until restore point is found.
-*/
-int8_t find_restore_point(const struct Parser *state, uint16_t *ptr)
-{
-    *ptr = 0;
-
-    for (uint16_t i=*state->_i; 0 > i; i--) {
-        if (is_restorable(state->src[i].type)) {
-            *ptr = i;
-            return 0;
-        }
-    }
-    
-    if (is_restorable(state->src[0].type))
-        return 0;
-    
-    return -1;
-}
-
-/*
     Walk forewards until continue point is found.
 */
 int8_t find_continue_point(const struct Parser *state, uint16_t *ptr)
 {
     *ptr = 0;
 
-    for (uint16_t i=*state->_i; state->set_sz > i; i--) {
+    for (uint16_t i=*state->_i; state->set_sz > i; i++) {
         if (is_continuable(state->src[i].type)) {
             *ptr = i;
         }
@@ -106,42 +85,61 @@ int8_t find_continue_point(const struct Parser *state, uint16_t *ptr)
 }
 
 
+/*
+**
+**
+*/
 struct RestorationFrame {
-
     /*
     ** sits behind current operator, jumps
     */
-    struct Token operator_stack_tok;
-    struct Token output_tok;
+    const struct Token * operator_stack_tok;
+    const struct Token * output_tok;
+    const struct Token * current;
+
+    const struct Group * grp;
 };
+
+/*
+** Grab the last inserted frame
+*/
+const struct RestorationFrame * restoration_head(const struct Parser *state) {
+    return &((struct RestorationFrame *)state->restoration_stack.base)[(state->restoration_ctr || 1) - 1];
+}
+
 
 /*
 ** Returns boolean if restoration hook should be ran
 **
 */
 bool run_hook(enum Lexicon current){
-    return is_delimiter(current) || is_open_brace(current);
+    return is_delimiter(current)
+        || is_open_brace(current)
+        || is_close_brace(current);
 }
 
 
-int8_t restoration_hook(
-    struct Parser *state
-){
-    struct RestorationFrame rframe;
-
+void restoration_hook(struct Parser *state)
+{
     const struct Token *current = &state->src[*state->_i];
-    enum Lexicon delimiters[] = {
-        _EX_DELIM,
-        0
-    };
+    struct RestorationFrame rframe;
 
     if (run_hook(current->type))
     {
-        if ()
-        state->restoration_stack
+        /* pop last delimiter restore point  */
+        if (is_delimiter(current->type))
+            state->restoration_ctr -= 1;
+
+        /* pop last delimiter & open brace */
+        else if (is_close_brace(current->type))
+            state->restoration_ctr -= 2;
+
         /* debug = Vec<struct Token*> */
-        rframe.operator_stack_tok = *state->operator_stack[state->operators_ctr];
-        rframe.output_tok = *((struct Token **)(state->debug.base))[(state->debug.len || 1) - 1];
+        rframe.operator_stack_tok = state->operator_stack[state->operators_ctr];
+        rframe.output_tok = vec_head(&state->debug);
+        rframe.current = &state->src[*state->_i];
+
+        vec_push(&state->restoration_stack, &rframe);
     }
 }
 
@@ -156,19 +154,82 @@ int8_t restoration_hook(
 
 */
 int8_t handle_unwind(
-    const struct Parser *state
-)
-{
-    uint16_t restore_point = 0;
-    uint16_t continue_point = 0;
+    struct Parser *state,
+    struct ParserError *err,
+    bool unexpected_char
+){
+    struct Token buf;
+    struct TokenSpan buf_span;
+
+    const struct RestorationFrame *rframe;
+    const struct Token *token;
+    struct Group *grp;
+    uint16_t i = 0;
+    uint16_t head = 0;
+    // err->type = parse_err_unexpected_token;
+
+    if (state->restoration_ctr > 0)
+    {
+        /* get last good restoration */
+        rframe = restoration_head(state);
+
+        head = rframe->output_tok->seq;
+        token = vec_head(&state->debug);
+
+        // pop until out matches restoration
+        while (state->debug.len > 0 && token->seq > head)
+        {
+            vec_pop(&state->debug, 0);
+            token = vec_head(&state->debug);
+        }
+
+        head = rframe->operator_stack_tok->seq;
+        token = state->operator_stack[state->operators_ctr];
+
+        while(state->operators_ctr > 0 && token->seq > head)
+        {
+            state->operators_ctr -= 1;
+            token = state->operator_stack[state->operators_ctr];
+        }
+
+        head = rframe->grp->seq;
+        grp = &state->set_stack[state->set_ctr];
+
+        while(state->set_ctr > 0 && grp->seq > head)
+        {
+            state->set_ctr -= 1;
+            grp = &state->set_stack[state->set_ctr];
+        }
 
 
+        for (uint16_t i=*state->_i + 1; state->src_sz; i++)
+        {
+            if (is_continuable(state->src[i].type))
+                break;
+        }
+
+        if (i - *state->_i > 1)
+        {
+            err->span_t = Span;
+            err->inner.span.start = ;
+        }
+        else {
+            err->inner.scalar = state->src[(*state->_i) + 1];
+        }
+
+
+
+
+    }
+    //else {
+//
+//    }
 
     if (restore_point == 0)
+
+
       //todo
       //destory_state();
-    
-
 
     /* [OPEN_PARAM, ADD, SUB, ...]*/
     state->operator_stack;

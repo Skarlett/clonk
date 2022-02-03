@@ -1,3 +1,6 @@
+
+
+
 #include <stdbool.h>
 
 #include <stdio.h>
@@ -174,7 +177,7 @@ enum Associativity get_assoc(enum Lexicon token)
  * postfix: ... <expr> <expr> <OPERATOR> ...
  */
 int8_t handle_operator(struct Parser *state) {
-  struct Token *head=0, *current=0;
+  const struct Token *head=0, *current=0;
   int8_t precedense = 0, head_precedense = 0;
   
   current = &state->src[*state->_i];
@@ -242,7 +245,7 @@ int8_t handle_operator(struct Parser *state) {
 */
 int8_t handle_brace_op(struct Parser *state)
 {
-  struct Token *current=0, *prev = 0;  
+  const struct Token *current=0, *prev = 0;
   
   current = &state->src[*state->_i];
   prev = prev_token(state);
@@ -347,7 +350,7 @@ int8_t handle_open_brace(struct Parser *state)
 int8_t handle_idx_op(struct Parser *state)
 {
   struct Group *ghead = &state->set_stack[state->set_ctr - 1];
-  struct Token *prev = &state->src[*state->_i - 1];
+  const struct Token *prev = &state->src[*state->_i - 1];
 
   /*
     peek-behind if token was COLON 
@@ -382,16 +385,16 @@ int8_t handle_idx_op(struct Parser *state)
 int8_t handle_grouping(struct Parser *state)
 {
   struct Group *ghead = &state->set_stack[state->set_ctr - 1];
-  struct Expr ex;
 
   /* only add groups if they're not singular item paramethesis braced */
   if (ghead->origin->type != PARAM_OPEN 
       || ghead->delimiter_cnt > 0
       || ghead->state & GSTATE_EMPTY)
       add_dbg_sym(
-            state,
-            grp_dbg_sym(ex.inner.grp.type),
-            ghead->delimiter_cnt + 1
+        state,
+        //TODO: use group symbol
+        grp_dbg_sym(get_group_ty()),
+        ghead->delimiter_cnt + 1
       );
       
   return 0;
@@ -777,7 +780,9 @@ int8_t parse(
       return -1;
 
     if (state.panic_flags & STATE_PANIC || is_token_unexpected(&state))
-    {}
+    {
+
+    }
     /* { */
     /*   // TODO */
     /*   return -1; */
@@ -822,13 +827,15 @@ int8_t parse(
              ptoken(tokens[i].type));
 #endif
     }
+
+    restoration_hook(state);
   }
   
   if(state.panic_flags & STATE_INCOMPLETE)
     return -1;
   
   /* -1 from state._i so that it points to the last item in the input */
-  *state._i = state.src_sz-1;
+  *state._i = state.src_sz - 1;
   
   /* dump the remaining operators onto the output */
   if (flush_all_ops(&state) == -1)

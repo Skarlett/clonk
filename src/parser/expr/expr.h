@@ -317,6 +317,8 @@ struct ParserInput {
 
 
 struct Group {
+    //TODO: Implement this
+    uint16_t seq;
     /*
                    0:           Uninitialized state
         GSTATE_EMPTY:           signify empty grouping,
@@ -385,11 +387,19 @@ enum ParserError_t {
     parse_err_
 };
 
-struct ParseError {
+enum Span_t {
+  Scalar,
+  Span
+};
+
+struct ParserError {
     enum ParserError_t type;
+    enum Span_t span_t;
+
     union {
-        struct Token unexpected_token;
-    } data;
+        struct Token scalar;
+        struct TokenSpan span;
+    } inner;
 };
 
 
@@ -434,7 +444,7 @@ struct Parser {
     
     /* tracks opening braces in the operator stack */
     struct Group set_stack[STACK_SZ];
-    
+
     /* tracks opening braces in the operator stack */
     // struct Group prev_set_stack[16];
 
@@ -461,8 +471,13 @@ struct Parser {
     /*Vec<struct ParseError>*/
     struct Vec errors;
     
-    bool use_previson;
     struct Previsioner expecting;
+
+    /*Vec<struct RestorationFrame>*/
+    struct Vec restoration_stack;
+
+    uint16_t restoration_ctr;
+
     FLAG_T panic_flags;
 };
 /*
