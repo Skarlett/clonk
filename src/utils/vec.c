@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
 #include "vec.h"
 
 #define VEC_STATE_FREED 1
@@ -74,4 +76,16 @@ const void * vec_head(const struct Vec *vec)
     if (vec->len > 0)
         return vec->base + vec->type_sz * vec->len - 1;
     return 0;
+}
+
+int8_t vec_pop(struct Vec *vec, void * dest) {
+    const void *head = vec_head(vec);
+    if (head != 0){
+        if (dest != 0)
+            assert(memcpy(dest, head, vec->type_sz) != 0);
+
+        vec->len -= 1;
+        return 0;
+    }
+    return -1;
 }
