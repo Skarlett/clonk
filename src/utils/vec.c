@@ -8,6 +8,7 @@
 #define VEC_STATE_FREED 1
 #define VEC_STATE_INITALIZED 2
 #define VEC_STATE_LOCK_ALLOC 3
+
 int8_t init_vec(struct Vec *vec, size_t capacity, size_t type_sz)
 { 
     vec->type_sz = type_sz;
@@ -46,7 +47,7 @@ int8_t vec_free(struct Vec *vec) {
     return 0;
 }
 
-void * vec_push(struct Vec *vec, void *src)
+void * vec_push(struct Vec *vec, const void *src)
 {
     void * ret;
     if (vec->state != VEC_STATE_INITALIZED || vec->base == 0 || vec->head == 0)
@@ -64,4 +65,13 @@ void * vec_push(struct Vec *vec, void *src)
     vec->head += vec->type_sz;
 
     return ret;
+}
+/*
+** Pull the last item stored in vector
+*/
+const void * vec_head(const struct Vec *vec)
+{
+    if (vec->len > 0)
+        return vec->base + vec->type_sz * vec->len - 1;
+    return 0;
 }
