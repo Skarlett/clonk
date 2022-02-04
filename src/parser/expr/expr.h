@@ -39,7 +39,9 @@ enum ExprType {
     // import x.y, z, ..pkg.b;
     // import a;
     // import ..a;
-    // import ..a.;
+    // import ..a.b;
+    // from . import a, b
+    // from module.x import x.x
     ImportExprT,
 
     // binary operation
@@ -266,7 +268,8 @@ union PrevisionerData {
 };
 
 
-//TODO if top of operator stack has 0 precedense, you can push ret/if/else/import
+// TODO: if top of operator stack has 0 precedense,
+// you can push ret/if/else/import
 struct Previsioner {
   enum Lexicon buffer[PREVISION_SZ];
   enum PrevisionerModeT mode;
@@ -316,6 +319,16 @@ struct ParserInput {
     bool add_glob_scope;
 };
 
+struct ParserOutput {
+    /* Vec<struct Token *> */
+    const struct Vec postfix;
+
+    /* Vec<struct Token> */
+    struct Vec token_pool;
+
+    /* Vec<struct ParseError> */
+    struct Vec errors;
+};
 
 struct Group {
     //TODO: Implement this
@@ -356,18 +369,18 @@ struct Group {
      * this is essential to ensure code-blocks work
     */
     uint16_t expr_cnt;
-    
+
     uint16_t operator_idx;
     // should be `[` `(` '{' or `0`
     const struct Token *origin;
-    struct Token *last_delim;
+    const struct Token *last_delim;
 };
 
 #define FLAG_ERROR       0
 
 #define STATE_READY      1
 #define STATE_INCOMPLETE 1 << 1
-#define STATE_PANIC      1 << 2 
+#define STATE_PANIC      1 << 2
 #define INTERNAL_ERROR   1 << 3
 
 /* 
@@ -403,15 +416,17 @@ struct ParserError {
     } inner;
 };
 
-
-enum ParserMode {
-    PM_Uninitialized,
-    PM_Parsing,
-    PM_Unwinding
+struct RestorationFrame {
+    /* points to storation point  */
+    const struct Token * operator_stack_tok;
+    const struct Token * output_tok;
+    const struct Token * current;
+    const struct Group * grp;
 };
 
+
 struct PostfixStageState {
-    
+
     /* Vec<struct Expr> */
     struct Vec pool;
 
@@ -436,13 +451,12 @@ struct GroupBooklet {
 struct Parser {
     const struct Token *src;
     const char * src_code;
-    enum ParserMode mode;
     uint16_t src_sz;
     uint16_t *_i;
 
     /* a stack of pending operations (see shunting yard) */
     struct Token *operator_stack[STACK_SZ];
-    
+
     /* tracks opening braces in the operator stack */
     struct Group set_stack[STACK_SZ];
 
@@ -471,7 +485,7 @@ struct Parser {
 
     /*Vec<struct ParseError>*/
     struct Vec errors;
-    
+
     struct Previsioner expecting;
 
     /*Vec<struct RestorationFrame>*/
@@ -503,7 +517,6 @@ struct Parser {
   based on shunting-yard algorthm.
   This is in combination with arithmetic operations, and our custom operations
   (GROUP, INDEX_ACCESS, APPLY, DOT).
-  
   Upon completion, the result will be an ordered array of operands, 
   and operators ready to be evaluated into a tree structure.
 
@@ -560,9 +573,7 @@ int8_t reset_state(struct Parser *state);
 void restoration_hook(struct Parser *state);
 int8_t handle_unwind(
     struct Parser *state,
-    struct ParserError *err,
     bool unexpected_token
 );
 
 #endif
-
