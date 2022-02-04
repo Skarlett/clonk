@@ -1,4 +1,3 @@
-
 #include "expr.h"
 #include <string.h>
 #include "../../error.h"
@@ -78,6 +77,45 @@ void restoration_hook(struct Parser *state)
     }
 }
 
+void unwind_stacks(struct Parser *state)
+{
+    const struct Token *token;
+    const struct RestorationFrame *rframe;
+    struct Group *grp;
+    uint16_t head = 0;
+
+    /* get last good restoration */
+    rframe = restoration_head(state);
+    head = rframe->output_tok->seq;
+    token = vec_head(&state->debug);
+
+    // pop until out matches restoration
+    while (state->debug.len > 0 && token->seq > head)
+    {
+        vec_pop(&state->debug, 0);
+        token = vec_head(&state->debug);
+    }
+
+    head = rframe->operator_stack_tok->seq;
+    token = state->operator_stack[state->operators_ctr];
+
+    while(state->operators_ctr > 0 && token->seq > head)
+    {
+        state->operators_ctr -= 1;
+        token = state->operator_stack[state->operators_ctr];
+    }
+
+    head = rframe->grp->seq;
+    grp = &state->set_stack[state->set_ctr];
+
+    while(state->set_ctr > 0 && grp->seq > head)
+    {
+        state->set_ctr -= 1;
+        grp = &state->set_stack[state->set_ctr];
+    }
+
+}
+
 /*
   unwind the parser to a previous safe-state
   ----
@@ -87,18 +125,17 @@ void restoration_hook(struct Parser *state)
   4) report error
   5) continue parsing
 
+  TODO: when continuation token is found,
+  create dumbie values to place in output.
+
 */
 int8_t handle_unwind(
     struct Parser *state,
-    struct ParserError *err,
     bool unexpected_token
 ){
-    const struct Token *start, *token;
-    const struct RestorationFrame *rframe;
-    struct Group *grp;
+    const struct Token *start;
+    struct ParserError err;
     uint16_t continue_ctr = 0;
-    uint16_t head = 0;
-
 
     // word + {1, 22 w}
 
@@ -112,57 +149,30 @@ int8_t handle_unwind(
     /* if restoration point available */
     if (state->restoration_ctr > 0)
     {
-        /* get last good restoration */
-        rframe = restoration_head(state);
-
-        head = rframe->output_tok->seq;
-        token = vec_head(&state->debug);
+        unwind_stacks(state);
 
         // pop until out matches restoration
-        while (state->debug.len > 0 && token->seq > head)
-        {
-            vec_pop(&state->debug, 0);
-            token = vec_head(&state->debug);
-        }
-
-        head = rframe->operator_stack_tok->seq;
-        token = state->operator_stack[state->operators_ctr];
-
-        while(state->operators_ctr > 0 && token->seq > head)
-        {
-            state->operators_ctr -= 1;
-            token = state->operator_stack[state->operators_ctr];
-        }
-
-        head = rframe->grp->seq;
-        grp = &state->set_stack[state->set_ctr];
-
-        while(state->set_ctr > 0 && grp->seq > head)
-        {
-            state->set_ctr -= 1;
-            grp = &state->set_stack[state->set_ctr];
-        }
-
-        for (continue_ctr=*state->_i + 1; state->src_sz; continue_ctr++)
+        for (continue_ctr=*state->_i + 1; state->src_sz > continue_ctr; continue_ctr++)
         {
             if (is_continuable(state->src[continue_ctr].type))
                 break;
         }
 
-        if (continue_ctr - *state->_i > 1)
+        if (continue_ctr == state->src_sz)
+            return -1;
+
+        else if (continue_ctr - *state->_i > 1)
         {
-            err->span_t = ET_Span;
-            err->inner.span.start = *start;
-            err->inner.span.end = state->src[continue_ctr - 1];
+            err.span_t = ET_Span;
+            err.inner.span.start = *start;
+            err.inner.span.end = state->src[continue_ctr - 1];
             *state->_i = continue_ctr;
         } else {
-            err->span_t = ET_Scalar;
-            err->inner.scalar = state->src[(*state->_i) + 1];
+            err.span_t = ET_Scalar;
+            err.inner.scalar = state->src[(*state->_i) + 1];
             *state->_i += 1;
         }
 
-        state->panic_flags |= STATE_INCOMPLETE;
-        vec_push(&state->errors, err);
     }
 
     else {
@@ -170,4 +180,7 @@ int8_t handle_unwind(
         state->operators_ctr = 0;
         vec_clear(&state->debug);
     }
+
+    state->panic_flags |= STATE_INCOMPLETE;
+    vec_push(&state->errors, &err);
 }
