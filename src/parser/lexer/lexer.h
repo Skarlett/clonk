@@ -229,7 +229,8 @@ enum Lexicon {
 
     //import
     IMPORT,
-    
+
+    FROM,
     //impl
     //IMPL,
     
@@ -353,11 +354,6 @@ struct Token {
 struct TokenSpan {
     struct Token start;
     struct Token end;
-};
-
-enum LexerOutput_t {
-  lex_OK,
-  lex_ERR
 };
 
 /* Output of lexer function */
