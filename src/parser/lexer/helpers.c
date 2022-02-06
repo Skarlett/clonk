@@ -132,9 +132,9 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
         if (inverted == -1)
           return -1;
         
-        /* 
-            return 1 to stop iteration,
-	    and return `is_balanced` as false (0)
+        /*
+            return 1 to stop iteration, 
+            and return `is_balanced` as false
         */    
         else if (*tokens_ctr <= 0)
           return 1;
@@ -177,7 +177,6 @@ bool is_balanced(struct Token tokens[], uint16_t ntokens) {
 
     return braces_ctr == 0;
 }
-
 
 /* 
     function determines if an expression is unbalanced.
