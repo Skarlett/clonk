@@ -33,7 +33,7 @@ enum Associativity get_assoc(enum Lexicon token)
     }
 }
 
-void static inline add_dbg_sym(
+void static inline push_output(
   struct Parser *state,
   enum Lexicon type,
   uint16_t argc
@@ -177,7 +177,7 @@ int8_t handle_grouping(struct Parser *state)
   if (ghead->origin->type != PARAM_OPEN
       || ghead->delimiter_cnt > 0
       || ghead->state & GSTATE_EMPTY)
-      add_dbg_sym(
+      push_output(
         state,
         //TODO: use group symbol
         grp_dbg_sym(get_group_ty()),
@@ -212,7 +212,7 @@ int8_t pop_block_operator(struct Parser *state)
   //  return 0;
 
   // specify short block
-  //mk_short_blk = next
+  // mk_short_blk = next
   //  && next->type != BRACE_OPEN
   // && is_short_blockable(next->type);
 
@@ -224,12 +224,12 @@ int8_t pop_block_operator(struct Parser *state)
 
     case IfBody:
       insert(state, ophead);
-      //add_dbg_sym(state, ophead->type, 0);
+      //push_output(state, ophead->type, 0);
       break;
 
     case ELSE:
       insert(state, ophead);
-      //add_dbg_sym(state, ophead->type, 0);
+      //push_output(state, ophead->type, 0);
       break;
 
     case RETURN:
@@ -246,7 +246,7 @@ int8_t pop_block_operator(struct Parser *state)
 
 
    case DefBody:
-      add_dbg_sym(state, ophead->type, 0);
+      push_output(state, ophead->type, 0);
       break;
 
     /*
@@ -368,7 +368,7 @@ int8_t prefix_group(
     && op_push(Apply, 0, 0, state) == 0)
     return -1;
 
-    /* index call pattern */
+  /* index call pattern */
   else if (current->type == BRACKET_OPEN)
   {
     /* is indexable */
@@ -485,14 +485,14 @@ int8_t handle_idx_op(struct Parser *state)
   // a: -> a:a
   // :: => ::a
   if (prev->type == COLON)
-    add_dbg_sym(state, NULLTOKEN, 0);
+    push_output(state, NULLTOKEN, 0);
   
   // a:a -> a:a:a
   for (uint8_t i=0; 2 > ghead->delimiter_cnt; i++)
-    add_dbg_sym(state, NULLTOKEN, 0);
+    push_output(state, NULLTOKEN, 0);
 
 
-  add_dbg_sym(state, _IdxAccess, 0);
+  push_output(state, _IdxAccess, 0);
   
   return 0;
 }
@@ -691,7 +691,7 @@ int8_t handle_delimiter(struct Parser *state)
       return -1;
     
     if (prev->type == COLON) 
-      add_dbg_sym(state, NULLTOKEN, 0);
+      push_output(state, NULLTOKEN, 0);
   }
   //else return -1;
 
