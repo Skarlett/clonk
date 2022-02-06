@@ -10,20 +10,18 @@ void insert(struct Parser *state, const struct Token *tok) {
   assert(vec_push(&state->debug, &tok) != 0);
 }
 
-
 /* push token into pool */
 const struct Token * new_token(struct Parser *state, struct Token *tok) {
   return vec_push(&state->pool, tok);
 }
 
-const struct Token * prev_token(struct Parser *state) {
+const struct Token * prev_token(const struct Parser *state) {
   if (*state->_i != 0)
     return &state->src[*state->_i - 1];
   return 0;
 }
 
-
-const struct Token * next_token(struct Parser *state) {
+const struct Token * next_token(const struct Parser *state) {
   if(UINT16_MAX > *state->_i && state->src_sz > *state->_i)
     return &state->src[*state->_i + 1];
   return 0;
@@ -32,20 +30,24 @@ const struct Token * next_token(struct Parser *state) {
 /*
 ** NOTE: Assumes `_i` is within bounds.
 */
-const struct Token * current_token(struct Parser *state){
+const struct Token * current_token(const struct Parser *state){
   return &state->src[*state->_i];
 }
 
-struct Group * group_head(struct Parser *state){
+struct Group * group_head(const struct Parser *state){
   if (STACK_SZ - 1 > state->set_ctr && state->set_ctr > 0)
     return &state->set_stack[state->set_ctr - 1];
   return 0;
 }
 
-const struct Token * op_head(struct Parser *state){
+const struct Token * op_head(const struct Parser *state){
   if(state->operators_ctr > 0)
     return state->operator_stack[state->operators_ctr - 1];
   return 0;
+}
+
+const struct Token * output_head(const struct Parser *state) {
+  return vec_head(&state->debug);
 }
 
 
@@ -69,13 +71,16 @@ struct Group * new_grp(struct Parser *state, const struct Token * origin)
   
   ghead = &state->set_stack[state->set_ctr];
   ghead->operator_idx = state->set_ctr;
-  state->set_ctr += 1;
-
+  ghead->last_delim = 0;
   ghead->delimiter_cnt = 0;
+  ghead->expr_cnt = 0;
+  ghead->short_type = sh_udef_t;
 
   ghead->origin = origin;
-  
+
   ghead->state = GSTATE_CTX_DATA_GRP; 
+
+  state->set_ctr += 1;
   return ghead;
 }
 
@@ -94,7 +99,6 @@ const struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, stru
   state->operators_ctr += 1;
   return heap;
 }
-
 
 enum Lexicon grp_dbg_sym(enum GroupType type)
 {
