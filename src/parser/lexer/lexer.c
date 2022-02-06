@@ -36,10 +36,14 @@ struct LexerStage {
     /* struct Vec<LexerError> */
     struct Vec errors;
 
-    /* add end of file token */
-    /* bool add_eof_tok; */
+    /* used to construct FROM_LOCATION
+     * hijacks the compound token until
+     * it falls out of pattern
+    */
+  enum Lexicon forcing_next_token;
+  uint16_t force_start;
+  uint16_t force_span;
 
-    /* bool _is_repeating; */
 };
 
 void init_lexer_stage(
@@ -62,6 +66,7 @@ void init_lexer_stage(
   /* stage->_is_repeating = false; */
   stage->current = TOKEN_UNDEFINED;
   stage->compound = TOKEN_UNDEFINED;
+  stage->forcing_next_token = TOKEN_UNDEFINED;
   stage->cmpd_span_size = 0;
   stage->cmpd_start_at = 0;
   stage->src_code_sz = 0;
@@ -287,35 +292,36 @@ int8_t continue_compound_token(
      prev = queue8_head(&state->previous);
 
   return (
-      compound_token == COMMENT && token != NEWLINE
+      (compound_token == COMMENT && token != NEWLINE)
       // # ... \n
-      || compound_token == INTEGER && token == DIGIT
+      || (compound_token == INTEGER && token == DIGIT)
       
       // ints
-      || compound_token == INTEGER && token == UNDERSCORE
+      || (compound_token == INTEGER && token == UNDERSCORE)
       
       // Variables
-      || compound_token == WORD && token == CHAR
-      || compound_token == WORD && token == UNDERSCORE
-      || compound_token == WORD && token == DIGIT
+      || (compound_token == WORD && token == CHAR)
+      || (compound_token == WORD && token == UNDERSCORE)
+      || (compound_token == WORD && token == DIGIT)
       
       // String literal "..."
-      || compound_token == STRING_LITERAL
+      ||(compound_token == STRING_LITERAL
         && (
           (token != D_QUOTE || token == D_QUOTE && prev && prev == BACKSLASH)
           // TODO:
           //|| (token != S_QUOTE || token == S_QUOTE && prev == BACKSLASH)
           )
+        )
       // !=
-      || compound_token == ISNEQL && token == EQUAL && 1 > span_size
+      || (compound_token == ISNEQL && token == EQUAL && 1 > span_size)
       // ==
-      || compound_token == ISEQL && token == EQUAL && 1 > span_size
+      || (compound_token == ISEQL && token == EQUAL && 1 > span_size)
       // +=
-      || compound_token == PLUSEQ && token == EQUAL && 1 > span_size
+      || (compound_token == PLUSEQ && token == EQUAL && 1 > span_size)
       // ~=
-      || compound_token == BNEQL && token == EQUAL && 1 > span_size
+      || (compound_token == BNEQL && token == EQUAL && 1 > span_size)
       //  `-=` or `-123`
-      || compound_token == _COMPOUND_SUB && (token == DIGIT || token == EQUAL && 1 > span_size)
+      || (compound_token == _COMPOUND_SUB && (token == DIGIT || (token == EQUAL && 1 > span_size)))
       // `|=`, `|>`, `||`
       || (compound_token == _COMPOUND_PIPE && (token == EQUAL || token == GT || token == PIPE) && 1 > span_size)
       // `&=` `&&`
@@ -385,6 +391,7 @@ int8_t derive_keyword(const char *src_code, struct Token *t) {
   static enum Lexicon lexicon[] = {
     //STATIC, CONST,
     RETURN,
+    FOR, WHILE,
     // EXTERN, AS,
     IF,
     ELSE, FUNC_DEF, IMPORT,
@@ -394,7 +401,7 @@ int8_t derive_keyword(const char *src_code, struct Token *t) {
 
   static char *keywords[] = {
     // "static", "const",
-    "return",
+    "return", "for", "while",
     //"extern", "as",
     "if", "else",  "def", "import",
     // "impl",
@@ -415,6 +422,14 @@ int8_t derive_keyword(const char *src_code, struct Token *t) {
   return 0;
 }
 
+
+/*
+** Because our lexer kind of sucks,
+** this is using the current token to determine
+** what the compound token should be,
+** for example `-` (MINUS) can turn into many
+** different compounds `-=`, `-1`.
+*/
 int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
   if (ctok == _COMPOUND_SUB)
   {
@@ -468,15 +483,11 @@ int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
 }
 
 int8_t finalize_compound_token(
+  struct LexerStage *state,
   struct Token *token,
-  const char *src_code,
-
-  enum Lexicon lexed,
-  struct LexerError *err,
-
-  /* Vec<LexerError> */
-  struct Vec * err_alloc)
-{
+  enum Lexicon lexed
+){
+  struct LexerError err;
   if (token->type == STRING_LITERAL)
   {
 
@@ -484,16 +495,16 @@ int8_t finalize_compound_token(
       Error: string is missing a ending quote
     */
     if (lexed != D_QUOTE) {
-      err->type = lex_err_missing_end_quote;
+      err.type = lex_err_missing_end_quote;
 
       assert(memcpy(
-        &err->type_data.bad_str,
+        &err.type_data.bad_str,
         token,
         sizeof(struct Token))
       );
 
       /* push error */
-      vec_push(err_alloc, err);
+      vec_push(&state->errors, &err);
       return -1;
     }
 
@@ -501,7 +512,7 @@ int8_t finalize_compound_token(
   }
 
   else if (token->type == WORD)
-    derive_keyword(src_code, token);
+    derive_keyword(state->src_code, token);
 
   /*
   / check if its an operator, and that its lenth is 2
@@ -519,31 +530,39 @@ int8_t finalize_compound_token(
 
 int8_t push_tok(
   struct LexerStage *state,
-  struct Token *tok,
-  struct LexerError *err
-){
-  enum Lexicon type;
+  struct Token *tok)
+{
+  enum Lexicon type = state->current;
   int8_t ret = 0;
 
-  type = state->current;
   if (state->compound != TOKEN_UNDEFINED)
     type = state->compound;
 
   ret = finalize_compound_token(
+    state,
     tok,
-    state->src_code,
-    type,
-    err,
-    &state->errors
+    type
   );
 
   assert(vec_push(state->tokens, tok) != 0);
-
   queue8_push(&state->previous, &tok);
 
+
+  if (type == FROM)
+  {
+    assert(UINT16_MAX > *state->i);
+
+    state->forcing_next_token = FROM_LOCATION;
+    state->force_start = *state->i + 1;
+  }
   return ret;
 }
 
+
+int8_t continue_forcing(struct LexerStage *state)
+{
+  return state->current == WORD || state->current == DOT;
+}
 
 /******
  * ----
@@ -627,18 +646,22 @@ int8_t tokenize(
       state.cmpd_span_size = 0;
       continue;
     }
+    else if (state.forcing_next_token != TOKEN_UNDEFINED && continue_forcing(&state))
+    {
+      state.force_span += 1;
+      continue;
+    }
 
     /* continuation of complex token */
-    else if (continue_compound_token(state)) {
+    else if (continue_compound_token(&state)) {
       state.compound = compose_compound(state.compound, state.current);
       state.cmpd_span_size += 1;
-
-      queue8_push(&state->previous, &token)
+      queue8_push(&state.previous, &token);
       continue;
     }
 
     /* completed compound token */
-    else if (state.compound != TOKEN_UNDEFINED) {
+    else if (state.compound != TOKEN_UNDEFINED || state.forcing_next_token) {
       // state._is_repeating = false;
 
       if (state.compound == COMMENT)
@@ -647,14 +670,27 @@ int8_t tokenize(
         continue;
       }
 
-      token.start = state.cmpd_start_at;
-      token.end = state.cmpd_start_at + state.cmpd_span_size;
-      token.type = state.compound;
-      token.seq = state.tokens->len;
+      if(state.compound != TOKEN_UNDEFINED)
+      {
+        token.start = state.cmpd_start_at;
+        token.end = state.cmpd_start_at + state.cmpd_span_size;
+        token.type = state.compound;
+        token.seq = state.tokens->len;
+        state.compound = TOKEN_UNDEFINED;
+      }
+      else {
+        token.start = state.force_start;
+        token.end = state.force_start + state.force_span;
+        token.type = state.forcing_next_token;
+        token.seq = state.tokens->len;
 
-      push_tok(&state, &token, &err);
+        state.forcing_next_token = TOKEN_UNDEFINED;
+        state.force_start = 0;
+        state.force_span = 0;
+      }
 
-      state.compound = TOKEN_UNDEFINED;
+      push_tok(&state, &token);
+
 
       if (token.type == STRING_LITERAL)
       {
@@ -712,24 +748,17 @@ int8_t tokenize(
     token.type = state.compound;
     token.seq = state.tokens->len;
 
-    if (finalize_compound_token(&token, state.src_code, state.current, error) == -1)
+    if (push_tok(&state, &token) == -1)
       return -1;
 
-    vec_push(state.tokens, &token);
+    //assert(vec_push(state.tokens, &token) > 0);
   }
   
-  //if (state.add_eof_tok)
-  //{
   token.type = EOFT;
   token.start = i;
   token.end = i;
   token.seq = state.tokens->len;
   vec_push(state.tokens, &token);
-  //}
-
-  /* add null terminator */
-  //memset(&token, 0, sizeof(struct Token));
-  //vec_push(state.tokens, &token);
 
   /* setup return values */
   init_lexer_output(&state, out);
