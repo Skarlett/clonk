@@ -270,7 +270,8 @@ union PrevisionerData {
 
 // TODO: if top of operator stack has 0 precedense,
 // you can push ret/if/else/import
-struct Previsioner {
+struct Previsioner
+{
   enum Lexicon buffer[PREVISION_SZ];
   enum PrevisionerModeT mode;
   union PrevisionerData data;
@@ -351,7 +352,7 @@ struct Group {
     uint16_t delimiter_cnt;
 
     /* 
-     * amount of expressions
+    ** amount of expressions
      * to consume off the stack 
      *****************
      * TODO: since its unreliable 
@@ -366,28 +367,27 @@ struct Group {
      *   * function defining
      * should count as 1 expressions, since 
      * thats how they're represented in the stack 
-     * this is essential to ensure code-blocks work
+    ** this is essential to ensure code-blocks work
     */
     uint16_t expr_cnt;
-
     uint16_t operator_idx;
+
     // should be `[` `(` '{' or `0`
     const struct Token *origin;
     const struct Token *last_delim;
 
-
-
     /*
+    ** TODO: implement
     ** NOTE: if the amount of if & else are not equal
     **       will cause UB -
     **       don't be a prick, warn the user.
     ** RULES:
     ** if (x) x;
-    **
+    **         ^ After delimiter, check for `else`
+    ** else y;
     **/
     uint8_t short_block;
 
-    uint8_t short_block_ctr;
 };
 
 #define FLAG_ERROR       0

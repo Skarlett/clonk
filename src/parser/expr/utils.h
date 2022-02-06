@@ -5,6 +5,9 @@
 #include "../lexer/lexer.h"
 #include "expr.h"
 
+void insert(struct Parser *state, const struct Token *tok);
+const struct Token * new_token(struct Parser *state, struct Token *tok);
+const struct Token * current_token(struct Parser *state);
 const struct Token * prev_token(struct Parser *state) ;
 const struct Token * next_token(struct Parser *state);
 const struct Token * op_head(struct Parser *state);
@@ -32,5 +35,5 @@ enum Operation operation_from_token(enum Lexicon t);
 
 int8_t throw_internal_error(struct Parser *state, const char * meta, const char * msg);
 
-#endif
 
+#endif

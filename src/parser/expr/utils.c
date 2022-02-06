@@ -5,29 +5,44 @@
 #include "utils.h"
 #include "../../utils/vec.h"
 
-const struct Token * prev_token(struct Parser *state) 
-{
+/* push to output */
+void insert(struct Parser *state, const struct Token *tok) {
+  assert(vec_push(&state->debug, &tok) != 0);
+}
+
+
+/* push token into pool */
+const struct Token * new_token(struct Parser *state, struct Token *tok) {
+  return vec_push(&state->pool, tok);
+}
+
+const struct Token * prev_token(struct Parser *state) {
   if (*state->_i != 0)
     return &state->src[*state->_i - 1];
   return 0;
 }
 
-const struct Token * next_token(struct Parser *state) 
-{
+
+const struct Token * next_token(struct Parser *state) {
   if(UINT16_MAX > *state->_i && state->src_sz > *state->_i)
     return &state->src[*state->_i + 1];
   return 0;
 }
 
-struct Group * group_head(struct Parser *state)
-{
+/*
+** NOTE: Assumes `_i` is within bounds.
+*/
+const struct Token * current_token(struct Parser *state){
+  return &state->src[*state->_i];
+}
+
+struct Group * group_head(struct Parser *state){
   if (STACK_SZ - 1 > state->set_ctr && state->set_ctr > 0)
     return &state->set_stack[state->set_ctr - 1];
   return 0;
 }
 
-const struct Token * op_head(struct Parser *state)
-{
+const struct Token * op_head(struct Parser *state){
   if(state->operators_ctr > 0)
     return state->operator_stack[state->operators_ctr - 1];
   return 0;
@@ -104,12 +119,15 @@ int8_t push_many_ops(
 
   for (uint16_t i = 0 ;; i++)
   {
-    assert(state->operators_ctr < state->operator_stack_sz);
+
     if(ops[i] == 0)
       break;
 
+    //assert(state->operators_ctr < state->operator_stack_sz);
+
     tmp.type = ops[i];
-    heap = vec_push(&state->pool, &tmp);
+
+    heap = new_token(state, &tmp);
     assert(heap);
 
     state->operator_stack[state->operators_ctr] = heap;
@@ -118,6 +136,40 @@ int8_t push_many_ops(
 
   return 0;
 }
+
+/*
+** Flushes items from stack until a precedense of
+** 0 is found, or stack empty.
+**
+** Items with 0 precedense value:
+**   Opening-braces
+*/
+int8_t flush_ops(struct Parser *state)
+{
+  const struct Token *head = 0;
+  head = state->operator_stack[(state->operators_ctr || 1) - 1];
+
+  if (state->operators_ctr == 0)
+    return 0;
+
+  while (state->operators_ctr > 0) {
+    /* ends if tokens inverted brace is found*/
+    if (op_precedence(head->type) == 0)
+      break;
+
+    /* otherwise pop into output */
+    else {
+      insert(state, head);
+      state->operators_ctr -= 1;
+    }
+
+    /* Grab the head of the stack */
+    head = state->operator_stack[state->operators_ctr - 1];
+  }
+
+  return 0;
+}
+
 
 int8_t is_short_blockable(enum Lexicon tok)
 {
