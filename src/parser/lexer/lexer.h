@@ -230,10 +230,18 @@ enum Lexicon {
     //import
     IMPORT,
 
+    // from <from_location>
     FROM,
+
+    FROM_LOCATION,
+
+    FOR,
+    WHILE,
+    UNLESS,
+
     //impl
     //IMPL,
-    
+
     /*
         this is a 'pretend' token used 
         internally by expression
