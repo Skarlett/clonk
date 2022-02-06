@@ -14,8 +14,6 @@
 #include "expr.h"
 #include "utils.h"
 
-//#include "handlers.h"
-/* insert into state debug*/
 void static inline insert(struct Parser *state, const struct Token *tok) {
   assert(vec_push(&state->debug, &tok) != 0);
 }
@@ -34,34 +32,40 @@ void static inline add_dbg_sym(
   marker.end = argc;
 
   insert(state, &marker);
+
   // push debug token in the pool
   ret = vec_push(&state->pool, &marker);
+
   assert(ret != 0);
   assert(vec_push(&state->debug, &ret) != 0);
 }
 
-void static inline add_grp(
-  struct Parser *state,
-  enum Lexicon type,
-  uint16_t argc
-){
-  struct Token marker, *ret;
-  assert(type != TOKEN_UNDEFINED);
 
-  marker.type = type;
-  marker.start = 0;
-  /* use as ID lookup meta data */
-  marker.seq = 0;
-  marker.end = argc;
-  
-  // push debug token in the pool
-  ret = vec_push(&state->pool, &marker);
-  assert(ret != 0);
-  assert(vec_push(&state->debug, &ret) != 0);
-}
+/* void static inline add_grp( */
+/*   struct Parser *state, */
+/*   enum Lexicon type, */
+/*   uint16_t argc */
+/* ){ */
+/*   struct Token marker, *ret; */
+/*   assert(type != TOKEN_UNDEFINED); */
+
+/*   marker.type = type; */
+/*   marker.start = 0; */
+
+/*   /\* use as ID lookup meta data *\/ */
+/*   marker.seq = 0; */
+/*   marker.end = argc; */
+
+/*   /\* push debug token in the pool *\/ */
+/*   ret = vec_push(&state->pool, &marker); */
+
+/*   assert(ret != 0); */
+/*   assert(vec_push(&state->debug, &ret) != 0); */
+/* } */
 
 /*
-  returns true if this token operates after closing group expressions
+** returns true if this token operates
+** after closing group expressions
 */
 bool is_postfix_operator(enum Lexicon tok) {
   return tok == Apply 
@@ -72,24 +76,22 @@ bool is_postfix_operator(enum Lexicon tok) {
   || tok == DefSign;
 }
 
-/****
- *  Flushes operators out of stack 
- *  into the output until stack is empty
- *  or runs into an operator with 0 precedence 
- *  value.
+/*
+** Flushes items from stack until a precedense of
+** 0 is found, or stack empty.
+**
+** Items with 0 precedense value:
+**   Opening-braces
 */
-int8_t flush_ops_until_delim(struct Parser *state)
+int8_t flush_ops(struct Parser *state)
 {
-  struct Token *head = 0;
+  const struct Token *head = 0;
+  head = state->operator_stack[(state->operators_ctr || 1) - 1];
 
   if (state->operators_ctr == 0)
     return 0;
-  
-  head = state->operator_stack[state->operators_ctr - 1];
 
-  /* pop operators off of the operator-stack into the output */
   while (state->operators_ctr > 0) {
-    
     /* ends if tokens inverted brace is found*/
     if (op_precedence(head->type) == 0)
       break;
@@ -100,34 +102,10 @@ int8_t flush_ops_until_delim(struct Parser *state)
       state->operators_ctr -= 1;
     }
 
-    if (state->operators_ctr <= 0)
-      break;
-
     /* Grab the head of the stack */
     head = state->operator_stack[state->operators_ctr - 1];
   }
   
-  return 0;
-}
-
-int8_t flush_all_ops(struct Parser *state)
-{
-  /* dump the remaining operators onto the output */
-  struct Token *head;
-
-  while (state->operators_ctr > 0)
-  {
-    head = state->operator_stack[state->operators_ctr - 1];
-    /*
-        any remaining params/brackets/braces are unclosed
-        indiciate invalid expressions
-    */
-    if (is_open_brace(head->type))
-      return -1;
-    insert(state, head);
-    state->operators_ctr -= 1;
-  }
-
   return 0;
 }
 
@@ -150,35 +128,38 @@ enum Associativity get_assoc(enum Lexicon token)
     }
 }
 
-/* 
- * When an operator is placed in the parser,
- * it's order precedence is determined
- * using shunting yard.
- * 
- * Shunting yard uses an operator stack to 
- * determine evaluation order. If the precedence
- * of the current operator (op1) is less than 
- * whats at the top/head of the stack (op2) then
- * we'll drop operations out of the stack 
- * onto the output until the precedense of the op1 is
- * equal (unless right-assciotated).
- * or greater than op2.
- * 
- * When operators are placed onto the output,
- * they're created into expression. Each 
- * binary operator will pop 2 arguments 
- * from the top of the expression stack, 
- * and then the operator expression will
- * be pushed onto the expression stack.
- *
- * postfix: ... <expr> <expr> <OPERATOR> ...
- */
+/*
+**********************************************
+** When an operator is placed in the parser,
+** it's order precedence is determined
+** using shunting yard.
+**
+** Shunting yard uses an operator stack to
+** determine evaluation order. If the precedence
+** of the current operator (op1) is less than
+** whats at the top/head of the stack (op2) then
+** we'll drop operations out of the stack
+** onto the output until the precedense of the op1 is
+** equal (unless right-assciotated).
+** or greater than op2.
+**
+** When operators are placed onto the output,
+** they're created into expression. Each
+** binary operator will pop 2 arguments
+** from the top of the expression stack,
+** and then the operator expression will
+** be pushed onto the expression stack.
+**
+** postfix: ... <expr> <expr> <OPERATOR> ...
+********************************************
+*/
 int8_t handle_operator(struct Parser *state) {
   const struct Token *head=0, *current=0;
   int8_t precedense = 0, head_precedense = 0;
   
   current = &state->src[*state->_i];
   precedense = op_precedence(current->type);
+
   /*
     If no operators are in operators-stack,
     place it directly.
@@ -257,16 +238,21 @@ int8_t handle_grouping(struct Parser *state)
         state,
         //TODO: use group symbol
         grp_dbg_sym(get_group_ty()),
+
         ghead->delimiter_cnt + 1
       );
 
   return 0;
 }
 
+/*
+** After a group is added to the output, there may be
+**
+*/
 int8_t pop_block_operator(struct Parser *state)
 {
-  struct Token *ophead, *next;
-  bool mk_short_blk = false;
+  const struct Token *ophead;
+  bool pop_operator = true;
 
   if(state->operators_ctr > state->operator_stack_sz
     || state->operators_ctr == 0)
@@ -276,7 +262,7 @@ int8_t pop_block_operator(struct Parser *state)
   state->operators_ctr -= 1;
 
   // check for next token
-  next = next_token(state);
+  // next = next_token(state);
 
   //TODO: ensure its not a data-collection
   //if (!next)
@@ -294,11 +280,13 @@ int8_t pop_block_operator(struct Parser *state)
       break;
 
     case IfBody:
-      add_dbg_sym(state, ophead->type, 0);
+      insert(state, ophead);
+      //add_dbg_sym(state, ophead->type, 0);
       break;
 
     case ELSE:
-      add_dbg_sym(state, ophead->type, 0);
+      insert(state, ophead);
+      //add_dbg_sym(state, ophead->type, 0);
       break;
 
     case RETURN:
@@ -317,8 +305,23 @@ int8_t pop_block_operator(struct Parser *state)
       insert(state, ophead);
       break;
 
-    default: return -1;
+    case FROM:
+      insert(state, ophead);
+      break;
+
+    case Apply:
+      insert(state, ophead);
+      break;
+
+    case _IdxAccess:
+      insert(state, ophead);
+      break;
+
+    default: pop_operator = false;
   }
+
+  if (pop_operator == false)
+    state->operators_ctr += 1;
 
   //if (mk_short_blk && mk_short_block(state) == 0)
   //  return -1;
@@ -329,18 +332,18 @@ int8_t pop_block_operator(struct Parser *state)
 int8_t handle_close_brace(struct Parser *state) {
   int8_t ret = 0;
   struct Group *ghead;
-  const struct Token *prev = 0, *ophead=0,
-         *current = &state->src[*state->_i];
+  const struct Token *prev = 0,
+    *current = &state->src[*state->_i];
 
   prev = prev_token(state);
 
-  if (state->set_ctr == 0) {
+  //if (state->set_ctr == 0) {
     //mk_error(state, Fatal, "Unexpected closing brace.");
-    return -1;
-  }
+  //  return -1;
+  //}
 
   /* Operators stack is empty */
-  else if (0 == state->operators_ctr
+  if (0 == state->operators_ctr
     || !prev
     /* unbalanced brace, extra closing brace.*/
     || state->set_ctr == 0
@@ -351,7 +354,8 @@ int8_t handle_close_brace(struct Parser *state) {
   ghead = &state->set_stack[state->set_ctr - 1];
   state->set_ctr -= 1;
 
-  /* is empty ? */
+  /* is empty? */
+  /* TODO: move to AST */
   if (prev->type == invert_brace_tok_ty(current->type)) {
     ghead->state |= GSTATE_EMPTY;
 
@@ -366,11 +370,10 @@ int8_t handle_close_brace(struct Parser *state) {
   }
 
   /*
-    flush out operators, until the
-    open-brace type is found
-    in the operator-stack.
+    flush out operators, until the open-brace
+    type is found in the operator-stack.
   */
-  if (flush_ops_until_delim(state) == -1)
+  if (flush_ops(state) == -1)
       return -1;
 
   /* handle grouping */
@@ -386,26 +389,25 @@ int8_t handle_close_brace(struct Parser *state) {
   /* After closing a code-block,
     there may be an operator declared on it,
     we'll check for it now. */
-  /* grab head of operator stack */
   ophead = state->operator_stack[state->operators_ctr - 1];
 
   /* TODO: handle If condition/body */
 
   /* input: foo(1, 2) */
   /* out:   foo 1 2 TupleGroup(2) Apply*/
-  if (ophead->type == Apply)
-  {
-    insert(state, ophead);
-    state->operators_ctr -= 1;
-  }
+  /* if (ophead->type == Apply) */
+  /* { */
+  /*   insert(state, ophead); */
+  /*   state->operators_ctr -= 1; */
+  /* } */
 
-  /* input: foo[1:2] */
-  /* out:   foo 1 2 NULL IndexGroup(2) Idx_Access*/
-  else if(ophead->type == _IdxAccess)
-  {
-      insert(state, ophead);
-      state->operators_ctr -= 1;
-  }
+  /* /\* input: foo[1:2] *\/ */
+  /* /\* out:   foo 1 2 NULL IndexGroup(2) Idx_Access*\/ */
+  /* else if(ophead->type == _IdxAccess) */
+  /* { */
+  /*     insert(state, ophead); */
+  /*     state->operators_ctr -= 1; */
+  /* } */
 
 
   if (pop_block_operator(state) == -1)
@@ -592,6 +594,16 @@ int8_t handle_def(struct Parser *state)
 
 }
 
+int8_t handle_import(struct Parser *state)
+{
+  const struct Token *current = &state->src[*state->_i];
+  state->set_stack[state->set_ctr - 1].expr_cnt += 1;
+
+  state->operator_stack[state->operators_ctr] = current;
+  new_grp();
+}
+
+
 /*
  * Short group are groups 
  * that are unbraced and 
@@ -609,7 +621,7 @@ int8_t handle_def(struct Parser *state)
 */
 struct Group * mk_short_block(struct Parser *state)
 {
-  struct Token *ophead;
+  const struct Token *ophead;
   struct Group *ghead;
 
   ophead = op_push(BRACE_OPEN, 0, 0, state);
@@ -618,8 +630,9 @@ struct Group * mk_short_block(struct Parser *state)
   ghead = new_grp(state, ophead);
   assert(ghead);
 
-  ghead->state |= GSTATE_CTX_SHORT_BLOCK;
-  
+  //ghead->state |= GSTATE_CTX_SHORT_BLOCK;
+  ghead->short_block = 1;
+
   return ghead;
 }
 
@@ -666,11 +679,15 @@ int8_t handle_delimiter(struct Parser *state)
     return -1;
   }
 
-  if (flush_ops_until_delim(state) == -1)
+  if (flush_ops(state) == -1)
     return -1;
-  
-  if(ghead->state & GSTATE_CTX_SHORT_BLOCK)
+
+  // remove brace
+  state->operators_ctr -= 1;
+
+  if(ghead->short_block > 0)
   {
+
     if(state->set_ctr == 0)
       return -1;
 
@@ -755,6 +772,7 @@ int8_t parse(
   struct ParserOutput *out
 ){
   struct Parser state;
+  const struct Token *head;
   uint16_t i = 0;
   int8_t ret_flag = 0;
   bool unexpected_token;
@@ -819,7 +837,7 @@ int8_t parse(
 
     /* end of file */
     else if(state.src[i].type == EOFT) {
-      mk_group()
+      // mk global scope group
       break;
     }
 
@@ -835,14 +853,25 @@ int8_t parse(
   }
 
   /* dump the remaining operators onto the output */
-  if (flush_all_ops(&state) == -1)
-    return -1;
-  
+  /* if (flush_all_ops(&state) == -1) */
+  /*   return -1; */
+
+  while (state.operators_ctr > 0)
+  {
+    head = state.operator_stack[state.operators_ctr - 1];
+
+    //if (is_open_brace(head->type))
+    //  return -1;
+    insert(&state, head);
+
+    state.operators_ctr -= 1;
+  }
+
   return 0;
 }
 
 int8_t free_state(struct Parser *state) {
-  state->mode = PM_Uninitialized;
+  //state->mode = PM_Uninitialized;
   if (
     vec_free(&state->debug) == -1
     || vec_free(&state->pool) == -1

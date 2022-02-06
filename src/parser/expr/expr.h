@@ -374,6 +374,20 @@ struct Group {
     // should be `[` `(` '{' or `0`
     const struct Token *origin;
     const struct Token *last_delim;
+
+
+
+    /*
+    ** NOTE: if the amount of if & else are not equal
+    **       will cause UB -
+    **       don't be a prick, warn the user.
+    ** RULES:
+    ** if (x) x;
+    **
+    **/
+    uint8_t short_block;
+
+    uint8_t short_block_ctr;
 };
 
 #define FLAG_ERROR       0
@@ -398,7 +412,7 @@ struct Group {
 
 enum ParserError_t {
     parse_err_unexpected_token,
-    parse_err_
+    parse_err
 };
 
 enum ErrTok_t {
@@ -455,7 +469,7 @@ struct Parser {
     uint16_t *_i;
 
     /* a stack of pending operations (see shunting yard) */
-    struct Token *operator_stack[STACK_SZ];
+    const struct Token *operator_stack[STACK_SZ];
 
     /* tracks opening braces in the operator stack */
     struct Group set_stack[STACK_SZ];
@@ -490,7 +504,6 @@ struct Parser {
 
     /*Vec<struct RestorationFrame>*/
     struct Vec restoration_stack;
-
     uint16_t restoration_ctr;
 
     FLAG_T panic_flags;

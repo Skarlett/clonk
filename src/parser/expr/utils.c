@@ -57,6 +57,7 @@ struct Group * new_grp(struct Parser *state, const struct Token * origin)
   state->set_ctr += 1;
 
   ghead->delimiter_cnt = 0;
+
   ghead->origin = origin;
   
   ghead->state = GSTATE_CTX_DATA_GRP; 
@@ -79,6 +80,7 @@ const struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, stru
   return heap;
 }
 
+
 enum Lexicon grp_dbg_sym(enum GroupType type)
 {
   switch (type) {
@@ -91,8 +93,11 @@ enum Lexicon grp_dbg_sym(enum GroupType type)
   };
 }
 
-int8_t push_many_ops(const enum Lexicon *ops, const struct Token *origin, struct Parser *state)
-{
+int8_t push_many_ops(
+  const enum Lexicon *ops,
+  const struct Token *origin,
+  struct Parser *state
+){
   struct Token tmp, *heap;
   tmp.start = origin->start;
   tmp.end = origin->end;
