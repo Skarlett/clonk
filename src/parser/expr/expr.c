@@ -218,33 +218,54 @@ int8_t pop_block_operator(struct Parser *state)
 
   switch (ophead->type)
   {
+
+    /*
+    ** input: if(x)
+    ** output: x IfCond
+    */
     case IfCond:
       insert(state, ophead);
       break;
 
+    /*
+    ** input: if(x) {a; b;}
+    ** output: (x IfCond) a b codeblock(2) IfBody
+    */
     case IfBody:
       insert(state, ophead);
-      //push_output(state, ophead->type, 0);
       break;
 
+    /*
+    ** input: if (x) {a; b;} else { c; d; }
+    ** output: (x IfCond) a b codeblock(2) IfBody
+    **         | c d codeblock(2) ELSE
+    */
     case ELSE:
       insert(state, ophead);
       //push_output(state, ophead->type, 0);
       break;
 
+    /*
+    ** input: return x;
+    ** output: x return
+    */
     case RETURN:
       insert(state, ophead);
       break;
 
     /*
-    ** input: def foo(x, y) { ... }
-    ** output: foo x y group(2) defSig a b c group(3) defBody
+    ** input: def foo(x, y)
+    ** output: foo x y group(2) defSig
     */
     case DefSign:
       insert(state, ophead);
       break;
 
-
+    /*
+    ** input: def foo(x, y) { a; b; }
+    ** output: foo x y group(2) defSig
+    **         a b group(2) defBody
+    */
    case DefBody:
       push_output(state, ophead->type, 0);
       break;
@@ -257,12 +278,15 @@ int8_t pop_block_operator(struct Parser *state)
       insert(state, ophead);
       break;
 
-      /* ????? */
+
     /* From <../../.. location> */
     /* input: from ..x import y, x; */
     /* output (..x from) (y x import) */
     case FROM:
+
+      insert(state, consume_from_location(state));
       insert(state, ophead);
+
       break;
 
     /* input: foo(1, 2) */
@@ -545,33 +569,6 @@ int8_t handle_def(struct Parser *state)
 ** input: FROM DOT DOT WORD IMPORT WORD
 ** output: FROM FROM_LOCATION IMPORT WORD
 */
-const struct Token * consume_from_location(struct Parser *state) {
-  const struct Token *start = current_token(state);
-  struct Token new;
-
-  new.type = FROM_LOCATION;
-
-  uint16_t i = *state->_i;
-
-  for(;; i++)
-    if(state->src[i].type == IMPORT)
-      break;
-
-  /* if more than 1 token */
-  if (i - *state->_i > 1)
-  {
-    new.start = start->start;
-    new.end = state->src[i].end;
-  }
-  /* one token */
-  else
-  {
-    new.start = start->start;
-    new.end = start->end;
-  }
-
-  return vec_push(state)
-}
 
 int8_t handle_import(struct Parser *state)
 {
