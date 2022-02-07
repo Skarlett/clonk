@@ -107,9 +107,6 @@ enum Operation {
 enum Group_t {
     GroupTUninit,
 
-    //[]
-    //PartialList,
-
     // [1, 2]
     ListT,
 
@@ -119,13 +116,11 @@ enum Group_t {
     // (a, b)
     TupleT,
 
-    // {1:2, 3:4}
-    //MapT,
-    // {a, b}
-    // SetT,
-
-    // {1}
+    // {
     PartialBrace,
+
+    //{1:2, 3:4}
+    MapT,
 
     // {1; 2;}
     CodeBlockT
@@ -434,7 +429,6 @@ struct Group {
 
 enum ParserError_t {
     parse_err_unexpected_token,
-    parse_err
 };
 
 enum ErrTok_t {
@@ -442,16 +436,32 @@ enum ErrTok_t {
   ET_Span
 };
 
-struct ParserError {
-    enum ParserError_t type;
-    enum ErrTok_t span_t;
+struct UnexpectedTokError {
+    /* Lexicon[N] null-terminated malloc */
+    enum Lexicon *expected;
+    uint16_t nexpected;
 
-    union {
-        struct Token scalar;
-        struct TokenSpan span;
-    } inner;
+    struct TokenSelection selection;
+    struct TokenSelection unwind_window;
 };
 
+
+struct ParserError {
+    enum ParserError_t type;
+
+    union {
+        struct UnexpectedTokError unexpected_tok;
+
+    } error;
+};
+
+/*
+** restoration works by destroying a
+** portion of the upper part of the stack.
+**
+** It will slice the top (newest) portion of the stack
+** mark INCOMPLETE, and continue.
+*/
 struct RestorationFrame {
     /* points to storation point  */
     const struct Token * operator_stack_tok;
