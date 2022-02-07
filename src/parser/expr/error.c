@@ -1,4 +1,5 @@
 #include "expr.h"
+#include "utils.h"
 #include <string.h>
 #include "../../error.h"
 #include <assert.h>
@@ -18,22 +19,6 @@ int8_t is_continuable(enum Lexicon tok) {
     };
     return contains_tok(tok, __BREAK_POINTS_START);    
 }
-
-/*
-** restoration works by destroying a
-** portion of the upper part of the stack.
-**
-** It will slice the top (newest) portion of the stack
-** mark INCOMPLETE, and continue.
-*/
-struct RestorationFrame {
-    /* points to storation point  */
-    const struct Token * operator_stack_tok;
-    const struct Token * output_tok;
-    const struct Token * current;
-
-    const struct Group * grp;
-};
 
 /*
 ** Grab the last inserted frame
@@ -77,6 +62,9 @@ void restoration_hook(struct Parser *state)
     }
 }
 
+
+//TODO: watch out for tokens with `0`
+//      marked as their sequence
 void unwind_stacks(struct Parser *state)
 {
     const struct Token *token;
@@ -97,24 +85,74 @@ void unwind_stacks(struct Parser *state)
     }
 
     head = rframe->operator_stack_tok->seq;
-    token = state->operator_stack[state->operators_ctr];
+    token = op_head(state);
 
     while(state->operators_ctr > 0 && token->seq > head)
     {
+        token = op_head(state);
         state->operators_ctr -= 1;
-        token = state->operator_stack[state->operators_ctr];
     }
 
     head = rframe->grp->seq;
-    grp = &state->set_stack[state->set_ctr];
+    grp = group_head(state);
 
     while(state->set_ctr > 0 && grp->seq > head)
     {
+        grp = group_head(state);
         state->set_ctr -= 1;
-        grp = &state->set_stack[state->set_ctr];
     }
 
 }
+
+
+
+void throw_unexpected_token(
+  struct Parser *state,
+  enum Lexicon expected[],
+  uint16_t nexpected
+){
+  enum Lexicon *buf;
+
+  buf = calloc(nexpected, sizeof(enum Lexicon));
+  memcpy(buf, expected, sizeof(enum Lexicon) * nexpected);
+
+  //for (uint16_t i=0; nexpected > i; )
+}
+
+
+
+void mk_unexpected_token_span(
+    struct UnexpectedTokError *err,
+    struct Token start,
+    struct Token end
+){
+     err->selection.type = Union;
+     err->selection.token.union_t.start = start;
+     err->selection.token.union_t.end = end;
+}
+
+void mk_unexpected_token(
+    struct UnexpectedTokError *err,
+    struct Token token
+)
+{
+    err->selection.type = Scalar;
+    err->selection.token.scalar_t = token;
+}
+
+
+/*
+ * creates a window of tokens
+ * which are interpreted as bad
+ * from unwinding
+*/
+void token_error_window(){
+
+
+}
+
+
+
 
 /*
   unwind the parser to a previous safe-state
@@ -135,6 +173,7 @@ int8_t handle_unwind(
 ){
     const struct Token *start;
     struct ParserError err;
+    struct UnexpectedTokError unexpected_tok;
     uint16_t continue_ctr = 0;
 
     // word + {1, 22 w}
@@ -151,7 +190,7 @@ int8_t handle_unwind(
     {
         unwind_stacks(state);
 
-        // pop until out matches restoration
+        // pop until output matches restoration
         for (continue_ctr=*state->_i + 1; state->src_sz > continue_ctr; continue_ctr++)
         {
             if (is_continuable(state->src[continue_ctr].type))
@@ -163,13 +202,25 @@ int8_t handle_unwind(
 
         else if (continue_ctr - *state->_i > 1)
         {
-            err.span_t = ET_Span;
-            err.inner.span.start = *start;
-            err.inner.span.end = state->src[continue_ctr - 1];
+            mk_unexpected_token_span(
+                &unexpected_tok,
+                *start,
+                state->src[continue_ctr - 1]
+            );
+
+            err.type = parse_err_unexpected_token;
+            err.error.unexpected_tok = unexpected_tok;
+
             *state->_i = continue_ctr;
         } else {
-            err.span_t = ET_Scalar;
-            err.inner.scalar = state->src[(*state->_i) + 1];
+            mk_unexpected_token(
+                &unexpected_tok,
+                state->src[*state->_i + 1]
+            );
+
+            err.type = parse_err_unexpected_token;
+            err.error.unexpected_tok = unexpected_tok;
+
             *state->_i += 1;
         }
 
@@ -181,6 +232,26 @@ int8_t handle_unwind(
         vec_clear(&state->debug);
     }
 
-    state->panic_flags |= STATE_INCOMPLETE;
+    //state->panic_flags |= STATE_INCOMPLETE;
     vec_push(&state->errors, &err);
+}
+
+
+
+int8_t handle_error(
+    struct Parser *state,
+    struct ParseError *err,
+
+    /* signifies if error
+     * happened on the previous loop
+     * In the case that this is false,
+     * Its an unexpected token
+     * foreseen by previsioning stage
+    */
+    bool prev_loop
+) {
+
+    //handle_unwind()
+
+
 }

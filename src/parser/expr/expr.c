@@ -624,22 +624,22 @@ int8_t handle_from(struct Parser *state)
  * Short groups are popped off of the stack at the first 
  * delimiter found in their scope.
 */
-struct Group * mk_short_block(struct Parser *state)
-{
-  const struct Token *ophead;
-  struct Group *ghead;
+/* struct Group * mk_short_block(struct Parser *state) */
+/* { */
+/*   const struct Token *ophead; */
+/*   struct Group *ghead; */
 
-  ophead = op_push(BRACE_OPEN, 0, 0, state);
-  assert(ophead);
+/*   ophead = op_push(BRACE_OPEN, 0, 0, state); */
+/*   assert(ophead); */
 
-  ghead = new_grp(state, ophead);
-  assert(ghead);
+/*   ghead = new_grp(state, ophead); */
+/*   assert(ghead); */
 
-  //ghead->state |= GSTATE_CTX_SHORT_BLOCK;
-  ghead->short_block = 1;
+/*   ghead->state |= GSTATE_CTX_SHORT_BLOCK; */
+/*   ghead->short_block = 1; */
 
-  return ghead;
-}
+/*   return ghead; */
+/* } */
 
 int8_t update_ctx(enum Lexicon delimiter, struct Group *ghead)
 {
@@ -704,7 +704,7 @@ int8_t handle_short_block_termination(struct Parser *state) {
 }
 
 
-int8_t handle_group_delim(struct Parser *state)
+int8_t on_group_delim(struct Parser *state)
 {
   const struct Token *current = current_token(state);
   struct Group *ghead = group_head(state);
@@ -712,7 +712,15 @@ int8_t handle_group_delim(struct Parser *state)
   ghead->delimiter_cnt += 1;
   ghead->last_delim = current;
 
-  if (ghead->)
+  if (ghead->type == PartialBrace) {
+    if (current->type == COLON)
+      ghead->type = MapT;
+    else if(current->type == SEMICOLON)
+      ghead->type = CodeBlockT;
+    else
+      mk_error()
+
+  }
 }
 
 //TODO no delimiters in IF condition
@@ -799,16 +807,11 @@ int8_t initalize_parser(
 
   state->operators_ctr = 0;
   state->operator_stack_sz = STACK_SZ;
-  state->panic_flags = 0;
-  
+
   //state->expecting_ref = state->expecting;
   init_expect_buffer(&state->expecting);
   
-  //if(push_global_scope) {
   assert(op_push(BRACE_OPEN, 0, 0, state) != 0);
-  state->panic_flags |= STATE_PUSH_GLOB_SCOPE;
-  //}
-  state->panic_flags = STATE_READY;
   return 0;
 }
 
@@ -835,19 +838,13 @@ int8_t parse(
 
   assert(initalize_parser(&state, input, &i) == 0);
 
-  if (state.panic_flags & STATE_READY)
-    return -1;
-
   for (i = 0 ;; i++) {
     assert(state.operators_ctr > state.operator_stack_sz);
     unexpected_token = is_token_unexpected(&state);
 
     ret_flag = -1;
 
-    if(state.panic_flags == FLAG_ERROR)
-      return -1;
-
-    if (state.panic_flags & STATE_PANIC || unexpected_token)
+    if(state.panic)
       handle_unwind(&state, unexpected_token);
 
     /* { */
@@ -909,7 +906,7 @@ int8_t parse(
 #endif
     }
 
-    if (~state.panic_flags & STATE_PANIC)
+    if(!state.panic)
       restoration_hook(&state);
   }
 
@@ -957,7 +954,7 @@ int8_t reset_state(struct Parser *state)
   
   init_expect_buffer(&state->expecting);
 
-  state->panic_flags = 0;
+  //state->panic_flags = 0;
   
   free_state(state);
   return 0;

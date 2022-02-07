@@ -55,8 +55,6 @@ const struct Token * output_head(const struct Parser *state) {
 ** NOTE: Assumes token->origin is a brace type;
 */
 int8_t push_group(struct Parser *state, const struct Group *grp) {
-  struct Token *brace = grp->origin;
-  struct Token *delim = grp->last_delim;
 
   if(!is_open_brace(brace->type))
     return -1;
@@ -120,7 +118,6 @@ enum Lexicon grp_dbg_sym(enum Group_t type)
 {
   switch (type) {
     case ListT: return ListGroup;
-    case SetT: return SetGroup;
     case MapT: return MapGroup;
     case CodeBlockT: return CodeBlock;
     case TupleT: return TupleGroup;
@@ -190,8 +187,6 @@ int8_t flush_ops(struct Parser *state)
 
   return 0;
 }
-
-
 /*
     precendense table:
       ") ] }"   : 127 non-assoc

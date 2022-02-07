@@ -442,12 +442,12 @@ struct UnexpectedTokError {
     uint16_t nexpected;
 
     struct TokenSelection selection;
-    struct TokenSelection unwind_window;
 };
 
 
 struct ParserError {
     enum ParserError_t type;
+    struct TokenSelection unwind_window;
 
     union {
         struct UnexpectedTokError unexpected_tok;
@@ -538,7 +538,9 @@ struct Parser {
     struct Vec restoration_stack;
     uint16_t restoration_ctr;
 
-    FLAG_T panic_flags;
+    bool panic;
+    bool stage_failed;
+
 };
 /*
   Shunting yard expression parsing algorthim 
