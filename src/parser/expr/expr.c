@@ -33,26 +33,26 @@ enum Associativity get_assoc(enum Lexicon token)
     }
 }
 
-void static inline push_output(
+void push_output(
   struct Parser *state,
   enum Lexicon type,
   uint16_t argc
 ){
-  struct Token marker, *ret;
+  struct Token marker;
+  const struct Token *ret;
   assert(type != TOKEN_UNDEFINED);
 
   marker.type = type;
   marker.start = 0;
-  marker.seq = 0;
   marker.end = argc;
 
-  insert(state, &marker);
+  //TODO: double check sequence unwinding
+  marker.seq = 0;
 
-  // push debug token in the pool
-  ret = vec_push(&state->pool, &marker);
+  ret = new_token(state, &marker);
 
-  assert(ret != 0);
-  assert(vec_push(&state->debug, &ret) != 0);
+  assert(ret);
+  insert(state, ret);
 }
 
 /*
@@ -167,7 +167,7 @@ int8_t handle_operator(struct Parser *state) {
  * lists, tuples, & codeblocks.
  *
  * src: [body_expr, ...]
- * dbg: <body-expr> ... GroupType
+ * dbg: <body-expr> ... Group_t
  */
 int8_t handle_grouping(struct Parser *state)
 {
@@ -283,10 +283,8 @@ int8_t pop_block_operator(struct Parser *state)
     /* input: from ..x import y, x; */
     /* output (..x from) (y x import) */
     case FROM:
-
-      insert(state, consume_from_location(state));
+      insert(state, );
       insert(state, ophead);
-
       break;
 
     /* input: foo(1, 2) */
@@ -566,21 +564,50 @@ int8_t handle_def(struct Parser *state)
 ** consumes tokens until `import` token is found
 ** and converts it into a location token
 **
-** input: FROM DOT DOT WORD IMPORT WORD
-** output: FROM FROM_LOCATION IMPORT WORD
+** input: from ..word import new_word;
+** output: ..word from new_word g(1) import
+**
+** input: import word;
+** output word g(1) import
 */
-
 int8_t handle_import(struct Parser *state)
 {
-  const struct Token *current = &state->src[*state->_i];
-  struct Group * ghead = group_head(state);
+  struct Group *gtop, *ghead = group_head(state);
+  const struct Token *new_op, *current = current_token(state);
+  struct Token tok;
 
-  state->set_stack[state->set_ctr - 1].expr_cnt += 1;
+  gtop = new_grp(state, next_token(state));
+  gtop->short_type = sh_import_t;
+
+  if(output_head(state)->type != FROM)
+    ghead->expr_cnt += 1;
+
+  tok.type = PARAM_OPEN;
+  tok.seq = 0;
+  tok.start = 0;
+  tok.end = 0;
+
+  new_op = new_token(state, &tok);
 
   state->operator_stack[state->operators_ctr] = current;
-  new_grp();
+  state->operators_ctr += 1;
+
+  state->operator_stack[state->operators_ctr] = new_op;
+  state->operators_ctr += 1;
 }
 
+
+int8_t handle_from(struct Parser *state)
+{
+
+  /* insert FROM_LOCATION token */
+  insert(state, next_token(state));
+  /* insert FROM */
+  insert(state, current_token(state));
+
+  /* skip past next token */
+  *state->_i += 1;
+}
 
 /*
  * Short group are groups 
@@ -619,29 +646,83 @@ int8_t update_ctx(enum Lexicon delimiter, struct Group *ghead)
   if (ghead->state & GSTATE_CTX_LOCK)
     return 0;
   
-  if (delimiter == COMMA)
-    ghead->state |= GSTATE_CTX_DATA_GRP | GSTATE_CTX_LOCK;
+  /* if (delimiter == COMMA) */
+  /*   ghead->state |= GSTATE_CTX_DATA_GRP | GSTATE_CTX_LOCK; */
 
-  else if (delimiter == SEMICOLON)
-    ghead->state |= GSTATE_CTX_CODE_GRP | GSTATE_CTX_LOCK;
+  /* else if (delimiter == SEMICOLON) */
+  /*   ghead->state |= GSTATE_CTX_CODE_GRP | GSTATE_CTX_LOCK; */
 
-  else if (delimiter == COLON) {
-    if(ghead->origin->type == BRACE_OPEN)
-      ghead->state |= GSTATE_CTX_MAP_GRP | GSTATE_CTX_LOCK;
-    else return -1;
-  }
+  /* else if (delimiter == COLON) { */
+  /*   if(ghead->origin->type == BRACE_OPEN) */
+  /*     ghead->state |= GSTATE_CTX_MAP_GRP | GSTATE_CTX_LOCK; */
+  /*   else return -1; */
+  /* } */
 
   else return -1;
   return 0;
 }
 
+
+int8_t handle_sb_cond_termination(struct Parser *state)
+{
+
+  /* if(x)
+  **   if(b) c;
+  **   else d;
+  **
+  */
+  if (next_token(state)->type == ELSE)
+    state->operators_ctr -= 1;
+  else {
+    // TODO:
+    // implemented chained conditional short-blocks
+  }
+}
+
+
+int8_t handle_sb_import(struct Parser *state) {
+
+  const struct Group *ghead = group_head(state);
+
+  /* remove open_param in operators */
+  state->operators_ctr -= 1;
+  /* pop off the group */
+  state->set_ctr -= 1;
+
+  push_group(state, ghead);
+
+}
+
+int8_t handle_short_block_termination(struct Parser *state) {
+  const struct Group *ghead = group_head(state);
+
+  if (ghead->short_type == sh_import_t)
+    handle_sb_import(state);
+
+  else if(ghead->short_type == sh_cond_t)
+    handle_sb_cond_termination(state);
+}
+
+
+int8_t handle_group_delim(struct Parser *state)
+{
+  const struct Token *current = current_token(state);
+  struct Group *ghead = group_head(state);
+
+  ghead->delimiter_cnt += 1;
+  ghead->last_delim = current;
+
+  if (ghead->)
+}
+
 //TODO no delimiters in IF condition
 int8_t handle_delimiter(struct Parser *state)
 {
-  const struct Token *current = &state->src[*state->_i];
+  const struct Token *current = current_token(state);
   const struct Token *prev = 0,
     *next = 0,
     *ophead = 0;
+
 
   struct Group *ghead = 0;
 

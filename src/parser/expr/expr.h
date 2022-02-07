@@ -104,29 +104,35 @@ enum Operation {
     UndefinedOp = 255
 };
 
-enum GroupType {
-    GroupTUndef,
+enum Group_t {
+    GroupTUninit,
 
-    // {1:2, 3:4}
-    MapT,
-    
+    //[]
+    //PartialList,
+
     // [1, 2]
     ListT,
-    
+
+    // [1:2:3]
+    IndexAccessT,
+
     // (a, b)
     TupleT,
 
+    // {1:2, 3:4}
+    //MapT,
     // {a, b}
-    SetT,
-     
+    // SetT,
+
+    // {1}
+    PartialBrace,
 
     // {1; 2;}
     CodeBlockT
-
 };
 
 struct GroupExpr { 
-    enum GroupType type;
+    enum Group_t type;
     uint16_t length;
     struct Expr **ptr;
 };
@@ -303,9 +309,6 @@ void init_expect_buffer(struct Previsioner *state);
 
 #define GSTATE_EMPTY             1
 
-#define GSTATE_CTX_DATA_GRP      1 << 1
-#define GSTATE_CTX_CODE_GRP      1 << 2
-#define GSTATE_CTX_MAP_GRP       1 << 3
 #define GSTATE_CTX_IDX           1 << 4
 
 #define GSTATE_CTX_LOCK          1 << 5
@@ -331,19 +334,29 @@ struct ParserOutput {
     struct Vec errors;
 };
 
+enum ShortBlock_t {
+  sh_udef_t,
+  sh_cond_t,
+  sh_import_t
+};
+
+
 struct Group {
     //TODO: Implement this
     uint16_t seq;
     /*
                    0:           Uninitialized state
         GSTATE_EMPTY:           signify empty grouping,
-        GSTATE_CTX_DATA_GRP:    parsing comma seperated data (lists, tuples, sets)
-        GSTATE_CTX_CODE_GRP:    parsing a set of instructions/code ( `{ a(); b(); }` )
-        GSTATE_CTX_MAP_GRP:     parsing literal datatype map ( `{ a:b, c:d };` )
+
+        xxGSTATE_CTX_DATA_GRP:    parsing comma seperated data (lists, tuples, sets)
+        xxGSTATE_CTX_CODE_GRP:    parsing a set of instructions/code ( `{ a(); b(); }` )
+        xxGSTATE_CTX_MAP_GRP:     parsing literal datatype map ( `{ a:b, c:d };` )
+
         GSTATE_CTX_IDX :        parsing index expression `[a:b:c]
         GSTATE_CTX_LOCK :       set an immutable parsing context until this group ends
-        GSTATE_OP_APPLY :       after group completion, make into an fncall
-        GSTATE_CTX_IF_COND:     parsing an if conditional
+
+        xxGSTATE_OP_APPLY :       after group completion, make into an fncall
+        xxGSTATE_CTX_IF_COND:     parsing an if conditional
 
     */
     FLAG_T state;
@@ -370,11 +383,19 @@ struct Group {
     ** this is essential to ensure code-blocks work
     */
     uint16_t expr_cnt;
+
+    /*
+    ** where the grouping is inside
+    ** of the operator stack
+    */
     uint16_t operator_idx;
+
+    enum Group_t type;
 
     // should be `[` `(` '{' or `0`
     const struct Token *origin;
     const struct Token *last_delim;
+
 
     /*
     ** TODO: implement
@@ -386,7 +407,8 @@ struct Group {
     **         ^ After delimiter, check for `else`
     ** else y;
     **/
-    uint8_t short_block;
+    //uint8_t short_block;
+    enum ShortBlock_t short_type;
 
 };
 
