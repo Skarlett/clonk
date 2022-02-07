@@ -364,6 +364,19 @@ struct TokenSpan {
     struct Token end;
 };
 
+enum Selection_t {
+  Scalar,
+  Union
+};
+
+struct TokenSelection {
+    enum Selection_t type;
+    union {
+        struct Token scalar_t;
+        struct TokenSpan union_t;
+    } token;
+};
+
 /* Output of lexer function */
 struct LexerOutput {
     const char * src_code;
