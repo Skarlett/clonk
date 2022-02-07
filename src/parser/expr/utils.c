@@ -50,6 +50,20 @@ const struct Token * output_head(const struct Parser *state) {
   return vec_head(&state->debug);
 }
 
+/*
+** pushes group into output as a group token
+** NOTE: Assumes token->origin is a brace type;
+*/
+int8_t push_group(struct Parser *state, const struct Group *grp) {
+  struct Token *brace = grp->origin;
+  struct Token *delim = grp->last_delim;
+
+  if(!is_open_brace(brace->type))
+    return -1;
+
+  //TODO: implement
+}
+
 
 bool is_op_keyword(enum Lexicon token) 
 {
@@ -70,6 +84,8 @@ struct Group * new_grp(struct Parser *state, const struct Token * origin)
   assert(state->set_ctr < state->set_sz);
   
   ghead = &state->set_stack[state->set_ctr];
+  state->set_ctr += 1;
+
   ghead->operator_idx = state->set_ctr;
   ghead->last_delim = 0;
   ghead->delimiter_cnt = 0;
@@ -78,9 +94,9 @@ struct Group * new_grp(struct Parser *state, const struct Token * origin)
 
   ghead->origin = origin;
 
-  ghead->state = GSTATE_CTX_DATA_GRP; 
+  ghead->state = 0;
+  ghead->type = GroupTUninit;
 
-  state->set_ctr += 1;
   return ghead;
 }
 
@@ -100,7 +116,7 @@ const struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, stru
   return heap;
 }
 
-enum Lexicon grp_dbg_sym(enum GroupType type)
+enum Lexicon grp_dbg_sym(enum Group_t type)
 {
   switch (type) {
     case ListT: return ListGroup;
@@ -117,7 +133,8 @@ int8_t push_many_ops(
   const struct Token *origin,
   struct Parser *state
 ){
-  struct Token tmp, *heap;
+  struct Token tmp;
+  const struct Token *heap;
   tmp.start = origin->start;
   tmp.end = origin->end;
 
@@ -174,12 +191,6 @@ int8_t flush_ops(struct Parser *state)
   return 0;
 }
 
-
-int8_t is_short_blockable(enum Lexicon tok)
-{
-  enum Lexicon buf[] = {IfBody, RETURN, ELSE, DefBody, 0};
-  return contains_tok(tok, buf);
-}
 
 /*
     precendense table:

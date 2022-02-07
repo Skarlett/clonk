@@ -124,7 +124,7 @@ int8_t mk_str(
   return 0;
 }
 
-enum GroupType get_group_t_from_tok(enum Lexicon tok) {
+enum Group_t get_group_t_from_tok(enum Lexicon tok) {
   switch (tok) {
     case TupleGroup: return MapT;
     case ListGroup: return ListT;

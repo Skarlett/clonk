@@ -22,7 +22,7 @@ int8_t push_group(struct Parser *state, const struct Group *grp);
 bool is_op_keyword(enum Lexicon token);
 int8_t op_precedence(enum Lexicon token);
 
-enum Lexicon grp_dbg_sym(enum GroupType type);
+enum Lexicon grp_dbg_sym(enum Group_t type);
 
 int8_t push_many_ops(
     const enum Lexicon *ops,
