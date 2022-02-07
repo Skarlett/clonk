@@ -359,6 +359,7 @@ struct Token {
     enum Lexicon type;
 };
 
+/* sequence of tokens */
 struct TokenSpan {
     struct Token start;
     struct Token end;
@@ -369,6 +370,11 @@ enum Selection_t {
   Union
 };
 
+/*
+** TokenSelection describes 1 or more tokens,
+** either as a sequencial span
+** of token, or as an individual token.
+*/
 struct TokenSelection {
     enum Selection_t type;
     union {
