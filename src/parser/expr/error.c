@@ -20,6 +20,28 @@ int8_t is_continuable(enum Lexicon tok) {
     return eq_any_tok(tok, __BREAK_POINTS_START);    
 }
 
+
+void throw_unexpected_token(
+  struct Parser *state,
+  const struct Token *start,
+  const enum Lexicon expected[],
+  uint16_t nexpected
+){
+
+    struct PartialError *err = &state->partial_err;
+    enum Lexicon *expect_heap;
+
+    expect_heap = calloc(nexpected, sizeof(enum Lexicon));
+    memcpy(expect_heap, expected, sizeof(enum Lexicon) * nexpected);
+
+    err->type = parse_err_unexpected_token;
+    err->start = *start;
+    err->expect = expect_heap;
+    err->nexpected = nexpected;
+
+    state->panic=true;
+}
+
 /*
 ** Grab the last inserted frame
 */
@@ -62,6 +84,25 @@ void restoration_hook(struct Parser *state)
     }
 }
 
+uint16_t recover_cursor(
+    struct Parser *state,
+    bool preloop
+) {
+    uint16_t start = *state->_i;
+    uint16_t continue_ctr = 0;
+
+     // pop until output matches restoration
+    if (preloop)
+        start += 1;
+
+     for (continue_ctr=start; state->src_sz > continue_ctr; continue_ctr++)
+     {
+       if (is_continuable(state->src[continue_ctr].type))
+         return continue_ctr;
+     }
+
+     return 0;
+}
 
 //TODO: watch out for tokens with `0`
 //      marked as their sequence
@@ -71,6 +112,14 @@ void unwind_stacks(struct Parser *state)
     const struct RestorationFrame *rframe;
     struct Group *grp;
     uint16_t head = 0;
+
+    /* clear everything */
+    if (state->restoration_ctr == 0) {
+        state->set_ctr = 0;
+        state->operators_ctr = 0;
+        vec_clear(&state->debug);
+        return;
+    }
 
     /* get last good restoration */
     rframe = restoration_head(state);
@@ -104,58 +153,55 @@ void unwind_stacks(struct Parser *state)
 
 }
 
-void throw_unexpected_token(
-  struct Parser *state,
-  const struct Token *start,
-  const enum Lexicon expected[],
-  uint16_t nexpected
-){
-
-    struct PartialError *err = &state->partial_err;
-    enum Lexicon *expect_heap;
-
-    expect_heap = calloc(nexpected, sizeof(enum Lexicon));
-    memcpy(expect_heap, expected, sizeof(enum Lexicon) * nexpected);
-
-    err->type = parse_err_unexpected_token;
-    err->start = *start;
-    err->expect = expect_heap;
-    err->nexpected = nexpected;
-
-    state->panic=true;
-}
-
-
-
-void mk_unexpected_token_span(
-    struct UnexpectedTokError *err,
+void mk_window_union(
+    struct ParserError *err,
     struct Token start,
     struct Token end
 ){
-     err->selection.type = Union;
-     err->selection.token.union_t.start = start;
-     err->selection.token.union_t.end = end;
+    err->window.type = Union;
+    err->window.token.union_t.start = start;
+    err->window.token.union_t.end = end;
 }
 
-void mk_unexpected_token(
-    struct UnexpectedTokError *err,
+void mk_window_scalar(
+    struct ParserError *err,
     struct Token token
-)
+){
+    err->window.type = Scalar;
+    err->window.token.scalar_t = token;
+}
+
+int8_t mk_window(
+    struct ParserError *err,
+    struct Parser *state,
+    const struct Token *start,
+    uint16_t ctr)
 {
-    err->selection.type = Scalar;
-    err->selection.token.scalar_t = token;
+
+    // TODO: clean up assert into proper error
+    // No tokens found to continue from
+    //
+    assert(ctr != 0);
+
+    if (ctr == state->src_sz)
+        return -1;
+
+    else if (ctr - *state->_i > 1)
+    {
+        mk_window_union(err, *start, state->src[ctr - 1]);
+        *state->_i = ctr;
+    }
+    else
+    {
+        mk_window_scalar(err, *start);
+        *state->_i += 1;
+    }
+
+    return 0;
 }
 
 
-/*
- * creates a window of tokens
- * which are interpreted as bad
- * from unwinding
-*/
-void token_error_window(){
 
-
-}
 /*
   unwind the parser to a previous safe-state
   ----
@@ -171,70 +217,32 @@ void token_error_window(){
 */
 int8_t handle_unwind(
     struct Parser *state,
-    bool unexpected_token
+    bool preloop
 ){
     const struct Token *start;
+    struct PartialError *perr;
     struct ParserError err;
+
     struct UnexpectedTokError unexpected_tok;
     uint16_t continue_ctr = 0;
 
-    // word + {1, 22 w}
+    err.type = parse_err_unexpected_token;
 
     /* all other errors complete the main
     ** loop before panicing
     */
     start = &state->src[*state->_i - 1];
-    if (unexpected_token)
-      start = &state->src[*state->_i];
+    if (preloop)
+        start = &state->src[*state->_i];
 
-    /* if restoration point available */
-    if (state->restoration_ctr > 0)
-    {
-        unwind_stacks(state);
 
-        // pop until output matches restoration
-        for (continue_ctr=*state->_i + 1; state->src_sz > continue_ctr; continue_ctr++)
-        {
-            if (is_continuable(state->src[continue_ctr].type))
-                break;
-        }
+    continue_ctr = recover_cursor(state, preloop);
 
-        if (continue_ctr == state->src_sz)
-            return -1;
+    unwind_stacks(state);
+    mk_window(&err, state, start, continue_ctr);
 
-        else if (continue_ctr - *state->_i > 1)
-        {
-            mk_unexpected_token_span(
-                &unexpected_tok,
-                *start,
-                state->src[continue_ctr - 1]
-            );
 
-            err.type = parse_err_unexpected_token;
-            err.error.unexpected_tok = unexpected_tok;
-
-            *state->_i = continue_ctr;
-        } else {
-            mk_unexpected_token(
-                &unexpected_tok,
-                state->src[*state->_i + 1]
-            );
-
-            err.type = parse_err_unexpected_token;
-            err.error.unexpected_tok = unexpected_tok;
-
-            *state->_i += 1;
-        }
-
-    }
-
-    else {
-        state->set_ctr = 0;
-        state->operators_ctr = 0;
-        vec_clear(&state->debug);
-    }
-
-    //state->panic_flags |= STATE_INCOMPLETE;
+    err.error.unexpected_tok = unexpected_tok;
     vec_push(&state->errors, &err);
 }
 
