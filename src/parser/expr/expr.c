@@ -14,6 +14,17 @@
 #include "expr.h"
 #include "utils.h"
 
+/* Easy keywords - pushes 2 operators on stack */
+static enum Lexicon _EASY_KEYWORD[] = {
+    FOR,
+    WHILE,
+    IF,
+    FUNC_DEF,
+    0
+};
+
+
+
 enum Associativity
 {
     NONASSOC,
@@ -97,7 +108,7 @@ int8_t handle_operator(struct Parser *state) {
   const struct Token *head=0, *current=0;
   int8_t precedense = 0, head_precedense = 0;
   
-  current = &state->src[*state->_i];
+  current = current_token(state);
   precedense = op_precedence(current->type);
 
   /*
@@ -116,7 +127,7 @@ int8_t handle_operator(struct Parser *state) {
   }
 
   /* Grab the head of the operators-stack */
-  head = state->operator_stack[state->operators_ctr-1];
+  head = op_head(state);
   head_precedense = op_precedence(head->type);
 
   assert(precedense != -1 || head_precedense != -1);
@@ -158,6 +169,7 @@ int8_t handle_operator(struct Parser *state) {
   state->operators_ctr += 1;
   return 0;
 }
+
 
 /*
  * Groups take N amount of arguments from the stack where
@@ -221,7 +233,7 @@ int8_t pop_block_operator(struct Parser *state)
 
     /*
     ** input: if(x)
-    ** output: x IfCond
+    ** output: (x IfCond)
     */
     case IfCond:
       insert(state, ophead);
@@ -229,7 +241,7 @@ int8_t pop_block_operator(struct Parser *state)
 
     /*
     ** input: if(x) {a; b;}
-    ** output: (x IfCond) a b codeblock(2) IfBody
+    ** output: ((x IfCond) (a b g(2)) IfBody)
     */
     case IfBody:
       insert(state, ophead);
@@ -237,8 +249,8 @@ int8_t pop_block_operator(struct Parser *state)
 
     /*
     ** input: if (x) {a; b;} else { c; d; }
-    ** output: (x IfCond) a b codeblock(2) IfBody
-    **         | c d codeblock(2) ELSE
+    **
+    ** output: (((x IfCond) (a b g(2)) IfBody) (c d g(2)) ELSE)
     */
     case ELSE:
       insert(state, ophead);
@@ -247,7 +259,7 @@ int8_t pop_block_operator(struct Parser *state)
 
     /*
     ** input: return x;
-    ** output: x return
+    ** output: (x return)
     */
     case RETURN:
       insert(state, ophead);
@@ -255,7 +267,7 @@ int8_t pop_block_operator(struct Parser *state)
 
     /*
     ** input: def foo(x, y)
-    ** output: foo x y group(2) defSig
+    ** output: (foo (x y g(2)) defSig)
     */
     case DefSign:
       insert(state, ophead);
@@ -263,8 +275,7 @@ int8_t pop_block_operator(struct Parser *state)
 
     /*
     ** input: def foo(x, y) { a; b; }
-    ** output: foo x y group(2) defSig
-    **         a b group(2) defBody
+    ** output: ((foo (x y g(2)) defSig) (a b g(2)) defBody)
     */
    case DefBody:
       push_output(state, ophead->type, 0);
@@ -272,7 +283,7 @@ int8_t pop_block_operator(struct Parser *state)
 
     /*
     ** input: import something, x;
-    ** output: something x TupleGroup(2) import
+    ** output: ((something x G(2)) import)
     */
     case IMPORT:
       insert(state, ophead);
@@ -281,7 +292,8 @@ int8_t pop_block_operator(struct Parser *state)
 
     /* From <../../.. location> */
     /* input: from ..x import y, x; */
-    /* output (..x from) (y x import) */
+
+    /* output (..x from) ((y x G(2)) import) */
     case FROM:
       insert(state, );
       insert(state, ophead);
@@ -299,17 +311,18 @@ int8_t pop_block_operator(struct Parser *state)
       insert(state, ophead);
       break;
 
-    default: pop_operator = false;
+    default:
+      /* not a group operator */
+      state->operators_ctr -= 1;
   }
 
-  if (pop_operator == false)
-    state->operators_ctr += 1;
 
   //if (mk_short_blk && mk_short_block(state) == 0)
   //  return -1;
 
   return 0;
 }
+
 
 int8_t handle_close_brace(struct Parser *state) {
   int8_t ret = 0;
@@ -376,7 +389,15 @@ int8_t handle_close_brace(struct Parser *state) {
 
 
 /*
-** Handles function call
+** Handles group notation operations such as
+** function call (`foo(x)`) & index access (`foo[x]`)
+**
+** Places `Apply` before the open-brace type `(`
+** when the opposite brace type is found,
+** and the group is put into the output,
+** `pop_block_operators` will be ran,
+** and insert the token before it (`Apply`/`IndexAccess`)
+** if that token is defined as a block-descriptor.
 */
 int8_t prefix_group(
   struct Parser *state
@@ -519,6 +540,20 @@ int8_t handle_idx_op(struct Parser *state)
   return 0;
 }
 
+int8_t handle_ez_keywords(struct Parser *state, uint16_t id)
+{
+  static enum Lexicon products[][3] = {
+    {ForBody, ForParams, 0},
+    {WhileBody, WhileCond, 0},
+    {IfBody, IfCond, 0},
+    {DefBody, DefSign, 0},
+    {0, 0, 0}
+  };
+
+  return push_many_ops(products[id], current_token(state), state);
+}
+
+
 /*
  * `if` pops 2 arguments off the stack.
  * The first is the conditional expression,
@@ -530,35 +565,23 @@ int8_t handle_idx_op(struct Parser *state)
  * src: if(cond-expr) body-expr
  * dbg: <cond-expr> <body-expr> IF
  */
-int8_t handle_if(struct Parser *state)
-{
-  const struct Token *current = current_token(state);
-  enum Lexicon ops[] = {IfBody, IfCond, 0};
-
-  /* add expr to group */
-  state->set_stack[state->set_ctr - 1].expr_cnt += 1;
-
-  return push_many_ops(ops, current, state);
-}
+ /* FUNCTION NOT LONGER EXISTS */
 
 int8_t handle_else(struct Parser *state)
 {
   const struct Token *current = current_token(state);
+  const struct Token *output_head = vec_head(&state->debug);
+
+  if(output_head->type != IfCond) {
+    throw_unexpected_token(state, 0, 0, );
+  }
 
   state->operator_stack[state->operators_ctr] = current;
   state->operators_ctr += 1;
   return 0;
 }
 
-int8_t handle_def(struct Parser *state)
-{
-  const struct Token *current = current_token(state);
-  enum Lexicon ops[] = {DefBody, DefSign, 0};
-  /* add expr to group */
-  state->set_stack[state->set_ctr - 1].expr_cnt += 1;
-  return push_many_ops(ops, current, state);
 
-}
 
 /*
 ** consumes tokens until `import` token is found
@@ -596,19 +619,6 @@ int8_t handle_import(struct Parser *state)
   state->operators_ctr += 1;
 }
 
-
-int8_t handle_from(struct Parser *state)
-{
-
-  /* insert FROM_LOCATION token */
-  insert(state, next_token(state));
-  /* insert FROM */
-  insert(state, current_token(state));
-
-  /* skip past next token */
-  *state->_i += 1;
-}
-
 /*
  * Short group are groups 
  * that are unbraced and 
@@ -641,10 +651,10 @@ int8_t handle_from(struct Parser *state)
 /*   return ghead; */
 /* } */
 
-int8_t update_ctx(enum Lexicon delimiter, struct Group *ghead)
-{
-  if (ghead->state & GSTATE_CTX_LOCK)
-    return 0;
+//int8_t update_ctx(enum Lexicon delimiter, struct Group *ghead)
+//{
+//  if (ghead->state & GSTATE_CTX_LOCK)
+//    return 0;
   
   /* if (delimiter == COMMA) */
   /*   ghead->state |= GSTATE_CTX_DATA_GRP | GSTATE_CTX_LOCK; */
@@ -658,9 +668,9 @@ int8_t update_ctx(enum Lexicon delimiter, struct Group *ghead)
   /*   else return -1; */
   /* } */
 
-  else return -1;
-  return 0;
-}
+//  else return -1;
+//  return 0;
+//}
 
 
 int8_t handle_sb_cond_termination(struct Parser *state)
@@ -719,7 +729,7 @@ int8_t on_group_delim(struct Parser *state)
     else if(current->type == SEMICOLON)
       ghead->type = CodeBlockT;
     else {
-      throw_unexpected_token(state, current, &delim, 2);
+      throw_unexpected_token(state, current, delim, 2);
       return -1;
     }
   }
@@ -751,28 +761,29 @@ int8_t handle_delimiter(struct Parser *state)
   if (flush_ops(state) == -1)
     return -1;
 
-  if(ghead->short_block > 0)
-  {
+  /* if(ghead->short_block > 0) */
+  /* { */
 
-   if(state->set_ctr == 0)
-      return -1;
+  /*  if(state->set_ctr == 0) */
+  /*     return -1; */
 
-    // remove pretend group
-    state->set_ctr -= 1;
+  /*   // remove pretend group */
+  /*   state->set_ctr -= 1; */
 
-    if (ophead->type != BRACE_OPEN)
-      return -1;
-    
-    // remove pretend brace
-    state->operators_ctr -= 1;
-    
-    ophead = state->operator_stack[state->operators_ctr-1];
+  /*   if (ophead->type != BRACE_OPEN) */
+  /*     return -1; */
 
-    if(pop_block_operator(state) == -1)
-      return -1;  
-  }
+  /*   // remove pretend brace */
+  /*   state->operators_ctr -= 1; */
 
-  else if (ghead->state & GSTATE_CTX_IDX)
+  /*   ophead = state->operator_stack[state->operators_ctr-1]; */
+
+  /*   if(pop_block_operator(state) == -1) */
+  /*     return -1;   */
+  //}
+
+  if (ghead->operator_idx > 0
+    && state->operator_stack[ghead->operator_idx - 1]->type == _IdxAccess)
   {
     // TODO make error condition
     if(ghead->delimiter_cnt > 2)
@@ -836,6 +847,7 @@ int8_t parse(
   const struct Token *head;
   uint16_t i = 0;
   int8_t ret_flag = 0;
+  int8_t ez_match_id = 0;
   bool unexpected_token;
 
   assert(initalize_parser(&state, input, &i) == 0);
@@ -854,12 +866,21 @@ int8_t parse(
     /*   return -1; */
     /* } */
 
+    ez_match_id = eq_any_tok(state.src[i].type, _EASY_KEYWORD);
+
+    if(ez_match_id)
+    {
+      handle_ez_keywords(&state, ez_match_id);
+      ez_match_id = 0;
+    }
+
     /* string, word, integers */
     else if(is_unit_expr(state.src[i].type))
       insert(&state, &state.src[i]);
 
     else if (is_operator(state.src[i].type)
-             || state.src[i].type == RETURN)
+             || state.src[i].type == RETURN
+             || state.src[i].type == FROM)
       ret_flag = handle_operator(&state);
     
     else if (is_close_brace(state.src[i].type))
@@ -868,31 +889,14 @@ int8_t parse(
     else if (is_open_brace(state.src[i].type))
       ret_flag = handle_open_brace(&state);
 
-    else if (state.src[i].type == COLON
-      || state.src[i].type == COMMA
-      || state.src[i].type == SEMICOLON)
+    else if (is_delimiter(state.src[i].type))
       ret_flag = handle_delimiter(&state);
 
-    else if (state.src[i].type == IF)
-      ret_flag = handle_if(&state);
-    
     else if (state.src[i].type == ELSE)
       ret_flag = handle_else(&state);
-    
-    else if(state.src[i].type == FUNC_DEF)
-      ret_flag = handle_def(&state);
-
-    else if(state.src[i].type == FOR)
-      nop;
-
-    else if(state.src[i].type == WHILE)
-      nop;
 
     //TODO
     else if(state.src[i].type == IMPORT)
-      nop;
-
-    else if(state.src[i].type == FROM)
       nop;
 
     /* end of file */

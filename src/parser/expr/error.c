@@ -17,7 +17,7 @@ int8_t is_continuable(enum Lexicon tok) {
         _EX_DELIM,  
         0
     };
-    return contains_tok(tok, __BREAK_POINTS_START);    
+    return eq_any_tok(tok, __BREAK_POINTS_START);    
 }
 
 /*
@@ -107,7 +107,7 @@ void unwind_stacks(struct Parser *state)
 void throw_unexpected_token(
   struct Parser *state,
   const struct Token *start,
-  enum Lexicon expected[],
+  const enum Lexicon expected[],
   uint16_t nexpected
 ){
 
@@ -156,10 +156,6 @@ void token_error_window(){
 
 
 }
-
-
-
-
 /*
   unwind the parser to a previous safe-state
   ----

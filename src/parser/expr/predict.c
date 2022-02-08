@@ -334,7 +334,7 @@ enum ModeResult mode_import(enum Lexicon current,  struct Previsioner *state)
 int8_t mode_default(enum Lexicon current, enum Lexicon grp_delim, struct Previsioner *expecting)
 {
   /* check previous expecting buffer */
-  if (!contains_tok(current, expecting->data.default_mode.ref))
+  if (!eq_any_tok(current, expecting->data.default_mode.ref))
     return -1;
 
   /* if current is delimiter, is correct delimiter? */
@@ -374,7 +374,7 @@ int8_t is_token_unexpected(struct Parser *state)
   }
   /* expecting buffers contain all delimiters, 
    * so we may check any */
-  //else if(!contains_tok(SEMICOLON, state->expecting.exp_ref))
+  //else if(!eq_any_tok(SEMICOLON, state->expecting.exp_ref))
     /* incomplete expression, must get another token */
    // state->panic_flags |= STATE_INCOMPLETE;
   //else 
