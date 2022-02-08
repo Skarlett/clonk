@@ -301,7 +301,13 @@ enum Lexicon {
     IfCond,
     IfBody,
     DefSign,
-    DefBody
+    DefBody,
+
+    ForParams, // ((i, i2 g(2)) forparams) (a b g(2)) forbody
+    ForBody,
+
+    WhileCond,
+    WhileBody
 };
 
 #define _EX_BIN_OPERATOR \
@@ -457,7 +463,7 @@ bool is_cmp_operator(enum Lexicon compound_token);
  * @param buffer collection to be searched
  * @return bool
  */
-bool contains_tok(enum Lexicon cmp, enum Lexicon *buffer);
+uint8_t eq_any_tok(enum Lexicon cmp, enum Lexicon *buffer);
 
 
 /**

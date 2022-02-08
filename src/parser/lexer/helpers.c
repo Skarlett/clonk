@@ -88,13 +88,14 @@ bool is_operator(enum Lexicon token) {
     );
 }
 
-bool contains_tok(enum Lexicon cmp, enum Lexicon buffer[]) {
-  for (uint16_t i;;i++)
+/* null delimitated */
+uint8_t eq_any_tok(enum Lexicon cmp, enum Lexicon buffer[]) {
+  for (uint16_t i ;; i++)
     if(buffer[i] == 0) break;
     else if (buffer[i] == cmp)
-      return true;
+      return i;
   
-  return false;
+  return 0;
 }
 
 
@@ -211,7 +212,7 @@ bool is_keyword(enum Lexicon token) {
         // IMPL,
         0
     };    
-    return contains_tok(token, keywords);
+    return eq_any_tok(token, keywords);
 }
 
 bool is_num_negative(const char * source, struct Token *token) {
