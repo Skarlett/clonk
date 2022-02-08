@@ -684,10 +684,10 @@ int8_t handle_sb_import(struct Parser *state) {
 
   const struct Group *ghead = group_head(state);
 
-  /* remove open_param in operators */
-  state->operators_ctr -= 1;
   /* pop off the group */
   state->set_ctr -= 1;
+  /* remove open_param in operators */
+  state->operators_ctr -= 1;
 
   push_group(state, ghead);
 
@@ -708,6 +708,7 @@ int8_t on_group_delim(struct Parser *state)
 {
   const struct Token *current = current_token(state);
   struct Group *ghead = group_head(state);
+  const enum Lexicon delim[2] = {COLON, SEMICOLON};
 
   ghead->delimiter_cnt += 1;
   ghead->last_delim = current;
@@ -717,10 +718,12 @@ int8_t on_group_delim(struct Parser *state)
       ghead->type = MapT;
     else if(current->type == SEMICOLON)
       ghead->type = CodeBlockT;
-    else
-      mk_error()
-
+    else {
+      throw_unexpected_token(state, current, &delim, 2);
+      return -1;
+    }
   }
+  return 0;
 }
 
 //TODO no delimiters in IF condition
@@ -730,7 +733,6 @@ int8_t handle_delimiter(struct Parser *state)
   const struct Token *prev = 0,
     *next = 0,
     *ophead = 0;
-
 
   struct Group *ghead = 0;
 

@@ -445,6 +445,17 @@ struct UnexpectedTokError {
 };
 
 
+/* used to construct an error */
+struct PartialError {
+    enum ParserError_t type;
+    struct Token start;
+
+    /*NOTE: needs free*/
+    enum Lexicon *expect;
+    uint16_t nexpected;
+};
+
+
 struct ParserError {
     enum ParserError_t type;
     struct TokenSelection unwind_window;
@@ -538,9 +549,16 @@ struct Parser {
     struct Vec restoration_stack;
     uint16_t restoration_ctr;
 
+    /* whenever panic is set a
+     * partial_err is valid, and
+     * caused on previous loop */
     bool panic;
-    bool stage_failed;
+    struct PartialError partial_err;
 
+
+    /* enabled if parser cannot
+     * move to the next stage */
+    bool stage_failed;
 };
 /*
   Shunting yard expression parsing algorthim 
@@ -621,6 +639,13 @@ void restoration_hook(struct Parser *state);
 int8_t handle_unwind(
     struct Parser *state,
     bool unexpected_token
+);
+
+void throw_unexpected_token(
+  struct Parser *state,
+  const struct Token *start,
+  enum Lexicon expected[],
+  uint16_t nexpected
 );
 
 #endif

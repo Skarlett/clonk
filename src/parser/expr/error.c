@@ -104,19 +104,25 @@ void unwind_stacks(struct Parser *state)
 
 }
 
-
-
 void throw_unexpected_token(
   struct Parser *state,
+  const struct Token *start,
   enum Lexicon expected[],
   uint16_t nexpected
 ){
-  enum Lexicon *buf;
 
-  buf = calloc(nexpected, sizeof(enum Lexicon));
-  memcpy(buf, expected, sizeof(enum Lexicon) * nexpected);
+    struct PartialError *err = &state->partial_err;
+    enum Lexicon *expect_heap;
 
-  //for (uint16_t i=0; nexpected > i; )
+    expect_heap = calloc(nexpected, sizeof(enum Lexicon));
+    memcpy(expect_heap, expected, sizeof(enum Lexicon) * nexpected);
+
+    err->type = parse_err_unexpected_token;
+    err->start = *start;
+    err->expect = expect_heap;
+    err->nexpected = nexpected;
+
+    state->panic=true;
 }
 
 
