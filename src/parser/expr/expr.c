@@ -651,27 +651,6 @@ int8_t handle_import(struct Parser *state)
 /*   return ghead; */
 /* } */
 
-//int8_t update_ctx(enum Lexicon delimiter, struct Group *ghead)
-//{
-//  if (ghead->state & GSTATE_CTX_LOCK)
-//    return 0;
-  
-  /* if (delimiter == COMMA) */
-  /*   ghead->state |= GSTATE_CTX_DATA_GRP | GSTATE_CTX_LOCK; */
-
-  /* else if (delimiter == SEMICOLON) */
-  /*   ghead->state |= GSTATE_CTX_CODE_GRP | GSTATE_CTX_LOCK; */
-
-  /* else if (delimiter == COLON) { */
-  /*   if(ghead->origin->type == BRACE_OPEN) */
-  /*     ghead->state |= GSTATE_CTX_MAP_GRP | GSTATE_CTX_LOCK; */
-  /*   else return -1; */
-  /* } */
-
-//  else return -1;
-//  return 0;
-//}
-
 
 int8_t handle_sb_cond_termination(struct Parser *state)
 {
@@ -786,13 +765,14 @@ int8_t handle_delimiter(struct Parser *state)
     && state->operator_stack[ghead->operator_idx - 1]->type == _IdxAccess)
   {
     // TODO make error condition
-    if(ghead->delimiter_cnt > 2)
+    if(ghead->delimiter_cnt > 2){
+      throw_unexpected_token()
       return -1;
+    }
     
     if (prev->type == COLON) 
       push_output(state, NULLTOKEN, 0);
   }
-  //else return -1;
 
   return 0;
 }

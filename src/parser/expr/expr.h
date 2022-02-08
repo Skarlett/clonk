@@ -205,17 +205,13 @@ enum ParserError_t {
     parse_err_unexpected_token,
 };
 
-enum ErrTok_t {
-  ET_Scalar,
-  ET_Span
-};
 
 struct UnexpectedTokError {
     /* Lexicon[N] null-terminated malloc */
     enum Lexicon *expected;
     uint16_t nexpected;
 
-    struct TokenSelection selection;
+    struct Token thrown;
 };
 
 
@@ -232,7 +228,9 @@ struct PartialError {
 
 struct ParserError {
     enum ParserError_t type;
-    struct TokenSelection unwind_window;
+
+    /* window of tokens effected */
+    struct TokenSelection window;
 
     union {
         struct UnexpectedTokError unexpected_tok;
@@ -384,31 +382,6 @@ int8_t is_token_unexpected(struct Parser *state);
 int8_t free_state(struct Parser *state);
 int8_t reset_state(struct Parser *state);
 
-// void mk_null(struct Expr *ex);
-
-// int8_t mk_str(struct PostfixStageState *state, struct Expr *ex); 
-// int8_t mk_int(struct PostfixStageState *state, struct Expr *ex);
-// int8_t mk_symbol(struct PostfixStageState *state, struct Expr *ex);
-
-// int8_t mk_operator(struct PostfixStageState *state, struct Expr *ex, struct Token *op_head);
-// int8_t mk_group(struct PostfixStageState *state, struct Expr *ex);
-
-// int8_t mk_binop(struct Token *op, struct PostfixStageState *state, struct Expr *ex);
-// int8_t mk_not(struct PostfixStageState *state, struct Expr *ex);
-// int8_t mk_idx_access(struct PostfixStageState *state, struct Expr *ex);
-// int8_t mk_fncall(struct PostfixStageState *state, struct Expr *ex);
-
-// enum Operation operation_from_token(enum Lexicon token);
-// void determine_return_ty(struct Expr *bin);
-
-// int8_t mk_if_cond(struct PostfixStageState *state, struct Expr *ex);
-// int8_t mk_if_body(struct PostfixStageState *state);
-// int8_t mk_else_body(struct PostfixStageState *state);
-
-// int8_t mk_return(struct PostfixStageState *state, struct Expr *ex);
-// int8_t mk_def_sig(struct PostfixStageState *state, struct Expr *ex);
-// int8_t mk_def_body(struct PostfixStageState *state);
-// int8_t mk_import(struct PostfixStageState *state, struct Expr *ex);
 void restoration_hook(struct Parser *state);
 int8_t handle_unwind(
     struct Parser *state,
