@@ -14,16 +14,12 @@
 #include "expr.h"
 #include "utils.h"
 
-/* Easy keywords - pushes 2 operators on stack */
-static enum Lexicon _EASY_KEYWORD[] = {
-    FOR,
-    WHILE,
-    IF,
-    FUNC_DEF,
-    0
-};
-
-
+bool is_dual_grp_keyword(enum Lexicon tok) {
+  return tok == FOR
+    || tok == WHILE
+    || tok == IF
+    || tok == FUNC_DEF;
+}
 
 enum Associativity
 {
@@ -419,7 +415,7 @@ int8_t handle_idx_op(struct Parser *state)
   return 0;
 }
 
-int8_t handle_ez_keywords(struct Parser *state, uint16_t id)
+int8_t handle_dual_group(struct Parser *state, uint16_t id)
 {
   static enum Lexicon products[][3] = {
     {ForBody, ForParams, 0},
@@ -446,21 +442,19 @@ int8_t handle_ez_keywords(struct Parser *state, uint16_t id)
  */
  /* FUNCTION NOT LONGER EXISTS */
 
-int8_t handle_else(struct Parser *state)
-{
-  const struct Token *current = current_token(state);
-  const struct Token *output_head = vec_head(&state->debug);
+//int8_t handle_else(struct Parser *state)
+//{
+  //const struct Token *current = current_token(state);
+  //const struct Token *output_head = vec_head(&state->debug);
 
-  if(output_head->type != IfCond) {
-    throw_unexpected_token(state, 0, 0, );
-  }
+  //if(output_head->type != IfCond) {
+  //  throw_unexpected_token(state, 0, 0, );
+  //}
 
-  state->operator_stack[state->operators_ctr] = current;
-  state->operators_ctr += 1;
-  return 0;
-}
-
-
+  //state->operator_stack[state->operators_ctr] = current;
+  //state->operators_ctr += 1;
+  //return 0;
+//}
 
 /*
 ** consumes tokens until `import` token is found
@@ -572,86 +566,82 @@ int8_t handle_short_block_termination(struct Parser *state) {
 }
 
 
-int8_t on_group_delim(struct Parser *state)
-{
-  const struct Token *current = current_token(state);
-  struct Group *ghead = group_head(state);
-  const enum Lexicon delim[2] = {COLON, SEMICOLON};
+/*
+** turns `PartialBrace` into either `MapGroup`
+** or `CodeBlock`, invalid delimiter results in -1
+** called in `handle_delimiter`
+*/
 
-  ghead->delimiter_cnt += 1;
-  ghead->last_delim = current;
-
-  if (ghead->type == PartialBrace) {
+int8_t _complete_partial_gtype(struct Group * ghead, const struct Token *current){
     if (current->type == COLON)
-      ghead->type = MapT;
+      ghead->type = MapGroup;
     else if(current->type == SEMICOLON)
-      ghead->type = CodeBlockT;
-    else {
-      throw_unexpected_token(state, current, delim, 2);
+      ghead->type = CodeBlock;
+    else
       return -1;
-    }
-  }
+    return 0;
+}
+
+int8_t complete_partial_gtype(struct Parser *state){
+  struct Group *ghead = group_head(state);
+  const struct Token *current = current_token(state);
+
+  if (ghead->type == PartialBrace)
+    return _complete_partial_gtype(ghead, current);
   return 0;
 }
 
-//TODO no delimiters in IF condition
-int8_t handle_delimiter(struct Parser *state)
-{
-  const struct Token *current = current_token(state);
-  const struct Token *prev = 0,
-    *next = 0,
-    *ophead = 0;
+/* throw unexpected token */
+int8_t is_illegal_delimiter(const struct Parser *state) {
+  struct Group *ghead = group_head(state);
+  const struct Token *next = next_token(state);
+  const struct Token *gmod = group_modifier(state, ghead);
 
-  struct Group *ghead = 0;
 
-  ghead = group_head(state);
-  ghead->delimiter_cnt += 1;
-  ghead->last_delim = current;
-  
-  prev = prev_token(state);
-  next = next_token(state);  
-
-  if (!next || !prev) {
-    //mk_error(state, Fatal, "Expected token before & after delimiter.");
-    return -1;
-  }
-
-  if (flush_ops(state) == -1)
-    return -1;
-
-  /* if(ghead->short_block > 0) */
-  /* { */
-
-  /*  if(state->set_ctr == 0) */
-  /*     return -1; */
-
-  /*   // remove pretend group */
-  /*   state->set_ctr -= 1; */
-
-  /*   if (ophead->type != BRACE_OPEN) */
-  /*     return -1; */
-
-  /*   // remove pretend brace */
-  /*   state->operators_ctr -= 1; */
-
-  /*   ophead = state->operator_stack[state->operators_ctr-1]; */
-
-  /*   if(pop_block_operator(state) == -1) */
-  /*     return -1;   */
+  //TODO: add to predict.c
+  //if (ghead->type != CodeBlock)
+  //{
+  //  if(is_delimiter(next->type))
+  //    return -1;
   //}
 
-  if (ghead->operator_idx > 0
-    && state->operator_stack[ghead->operator_idx - 1]->type == _IdxAccess)
+  return \
+    gmod->type == WhileCond
+    || gmod->type == IfCond
+    || (ghead->type == _IdxAccess && ghead->delimiter_cnt > 2)
+    /* check for correct delimiter*/
+    // TODO: Handle in predict.c
+    //|| (gmod->type == _IdxAccess && current->type != COLON)
+    //|| ((ghead->type == TupleGroup || ghead->type == ListGroup) && current->type != COMMA)
+    //|| (ghead->type == CodeBlock && current->type != SEMICOLON)
+    ;
+}
+
+int8_t handle_delimiter(struct Parser *state)
+{
+  const enum Lexicon delim[2] = {COLON, SEMICOLON};
+  struct Group *ghead = group_head(state);
+  const struct Token
+    *current = current_token(state),
+    *prev = prev_token(state);
+
+  ghead->delimiter_cnt += 1;
+  ghead->last_delim = current;
+
+  flush_ops(state);
+
+  if (is_unit(prev->type))
+    ghead->expr_cnt += 1;
+
+  if (is_illegal_delimiter(state) || complete_partial_gtype(state) == -1)
   {
-    // TODO make error condition
-    if(ghead->delimiter_cnt > 2){
-      throw_unexpected_token()
-      return -1;
-    }
-    
-    if (prev->type == COLON) 
-      push_output(state, NULLTOKEN, 0);
+    throw_unexpected_token(state, current, delim, 2);
+    return -1;
   }
+
+  /* fill in empty index arg if non-specified*/
+  else if(ghead->type == IndexGroup && prev && prev->type == COLON)
+    push_output(state, NULLTOKEN, 0);
 
   return 0;
 }
@@ -715,31 +705,20 @@ int8_t parse(
     assert(state.operators_ctr > state.operator_stack_sz);
     unexpected_token = is_token_unexpected(&state);
 
-    ret_flag = -1;
-
     if(state.panic)
       handle_unwind(&state, unexpected_token);
 
-    /* { */
-    /*   // TODO */
-    /*   return -1; */
-    /* } */
-
-    ez_match_id = eq_any_tok(state.src[i].type, _EASY_KEYWORD);
-
-    if(ez_match_id)
-    {
-      handle_ez_keywords(&state, ez_match_id);
-      ez_match_id = 0;
-    }
+    if(is_dual_grp_keyword(state.src[i].type))
+      handle_dual_group(&state, ez_match_id);
 
     /* string, word, integers */
-    else if(is_unit_expr(state.src[i].type))
+    else if(is_unit(state.src[i].type))
       insert(&state, &state.src[i]);
 
     else if (is_operator(state.src[i].type)
              || state.src[i].type == RETURN
-             || state.src[i].type == FROM)
+             || state.src[i].type == FROM
+             || state.src[i].type == ELSE)
       ret_flag = handle_operator(&state);
     
     else if (is_close_brace(state.src[i].type))
@@ -751,12 +730,8 @@ int8_t parse(
     else if (is_delimiter(state.src[i].type))
       ret_flag = handle_delimiter(&state);
 
-    else if (state.src[i].type == ELSE)
-      ret_flag = handle_else(&state);
-
-    //TODO
     else if(state.src[i].type == IMPORT)
-      nop;
+      handle_import(&state);
 
     /* end of file */
     else if(state.src[i].type == EOFT) {
@@ -776,19 +751,9 @@ int8_t parse(
   }
 
   /* dump the remaining operators onto the output */
-  /* if (flush_all_ops(&state) == -1) */
-  /*   return -1; */
+  flush_ops(&state);
 
-  while (state.operators_ctr > 0)
-  {
-    head = state.operator_stack[state.operators_ctr - 1];
-
-    //if (is_open_brace(head->type))
-    //  return -1;
-    insert(&state, head);
-
-    state.operators_ctr -= 1;
-  }
+  assert(state.operators_ctr == 1);
 
   return 0;
 }
