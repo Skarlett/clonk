@@ -32,7 +32,7 @@ int8_t push_many_ops(
 
 
 int8_t is_short_blockable(enum Lexicon tok);
-bool is_unit_expr(enum Lexicon tok);
+bool is_unit(enum Lexicon tok);
 
 enum Operation operation_from_token(enum Lexicon t);
 //int8_t mk_error(struct Parser *state, enum ErrorT type, const char * msg);

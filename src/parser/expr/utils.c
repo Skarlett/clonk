@@ -114,17 +114,6 @@ const struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, stru
   return heap;
 }
 
-enum Lexicon grp_dbg_sym(enum Group_t type)
-{
-  switch (type) {
-    case ListT: return ListGroup;
-    case MapT: return MapGroup;
-    case CodeBlockT: return CodeBlock;
-    case TupleT: return TupleGroup;
-    default: return TOKEN_UNDEFINED;
-  };
-}
-
 int8_t push_many_ops(
   const enum Lexicon *ops,
   const struct Token *origin,
