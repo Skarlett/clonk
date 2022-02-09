@@ -187,6 +187,12 @@ enum Lexicon {
     // &=
     BANDEQL,
 
+    // ==
+    ISEQL,
+
+    // ~=
+    BNEQL,
+
     // !=
     ISNEQL,
     
