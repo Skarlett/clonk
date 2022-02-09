@@ -15,15 +15,15 @@ const char * ptoken(enum Lexicon t) {
         case PARAM_CLOSE: return "param_close";
         case COMMA: return "comma";
         case DIGIT: return "digit";
-        case QUOTE: return "quote";
+        case D_QUOTE: return "d_quote";
         case EQUAL: return "eq";
         case ADD: return "add";
         case MUL: return "multiply";
         case DIV: return "divide";
         case GT: return "greater than";
         case LT: return "less than";
+        case ISNEQL: return "is not eq";
         case ISEQL: return "is eq";
-        case ISNEQL: return "not eq";
         case GTEQ: return "greater than or eq";
         case LTEQ: return "less than or eq";
         case POW: return "exponent";
@@ -38,20 +38,28 @@ const char * ptoken(enum Lexicon t) {
         case PIPE: return "pipe";
         case AND: return "and";
         case OR: return "or";
+        case SHR: return "shr";
+        case SHL: return "shl";
+        case PIPEOP: return "pipe op";
+        case BOREQL: return "bit or eql";
+        case BANDEQL: return "bit and eql";
+        case BNEQL: return "bit not eql";
+        case TILDE: return "bit not";
+        case FROM: return "from";
         case UNDERSCORE: return "underscore";
         case NOT: return "not";
         case POUND: return "pound";
-        case STATIC: return "'static'";
-        case CONST: return "'const'";
+//        case STATIC: return "'static'";
+//        case CONST: return "'const'";
         case IF: return "'if";
         case ELSE: return "'else'";
-        case IMPL: return "'impl'";
+//        case IMPL: return "'impl'";
         case FUNC_DEF: return "'def'";
         case RETURN: return "'return'";
-        case AS: return "'as'";
+//        case AS: return "'as'";
         case ATSYM: return "@";
         case IMPORT: return "'import'";
-        case EXTERN: return "'extern'";
+//        case EXTERN: return "'extern'";
         case COMMENT: return "comment";
         case TOKEN_UNDEFINED: return "undef";
         case DOT: return "dot";
@@ -59,31 +67,32 @@ const char * ptoken(enum Lexicon t) {
     };
 }
 
-char brace_as_char(enum Lexicon tok) {
-    switch(tok){
-        case BRACE_OPEN: return '{';
-        case BRACE_CLOSE: return '}';
-        case PARAM_OPEN: return '(';
-        case PARAM_CLOSE: return ')';
-        case BRACKET_OPEN: return '[';
-        case BRACKET_CLOSE: return ']';
-        default:
-            return -1;
-    }
-}
+/* char brace_as_char(enum Lexicon tok) { */
+/*     switch(tok){ */
+/*         case BRACE_OPEN: return '{'; */
+/*         case BRACE_CLOSE: return '}'; */
+/*         case PARAM_OPEN: return '('; */
+/*         case PARAM_CLOSE: return ')'; */
+/*         case BRACKET_OPEN: return '['; */
+/*         case BRACKET_CLOSE: return ']'; */
+/*         default: */
+/*             return -1; */
+/*     } */
+/* } */
 
-char invert_brace_char(char brace) {
-    switch(brace){
-        case '{': return '}';
-        case '}': return '{';
-        case '(': return ')';
-        case ')': return '(';
-        case '[': return ']';
-        case ']': return '[';
-        default:
-            return -1;
-    }
-}
+/* not used */
+/* char invert_brace_char(char brace) { */
+/*     switch(brace){ */
+/*         case '{': return '}'; */
+/*         case '}': return '{'; */
+/*         case '(': return ')'; */
+/*         case ')': return '('; */
+/*         case '[': return ']'; */
+/*         case ']': return '['; */
+/*         default: */
+/*             return -1; */
+/*     } */
+/* } */
 
 
 char * __sprintf_token_ty_slice(char *output, uint16_t output_sz, enum Lexicon token, uint16_t *ctr) {

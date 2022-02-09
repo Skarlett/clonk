@@ -33,5 +33,5 @@ int8_t sprint_src_code(
     const struct Token *token
 );
 
-char brace_as_char(enum Lexicon tok);
+//char brace_as_char(enum Lexicon tok);
 #endif
