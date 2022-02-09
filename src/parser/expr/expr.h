@@ -128,7 +128,7 @@ struct Group {
         xxGSTATE_CTX_IF_COND:     parsing an if conditional
 
     */
-    FLAG_T state;
+    //FLAG_T state;
     
     // amount of delimiters
     uint16_t delimiter_cnt;
@@ -161,7 +161,7 @@ struct Group {
     uint16_t set_idx;
 
     enum Lexicon type;
-
+    bool is_empty;
     // should be `[` `(` '{' or `0`
     const struct Token *origin;
     const struct Token *last_delim;

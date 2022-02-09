@@ -185,16 +185,12 @@ int8_t pop_group(struct Parser *state)
   /* only add groups if they're not singular item paramethesis braced */
   if (ghead->origin->type != PARAM_OPEN
       || ghead->delimiter_cnt > 0
-      || ghead->state & GSTATE_EMPTY)
-
-  push_output(
-    state,
-    ghead->type,
-
-    /* TODO: Better expression counting */
-    /* NOTE: current code probably barely works */
-    ghead->delimiter_cnt + 1
-  );
+      || ghead->is_empty)
+      push_output(
+        state,
+        ghead->type,
+        ghead->expr_cnt
+      );
 
   return 0;
 }
@@ -206,49 +202,28 @@ int8_t pop_group(struct Parser *state)
 int8_t pop_block_operator(struct Parser *state)
 {
   const struct Token *ophead;
-  bool pop_operator = true;
 
   if(state->operators_ctr > state->operator_stack_sz
-    || state->operators_ctr == 0)
-    return -1;
+     || state->operators_ctr == 0)
+     return -1;
 
-  ophead = op_head(state);
-
+  ophead= op_head(state);
   if (is_group_modifier(ophead->type))
   {
     insert(state, ophead);
     state->operators_ctr -= 1;
   }
 
-  // check for next token
-  // next = next_token(state);
-
-  //TODO(shortblocks): ensure its not a data-collection
-  //if (!next)
-  //  return 0;
-
-  // specify short block
-  // mk_short_blk = next
-  //  && next->type != BRACE_OPEN
-  // && is_short_blockable(next->type);
-
-
-  //if (mk_short_blk && mk_short_block(state) == 0)
-  //  return -1;
-
   return 0;
 }
 
 
-
-
 int8_t handle_close_brace(struct Parser *state) {
-  int8_t ret = 0;
+  const enum Lexicon expected[] = {COLON, DIGIT, 0};
   struct Group *ghead = group_head(state);
   const struct Token *prev = prev_token(state),
     *current = current_token(state);
-
-  //prev = prev_token(state);
+  int8_t ret = 0;
 
   /* Operators stack is empty */
   assert(
@@ -256,24 +231,19 @@ int8_t handle_close_brace(struct Parser *state) {
     && state->set_sz > state->set_ctr
   );
 
-  /* Grab the head of the group stack */
-  //ghead = &state->set_stack[state->set_ctr - 1];
-  state->set_ctr -= 1;
 
-  /* is empty? */
-  /* TODO: move to AST */
-  if (prev->type == invert_brace_tok_ty(current->type)) {
-    ghead->state |= GSTATE_EMPTY;
+  if (!is_delimiter(prev->type))
+    ghead->expr_cnt += 1;
 
-    /* on index ctx throw error */
-    if (prev->type == _IdxAccess) {
-      //mk_error(state, Error, "Slice must contain atleast one delimiter or value.");
-      return -1;
-    }
+  if (prev->type == invert_brace_tok_ty(current->type))
+    ghead->is_empty = true;
 
-    state->operators_ctr -= 1;
-    return 0;
-  }
+  /*
+  ** TODO:add to predict.c
+  ** allow for {x; x;;;}
+  ** but not [1,,]
+  **
+   */
 
   /*
     flush out operators, until the open-brace
@@ -283,20 +253,24 @@ int8_t handle_close_brace(struct Parser *state) {
       return -1;
 
   /* handle grouping */
-  if (~ghead->state & GSTATE_CTX_IDX)
-     ret = handle_grouping(state);
+  ret = pop_group(state);
+
 
   /* drop open brace */
   state->operators_ctr -= 1;
-
-  if (state->operators_ctr == 0)
-    return 0;
+  state->set_ctr -= 1;
 
   /* After closing a code-block,
     there may be an operator declared on it,
     we'll check for it now. */
 
-  if (pop_block_operator(state) == -1)
+  /* on index access group cannot be empty */
+  if (ghead->is_empty && ghead->type == IndexGroup) {
+      throw_unexpected_token(state, current, expected, 2);
+      return -1;
+  }
+
+  if (state->operators_ctr > 0 && pop_block_operator(state) == -1)
     return -1;
 
   return ret;
@@ -347,13 +321,12 @@ int8_t prefix_group(
 */
 int8_t handle_open_brace(struct Parser *state)
 {
-  bool ret;
   const struct Token *current = current_token(state);
   const struct Token *prev = prev_token(state);
 
   if (prev)
     /* look behind & insert group modifier if needed. */
-    ret = prefix_group(state);
+    prefix_group(state);
 
   if (new_grp(state, current) == 0)
       return -1;
@@ -416,7 +389,6 @@ int8_t handle_idx_op(struct Parser *state)
   for (uint8_t i=0; 2 > ghead->delimiter_cnt; i++)
     push_output(state, NULLTOKEN, 0);
 
-
   push_output(state, _IdxAccess, 0);
   
   return 0;
@@ -465,6 +437,7 @@ int8_t handle_import(struct Parser *state)
   return 0;
 }
 
+
 int8_t handle_sb_cond_termination(struct Parser *state)
 {
 
@@ -483,7 +456,6 @@ int8_t handle_sb_cond_termination(struct Parser *state)
 
 
 int8_t handle_sb_import(struct Parser *state) {
-
   const struct Group *ghead = group_head(state);
 
   /* pop off the group */
@@ -492,7 +464,6 @@ int8_t handle_sb_import(struct Parser *state) {
   state->operators_ctr -= 1;
 
   push_group(state, ghead);
-
 }
 
 int8_t handle_short_block_termination(struct Parser *state) {
@@ -581,9 +552,13 @@ int8_t handle_delimiter(struct Parser *state)
   }
 
   /* fill in empty index arg if non-specified*/
-  else if(ghead->type == IndexGroup && prev && prev->type == COLON)
-    push_output(state, NULLTOKEN, 0);
+  else if(ghead->type == IndexGroup && prev) {
 
+    if (prev->type == COLON || prev->type == BRACKET_OPEN)
+      push_output(state, NULLTOKEN, 0);
+  }
+
+  handle_short_block_termination(state);
   return 0;
 }
 
