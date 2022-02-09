@@ -13,8 +13,14 @@ const struct Token * next_token(const struct Parser *state);
 const struct Token * op_head(const struct Parser *state);
 const struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, struct Parser *state);
 const struct Token * output_head(const struct Parser *state);
-struct Group * group_head(const struct Parser *state);
+struct Group * group_head(struct Parser *state);
 struct Group * new_grp(struct Parser *state, const struct Token * origin);
+
+const struct Token * group_modifier(
+  const struct Parser *state,
+  const struct Group *group
+);
+
 int8_t flush_ops(struct Parser *state);
 
 int8_t push_group(struct Parser *state, const struct Group *grp);

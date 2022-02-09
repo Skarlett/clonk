@@ -34,7 +34,7 @@ const struct Token * current_token(const struct Parser *state){
   return &state->src[*state->_i];
 }
 
-struct Group * group_head(const struct Parser *state){
+struct Group * group_head(struct Parser *state){
   if (STACK_SZ - 1 > state->set_ctr && state->set_ctr > 0)
     return &state->set_stack[state->set_ctr - 1];
   return 0;
@@ -50,14 +50,32 @@ const struct Token * output_head(const struct Parser *state) {
   return vec_head(&state->debug);
 }
 
+const struct Token * group_modifier(
+  const struct Parser *state,
+  const struct Group *group
+){
+  const struct Token *modifier;
+
+  if (group->operator_idx > 0)
+  {
+    modifier=state->operator_stack[group->operator_idx - 1];
+
+    if (is_group_modifier(modifier->type))
+      return modifier;
+  }
+
+  return 0;
+}
+
+
 /*
 ** pushes group into output as a group token
 ** NOTE: Assumes token->origin is a brace type;
 */
 int8_t push_group(struct Parser *state, const struct Group *grp) {
 
-  if(!is_open_brace(brace->type))
-    return -1;
+  //if(!is_open_brace(brace->type))
+  //  return -1;
 
   //TODO: implement
 }
