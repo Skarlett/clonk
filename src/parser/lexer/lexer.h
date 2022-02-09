@@ -15,7 +15,28 @@
 enum Lexicon {
     // end of file
     EOFT = 255,
-    TOKEN_UNDEFINED = 0,
+
+    /********************/
+    /* Transition token */
+    /********************/
+
+    _COMPOUND_GT,
+    // -123 or -=
+    _COMPOUND_SUB,
+
+    // may turn into BOREQL or PIPEOP or OR
+    _COMPOUND_PIPE,
+
+    _COMPOUND_AMPER,
+
+    //
+    _COMPOUND_LT,
+
+    /**********************/
+    /* Single byte tokens */
+    /**********************/
+
+    TOKEN_UNDEFINED = 1,
     
     NULLTOKEN,
     
@@ -52,29 +73,11 @@ enum Lexicon {
     // -
     SUB,
 
-    //
-    _COMPOUND_GT,
-
     // >
     GT,
 
-    // >>
-    SHR,
-
-    // >=
-    GTEQ,
-
-    //
-    _COMPOUND_LT,
-
     // <
     LT,
-    
-    // <<
-    SHL,
-
-    // <=
-    LTEQ,
 
     // *
     MUL,
@@ -87,56 +90,17 @@ enum Lexicon {
 
     // %
     MOD,
-
-    // +=
-    PLUSEQ,
-
-    // -=
-    MINUSEQ,
-    
     // =
     EQUAL,
-
-    // ==
-    ISEQL,
-
-    // !=
-    ISNEQL,
-
-    // ..
-    // ELLISPES
-
-    // may turn into BOREQL or PIPEOP or OR 
-    _COMPOUND_PIPE,
 
     // |
     PIPE,
 
-    // |>
-    PIPEOP,
-
-    // |=
-    BOREQL,
-
-    // ||
-    OR,
-
-    _COMPOUND_AMPER,
-
     // &
     AMPER,
 
-    // &=
-    BANDEQL,
-
-    // &&
-    AND,
-
     // ~
     TILDE,
-
-    // ~=
-    BNEQL,
 
     // "
     D_QUOTE,
@@ -174,14 +138,9 @@ enum Lexicon {
     /* \ */
     BACKSLASH,
 
-    /********* START OF COMPLEX TOKENS ********
-    * Complex tokens wont show up in the first round of lexer'ing
-    * they're generated from combinations of tokens
-    * "fn"
-    ********** START OF COMPLEX LEXICONS ********/
-
-    // -123 or -=
-    _COMPOUND_SUB,
+    /*********************/
+    /* multi byte tokens */
+    /*********************/
 
     // [NUM, ..] WHITESPACE|SEMICOLON   
     // 20_392 
@@ -195,13 +154,44 @@ enum Lexicon {
     // something
     STRING_LITERAL,
 
-    /*
-     * Replaces STRING_LITERAL
-     * in the case of missing single quote.
-     *
-     * README: throws error
-     */
-    //BAD_COMPOUND,
+    // >>
+    SHR,
+
+    // >=
+    GTEQ,
+
+    // <<
+    SHL,
+
+    // <=
+    LTEQ,
+
+    // +=
+    PLUSEQ,
+
+    // -=
+    MINUSEQ,
+
+    // ..
+    // ELLISPES
+
+    // |>
+    PIPEOP,
+
+    // |=
+    BOREQL,
+
+    // ||
+    OR,
+
+    // &=
+    BANDEQL,
+
+    // !=
+    ISNEQL,
+    
+    // &&
+    AND,
 
     // static
     //STATIC,
@@ -230,7 +220,7 @@ enum Lexicon {
     //import
     IMPORT,
 
-    // from <from_location>
+    // from
     FROM,
 
     FROM_LOCATION,
@@ -242,18 +232,11 @@ enum Lexicon {
     //impl
     //IMPL,
 
-    /*
-        this is a 'pretend' token used 
-        internally by expression
-    */
+    /*********************************/
+    /* generated outside lexer stage */
+    /*********************************/
 
-    _IdxAccess, 
-
-    // foo(a)(b)
-    // foo(a) -> func(b) -> T
-    // foo(a)(b) -> ((a foo), b G(2)) DyCall
-    // foo(a)(b)(c) -> a foo b G(2) DyCall c G(2) DyCall
-    // word|)|]|}(
+    _IdxAccess,
     Apply,
 
     /*
@@ -291,12 +274,16 @@ enum Lexicon {
       tokens of this type will be spawned from a differing source
       than the original token stream.
     */
+
     TupleGroup, // (x,x)
+
     ListGroup,  // [x,x]
     IndexGroup, // [x:x]
+
+    PartialBrace, // { - unknown type yet
     MapGroup,   // {x:x}
-    SetGroup,   // {x,x}
     CodeBlock,  // {x; x;} or {x; x}
+
 
     IfCond,
     IfBody,
@@ -309,6 +296,7 @@ enum Lexicon {
     WhileCond,
     WhileBody
 };
+
 
 #define _EX_BIN_OPERATOR \
     ADD, MUL, SUB, DIV, POW, MOD, \
@@ -571,12 +559,34 @@ bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens);
  */
 bool is_num_negative(const char *src, struct Token *token);
 
-
+/**
+ * Checks if token is a unitary expression
+ *
+ * @param tok token to compare
+ *
+ * @return bool
+ */
 bool is_operator(enum Lexicon token);
 
+
+/**
+ * Checks if token is a unitary expression
+ *
+ * @param tok token to compare
+ *
+ * @return bool
+*/
+bool is_group_modifier(enum Lexicon);
+
+/**
+ * Checks if token is a unitary expression
+ *
+ * @param tok token to compare
+ *
+ * @return bool
+*/
 const char * ptoken(enum Lexicon t);
 
-char invert_brace_char(char brace);
 
 /**
  * Checks if token is a unitary expression
@@ -585,7 +595,16 @@ char invert_brace_char(char brace);
  *
  * @return bool
  */
-bool is_unit_expr(enum Lexicon tok);
+ /*char invert_brace_char(char brace);*/
+
+/**
+ * Checks if token is a unitary expression
+ *
+ * @param tok token to compare
+ *
+ * @return bool
+ */
+bool is_unit(enum Lexicon tok);
 
 
 /**
@@ -595,6 +614,6 @@ bool is_unit_expr(enum Lexicon tok);
  *
  * @return bool
  */
-bool is_grp(enum Lexicon tok);
+bool is_group(enum Lexicon tok);
 #endif
 
