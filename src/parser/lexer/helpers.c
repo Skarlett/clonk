@@ -129,8 +129,7 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
     if (is_close_brace(current))
     {
         inverted = invert_brace_tok_ty(current);
-
-        if (inverted == -1)
+        if (inverted == TOKEN_UNDEFINED)
           return -1;
         
         /*
@@ -173,7 +172,7 @@ bool is_balanced(struct Token tokens[], uint16_t ntokens) {
         
         // immediately unbalanced
         else if (ret == 1)
-	   return 0;
+            return 0;
     }
 
     return braces_ctr == 0;
@@ -219,9 +218,7 @@ bool is_num_negative(const char * source, struct Token *token) {
     return token->type == INTEGER && *(source + token->start) == '-';
 }
 
-
-
-bool is_unit_expr(enum Lexicon tok)
+bool is_unit(enum Lexicon tok)
 {
     
   return \
@@ -230,15 +227,27 @@ bool is_unit_expr(enum Lexicon tok)
     || tok == WORD;
 }
 
-
-
-bool is_grp(enum Lexicon tok)
+bool is_group(enum Lexicon tok)
 {
   return \
     tok == TupleGroup 
     ||tok == ListGroup
     ||tok == IndexGroup
     ||tok == MapGroup  
-    ||tok == SetGroup 
     ||tok == CodeBlock;
+}
+
+bool is_group_modifier(enum Lexicon tok) {
+    return tok == Apply
+        || tok == _IdxAccess
+        || tok == IfCond
+        || tok == IfBody
+        || tok == DefSign
+        || tok == DefBody
+        || tok == ForParams
+        || tok == ForBody
+        || tok == WhileCond
+        || tok == WhileBody
+        || tok == IMPORT
+        || tok == RETURN;
 }
