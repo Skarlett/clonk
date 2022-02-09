@@ -6,6 +6,17 @@
 #include <assert.h>
 
 
+enum Lexicon grp_dbg_sym(enum Group_t type)
+{
+  switch (type) {
+    case ListT: return ListGroup;
+    case MapT: return MapGroup;
+    case CodeBlockT: return CodeBlock;
+    case TupleT: return TupleGroup;
+    default: return TOKEN_UNDEFINED;
+  };
+}
+
 
 /*
   returns the amount of arguments it pops from the stack
@@ -13,7 +24,7 @@
 int8_t argc_map(struct Token *tok)
 {
 
-  if (is_grp(tok->type))
+  if (is_group(tok->type))
     return tok->end;
   
   if (is_operator(tok->type))
@@ -64,7 +75,7 @@ int8_t mk_int(
     str_to_isize(src_code + int_tok->start, &_, 10);
   
   assert(errno != 0);
-  
+
   return 0;
 }
 

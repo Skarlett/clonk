@@ -4,6 +4,10 @@
 #include "expr.h"
 #include "utils.h"
 
+//TODO:
+//  - Rules for `FOR` & `WHILE` must follow an `(`
+
+
 enum Lexicon _PV_default[] = {
   _EX_EXPR,
   0
@@ -111,17 +115,23 @@ void init_expect_buffer(struct Previsioner *state)
     state->mode = PV_Default; 
 }
 
-bool can_addon_keywords(struct Token *ophead)
+bool can_addon_keywords(struct Parser *state)
 {
-  if(ophead)
-    return op_precedence(ophead->type) == 0;
-  return true;
-}
+  const struct Token *token;
+  struct Group *ghead = group_head(state);
 
-bool is_expecting_else(struct Expr *expr_head)
-{
-  //(state->expr_ctr > 0) &&
-  return expr_head->type == IfExprT;
+
+  if(ghead->operator_idx > 0)
+    token = state->operator_stack[ghead->operator_idx-1];
+
+  
+  /* if open brace */
+  if(is_open_brace(ophead->type))
+    return  == 0;
+
+
+
+  return true;
 }
 
 uint8_t prevision_keywords(enum Lexicon *buf, struct Expr *expr_head) {
@@ -129,11 +139,11 @@ uint8_t prevision_keywords(enum Lexicon *buf, struct Expr *expr_head) {
 
   memcpy(buf, _PV_kw, sizeof(enum Lexicon) * offset);
 
-  if(expr_head->type == IfExprT)
-  {
-    buf[offset] = ELSE;
-    offset += 1;
-  }
+  /* if(expr_head->type == IfExprT) */
+  /* { */
+  /*   buf[offset] = ELSE; */
+  /*   offset += 1; */
+  /* } */
 
   buf[offset] = 0;
   offset += 1;
@@ -230,13 +240,14 @@ int8_t prevision_next(struct Parser *state)
     memcpy(state->expecting.buffer, ref, sizeof(enum Lexicon) * offset); 
   }
 
-  if(can_addon_keywords(op_head(state)))
+  if(can_addon_keywords((op_head(state)->type == IfCond)))
   {
     memcpy(state->expecting.buffer + sizeof(enum Lexicon) * offset, _PV_kw, _PV_kw_len - 1);
     offset += _PV_kw_len - 1;
   }
   // TODO: use operator stack head instead
-  if(state->expr_ctr > 0 && is_expecting_else(state->expr_stack[state->expr_ctr - 1]))
+
+  if(state->operators_ctr > 0 && op_head(state)->type == IfCond)
   {
     state->expecting.buffer[offset + 1] = ELSE;
     offset += 1; 
@@ -248,27 +259,27 @@ int8_t prevision_next(struct Parser *state)
 }
 
 /* setup delimiter expectation */
-enum Lexicon get_expected_delimiter(struct Group *ghead)
-{  
-  if(ghead->state & GSTATE_CTX_CODE_GRP)
-    return SEMICOLON;
-  
-  else if(ghead->state & GSTATE_CTX_DATA_GRP)
-    return COMMA;
-  
-  else if (ghead->state & GSTATE_CTX_IDX)
-    return COLON;
-  
-  else if (ghead->state & GSTATE_CTX_MAP_GRP)
-  {
-    if (ghead->delimiter_cnt % 2 == 0)
-      return COMMA;
-    else
-      return COLON;
-  }
-  else
-    return 0;
-}
+/* enum Lexicon get_expected_delimiter(struct Group *ghead) */
+/* {   */
+/*   if(ghead->state & GSTATE_CTX_CODE_GRP) */
+/*     return SEMICOLON; */
+
+/*   else if(ghead->state & GSTATE_CTX_DATA_GRP) */
+/*     return COMMA; */
+
+/*   else if (ghead->state & GSTATE_CTX_IDX) */
+/*     return COLON; */
+
+/*   else if (ghead->state & GSTATE_CTX_MAP_GRP) */
+/*   { */
+/*     if (ghead->delimiter_cnt % 2 == 0) */
+/*       return COMMA; */
+/*     else */
+/*       return COLON; */
+/*   } */
+/*   else */
+/*     return 0; */
+/* } */
 
 enum ModeResult {
   _MRMatchFailure = 0,
@@ -285,14 +296,14 @@ enum ModeResult mode_func_def(enum Lexicon current, struct Previsioner *state)
   switch(state->data.fndef_mode.ctr)
   {
     case 0:
-	    return current == WORD;
+      return current == WORD;
     case 1:
-	    return current == PARAM_OPEN;
+      return current == PARAM_OPEN;
     default:
-	    mod = state->data.fndef_mode.ctr % 2;
-	    
+      mod = state->data.fndef_mode.ctr % 2;
+
       if (current == PARAM_CLOSE)
-	      return _MRComplete;	
+        return _MRComplete;
       
       return (current == WORD && mod) 
         || (current == COMMA && !mod);
@@ -303,10 +314,6 @@ enum ModeResult mode_func_def(enum Lexicon current, struct Previsioner *state)
 
 enum ModeResult mode_import(enum Lexicon current,  struct Previsioner *state)
 {
-  uint16_t mod = 0;
-  enum Lexicon blah[15];
-  enum Lexicon *ref;
-  uint16_t offset = 0;
 
   if(!state->data.import_mode.has_word){
     memcpy(state->buffer, _PV_import_init, _PV_import_word_len);
@@ -360,15 +367,15 @@ int8_t is_token_unexpected(struct Parser *state)
     mode_ret = mode_func_def(current->type, &state->expecting);
     
     if(mode_ret == 0)
-	    return true;
+      return true;
     
     else if(mode_ret == 1)
-	    return false;
+      return false;
     
     else if(mode_ret == 2)
     {
-	    state->expecting.mode = PV_Default;
-	    return false;
+      state->expecting.mode = PV_Default;
+      return false;
     }
     else return -1;
   }

@@ -68,6 +68,16 @@ const struct Token * group_modifier(
 }
 
 
+const group_type(
+  struct Parser *state,
+  const struct Token *brace,
+  const struct Group *group
+){
+
+
+  group->operator_idx
+}
+
 /*
 ** pushes group into output as a group token
 ** NOTE: Assumes token->origin is a brace type;
@@ -94,24 +104,30 @@ bool is_op_keyword(enum Lexicon token)
      || token == DefBody;
 }
 
-struct Group * new_grp(struct Parser *state, const struct Token * origin)
-{
+struct Group * new_grp(
+  struct Parser * state,
+  const struct Token * from
+){
   struct Group *ghead;
   assert(state->set_ctr < state->set_sz);
   
   ghead = &state->set_stack[state->set_ctr];
   state->set_ctr += 1;
 
-  ghead->operator_idx = state->set_ctr;
+  /* assumes `OPEN_BRACE/PARAM/BRACKET` is on the operator stack*/
+  ghead->operator_idx = state->operators_ctr - 1;
+  ghead->set_idx = state->set_ctr - 1;
+
   ghead->last_delim = 0;
   ghead->delimiter_cnt = 0;
   ghead->expr_cnt = 0;
   ghead->short_type = sh_udef_t;
 
-  ghead->origin = origin;
+  ghead->origin = from;
 
   ghead->state = 0;
-  ghead->type = GroupTUninit;
+
+  ghead->type = /*TODO*/ 0;
 
   return ghead;
 }

@@ -240,6 +240,8 @@ int8_t pop_block_operator(struct Parser *state)
 }
 
 
+
+
 int8_t handle_close_brace(struct Parser *state) {
   int8_t ret = 0;
   struct Group *ghead = group_head(state);
@@ -318,10 +320,12 @@ int8_t prefix_group(
   const struct Token * current = current_token(state);
   const struct Token * prev = prev_token(state);
 
+  bool pushed = 0;
+
   /* function call pattern */
   if (current->type == PARAM_OPEN
     && (is_close_brace(prev->type) || prev->type == WORD)
-    && op_push(Apply, 0, 0, state) == 0)
+    && (pushed = (op_push(Apply, 0, 0, state) == 0)))
     return -1;
 
   /* index call pattern */
@@ -331,9 +335,11 @@ int8_t prefix_group(
     if ((is_close_brace(prev->type)
        || prev->type == WORD
        || prev->type == STRING_LITERAL)
-       && op_push(_IdxAccess, 0, 0, state) == 0)
+       && (pushed = op_push(_IdxAccess, 0, 0, state) == 0))
        return -1;
   }
+
+  return pushed;
 }
 
 /*
@@ -341,12 +347,13 @@ int8_t prefix_group(
 */
 int8_t handle_open_brace(struct Parser *state)
 {
+  bool ret;
   const struct Token *current = current_token(state);
   const struct Token *prev = prev_token(state);
 
   if (prev)
     /* look behind & insert group modifier if needed. */
-    prefix_group(state);
+    ret = prefix_group(state);
 
   if (new_grp(state, current) == 0)
       return -1;
@@ -417,6 +424,7 @@ int8_t handle_idx_op(struct Parser *state)
 
 int8_t handle_dual_group(struct Parser *state, uint16_t id)
 {
+  struct Group *ghead = group_head(state);
   static enum Lexicon products[][3] = {
     {ForBody, ForParams, 0},
     {WhileBody, WhileCond, 0},
@@ -425,36 +433,9 @@ int8_t handle_dual_group(struct Parser *state, uint16_t id)
     {0, 0, 0}
   };
 
+  ghead->expr_cnt += 1;
   return push_many_ops(products[id], current_token(state), state);
 }
-
-
-/*
- * `if` pops 2 arguments off the stack.
- * The first is the conditional expression,
- * the second is the condition's body.
- *
- * README: Expects an `IF` token at the top of
- * the operator stack.
- * 
- * src: if(cond-expr) body-expr
- * dbg: <cond-expr> <body-expr> IF
- */
- /* FUNCTION NOT LONGER EXISTS */
-
-//int8_t handle_else(struct Parser *state)
-//{
-  //const struct Token *current = current_token(state);
-  //const struct Token *output_head = vec_head(&state->debug);
-
-  //if(output_head->type != IfCond) {
-  //  throw_unexpected_token(state, 0, 0, );
-  //}
-
-  //state->operator_stack[state->operators_ctr] = current;
-  //state->operators_ctr += 1;
-  //return 0;
-//}
 
 /*
 ** consumes tokens until `import` token is found
@@ -469,8 +450,7 @@ int8_t handle_dual_group(struct Parser *state, uint16_t id)
 int8_t handle_import(struct Parser *state)
 {
   struct Group *gtop, *ghead = group_head(state);
-  const struct Token *new_op, *current = current_token(state);
-  struct Token tok;
+  const struct Token *current = current_token(state);
 
   gtop = new_grp(state, next_token(state));
   gtop->short_type = sh_import_t;
@@ -478,52 +458,12 @@ int8_t handle_import(struct Parser *state)
   if(output_head(state)->type != FROM)
     ghead->expr_cnt += 1;
 
-  tok.type = PARAM_OPEN;
-  tok.seq = 0;
-  tok.start = 0;
-  tok.end = 0;
-
-  new_op = new_token(state, &tok);
-
   state->operator_stack[state->operators_ctr] = current;
   state->operators_ctr += 1;
 
-  state->operator_stack[state->operators_ctr] = new_op;
-  state->operators_ctr += 1;
+  op_push(PARAM_OPEN, 0, 0, state);
+  return 0;
 }
-
-/*
- * Short group are groups 
- * that are unbraced and 
- * with one expression in it.
- *
- * Normal block-group
- * if(x) { x+1; } 
- *
- * Short block-group
- * if(x) x+1;
- *       ^
- *       ^
- * Short groups are popped off of the stack at the first 
- * delimiter found in their scope.
-*/
-/* struct Group * mk_short_block(struct Parser *state) */
-/* { */
-/*   const struct Token *ophead; */
-/*   struct Group *ghead; */
-
-/*   ophead = op_push(BRACE_OPEN, 0, 0, state); */
-/*   assert(ophead); */
-
-/*   ghead = new_grp(state, ophead); */
-/*   assert(ghead); */
-
-/*   ghead->state |= GSTATE_CTX_SHORT_BLOCK; */
-/*   ghead->short_block = 1; */
-
-/*   return ghead; */
-/* } */
-
 
 int8_t handle_sb_cond_termination(struct Parser *state)
 {
@@ -630,7 +570,8 @@ int8_t handle_delimiter(struct Parser *state)
 
   flush_ops(state);
 
-  if (is_unit(prev->type))
+  // TODO: see how this plays with if/for/while
+  if (!is_delimiter(prev->type))
     ghead->expr_cnt += 1;
 
   if (is_illegal_delimiter(state) || complete_partial_gtype(state) == -1)
@@ -693,7 +634,6 @@ int8_t parse(
   struct ParserOutput *out
 ){
   struct Parser state;
-  const struct Token *head;
   uint16_t i = 0;
   int8_t ret_flag = 0;
   int8_t ez_match_id = 0;
@@ -705,7 +645,7 @@ int8_t parse(
     assert(state.operators_ctr > state.operator_stack_sz);
     unexpected_token = is_token_unexpected(&state);
 
-    if(state.panic)
+    if(state.panic || unexpected_token)
       handle_unwind(&state, unexpected_token);
 
     if(is_dual_grp_keyword(state.src[i].type))

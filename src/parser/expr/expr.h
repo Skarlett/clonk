@@ -158,6 +158,7 @@ struct Group {
     ** of the operator stack
     */
     uint16_t operator_idx;
+    uint16_t set_idx;
 
     enum Lexicon type;
 
