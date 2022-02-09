@@ -180,7 +180,9 @@ int8_t handle_operator(struct Parser *state) {
  */
 int8_t pop_group(struct Parser *state)
 {
-  struct Group *ghead = &state->set_stack[state->set_ctr - 1];
+  struct Group *ghead = group_head(state);
+
+  state->set_ctr -= 1;
 
   /* only add groups if they're not singular item paramethesis braced */
   if (ghead->origin->type != PARAM_OPEN
@@ -230,7 +232,6 @@ int8_t handle_close_brace(struct Parser *state) {
     0 < state->operators_ctr && prev
     && state->set_sz > state->set_ctr
   );
-
 
   if (!is_delimiter(prev->type))
     ghead->expr_cnt += 1;
@@ -294,8 +295,6 @@ void prefix_group(
   const struct Token * current = current_token(state);
   const struct Token * prev = prev_token(state);
 
-  bool pushed = 0;
-
   /* function call pattern */
   if (current->type == PARAM_OPEN && is_fncall_pattern(prev))
   {
@@ -307,8 +306,8 @@ void prefix_group(
   else if (current->type == BRACKET_OPEN && is_index_pattern(prev))
   {
     /* is indexable */
-       op_push(_IdxAccess, 0, 0, state);
-       return;
+    op_push(_IdxAccess, 0, 0, state);
+    return;
   }
 
 }
@@ -473,13 +472,11 @@ int8_t handle_short_block_termination(struct Parser *state) {
     handle_sb_cond_termination(state);
 }
 
-
 /*
 ** turns `PartialBrace` into either `MapGroup`
 ** or `CodeBlock`, invalid delimiter results in -1
 ** called in `handle_delimiter`
 */
-
 int8_t _complete_partial_gtype(struct Group * ghead, const struct Token *current){
     if (current->type == COLON)
       ghead->type = MapGroup;
@@ -502,7 +499,6 @@ int8_t complete_partial_gtype(struct Parser *state){
 /* throw unexpected token */
 int8_t is_illegal_delimiter(const struct Parser *state) {
   struct Group *ghead = group_head(state);
-  const struct Token *next = next_token(state);
   const struct Token *gmod = group_modifier(state, ghead);
 
 
@@ -550,55 +546,12 @@ int8_t handle_delimiter(struct Parser *state)
 
   /* fill in empty index arg if non-specified*/
   else if(ghead->type == IndexGroup && prev) {
-
     if (prev->type == COLON || prev->type == BRACKET_OPEN)
       push_output(state, NULLTOKEN, 0);
   }
 
   handle_short_block_termination(state);
   return 0;
-}
-
-int8_t initalize_parser(
-  struct Parser *state,
-  const struct ParserInput *in,
-  uint16_t *i
-){
-  if (
-    init_vec(&state->pool, 256, sizeof(struct Token)) == -1
-    ||init_vec(&state->debug, 2048, sizeof(void *)) == -1
-    ||init_vec(&state->errors, 64, sizeof(struct ParserError)) == -1
-    ||init_vec(&state->restoration_stack, 2048, sizeof(struct RestorationFrame)) == -1
-  ) return -1;
-
-  state->src_code = in->src_code;
-  state->_i = i;
-
-  state->src = in->tokens.base;
-  state->src_sz = in->tokens.len;
-
-  state->set_ctr = 0;
-  state->set_sz = STACK_SZ;
-
-  state->operators_ctr = 0;
-  state->operator_stack_sz = STACK_SZ;
-
-  //state->expecting_ref = state->expecting;
-  init_expect_buffer(&state->expecting);
-  
-  assert(op_push(BRACE_OPEN, 0, 0, state) != 0);
-  return 0;
-}
-
-void parser_input_from_lexer_output(
-  const struct LexerOutput *lex,
-  struct ParserInput *parser_in,
-  bool add_glob_scope)
-{
-  parser_in->src_code = lex->src_code;
-  parser_in->src_code_sz = lex->src_code_sz;
-  memcpy(&parser_in->tokens, &lex->tokens, sizeof(struct Vec));
-  parser_in->add_glob_scope = add_glob_scope;
 }
 
 int8_t parse(
@@ -611,7 +564,7 @@ int8_t parse(
   int8_t ez_match_id = 0;
   bool unexpected_token;
 
-  assert(initalize_parser(&state, input, &i) == 0);
+  assert(init_parser(&state, input, &i) == 0);
 
   for (i = 0 ;; i++) {
     assert(state.operators_ctr > state.operator_stack_sz);
@@ -623,7 +576,6 @@ int8_t parse(
     if(is_dual_grp_keyword(state.src[i].type))
       handle_dual_group(&state, ez_match_id);
 
-    /* string, word, integers */
     else if(is_unit(state.src[i].type))
       insert(&state, &state.src[i]);
 
@@ -645,9 +597,7 @@ int8_t parse(
     else if(state.src[i].type == IMPORT)
       handle_import(&state);
 
-    /* end of file */
     else if(state.src[i].type == EOFT) {
-      // mk global scope group
       break;
     }
 
@@ -667,37 +617,5 @@ int8_t parse(
 
   assert(state.operators_ctr == 1);
 
-  return 0;
-}
-
-int8_t free_state(struct Parser *state) {
-  //state->mode = PM_Uninitialized;
-  if (
-    vec_free(&state->debug) == -1
-    || vec_free(&state->pool) == -1
-    || vec_free(&state->errors) == -1)
-    return -1;
-  
-  return 0;
-}
-
-int8_t reset_state(struct Parser *state)
-{
-  memset(state->operator_stack, 0, sizeof(void *[STACK_SZ]));
-  state->operators_ctr = 0;
-  
-  memset(state->set_stack, 0, sizeof(void *[STACK_SZ]));
-  state->set_ctr = 0;
-  
-  state->src_sz = 0;
-  state->src = 0;
-  state->_i = 0;
-  state->src_code = 0;
-  
-  init_expect_buffer(&state->expecting);
-
-  //state->panic_flags = 0;
-  
-  free_state(state);
   return 0;
 }

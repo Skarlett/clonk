@@ -380,8 +380,8 @@ int8_t parse(
 
 int8_t is_token_unexpected(struct Parser *state);
 
-int8_t free_state(struct Parser *state);
-int8_t reset_state(struct Parser *state);
+int8_t parser_free(struct Parser *state);
+int8_t parser_reset(struct Parser *state);
 
 void restoration_hook(struct Parser *state);
 int8_t handle_unwind(

@@ -273,3 +273,74 @@ int8_t op_precedence(enum Lexicon token) {
     
     return -1;
 }
+
+int8_t init_parser(
+  struct Parser *state,
+  const struct ParserInput *in,
+  uint16_t *i
+){
+  if (
+    init_vec(&state->pool, 256, sizeof(struct Token)) == -1
+    ||init_vec(&state->debug, 2048, sizeof(void *)) == -1
+    ||init_vec(&state->errors, 64, sizeof(struct ParserError)) == -1
+    ||init_vec(&state->restoration_stack, 2048, sizeof(struct RestorationFrame)) == -1
+  ) return -1;
+
+  state->src_code = in->src_code;
+  state->_i = i;
+
+  state->src = in->tokens.base;
+  state->src_sz = in->tokens.len;
+
+  state->set_ctr = 0;
+  state->set_sz = STACK_SZ;
+
+  state->operators_ctr = 0;
+  state->operator_stack_sz = STACK_SZ;
+
+  init_expect_buffer(&state->expecting);
+
+  assert(op_push(BRACE_OPEN, 0, 0, state) != 0);
+  return 0;
+}
+
+int8_t parser_free(struct Parser *state) {
+  if (
+    vec_free(&state->debug) == -1
+    || vec_free(&state->pool) == -1
+    || vec_free(&state->errors) == -1
+    || vec_free(&state->restoration_stack) == -1)
+    return -1;
+
+  return 0;
+}
+
+int8_t parser_reset(struct Parser *state)
+{
+  memset(state->operator_stack, 0, sizeof(void *[STACK_SZ]));
+  state->operators_ctr = 0;
+
+  memset(state->set_stack, 0, sizeof(void *[STACK_SZ]));
+  state->set_ctr = 0;
+
+  state->src_sz = 0;
+  state->src = 0;
+  state->_i = 0;
+  state->src_code = 0;
+
+  init_expect_buffer(&state->expecting);
+
+  parser_free(state);
+  return 0;
+}
+
+void parser_input_from_lexer_output(
+  const struct LexerOutput *lex,
+  struct ParserInput *parser_in,
+  bool add_glob_scope)
+{
+  parser_in->src_code = lex->src_code;
+  parser_in->src_code_sz = lex->src_code_sz;
+  memcpy(&parser_in->tokens, &lex->tokens, sizeof(struct Vec));
+  parser_in->add_glob_scope = add_glob_scope;
+}
