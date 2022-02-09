@@ -9,22 +9,21 @@ const char * ptoken(enum Lexicon t) {
         case CHAR: return "char";
         case NULLTOKEN: return "nulltoken";
         case WHITESPACE: return "whitespace";
-        case NEWLINE: return "newline";
         case BRACE_OPEN: return "brace_open";
         case BRACE_CLOSE: return "brace_close";
         case PARAM_OPEN: return "param_open";
         case PARAM_CLOSE: return "param_close";
         case COMMA: return "comma";
         case DIGIT: return "digit";
-        case QUOTE: return "quote";
+        case D_QUOTE: return "d_quote";
         case EQUAL: return "eq";
         case ADD: return "add";
         case MUL: return "multiply";
         case DIV: return "divide";
         case GT: return "greater than";
         case LT: return "less than";
+        case ISNEQL: return "is not eq";
         case ISEQL: return "is eq";
-        case ISNEQL: return "not eq";
         case GTEQ: return "greater than or eq";
         case LTEQ: return "less than or eq";
         case POW: return "exponent";
@@ -39,20 +38,28 @@ const char * ptoken(enum Lexicon t) {
         case PIPE: return "pipe";
         case AND: return "and";
         case OR: return "or";
+        case SHR: return "shr";
+        case SHL: return "shl";
+        case PIPEOP: return "pipe op";
+        case BOREQL: return "bit or eql";
+        case BANDEQL: return "bit and eql";
+        case BNEQL: return "bit not eql";
+        case TILDE: return "bit not";
+        case FROM: return "from";
         case UNDERSCORE: return "underscore";
         case NOT: return "not";
         case POUND: return "pound";
-        case STATIC: return "'static'";
-        case CONST: return "'const'";
+//        case STATIC: return "'static'";
+//        case CONST: return "'const'";
         case IF: return "'if";
         case ELSE: return "'else'";
-        case IMPL: return "'impl'";
+//        case IMPL: return "'impl'";
         case FUNC_DEF: return "'def'";
         case RETURN: return "'return'";
-        case AS: return "'as'";
+//        case AS: return "'as'";
         case ATSYM: return "@";
         case IMPORT: return "'import'";
-        case EXTERN: return "'extern'";
+//        case EXTERN: return "'extern'";
         case COMMENT: return "comment";
         case TOKEN_UNDEFINED: return "undef";
         case DOT: return "dot";
@@ -60,34 +67,35 @@ const char * ptoken(enum Lexicon t) {
     };
 }
 
-char brace_as_char(enum Lexicon tok) {
-    switch(tok){
-        case BRACE_OPEN: return '{';
-        case BRACE_CLOSE: return '}';
-        case PARAM_OPEN: return '(';
-        case PARAM_CLOSE: return ')';
-        case BRACKET_OPEN: return '[';
-        case BRACKET_CLOSE: return ']';
-        default:
-            return -1;
-    }
-}
+/* char brace_as_char(enum Lexicon tok) { */
+/*     switch(tok){ */
+/*         case BRACE_OPEN: return '{'; */
+/*         case BRACE_CLOSE: return '}'; */
+/*         case PARAM_OPEN: return '('; */
+/*         case PARAM_CLOSE: return ')'; */
+/*         case BRACKET_OPEN: return '['; */
+/*         case BRACKET_CLOSE: return ']'; */
+/*         default: */
+/*             return -1; */
+/*     } */
+/* } */
 
-char invert_brace_char(char brace) {
-    switch(brace){
-        case '{': return '}';
-        case '}': return '{';
-        case '(': return ')';
-        case ')': return '(';
-        case '[': return ']';
-        case ']': return '[';
-        default:
-            return -1;
-    }
-}
+/* not used */
+/* char invert_brace_char(char brace) { */
+/*     switch(brace){ */
+/*         case '{': return '}'; */
+/*         case '}': return '{'; */
+/*         case '(': return ')'; */
+/*         case ')': return '('; */
+/*         case '[': return ']'; */
+/*         case ']': return '['; */
+/*         default: */
+/*             return -1; */
+/*     } */
+/* } */
 
 
-char * __sprintf_token_ty_slice(char *output, usize output_sz, enum Lexicon token, usize *ctr) {
+char * __sprintf_token_ty_slice(char *output, uint16_t output_sz, enum Lexicon token, uint16_t *ctr) {
     char token_buf[64];
     const char *ptok;
 
@@ -114,10 +122,11 @@ union SPFData {
 };
 
 char * __sprintf_inner(
-    usize ntokens,
-    char *output, usize output_sz,
-    union SPFData *ptr, enum SPFMode spf_ty) {
-    usize ctr = 0;
+    uint16_t ntokens,
+    char *output, uint16_t output_sz,
+    union SPFData *ptr, enum SPFMode spf_ty
+){
+    uint16_t ctr = 0;
     enum Lexicon item = 0;
 
     if (!ptr || !output)
@@ -125,7 +134,7 @@ char * __sprintf_inner(
     
     output[0] = '[';
 
-    for (usize i=0; ntokens > i; i++) {
+    for (uint16_t i=0; ntokens > i; i++) {
 
         if (spf_ty == spf_lex_arr && ptr->lex_arr) 
             item = ptr->lex_arr[i];
@@ -152,11 +161,11 @@ char * __sprintf_inner(
 
 int8_t sprintf_token_slice(
     const struct Token tokens[],
-    usize ntokens,
+    uint16_t ntokens,
     char * output,
-    usize output_sz    
+    uint16_t output_sz    
 ){
-    usize ctr=0;
+    uint16_t ctr=0;
     union SPFData input;
     enum SPFMode mode = spf_tok_arr;
     input.tok_arr = tokens;
@@ -169,9 +178,9 @@ int8_t sprintf_token_slice(
 
 int8_t sprintf_lexicon_slice(
     const enum Lexicon tokens[],
-    usize ntokens,
+    uint16_t ntokens,
     char * output,
-    usize output_sz
+    uint16_t output_sz
 ){
     union SPFData input;
     enum SPFMode mode = spf_lex_arr;
@@ -186,9 +195,9 @@ int8_t sprintf_lexicon_slice(
 
 int8_t sprintf_token_slice_by_ref(
     const struct Token *tokens[],
-    usize ntokens,
+    uint16_t ntokens,
     char * output,
-    usize output_sz    
+    uint16_t output_sz    
 ){
     union SPFData input;
     enum SPFMode mode = spf_tok_arr_by_ref;
@@ -202,12 +211,12 @@ int8_t sprintf_token_slice_by_ref(
 
 int8_t sprint_src_code(
     char * output,
-    usize output_sz,
-    usize *nbytes,
+    uint16_t output_sz,
+    uint16_t *nbytes,
     const char * source,
     const struct Token *token
 
-) {
+){
     if (!source || !output || !token 
         || token->start > token->end
         || token->end - token->start > output_sz)

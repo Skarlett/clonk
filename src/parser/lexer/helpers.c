@@ -4,7 +4,6 @@
 
 #define BRACE_BUFFER_SZ 256
 
-
 bool is_delimiter(enum Lexicon token) {
     return token == COLON || token == COMMA;
 }
@@ -77,27 +76,27 @@ bool is_operator(enum Lexicon token) {
         || token == EQUAL
         || token == MINUSEQ
         || token == PLUSEQ
-	/* bitwise operations */
-	|| token == BOREQL
-	|| token == BANDEQL
-	|| token == PIPE
-	|| token == AMPER
-	|| token == SHL
-	|| token == SHR
-	/* experimental */
-	|| token == PIPEOP
+        /* bitwise operations */
+        || token == BOREQL
+        || token == BANDEQL
+        || token == PIPE
+        || token == AMPER
+        || token == SHL
+        || token == SHR
+        /* experimental */
+        || token == PIPEOP
     );
 }
 
-bool contains_tok(enum Lexicon cmp, enum Lexicon buffer[]) {
-  for (uint16_t i;;i++)
+/* null delimitated */
+uint8_t eq_any_tok(enum Lexicon cmp, enum Lexicon buffer[]) {
+  for (uint16_t i ;; i++)
     if(buffer[i] == 0) break;
     else if (buffer[i] == cmp)
-      return true;
+      return i;
   
-  return false;
+  return 0;
 }
-
 
 
 /* is character utf encoded */
@@ -124,23 +123,30 @@ enum Lexicon invert_brace_tok_ty(enum Lexicon token) {
 }
 
 int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon current) {
-    //todo: check for int overflow & buffer
+    //TODO: check for int overflow & buffer
     enum Lexicon inverted;
 
-    if (is_close_brace(current)) {
+    if (is_close_brace(current))
+    {
         inverted = invert_brace_tok_ty(current);
-
-        if (inverted == -1)
-            return -1;
+        if (inverted == TOKEN_UNDEFINED)
+          return -1;
         
+<<<<<<< Updated upstream
+        /*
+            return 1 to stop iteration, 
+            and return `is_balanced` as false
+=======
         /* 
-            return 1 to stop iteration,  and return `is_balanced` as false (0)
+            return 1 to stop iteration, 
+            and return `is_balanced` as false (0)
+>>>>>>> Stashed changes
         */    
         else if (*tokens_ctr <= 0)
-            return 1;
+          return 1;
 
-        else if (tokens[(*tokens_ctr)-1] == inverted)
-            (*tokens_ctr)--;
+        else if (tokens[*tokens_ctr - 1] == inverted)
+          *tokens_ctr -= 1;
     }
 
     else if (is_open_brace(current)) {
@@ -160,12 +166,12 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
  *  an expression can be unbalanced 
  *  if there is a nonmatching `[` / `(` / `{` character
 */
-int8_t is_balanced(struct Token tokens[], usize ntokens) {
+bool is_balanced(struct Token tokens[], uint16_t ntokens) {
     enum Lexicon braces[BRACE_BUFFER_SZ];
     uint16_t braces_ctr = 0;
     int8_t ret;
 
-    for (usize i=0; ntokens > i; i++){
+    for (uint16_t i=0; ntokens > i; i++){
         ret = inner_balance(braces, &braces_ctr, tokens[i].type);
         if (ret == -1)
             return -1;
@@ -178,19 +184,18 @@ int8_t is_balanced(struct Token tokens[], usize ntokens) {
     return braces_ctr == 0;
 }
 
-
 /* 
     function determines if an expression is unbalanced.
     an expression can be unbalanced 
     if there is a nonmatching `[` / `(` / `{` character
 */
-int8_t is_balanced_by_ref(struct Token *tokens[], usize ntokens) {
+bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
     enum Lexicon braces[BRACE_BUFFER_SZ];
     uint16_t braces_ctr = 0;
 
     int8_t ret;
     
-    for (usize i=0; ntokens > i; i++){
+    for (uint16_t i=0; ntokens > i; i++){
         ret = inner_balance(braces, &braces_ctr, tokens[i]->type);
         
         if (ret == -1)
@@ -205,18 +210,50 @@ int8_t is_balanced_by_ref(struct Token *tokens[], usize ntokens) {
 
 bool is_keyword(enum Lexicon token) {
     static enum Lexicon keywords[10] = {
-        STATIC, CONST, RETURN, EXTERN, 
-        AS, IF, ELSE, FUNC_DEF, IMPORT, IMPL
-    };
-    
-    for (int i=0; 10 > i; i++) {
-        if (token == keywords[i])
-            return true;
-    }
-    
-    return false;
+        // STATIC, CONST,
+        RETURN,
+        // EXTERN, AS,
+        IF, ELSE, FUNC_DEF, IMPORT,
+        // IMPL,
+        0
+    };    
+    return eq_any_tok(token, keywords);
 }
 
 bool is_num_negative(const char * source, struct Token *token) {
     return token->type == INTEGER && *(source + token->start) == '-';
+}
+
+bool is_unit(enum Lexicon tok)
+{
+    
+  return \
+    tok == STRING_LITERAL 
+    || tok == INTEGER
+    || tok == WORD;
+}
+
+bool is_group(enum Lexicon tok)
+{
+  return \
+    tok == TupleGroup 
+    ||tok == ListGroup
+    ||tok == IndexGroup
+    ||tok == MapGroup  
+    ||tok == CodeBlock;
+}
+
+bool is_group_modifier(enum Lexicon tok) {
+    return tok == Apply
+        || tok == _IdxAccess
+        || tok == IfCond
+        || tok == IfBody
+        || tok == DefSign
+        || tok == DefBody
+        || tok == ForParams
+        || tok == ForBody
+        || tok == WhileCond
+        || tok == WhileBody
+        || tok == IMPORT
+        || tok == RETURN;
 }

@@ -10,9 +10,7 @@
  * Helper functions
  *-------------------------------------------------------------------------*/
 
-#define CompareAsserts(tc, message, expected, actual)  X_CompareAsserts((tc), __FILE__, __LINE__, (message), (expected), (actual))
 
-static void X_CompareAsserts(CuTest* tc, const char *file, int line, const char* message, const char* expected, const char* actual)
 {
 	int mismatch;
 	if (expected == NULL || actual == NULL) {
@@ -35,7 +33,6 @@ static void X_CompareAsserts(CuTest* tc, const char *file, int line, const char*
 		}
 	}
 
-	CuAssert_Line(tc, file, line, message, !mismatch);
 }
 
 /*-------------------------------------------------------------------------*

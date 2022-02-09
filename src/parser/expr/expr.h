@@ -1,4 +1,3 @@
-
 #ifndef _HEADER_EXPR__
 #define _HEADER_EXPR__
 
@@ -7,167 +6,58 @@
 #include "../../prelude.h"
 #include "../lexer/lexer.h"
 
-/*
-    when defining a group, 
-    it may not have more literal elements than
-*/
-enum ExprType {
-    NopExprT,
-    // variable names
-    // x
-    // foo.max
-    // std::int::MAX
-    SymExprT,
-
-    // Literal datatype
-    // [1, 2, 3] | list
-    // "asdasd"
-    // 100
-    LiteralExprT,
-
-    // x(a, ...)
-    FnCallExprT,
-
-    // x(a, ...)
-    IfExprT,
-
-
-    // binary operation
-    // 1 + 2 * foo.max - size_of(list)
-    BinaryExprT,
-    
-    UndefinedExprT
-};
-
-enum Operation {
-    Nop,
-    /* no operation */
-    /* math */
-    Add,
-    Sub,
-    Multiply,
-    Divide,
-    Pow,
-    Modolus,
-    /* cmp */
-    IsEq,
-    NotEq,
-    Gt,
-    Lt,
-    GtEq,
-    LtEq,
-
-    And,
-    Or,
-
-    Assign,
-    AssignAdd,
-    AssignSub,
-
-    /* dot operator */
-    Access,
-
-    Not,
-
-    UndefinedOp = 255
-};
-
-enum GroupT {
-    GroupTUndef,
-
-    // {1:2, 3:4}
-    MapT,
-    
-    // [1, 2]
-    ListT,
-    
-    // (a, b)
-    TupleT,
-
-    // {a, b}
-    SetT,
-
-    // {1; 2;}
-    CodeBlockT
-
-};
-
-struct Grouping { 
-    enum GroupT type;
-    usize length;
-    struct Expr **ptr;
-};
-
-enum DataType {
-    UndefT,
-    IntT,
-    StringT,
-    BoolT,
-    GroupT,
-    NullT
-};
-
-struct Literals {
-    union {
-        isize integer;
-        char * string;
-        uint8_t boolean;
-        struct Grouping grouping;
-    } literal;
-};
-
-struct FnCallExpr {
-    struct Expr *caller;
-    char * func_name;
-    uint8_t args_length;
-    struct Expr **args;
-    enum DataType returns;
-};
-
-struct BinExpr {
-    enum Operation op;
-    struct Expr *lhs;
-    struct Expr *rhs;
-    enum DataType returns;
-};
-
-struct NotExpr {
-    struct Expr *operand;
-};
-
-struct IfExpr {
-    struct Expr *cond;
-    struct Expr *body;
-    struct Expr *else_body;
-};
-
-struct IdxExpr {
-    struct Expr * operand;
-    struct Expr * start;
-    struct Expr * end;
-    struct Expr * skip;
-};
-
-struct Expr {
-    enum ExprType type;
-    enum DataType datatype;
-    struct Token origin; 
-    uint8_t free;
-
-    union {
-        char * symbol;
-        struct Literals value;
-        struct FnCallExpr fncall;
-        struct BinExpr bin;
-        struct NotExpr not_;
-        struct IdxExpr idx;
-        struct IfExpr cond;
-
-    } inner;
-};
-
-
 typedef uint16_t FLAG_T; 
+
+enum PrevisionerModeT {
+  /* give list of next possible 
+   * tokens based on the input */
+  PV_Default,
+  
+  /* follow a sequence of 
+   * tokens until completed */  
+  PV_DefSignature,
+  PV_Import
+};
+
+/* Predicts the next possible tokens
+ * from the current token.
+ * Used to check for unexpected tokens.
+ * functionality is
+*/
+
+#define PREVISION_SZ 64
+union PrevisionerData {
+  // default mode
+  struct {
+    enum Lexicon *ref;
+  } default_mode;
+
+  struct {
+    uint16_t ctr;
+  } fndef_mode;
+
+  struct {
+    bool has_word;
+    bool expecting_junction;
+  } import_mode;
+};
+
+
+// TODO: if top of operator stack has 0 precedense,
+// you can push ret/if/else/import
+struct Previsioner
+{
+  enum Lexicon buffer[PREVISION_SZ];
+  enum PrevisionerModeT mode;
+  union PrevisionerData data;
+};
+
+void init_expect_buffer(struct Previsioner *state);
+
+/* void unset_flag(FLAG_T *set, FLAG_T flag); */
+/* void set_flag(FLAG_T *set, FLAG_T flag); */
+/* FLAG_T check_flag(FLAG_T set, FLAG_T flag); */
+
 
 /*
     The grouping stack is used to track the amount 
@@ -186,49 +76,56 @@ typedef uint16_t FLAG_T;
     used in the group-stack exclusively
 */
 
+#define GSTATE_EMPTY             1
 
-#define GSTATE_EMPTY         1
-#define GSTATE_CTX_DATA_GRP  2
-#define GSTATE_CTX_CODE_GRP  4
-#define GSTATE_CTX_MAP_GRP   8
-#define GSTATE_CTX_IDX      16
-#define GSTATE_CTX_LOCK     32
-#define GSTATE_CTX_NO_DELIM 1024
-#define GSTATE_OP_APPLY     64
-#define GSTATE_CTX_IF_COND 128
-#define GSTATE_CTX_IF_BODY 256
-#define GSTATE_CTX_ELSE_BODY 512
+#define GSTATE_CTX_IDX           1 << 4
 
-struct Cond {
-    struct Token *origin;
-    // ';' or '{'
-    enum Lexicon expecting;
-    
-    /*
-        0 : Uninitialized state
-        1 : Condition Completed,
-        2 : Body Completed,
-    */
-    uint8_t flags;
+#define GSTATE_CTX_LOCK          1 << 5
+#define GSTATE_CTX_NO_DELIM      1 << 6
+#define GSTATE_CTX_SHORT_BLOCK   1 << 7
+
+struct ParserInput {
+    const char * src_code;
+    uint16_t src_code_sz;
+    struct Vec tokens;
+
+    bool add_glob_scope;
 };
 
+struct ParserOutput {
+    /* Vec<struct Token *> */
+    const struct Vec postfix;
+
+    /* Vec<struct Token> */
+    struct Vec token_pool;
+
+    /* Vec<struct ParseError> */
+    struct Vec errors;
+};
+
+enum ShortBlock_t {
+  sh_udef_t,
+  sh_cond_t,
+  sh_import_t
+};
+
+
 struct Group {
+    //TODO: Implement this
+    uint16_t seq;
     /*
-        0 : Uninitialized state
-        1 : Empty grouping,
-        2 : CTX Comma data (lists, tuples, sets)
-        4 : CTX Code-block ( {a(); b();} )
-        8 : CTX Map mode {a : b};
-       16 : CTX Index mode 
-       32 : CTX Lock
-       64 : apply marker operation
-      
-      # Not in use yet
-      256 : if marker operation
-      512 : else marker operation
-     1024 : def-body operator
-     2048 : def-signature operator
-     4092 : s
+                   0:           Uninitialized state
+        GSTATE_EMPTY:           signify empty grouping,
+
+        xxGSTATE_CTX_DATA_GRP:    parsing comma seperated data (lists, tuples, sets)
+        xxGSTATE_CTX_CODE_GRP:    parsing a set of instructions/code ( `{ a(); b(); }` )
+        xxGSTATE_CTX_MAP_GRP:     parsing literal datatype map ( `{ a:b, c:d };` )
+
+        GSTATE_CTX_IDX :        parsing index expression `[a:b:c]
+        GSTATE_CTX_LOCK :       set an immutable parsing context until this group ends
+
+        xxGSTATE_OP_APPLY :       after group completion, make into an fncall
+        xxGSTATE_CTX_IF_COND:     parsing an if conditional
 
     */
     FLAG_T state;
@@ -236,74 +133,205 @@ struct Group {
     // amount of delimiters
     uint16_t delimiter_cnt;
 
+    /* 
+    ** amount of expressions
+     * to consume off the stack 
+     *****************
+     * TODO: since its unreliable 
+     * to measure the amount of delimiters
+     * and use that to determine 
+     * how many elements to take of the stack.
+     ****
+     * We will have to keep a counter,
+     * expressions such as 
+     *   * inner groups,
+     *   * if statements,
+     *   * function defining
+     * should count as 1 expressions, since 
+     * thats how they're represented in the stack 
+    ** this is essential to ensure code-blocks work
+    */
+    uint16_t expr_cnt;
+
+    /*
+    ** where the grouping is inside
+    ** of the operator stack
+    */
+    uint16_t operator_idx;
+    uint16_t set_idx;
+
+    enum Lexicon type;
+
     // should be `[` `(` '{' or `0`
-    struct Token *origin;
-    struct Token *last_delim;
+    const struct Token *origin;
+    const struct Token *last_delim;
+
+
+    /*
+    ** TODO: implement
+    ** NOTE: if the amount of if & else are not equal
+    **       will cause UB -
+    **       don't be a prick, warn the user.
+    ** RULES:
+    ** if (x) x;
+    **         ^ After delimiter, check for `else`
+    ** else y;
+    **/
+    //uint8_t short_block;
+    enum ShortBlock_t short_type;
+
 };
 
-#define FLAG_ERROR                0
-#define STATE_READY               1
-#define STATE_INCOMPLETE          2
-#define STATE_PANIC               4 
-#define INTERNAL_ERROR            8
-#define STATE_WARNING             16
+#define FLAG_ERROR       0
 
-#define STATE_CTX_ERROR 0
-#define STATE_CTX_DEFAULT 1
+#define STATE_READY      1
+#define STATE_INCOMPLETE 1 << 1
+#define STATE_PANIC      1 << 2
+#define INTERNAL_ERROR   1 << 3
 
-#define STATE_CTX_RETURN_BODY 2
-#define STATE_CTX_IF_HEAD 4
-#define STATE_CTX_IF_BODY 8
-#define STATE_CTX_ACCEPT_ELSE 16
-#define STATE_CTX_ELSE_BODY 32
+/* 
+  if set - there is an extra 
+    OPEN_BRACK inside of the operator stack 
+    and will be popped off at the EOF
+*/
+#define STATE_PUSH_GLOB_SCOPE 1 << 4
+
+/* if/def/ret/else ends with ; */
+// #define STATE_SHORT_BLOCK 1 << 5
+
+#define STACK_SZ 512
+#define EXP_SZ 32
+
+enum ParserError_t {
+    parse_err_unexpected_token,
+};
 
 
-#define STACK_SZ                 512
-struct ExprParserState {
-    struct Token *src;
-    usize src_sz;
-    usize *_i;
-    char * line;
+struct UnexpectedTokError {
+    /* Lexicon[N] null-terminated malloc */
+    enum Lexicon *expected;
+    uint16_t nexpected;
 
-    /* Tree construction happens in this stack */
-    struct Expr *expr_stack[STACK_SZ];
-    
+    struct Token thrown;
+};
+
+
+/* used to construct an error */
+struct PartialError {
+    enum ParserError_t type;
+    struct Token start;
+
+    /*NOTE: needs free*/
+    enum Lexicon *expect;
+    uint16_t nexpected;
+};
+
+
+struct ParserError {
+    enum ParserError_t type;
+
+    /* window of tokens effected */
+    struct TokenSelection window;
+
+    union {
+        struct UnexpectedTokError unexpected_tok;
+
+    } error;
+};
+
+/*
+** restoration works by destroying a
+** portion of the upper part of the stack.
+**
+** It will slice the top (newest) portion of the stack
+** mark INCOMPLETE, and continue.
+*/
+struct RestorationFrame {
+    /* points to storation point  */
+    const struct Token * operator_stack_tok;
+    const struct Token * output_tok;
+    const struct Token * current;
+    const struct Group * grp;
+};
+
+
+struct PostfixStageState {
+
+    /* Vec<struct Expr> */
+    struct Vec pool;
+
+    struct Expr * stack[STACK_SZ];
+    uint16_t stack_ctr;
+    uint16_t *_i;
+};
+
+struct GroupBookKeeper {
+    uint16_t next_id;
+
+    /* Vec<struct GroupBooklet> */
+    struct Vec tabs;
+};
+
+struct GroupBooklet {
+    struct Token *start;
+    struct Token *end;
+};
+
+
+struct Parser {
+    const struct Token *src;
+    const char * src_code;
+    uint16_t src_sz;
+    uint16_t *_i;
+
     /* a stack of pending operations (see shunting yard) */
-    struct Token *operator_stack[STACK_SZ];
-    
+    const struct Token *operator_stack[STACK_SZ];
+
     /* tracks opening braces in the operator stack */
     struct Group set_stack[STACK_SZ];
-    
-    struct Cond cond_stack[STACK_SZ];
 
     /* tracks opening braces in the operator stack */
-    struct Group prev_set_stack[16];
+    // struct Group prev_set_stack[16];
 
     uint16_t set_ctr;
     uint16_t operators_ctr;
-    uint16_t expr_ctr;
-    uint16_t cond_ctr;
-    
-    uint16_t expr_sz;
+
     uint16_t operator_stack_sz;
     uint16_t set_sz;
 
-    /* Vec<struct Expr> */
-    struct Vec expr_pool;
+    /* todo, to get group spans */
+    struct GroupBookKeeper grp_keeper;
 
+    /*
+    ** Keep generated tokens in `pool`.
+    ** Generated meaning they were not previously
+    ** created in the previous stage (lexing)
+    */
     /*Vec<struct Token>*/
     struct Vec pool;
-    
+
     /* Vec<struct Token *> */
     struct Vec debug;
 
-    /*Vec<struct CompileTimeError>*/
+    /*Vec<struct ParseError>*/
     struct Vec errors;
 
-    FLAG_T ctx;
+    struct Previsioner expecting;
 
-    FLAG_T expecting;
-    FLAG_T panic_flags;
+    /*Vec<struct RestorationFrame>*/
+    struct Vec restoration_stack;
+    uint16_t restoration_ctr;
+
+    /* whenever panic is set a
+     * partial_err is valid, and
+     * caused on previous loop */
+    bool panic;
+    struct PartialError partial_err;
+
+
+    /* enabled if parser cannot
+     * move to the next stage */
+    bool stage_failed;
 };
 /*
   Shunting yard expression parsing algorthim 
@@ -327,7 +355,6 @@ struct ExprParserState {
   based on shunting-yard algorthm.
   This is in combination with arithmetic operations, and our custom operations
   (GROUP, INDEX_ACCESS, APPLY, DOT).
-  
   Upon completion, the result will be an ordered array of operands, 
   and operators ready to be evaluated into a tree structure.
 
@@ -346,14 +373,27 @@ struct ExprParserState {
   pretty-postfix:
            ((foo a (b c +) APPLY(3)) bar 1 APPLY(2) .)
 */
-int8_t parse_expr(
-    char * line,
-    struct Token tokens[],
-    usize expr_size,
-    struct ExprParserState *state,
-    struct Expr *ret
+int8_t parse(
+    struct ParserInput *input,
+    struct ParserOutput *out
 );
 
-int8_t free_state(struct ExprParserState *state);
-int8_t reset_state(struct ExprParserState *state);
+int8_t is_token_unexpected(struct Parser *state);
+
+int8_t free_state(struct Parser *state);
+int8_t reset_state(struct Parser *state);
+
+void restoration_hook(struct Parser *state);
+int8_t handle_unwind(
+    struct Parser *state,
+    bool unexpected_token
+);
+
+void throw_unexpected_token(
+  struct Parser *state,
+  const struct Token *start,
+  const enum Lexicon expected[],
+  uint16_t nexpected
+);
+
 #endif

@@ -17,7 +17,10 @@ struct Vec {
 
 int8_t init_vec(struct Vec *vec, size_t capacity, size_t type_sz);
 int8_t vec_realloc(struct Vec *vec);
-void * vec_push(struct Vec *vec, void *src);
+void * vec_push(struct Vec *vec, const void *src);
 int8_t vec_free(struct Vec *vec);
+const void * vec_head(const struct Vec *vec);
+int8_t vec_pop(struct Vec *vec, void * dest);
+int8_t vec_clear(struct Vec *vec);
 
 #endif

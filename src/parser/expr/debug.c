@@ -4,16 +4,15 @@
 
 #include "../lexer/lexer.h"
 #include "../lexer/debug.h"
-#include "../lexer/helpers.h"
 
 #include "expr.h"
 
 
 const char * print_datatype(enum DataType t) {
     switch (t) {
-        case StringT: return "string";
-        case IntT: return "integer";
-        case NullT: return "null";
+        case DT_StringT: return "string";
+        case DT_IntT: return "integer";
+        case DT_NullT: return "null";
         default: return "undefined";
     }
 }
@@ -60,8 +59,7 @@ const char * print_operator_symbol(enum Operation t) {
 }
 
 
-void draw_token_error_at(const char * line, struct Token *token) {
-    printf("'%s'\n", line);
+    printf("'%s'\n", src_code);
     printf("-");
     for (int i = 0; token->start > i; i++) {
         printf("-");
