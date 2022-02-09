@@ -45,5 +45,8 @@ enum Operation operation_from_token(enum Lexicon t);
 
 int8_t throw_internal_error(struct Parser *state, const char * meta, const char * msg);
 
+bool is_index_pattern(const struct Token *prev);
+
+bool is_fncall_pattern(const struct Token *prev);
 
 #endif

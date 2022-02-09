@@ -125,13 +125,21 @@ struct Group * new_grp(
 
   ghead->origin = from;
 
-  ghead->state = 0;
-
   ghead->type = /*TODO*/ 0;
 
   return ghead;
 }
 
+bool is_index_pattern(const struct Token *prev) {
+  return is_close_brace(prev->type)
+    || prev->type == WORD
+    || prev->type == STRING_LITERAL;
+}
+
+bool is_fncall_pattern(const struct Token *prev){
+  return is_close_brace(prev->type)
+    || prev->type == WORD;
+}
 
 const struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, struct Parser *state)
 {

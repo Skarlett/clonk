@@ -288,7 +288,7 @@ int8_t handle_close_brace(struct Parser *state) {
 ** and insert the token before it (`Apply`/`IndexAccess`)
 ** if that token is defined as a block-descriptor.
 */
-int8_t prefix_group(
+void prefix_group(
   struct Parser *state
 ){
   const struct Token * current = current_token(state);
@@ -297,23 +297,20 @@ int8_t prefix_group(
   bool pushed = 0;
 
   /* function call pattern */
-  if (current->type == PARAM_OPEN
-    && (is_close_brace(prev->type) || prev->type == WORD)
-    && (pushed = (op_push(Apply, 0, 0, state) == 0)))
-    return -1;
-
-  /* index call pattern */
-  else if (current->type == BRACKET_OPEN)
+  if (current->type == PARAM_OPEN && is_fncall_pattern(prev))
   {
-    /* is indexable */
-    if ((is_close_brace(prev->type)
-       || prev->type == WORD
-       || prev->type == STRING_LITERAL)
-       && (pushed = op_push(_IdxAccess, 0, 0, state) == 0))
-       return -1;
+    op_push(Apply, 0, 0, state);
+    return;
   }
 
-  return pushed;
+  /* index call pattern */
+  else if (current->type == BRACKET_OPEN && is_index_pattern(prev))
+  {
+    /* is indexable */
+       op_push(_IdxAccess, 0, 0, state);
+       return;
+  }
+
 }
 
 /*
