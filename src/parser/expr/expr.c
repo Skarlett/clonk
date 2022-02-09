@@ -426,10 +426,28 @@ int8_t prefix_group(
 /*
 ** Pushes operations before grouping operator is place
 **
+**
+**
+**
 ** So when the closing brace is found
 ** when the group is popped,
 ** the operations that occur next,
 ** are the ones applied
+**
+**  function call:
+**  where the current token is `(`
+**       )(
+**       ](
+**    word(
+**        ^-- current token.
+**
+**  index access:
+**  where the current token is `[`
+**        )[
+**        ][
+**     word[
+**        "[
+**         ^-- current token.
 */
 int8_t handle_open_brace_operators(struct Parser *state)
 {
@@ -447,21 +465,7 @@ int8_t handle_open_brace_operators(struct Parser *state)
   increment the group stack, and watch for the following 
   in-fix patterns.
    
-  accepts the following patterns as function calls
-  where the current token is `(`
-       )(
-       ](
-    word(
-        ^-- current token.
-
-  accepts the following patterns as an array index
-    where the current token is `[`
-        )[
-        ][
-     word[
-        "[
-         ^-- current token.
-*/
+  */
 int8_t handle_open_brace(struct Parser *state)
 {
   const struct Token *current = current_token(state);
