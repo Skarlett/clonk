@@ -53,12 +53,13 @@ void push_output(
   const struct Token *ret;
   assert(type != TOKEN_UNDEFINED);
 
-  marker.type = type;
-  marker.start = 0;
-  marker.end = argc;
 
   //TODO: double check sequence unwinding
   marker.seq = 0;
+
+  marker.type = type;
+  marker.start = 0;
+  marker.end = argc;
 
   ret = new_token(state, &marker);
 
@@ -105,10 +106,10 @@ bool is_postfix_operator(enum Lexicon tok) {
 ********************************************
 */
 int8_t handle_operator(struct Parser *state) {
-  const struct Token *head=0, *current=0;
   int8_t precedense = 0, head_precedense = 0;
+  const struct Token *current = current_token(state),
+    *head = 0;
   
-  current = current_token(state);
   precedense = op_precedence(current->type);
 
   /*
@@ -181,7 +182,7 @@ int8_t handle_operator(struct Parser *state) {
  * src: [body_expr, ...]
  * dbg: <body-expr> ... Group_t
  */
-int8_t handle_grouping(struct Parser *state)
+int8_t pop_group(struct Parser *state)
 {
   struct Group *ghead = &state->set_stack[state->set_ctr - 1];
 
@@ -189,13 +190,15 @@ int8_t handle_grouping(struct Parser *state)
   if (ghead->origin->type != PARAM_OPEN
       || ghead->delimiter_cnt > 0
       || ghead->state & GSTATE_EMPTY)
-      push_output(
-        state,
-        //TODO: use group symbol
-        grp_dbg_sym(get_group_ty()),
 
-        ghead->delimiter_cnt + 1
-      );
+  push_output(
+    state,
+    ghead->type,
+
+    /* TODO: Better expression counting */
+    /* NOTE: current code probably barely works */
+    ghead->delimiter_cnt + 1
+  );
 
   return 0;
 }
@@ -213,13 +216,18 @@ int8_t pop_block_operator(struct Parser *state)
     || state->operators_ctr == 0)
     return -1;
 
-  ophead = state->operator_stack[state->operators_ctr - 1];
-  state->operators_ctr -= 1;
+  ophead = op_head(state);
+
+  if (is_group_modifier(ophead->type))
+  {
+    insert(state, ophead);
+    state->operators_ctr -= 1;
+  }
 
   // check for next token
   // next = next_token(state);
 
-  //TODO: ensure its not a data-collection
+  //TODO(shortblocks): ensure its not a data-collection
   //if (!next)
   //  return 0;
 
@@ -227,94 +235,6 @@ int8_t pop_block_operator(struct Parser *state)
   // mk_short_blk = next
   //  && next->type != BRACE_OPEN
   // && is_short_blockable(next->type);
-
-  switch (ophead->type)
-  {
-
-    /*
-    ** input: if(x)
-    ** output: (x IfCond)
-    */
-    case IfCond:
-      insert(state, ophead);
-      break;
-
-    /*
-    ** input: if(x) {a; b;}
-    ** output: ((x IfCond) (a b g(2)) IfBody)
-    */
-    case IfBody:
-      insert(state, ophead);
-      break;
-
-    /*
-    ** input: if (x) {a; b;} else { c; d; }
-    **
-    ** output: (((x IfCond) (a b g(2)) IfBody) (c d g(2)) ELSE)
-    */
-    case ELSE:
-      insert(state, ophead);
-      //push_output(state, ophead->type, 0);
-      break;
-
-    /*
-    ** input: return x;
-    ** output: (x return)
-    */
-    case RETURN:
-      insert(state, ophead);
-      break;
-
-    /*
-    ** input: def foo(x, y)
-    ** output: (foo (x y g(2)) defSig)
-    */
-    case DefSign:
-      insert(state, ophead);
-      break;
-
-    /*
-    ** input: def foo(x, y) { a; b; }
-    ** output: ((foo (x y g(2)) defSig) (a b g(2)) defBody)
-    */
-   case DefBody:
-      push_output(state, ophead->type, 0);
-      break;
-
-    /*
-    ** input: import something, x;
-    ** output: ((something x G(2)) import)
-    */
-    case IMPORT:
-      insert(state, ophead);
-      break;
-
-
-    /* From <../../.. location> */
-    /* input: from ..x import y, x; */
-
-    /* output (..x from) ((y x G(2)) import) */
-    case FROM:
-      insert(state, );
-      insert(state, ophead);
-      break;
-
-    /* input: foo(1, 2) */
-    /* out:   foo 1 2 TupleGroup(2) Apply*/
-    case Apply:
-      insert(state, ophead);
-      break;
-
-    /* input: foo[1:2] */
-    /* out:   foo 1 2 NULL IndexGroup(2) Idx_Access*/
-    case _IdxAccess:
-      insert(state, ophead);
-      break;
-
-    default:
-      /* not a group operator */
-      state->operators_ctr -= 1;
-  }
 
 
   //if (mk_short_blk && mk_short_block(state) == 0)
@@ -334,10 +254,7 @@ int8_t handle_close_brace(struct Parser *state) {
 
   /* Operators stack is empty */
   assert(
-    0 < state->operators_ctr
-    && prev
-    /* unbalanced brace, extra closing brace.*/
-    //&& state->set_ctr > 0
+    0 < state->operators_ctr && prev
     && state->set_sz > state->set_ctr
   );
 
@@ -424,60 +341,18 @@ int8_t prefix_group(
 }
 
 /*
-** Pushes operations before grouping operator is place
-**
-**
-**
-**
-** So when the closing brace is found
-** when the group is popped,
-** the operations that occur next,
-** are the ones applied
-**
-**  function call:
-**  where the current token is `(`
-**       )(
-**       ](
-**    word(
-**        ^-- current token.
-**
-**  index access:
-**  where the current token is `[`
-**        )[
-**        ][
-**     word[
-**        "[
-**         ^-- current token.
+  every opening brace starts a new group
 */
-int8_t handle_open_brace_operators(struct Parser *state)
-{
-  const struct Token *prev = 0;
-  prev = prev_token(state);
-
-  if (prev)
-    prefix_group(state);
-
-  return 0;
-}
-
-/*
-  every opening brace starts a new possible group,
-  increment the group stack, and watch for the following 
-  in-fix patterns.
-   
-  */
 int8_t handle_open_brace(struct Parser *state)
 {
   const struct Token *current = current_token(state);
+  const struct Token *prev = prev_token(state);
 
-  /* overflow check */
-  //assert(state->operators_ctr < state->operator_stack_sz);
-  
-  /* look behind to determine special operators (apply/idx_access) */
-  /*   out: foo Apply/Idx open_param */
-  /*         1       2        3      */
-  if (handle_open_brace_operators(state) == -1
-      || new_grp(state, current) == 0)
+  if (prev)
+    /* look behind & insert group modifier if needed. */
+    prefix_group(state);
+
+  if (new_grp(state, current) == 0)
       return -1;
   
   // Place opening brace on operator stack

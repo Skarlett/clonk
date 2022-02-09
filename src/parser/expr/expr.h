@@ -159,7 +159,7 @@ struct Group {
     */
     uint16_t operator_idx;
 
-    enum Group_t type;
+    enum Lexicon type;
 
     // should be `[` `(` '{' or `0`
     const struct Token *origin;
