@@ -16,7 +16,6 @@ const struct Token * output_head(const struct Parser *state);
 struct Group * group_head(struct Parser *state);
 struct Group * new_grp(struct Parser *state, const struct Token * origin);
 
-bool is_dual_grp_keyword(enum Lexicon tok);
 
 /*create token in pool, and push to output*/
 void push_output(
