@@ -125,6 +125,63 @@ int8_t handle_operator(struct Parser *state) {
 }
 
 
+/******************
+ * Index operation *
+ ******************
+ * INDEX_ACCESS acts as a function in the postfix representation
+ * that pops 4 arugments from the stack
+ * `source`, `start`, `end`, `skip` in that order.
+ *
+ * INDEX_ACCESS every argument except `source`
+ * may be substituted with NULLTOKENS.
+ *
+ * NULLTOKENS can inserted automatically by parser or operator.
+ *
+ * NULLTOKENS used as substitution will assume
+ * their default values as the following.
+ *
+ * `start` defaults to 0.
+ * `end` defaults to length of the array.
+ * `skip` defaults to 1.
+ *
+ * Examples:
+ *   token output:
+ *     WORD   INTEGER INTEGER INTEGER INDEX_ACCESS
+ *     source start   end     skip    operator
+ *
+ *   text:
+ *     foo[1::2]
+ *
+ *   postfix-IR: foo 1 NULL 2 INDEX_ACCESS
+ *
+ *
+ * src: name[args:args:args]
+ * dbg: <name> <args> ... IdxAccess
+ */
+int8_t finish_idx_access(struct Parser *state)
+{
+  struct Group *ghead = group_head(state);
+  const struct Token *prev = prev_token(state);
+  assert(ghead->type == IndexGroup);
+
+  /*
+    peek-behind if token was COLON
+    add a value for its missing argument
+  */
+  // a: -> a:a
+  // :: => ::a
+  if (prev->type == COLON)
+    push_output(state, NULLTOKEN, 0);
+
+  // a:a -> a:a:a
+  for (uint16_t i=ghead->expr_cnt; 3 > i; i++)
+    push_output(state, NULLTOKEN, 0);
+
+  push_output(state, _IdxAccess, 0);
+
+  return 0;
+}
+
 /*
  * Groups take N amount of arguments from the stack where
  * N is derived from `struct Group`'s delmiter_ctr + 1.
@@ -196,6 +253,8 @@ int8_t handle_close_brace(struct Parser *state) {
   if (prev->type == invert_brace_tok_ty(current->type))
     ghead->is_empty = true;
 
+
+
   /*
   ** TODO:add to predict.c
   ** allow for {x; x;;;}
@@ -210,9 +269,11 @@ int8_t handle_close_brace(struct Parser *state) {
   if (flush_ops(state) == -1)
       return -1;
 
+  if(ghead->type == IndexGroup)
+    finish_idx_access(state);
+
   /* handle grouping */
   ret = pop_group(state);
-
 
   /* drop open brace */
   state->operators_ctr -= 1;
@@ -290,67 +351,21 @@ int8_t handle_open_brace(struct Parser *state)
 
   return 0;
 }
-
-/******************
- * Index operation *
- ******************
- * INDEX_ACCESS acts as a function in the postfix representation
- * that pops 4 arugments from the stack
- * `source`, `start`, `end`, `skip` in that order.
- * 
- * INDEX_ACCESS every argument except `source`
- * may be substituted with NULLTOKENS.
- *
- * NULLTOKENS can inserted automatically by parser or operator.
- *
- * NULLTOKENS used as substitution will assume 
- * their default values as the following.
- * 
- * `start` defaults to 0.
- * `end` defaults to length of the array.
- * `skip` defaults to 1.
- * 
- * Examples:
- *   token output:
- *     WORD   INTEGER INTEGER INTEGER INDEX_ACCESS 
- *     source start   end     skip    operator
- *   
- *   text:
- *     foo[1::2]
- *   
- *   postfix-IR: foo 1 NULL 2 INDEX_ACCESS
- *   
- *
- * src: name[args:args:args] 
- * dbg: <name> <args> ... IdxAccess
- */
-int8_t handle_idx_op(struct Parser *state)
-{
-  struct Group *ghead = group_head(state);
-  const struct Token *prev = prev_token(state);
-
-  /*
-    peek-behind if token was COLON 
-    add a value for its missing argument
-  */
-  // a: -> a:a
-  // :: => ::a
-  if (prev->type == COLON)
-    push_output(state, NULLTOKEN, 0);
-  
-  // a:a -> a:a:a
-  for (uint8_t i=0; 2 > ghead->delimiter_cnt; i++)
-    push_output(state, NULLTOKEN, 0);
-
-  push_output(state, _IdxAccess, 0);
-  
-  return 0;
+int8_t is_dual_grp_keyword(enum Lexicon tok) {
+  switch(tok){
+    case FOR: return 0;
+    case WHILE: return 1;
+    case IF: return 2;
+    case FUNC_DEF: return 3;
+    default: return -1;
+  }
 }
 
-int8_t handle_dual_group(struct Parser *state, uint16_t id)
+int8_t handle_dual_group(struct Parser *state)
 {
+  const struct Token *current = current_token(state);
   struct Group *ghead = group_head(state);
-  static enum Lexicon products[][3] = {
+  const enum Lexicon products[][3] = {
     {ForBody, ForParams, 0},
     {WhileBody, WhileCond, 0},
     {IfBody, IfCond, 0},
@@ -358,9 +373,15 @@ int8_t handle_dual_group(struct Parser *state, uint16_t id)
     {0, 0, 0}
   };
 
+  int8_t idx = is_dual_grp_keyword(current->type);
+  assert(idx >= 0);
+
   ghead->expr_cnt += 1;
-  return push_many_ops(products[id], current_token(state), state);
+  return push_many_ops(products[idx], current_token(state), state);
 }
+
+
+
 
 /*
 ** consumes tokens until `import` token is found
@@ -530,7 +551,7 @@ int8_t parse(
       handle_unwind(&state, unexpected_token);
 
     if(is_dual_grp_keyword(state.src[i].type))
-      handle_dual_group(&state, ez_match_id);
+      handle_dual_group(&state);
 
     else if(is_unit(state.src[i].type))
       insert(&state, &state.src[i]);
