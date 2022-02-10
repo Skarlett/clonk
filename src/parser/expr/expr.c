@@ -165,7 +165,7 @@ int8_t pop_block_operator(struct Parser *state)
      || state->operators_ctr == 0)
      return -1;
 
-  ophead= op_head(state);
+  ophead = op_head(state);
   if (is_group_modifier(ophead->type))
   {
     insert(state, ophead);
@@ -194,8 +194,6 @@ int8_t handle_close_brace(struct Parser *state) {
 
   if (prev->type == invert_brace_tok_ty(current->type))
     ghead->is_empty = true;
-
-
 
   /*
   ** TODO:add to predict.c
@@ -248,8 +246,23 @@ int8_t handle_close_brace(struct Parser *state) {
 ** `pop_block_operators` will be ran,
 ** and insert the token before it (`Apply`/`IndexAccess`)
 ** if that token is defined as a block-descriptor.
+**
+**  accepts the following patterns as function calls
+**  where the current token is `(`
+**       )(
+**       ](
+**    word(
+**        ^-- current token.
+**  accepts the following patterns as an array index
+**    where the current token is `[`
+**        )[
+**        ][
+**     word[
+**        "[
+**        ^-- current token.
+**
 */
-void prefix_group(
+int8_t prefix_group(
   struct Parser *state
 ){
   const struct Token * current = current_token(state);
@@ -257,18 +270,11 @@ void prefix_group(
 
   /* function call pattern */
   if (current->type == PARAM_OPEN && is_fncall_pattern(prev))
-  {
-    op_push(Apply, 0, 0, state);
-    return;
-  }
+    return op_push(Apply, 0, 0, state) != 0;
 
   /* index call pattern */
   else if (current->type == BRACKET_OPEN && is_index_pattern(prev))
-  {
-    /* is indexable */
-    op_push(_IdxAccess, 0, 0, state);
-    return;
-  }
+    return op_push(_IdxAccess, 0, 0, state) != 0;
 
 }
 
@@ -293,6 +299,7 @@ int8_t handle_open_brace(struct Parser *state)
 
   return 0;
 }
+
 int8_t is_dual_grp_keyword(enum Lexicon tok) {
   switch(tok){
     case FOR: return 0;
@@ -394,22 +401,25 @@ int8_t handle_short_block_termination(struct Parser *state) {
 ** or `CodeBlock`, invalid delimiter results in -1
 ** called in `handle_delimiter`
 */
-int8_t _complete_partial_gtype(struct Group * ghead, const struct Token *current){
-    if (current->type == COLON)
-      ghead->type = MapGroup;
-    else if(current->type == SEMICOLON)
-      ghead->type = CodeBlock;
-    else
-      return -1;
-    return 0;
-}
-
 int8_t complete_partial_gtype(struct Parser *state){
   struct Group *ghead = group_head(state);
   const struct Token *current = current_token(state);
 
   if (ghead->type == PartialBrace)
-    return _complete_partial_gtype(ghead, current);
+  {
+    switch(current->type)
+    {
+      case COLON:
+        ghead->type = MapGroup;
+        break;
+
+      case SEMICOLON:
+        ghead->type = CodeBlock;
+        break;
+
+      default: return -1;
+    }
+  }
   return 0;
 }
 
