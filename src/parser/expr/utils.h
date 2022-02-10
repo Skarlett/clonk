@@ -16,6 +16,15 @@ const struct Token * output_head(const struct Parser *state);
 struct Group * group_head(struct Parser *state);
 struct Group * new_grp(struct Parser *state, const struct Token * origin);
 
+bool is_dual_grp_keyword(enum Lexicon tok);
+
+/*create token in pool, and push to output*/
+void push_output(
+  struct Parser *state,
+  enum Lexicon type,
+  uint16_t argc
+);
+
 const struct Token * group_modifier(
   const struct Parser *state,
   const struct Group *group
@@ -49,4 +58,12 @@ bool is_index_pattern(const struct Token *prev);
 
 bool is_fncall_pattern(const struct Token *prev);
 
+int8_t init_parser(
+  struct Parser *state,
+  const struct ParserInput *in,
+  uint16_t *i
+);
+
+int8_t parser_free(struct Parser *state);
+int8_t parser_reset(struct Parser *state);
 #endif

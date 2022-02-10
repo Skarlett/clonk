@@ -218,6 +218,30 @@ int8_t flush_ops(struct Parser *state)
 
   return 0;
 }
+
+void push_output(
+  struct Parser *state,
+  enum Lexicon type,
+  uint16_t argc
+){
+  struct Token marker;
+  const struct Token *ret;
+  assert(type != TOKEN_UNDEFINED);
+
+
+  //TODO: double check sequence unwinding
+  marker.seq = 0;
+
+  marker.type = type;
+  marker.start = 0;
+  marker.end = argc;
+
+  ret = new_token(state, &marker);
+
+  assert(ret);
+  insert(state, ret);
+}
+
 /*
     precendense table:
       ") ] }"   : 127 non-assoc
@@ -272,6 +296,13 @@ int8_t op_precedence(enum Lexicon token) {
         return 0;
     
     return -1;
+}
+
+bool is_dual_grp_keyword(enum Lexicon tok) {
+  return tok == FOR
+    || tok == WHILE
+    || tok == IF
+    || tok == FUNC_DEF;
 }
 
 int8_t init_parser(

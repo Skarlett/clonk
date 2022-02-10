@@ -14,13 +14,6 @@
 #include "expr.h"
 #include "utils.h"
 
-bool is_dual_grp_keyword(enum Lexicon tok) {
-  return tok == FOR
-    || tok == WHILE
-    || tok == IF
-    || tok == FUNC_DEF;
-}
-
 enum Associativity
 {
     NONASSOC,
@@ -38,42 +31,6 @@ enum Associativity get_assoc(enum Lexicon token)
         default:
             return LASSOC;
     }
-}
-
-void push_output(
-  struct Parser *state,
-  enum Lexicon type,
-  uint16_t argc
-){
-  struct Token marker;
-  const struct Token *ret;
-  assert(type != TOKEN_UNDEFINED);
-
-
-  //TODO: double check sequence unwinding
-  marker.seq = 0;
-
-  marker.type = type;
-  marker.start = 0;
-  marker.end = argc;
-
-  ret = new_token(state, &marker);
-
-  assert(ret);
-  insert(state, ret);
-}
-
-/*
-** returns true if this token operates
-** after closing group expressions
-*/
-bool is_postfix_operator(enum Lexicon tok) {
-  return tok == Apply 
-  || tok == _IdxAccess 
-  || tok == IfCond
-  || tok == IfBody
-  || tok == DefBody
-  || tok == DefSign;
 }
 
 /*
@@ -561,7 +518,6 @@ int8_t parse(
   struct Parser state;
   uint16_t i = 0;
   int8_t ret_flag = 0;
-  int8_t ez_match_id = 0;
   bool unexpected_token;
 
   assert(init_parser(&state, input, &i) == 0);
