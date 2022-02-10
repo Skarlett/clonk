@@ -186,6 +186,29 @@ int8_t push_many_ops(
   return 0;
 }
 
+void push_output(
+  struct Parser *state,
+  enum Lexicon type,
+  uint16_t argc
+){
+  struct Token marker;
+  const struct Token *ret;
+  assert(type != TOKEN_UNDEFINED);
+
+
+  //TODO: double check sequence unwinding
+  marker.seq = 0;
+
+  marker.type = type;
+  marker.start = 0;
+  marker.end = argc;
+
+  ret = new_token(state, &marker);
+  assert(ret);
+  insert(state, ret);
+}
+
+
 /*
 ** Flushes items from stack until a precedense of
 ** 0 is found, or stack empty.
@@ -219,29 +242,62 @@ int8_t flush_ops(struct Parser *state)
   return 0;
 }
 
-void push_output(
-  struct Parser *state,
-  enum Lexicon type,
-  uint16_t argc
-){
-  struct Token marker;
-  const struct Token *ret;
-  assert(type != TOKEN_UNDEFINED);
+/******************
+ * Index operation *
+ ******************
+ * INDEX_ACCESS acts as a function in the postfix representation
+ * that pops 4 arugments from the stack
+ * `source`, `start`, `end`, `skip` in that order.
+ *
+ * INDEX_ACCESS every argument except `source`
+ * may be substituted with NULLTOKENS.
+ *
+ * NULLTOKENS can inserted automatically by parser or operator.
+ *
+ * NULLTOKENS used as substitution will assume
+ * their default values as the following.
+ *
+ * `start` defaults to 0.
+ * `end` defaults to length of the array.
+ * `skip` defaults to 1.
+ *
+ * Examples:
+ *   token output:
+ *     WORD   INTEGER INTEGER INTEGER INDEX_ACCESS
+ *     source start   end     skip    operator
+ *
+ *   text:
+ *     foo[1::2]
+ *
+ *   postfix-IR: foo 1 NULL 2 INDEX_ACCESS
+ *
+ *
+ * src: name[args:args:args]
+ * dbg: <name> <args> ... IdxAccess
+ */
+int8_t finish_idx_access(struct Parser *state)
+{
+  struct Group *ghead = group_head(state);
+  const struct Token *prev = prev_token(state);
+  assert(ghead->type == IndexGroup);
 
+  /*
+    peek-behind if token was COLON
+    add a value for its missing argument
+  */
+  // a: -> a:a
+  // :: => ::a
+  if (prev->type == COLON)
+    push_output(state, NULLTOKEN, 0);
 
-  //TODO: double check sequence unwinding
-  marker.seq = 0;
+  // a:a -> a:a:a
+  for (uint16_t i=ghead->expr_cnt; 3 > i; i++)
+    push_output(state, NULLTOKEN, 0);
 
-  marker.type = type;
-  marker.start = 0;
-  marker.end = argc;
+  push_output(state, _IdxAccess, 0);
 
-  ret = new_token(state, &marker);
-
-  assert(ret);
-  insert(state, ret);
+  return 0;
 }
-
 /*
     precendense table:
       ") ] }"   : 127 non-assoc
@@ -296,13 +352,6 @@ int8_t op_precedence(enum Lexicon token) {
         return 0;
     
     return -1;
-}
-
-bool is_dual_grp_keyword(enum Lexicon tok) {
-  return tok == FOR
-    || tok == WHILE
-    || tok == IF
-    || tok == FUNC_DEF;
 }
 
 int8_t init_parser(

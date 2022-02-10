@@ -124,64 +124,6 @@ int8_t handle_operator(struct Parser *state) {
   return 0;
 }
 
-
-/******************
- * Index operation *
- ******************
- * INDEX_ACCESS acts as a function in the postfix representation
- * that pops 4 arugments from the stack
- * `source`, `start`, `end`, `skip` in that order.
- *
- * INDEX_ACCESS every argument except `source`
- * may be substituted with NULLTOKENS.
- *
- * NULLTOKENS can inserted automatically by parser or operator.
- *
- * NULLTOKENS used as substitution will assume
- * their default values as the following.
- *
- * `start` defaults to 0.
- * `end` defaults to length of the array.
- * `skip` defaults to 1.
- *
- * Examples:
- *   token output:
- *     WORD   INTEGER INTEGER INTEGER INDEX_ACCESS
- *     source start   end     skip    operator
- *
- *   text:
- *     foo[1::2]
- *
- *   postfix-IR: foo 1 NULL 2 INDEX_ACCESS
- *
- *
- * src: name[args:args:args]
- * dbg: <name> <args> ... IdxAccess
- */
-int8_t finish_idx_access(struct Parser *state)
-{
-  struct Group *ghead = group_head(state);
-  const struct Token *prev = prev_token(state);
-  assert(ghead->type == IndexGroup);
-
-  /*
-    peek-behind if token was COLON
-    add a value for its missing argument
-  */
-  // a: -> a:a
-  // :: => ::a
-  if (prev->type == COLON)
-    push_output(state, NULLTOKEN, 0);
-
-  // a:a -> a:a:a
-  for (uint16_t i=ghead->expr_cnt; 3 > i; i++)
-    push_output(state, NULLTOKEN, 0);
-
-  push_output(state, _IdxAccess, 0);
-
-  return 0;
-}
-
 /*
  * Groups take N amount of arguments from the stack where
  * N is derived from `struct Group`'s delmiter_ctr + 1.
@@ -380,9 +322,6 @@ int8_t handle_dual_group(struct Parser *state)
   return push_many_ops(products[idx], current_token(state), state);
 }
 
-
-
-
 /*
 ** consumes tokens until `import` token is found
 ** and converts it into a location token
@@ -572,7 +511,7 @@ int8_t parse(
       ret_flag = handle_delimiter(&state);
 
     else if(state.src[i].type == IMPORT)
-      handle_import(&state);
+      ret_flag = handle_import(&state);
 
     else if(state.src[i].type == EOFT) {
       break;
