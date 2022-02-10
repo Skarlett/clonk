@@ -74,6 +74,6 @@ void __test__simple_order_precedence(CuTest* tc) {
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "failed on index %d", i);
         AssertTokensByRef(tc, src_code[i], msg, state.debug.base, check_list[i]);
-        reset_state(&state);
+        parser_reset(&state);
     }
 }
