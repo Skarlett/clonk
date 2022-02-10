@@ -1,116 +1,254 @@
+#ifndef __HEADER_AST__
+#define __HEADER_AST__
 
-#ifndef _HEADER__AST__
-#define _HEADER__AST__
-#include <stdlib.h>
+/*
+    when defining a group,
+    it may not have more literal elements than
+*/
+enum ExprType {
+    NopExprT,
+    // variable names
+    // x
+    // foo.max
+    // std::int::MAX
+    SymExprT,
 
-// #include "../prelude.h"
+    // Literal datatype
+    // [1, 2, 3] | list
+    // "asdasd"
+    // 100
+    LiteralExprT,
 
-// #include "lexer/lexer.h"
-// #include "expr/expr.h"
+    // x(a, ...)
+    FnCallExprT,
 
-// #define STMT_CAPACITY 255
-// enum StatementType {
-//     Undefined,
+    // if(a, ...) x;|{x} (?else) x;|{x}
+    IfExprT,
 
-//     // define function (named block)
-//     Define,
-    
-//     // declare var
-//     Declare,
+    // def foo(a) x;|{x}
+    FuncDefExprT,
 
-//     //Math Expression (with variables)
-//     // or function calls,
-//     // + all variables evaluate into expressions
-//     Expression,
+    // return x|{x};
+    ReturnExprT,
 
-//     // conditional block
-//     Condition,
+    // import x.y, z, ..pkg.b;
+    // import a;
+    // import ..a;
+    // import ..a.b;
+    // from . import a, b
+    // from module.x import x.x
+    ImportExprT,
 
-//     Block,
+    // binary operation
+    // 1 + 2 * foo.max - size_of(list)
+    BinaryExprT,
 
-//     Return
-// };
+    // !a ~a
+    UnaryExprT,
+
+    UndefinedExprT,
+    GroupT
+};
+
+enum Operation {
+    /* no operation */
+    Nop,
+
+    /* math */
+    Add,
+    Sub,
+    Multiply,
+    Divide,
+    Pow,
+    Modolus,
+
+    /* cmp */
+    IsEq,
+    NotEq,
+    Gt,
+    Lt,
+    GtEq,
+    LtEq,
+
+    /* logical operator */
+    And,
+    Or,
+
+    Assign,
+    AssignAdd,
+    AssignSub,
+
+    /* dot token */
+    Access,
+
+    Not,
+
+    BitOr,
+    BitAnd,
+    BitNot,
+
+    BandEql,
+    BorEql,
+    BnotEql,
+
+    ShiftRight,
+    ShiftLeft,
+
+    PipeOp,
+
+    UndefinedOp = 255
+};
+
+enum Group_t {
+    GroupTUninit,
+
+    // [1, 2]
+    ListT,
+
+    // [1:2:3]
+    IndexAccessT,
+
+    // (a, b)
+    TupleT,
+
+    // {
+    PartialBrace,
+
+    //{1:2, 3:4}
+    MapT,
+
+    // {1; 2;}
+    CodeBlockT
+};
+
+struct GroupExpr {
+    enum Group_t type;
+    uint16_t length;
+    struct Expr **ptr;
+};
+
+enum DataType {
+    DT_UndefT,
+    DT_IntT,
+    DT_StringT,
+    DT_BoolT,
+    DT_CollectionT,
+    DT_NullT
+};
+
+struct Literals {
+    union {
+        isize integer;
+        char * string;
+        uint8_t boolean;
+    } literal;
+};
+
+struct FnCallExpr {
+    char * func_name;
+    struct Expr *caller;
+
+    /* TupleGroup(N) expr */
+    struct Expr *args;
+    enum DataType returns;
+};
+
+struct BinExpr {
+    enum Operation op;
+    struct Expr *lhs;
+    struct Expr *rhs;
+    enum DataType returns;
+};
+
+struct UnaryExpr {
+    enum Operation op;
+    struct Expr *operand;
+};
+
+struct IfExpr {
+    struct Expr *cond;
+    struct Expr *body;
+    struct Expr *else_body;
+};
+
+struct FnDefExpr {
+    const char * name;
+    struct Expr *signature;
+    struct Expr *body;
+};
+
+struct ReturnExpr {
+    struct Expr *body;
+};
+
+struct IdxExpr {
+    struct Expr * operand;
+    struct Expr * start;
+    struct Expr * end;
+    struct Expr * skip;
+};
 
 
-// // typedef enum AssignmentOp {
-// //     /* no operation */
-// //     AssignmentNop,
-// //     Eq,
-// //     EqAdd,
-// //     EqSub
-// //     /* cmp */
-// // } AssignmentOp;
+/* can be a single token or a string of congruent tokens*/
+enum ExprSizeType {
+    /* singular */
+    _ExprSzTy_Singlar,
 
+    /* multiple */
+    _ExprSzTy_Span
+};
 
-// typedef struct Statement {
-//     enum StatementType type;
-//     void *internal_data;
-// } Statement;
+struct Expr {
+    enum ExprType type;
+    enum DataType datatype;
+    // ****
 
-// typedef struct BlockStatement {
-//     uint32_t capacity;
-//     uint32_t length;
-//     struct Statement *statements[STMT_CAPACITY];
-// } BlockStatement;
+    union {
+        struct Token unit;
+        struct TokenSpan span;
+    } origin;
 
-// void init_block(struct BlockStatement *block, uint32_t capacity);
-// void append_statement(BlockStatement *block, struct Statement *stmt);
-// int is_block(struct Token tokens[], uint32_t nstmt);
+    //struct Token origin;
+    // ****
+    uint8_t free;
 
+    union {
+        char * symbol;
+        struct Literals value;
+        struct FnCallExpr fncall;
+        struct BinExpr bin;
+        struct UnaryExpr unary;
+        struct IdxExpr idx;
+        struct IfExpr cond;
+        struct ReturnExpr ret;
+        struct FnDefExpr func;
+        struct GroupExpr grp;
+    } inner;
+};
 
-// typedef struct ReturnStatement {
-//     struct Expr * value;
-// } ReturnStatement;
-// int is_return_statement(char *src_code, struct Token tokens[], uint32_t nstmt);
-// int construct_ret_statement(char *src_code, struct Token tokens[], uint32_t nstmt, struct Statement *stmt);
+// void mk_null(struct Expr *ex);
 
-// typedef struct FunctionDefinition {
-//     uint32_t name_sz;
-//     uint32_t param_sz;
+// int8_t mk_str(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_int(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_symbol(struct PostfixStageState *state, struct Expr *ex);
 
-//     char func_name[STR_STACK_SIZE];
-//     char *parameters[FUNC_ARG_SIZE];
-// } FunctionDefinition;
+// int8_t mk_operator(struct PostfixStageState *state, struct Expr *ex, struct Token *op_head);
+// int8_t mk_group(struct PostfixStageState *state, struct Expr *ex);
 
-// void init_func_def(struct FunctionDefinition *fn);
-// int is_func_definition(char *src_code, struct Token tokens[], uint32_t nstmt);
-// int construct_func_definition(char *src_code, struct Token tokens[], uint32_t nstmt, struct Statement *stmt);
+// int8_t mk_binop(struct Token *op, struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_not(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_idx_access(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_fncall(struct PostfixStageState *state, struct Expr *ex);
 
+// enum Operation operation_from_token(enum Lexicon token);
+// void determine_return_ty(struct Expr *bin);
 
-// typedef struct DeclareStatement {
-//     Expr *data;
-//     uint32_t name_sz;
-//     char name[STR_STACK_SIZE];
-// } DeclareStatement;
-// int is_declare_statement(struct Token tokens[], int ntokens);
-// int construct_declare_statement(char *src_code, struct Token tokens[], uint32_t nstmt, struct Statement *stmt);
+// int8_t mk_if_cond(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_if_body(struct PostfixStageState *state);
+// int8_t mk_else_body(struct PostfixStageState *state);
 
-// enum ConditionState {
-//     If,
-//     Elif,
-//     Else
-// };
-
-// typedef struct ConditionalStatement {
-//     Expr *expr;
-//     enum ConditionState state;
-// } ConditionalStatement;
-// int is_conditional_definition(char *src_code, struct Token tokens[], uint32_t nstmt);
-// void init_condition_stmt(struct ConditionalStatement *stmt);
-
-
-// typedef struct ExprStatement {
-//     Expr *expr;
-// } ExprStatement;
-
-
-// const char * pstmt_type(Statement *stmt);
-// int pnode(Statement *stmt, short unsigned indent);
-// void print_ast(BlockStatement *tree);
-// void print_ast_block(BlockStatement *tree, short unsigned indent);
-
-// //int construct_statement(char *src_code, struct Token tokens[], uint32_t nstmt, struct BlockStatement *block);
-// uint32_t assemble_ast(char *src_code, Token tokens[], uint32_t ntokens, BlockStatement *block, int *trap);
-
-
+// int8_t mk_return(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_def_sig(struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_def_body(struct PostfixStageState *state);
+// int8_t mk_import(struct PostfixStageState *state, struct Expr *ex);
 #endif
