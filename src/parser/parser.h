@@ -2,9 +2,8 @@
 #define _HEADER_EXPR__
 
 #include <stdint.h>
-#include "../../utils/vec.h"
-#include "../../prelude.h"
-#include "../lexer/lexer.h"
+#include "../utils/vec.h"
+#include "lexer/lexer.h"
 
 typedef uint16_t FLAG_T; 
 
@@ -75,15 +74,6 @@ void init_expect_buffer(struct Previsioner *state);
   
     used in the group-stack exclusively
 */
-
-#define GSTATE_EMPTY             1
-
-#define GSTATE_CTX_IDX           1 << 4
-
-#define GSTATE_CTX_LOCK          1 << 5
-#define GSTATE_CTX_NO_DELIM      1 << 6
-#define GSTATE_CTX_SHORT_BLOCK   1 << 7
-
 struct ParserInput {
     const char * src_code;
     uint16_t src_code_sz;
@@ -113,23 +103,7 @@ enum ShortBlock_t {
 struct Group {
     //TODO: Implement this
     uint16_t seq;
-    /*
-                   0:           Uninitialized state
-        GSTATE_EMPTY:           signify empty grouping,
 
-        xxGSTATE_CTX_DATA_GRP:    parsing comma seperated data (lists, tuples, sets)
-        xxGSTATE_CTX_CODE_GRP:    parsing a set of instructions/code ( `{ a(); b(); }` )
-        xxGSTATE_CTX_MAP_GRP:     parsing literal datatype map ( `{ a:b, c:d };` )
-
-        GSTATE_CTX_IDX :        parsing index expression `[a:b:c]
-        GSTATE_CTX_LOCK :       set an immutable parsing context until this group ends
-
-        xxGSTATE_OP_APPLY :       after group completion, make into an fncall
-        xxGSTATE_CTX_IF_COND:     parsing an if conditional
-
-    */
-    //FLAG_T state;
-    
     // amount of delimiters
     uint16_t delimiter_cnt;
 
@@ -181,23 +155,6 @@ struct Group {
     enum ShortBlock_t short_type;
 
 };
-
-#define FLAG_ERROR       0
-
-#define STATE_READY      1
-#define STATE_INCOMPLETE 1 << 1
-#define STATE_PANIC      1 << 2
-#define INTERNAL_ERROR   1 << 3
-
-/* 
-  if set - there is an extra 
-    OPEN_BRACK inside of the operator stack 
-    and will be popped off at the EOF
-*/
-#define STATE_PUSH_GLOB_SCOPE 1 << 4
-
-/* if/def/ret/else ends with ; */
-// #define STATE_SHORT_BLOCK 1 << 5
 
 #define STACK_SZ 512
 #define EXP_SZ 32
@@ -378,10 +335,11 @@ int8_t parse(
     struct ParserOutput *out
 );
 
-int8_t is_token_unexpected(struct Parser *state);
-
 int8_t parser_free(struct Parser *state);
 int8_t parser_reset(struct Parser *state);
+int8_t is_token_unexpected(struct Parser *state);
+
+
 
 void restoration_hook(struct Parser *state);
 int8_t handle_unwind(

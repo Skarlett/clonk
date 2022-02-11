@@ -7,10 +7,9 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../../prelude.h"
-#include "../lexer/lexer.h"
-#include "../lexer/debug.h"
-#include "../../utils/vec.h"
+#include "lexer/lexer.h"
+#include "lexer/debug.h"
+#include "../utils/vec.h"
 #include "expr.h"
 #include "utils.h"
 
@@ -319,14 +318,13 @@ int8_t handle_dual_group(struct Parser *state)
     {WhileBody, WhileCond, 0},
     {IfBody, IfCond, 0},
     {DefBody, DefSign, 0},
-    {0, 0, 0}
   };
 
   int8_t idx = is_dual_grp_keyword(current->type);
   assert(idx >= 0);
 
   ghead->expr_cnt += 1;
-  return push_many_ops(products[idx], current_token(state), state);
+  return push_many_ops(products[idx], current, state);
 }
 
 /*
@@ -523,9 +521,8 @@ int8_t parse(
     else if(state.src[i].type == IMPORT)
       ret_flag = handle_import(&state);
 
-    else if(state.src[i].type == EOFT) {
+    else if(state.src[i].type == EOFT)
       break;
-    }
 
     else {
 #ifdef DEBUG
