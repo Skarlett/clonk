@@ -5,15 +5,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "../../prelude.h"
-#include "../../error.h"
 #include "../../utils/vec.h"
 
 #define ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
 #define DIGITS "1234567890"
 
 enum Lexicon {
-    // end of file
+    /* end of file */
     EOFT = 255,
 
     /********************/
@@ -21,15 +19,15 @@ enum Lexicon {
     /********************/
 
     _COMPOUND_GT,
-    // -123 or -=
+    /* -123 or -= */
     _COMPOUND_SUB,
 
-    // may turn into BOREQL or PIPEOP or OR
+    /* may turn into BOREQL or PIPEOP or OR */
     _COMPOUND_PIPE,
 
     _COMPOUND_AMPER,
 
-    //
+    /*  */
     _COMPOUND_LT,
 
     /**********************/
@@ -46,93 +44,94 @@ enum Lexicon {
 
     COMMENT,
 
-    // [
+    /* [ */
     BRACKET_OPEN,
 
-    // ]
+    /* ] */
     BRACKET_CLOSE,
 
-    // {
+    /* { */
     BRACE_OPEN,
     
-    // }
+    /* } */
     BRACE_CLOSE,
     
-    // (
+    /* ( */
     PARAM_OPEN,
     
-    // )
+    /* ) */
     PARAM_CLOSE,
     
-    // !
+    /* ! */
     NOT,
 
-    // +
+    /* + */
     ADD,
     
-    // -
+    /* - */
     SUB,
 
-    // >
+    /* > */
     GT,
 
-    // <
+    /* < */
     LT,
 
-    // *
+    /* * */
     MUL,
 
-    // /
+    /* / */
     DIV,
 
-    // ^
+    /* ^ */
     POW,
 
-    // %
+    /* % */
     MOD,
-    // =
+
+    /* = */
     EQUAL,
 
-    // |
+    /* | */
     PIPE,
 
-    // &
+    /* & */
     AMPER,
 
-    // ~
+    /* ~ */
     TILDE,
 
-    // "
+    /* " */
     D_QUOTE,
 
-    // '
+    /* ' */
     S_QUOTE,
     
-    // ;
+    /* ; */
     SEMICOLON,
 
-    // _
+     /* _ */
     UNDERSCORE,
 
-    // .
+    /* . */
     DOT,
 
-    // #
+    /* # */
     POUND,
 
-    // :
+    /* : */
     COLON,
 
-    // @
+    /* @ */
     ATSYM,
 
-    // a-zA-Z
+    /* a-zA-Z */
     CHAR,
 
-    // 0-9 *single digit
+    /* 0-9 *single digit */
     DIGIT,
     
-    // ,
+    /* , */
     COMMA,
 
     /* \ */
@@ -142,101 +141,104 @@ enum Lexicon {
     /* multi byte tokens */
     /*********************/
 
-    // [NUM, ..] WHITESPACE|SEMICOLON   
-    // 20_392 
+    /*  [NUM, ..] WHITESPACE|SEMICOLON    */
+    /* // 20_392  */
     INTEGER,
 
-    // [CHARACTER, ..] WHITESPACE|SEMICOLON
-    // something
+    /* [CHARACTER, ..] WHITESPACE|SEMICOLON */
+    /* something */
     WORD,
 
-    // [QUOTE, ... QUOTE]
-    // something
+    /* [QUOTE, ... QUOTE] */
+    /* something */
     STRING_LITERAL,
 
-    // >>
+    /* >> */
     SHR,
 
-    // >=
+    /* >= */
     GTEQ,
 
-    // <<
+    /* << */
     SHL,
 
-    // <=
+    /* <= */
     LTEQ,
 
-    // +=
+    /* += */
     PLUSEQ,
 
-    // -=
+    /* -= */
     MINUSEQ,
 
-    // ..
-    // ELLISPES
+    /* .. */
+    /* ELLISPES */
 
-    // |>
+    /* |> */
     PIPEOP,
 
-    // |=
+    /* |= */
     BOREQL,
 
-    // ||
+    /* || */
     OR,
 
-    // &=
+    /* &= */
     BANDEQL,
 
-    // ==
+    /* == */
     ISEQL,
 
-    // ~=
+    /* ~= */
     BNEQL,
 
-    // !=
+    /* != */
     ISNEQL,
     
-    // &&
+    /* && */
     AND,
 
-    // static
-    //STATIC,
+    /* static */
+    /* STATIC, */
 
-    // const
-    //CONST,
+    /* const */
+    /* CONST, */
 
-    // return
+    /* return */
     RETURN,
     
-    // extern
-    //EXTERN,
+    /* extern */
+    /* EXTERN, */
     
-    // as
-    //AS,
+    /* as */
+    /* AS, */
     
-    // if
+    /* if */
     IF,
 
-    // else
+    /* else */
     ELSE,
 
-    // def
+    /* def */
     FUNC_DEF,
 
-    //import
+    /* import */
     IMPORT,
 
-    // from
+    /* from */
     FROM,
 
     FROM_LOCATION,
 
     FOR,
     WHILE,
-    UNLESS,
 
-    //impl
-    //IMPL,
+    /* struct A {} */
+    /* STRUCT, */
+
+    /* impl A {} */
+    /* IMPL, */
+
 
     /*********************************/
     /* generated outside lexer stage */
@@ -614,7 +616,8 @@ bool is_unit(enum Lexicon tok);
 
 
 /**
- * Checks if token is a group expression
+ * Checks if token is a grouping token
+ * These tokens are suffixed with "Group"
  *
  * @param tok token to compare
  *
