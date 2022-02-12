@@ -1,5 +1,3 @@
-#include <stdbool.h>
-
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -137,12 +135,11 @@ int8_t pop_group(struct Parser *state)
 {
   struct Group *ghead = group_head(state);
 
-  state->set_ctr -= 1;
-
   /* only add groups if they're not singular item paramethesis braced */
   if (ghead->origin->type != PARAM_OPEN
       || ghead->delimiter_cnt > 0
       || ghead->is_empty)
+
       push_output(
         state,
         ghead->type,
@@ -228,7 +225,8 @@ int8_t handle_close_brace(struct Parser *state) {
       return -1;
   }
 
-  if (state->operators_ctr > 0 && pop_block_operator(state) == -1)
+  if (state->operators_ctr > 0
+      && pop_block_operator(state) == -1)
     return -1;
 
   return ret;
@@ -274,7 +272,6 @@ int8_t prefix_group(
   /* index call pattern */
   else if (current->type == BRACKET_OPEN && is_index_pattern(prev))
     return op_push(_IdxAccess, 0, 0, state) != 0;
-
 }
 
 /*
@@ -313,11 +310,11 @@ int8_t handle_dual_group(struct Parser *state)
 {
   const struct Token *current = current_token(state);
   struct Group *ghead = group_head(state);
-  const enum Lexicon products[][3] = {
+  const enum Lexicon products[4][3] = {
     {ForBody, ForParams, 0},
     {WhileBody, WhileCond, 0},
     {IfBody, IfCond, 0},
-    {DefBody, DefSign, 0},
+    {DefBody, DefSign, 0}
   };
 
   int8_t idx = is_dual_grp_keyword(current->type);
@@ -325,6 +322,16 @@ int8_t handle_dual_group(struct Parser *state)
 
   ghead->expr_cnt += 1;
   return push_many_ops(products[idx], current, state);
+}
+
+// todo predict
+bool _can_short_block(struct Token *op_head)
+{
+  return op_head == ForBody
+    || WhileBody
+    || ELSE
+    || IfBody
+    || DefBody;
 }
 
 /*
@@ -375,23 +382,45 @@ int8_t handle_sb_cond_termination(struct Parser *state)
 
 int8_t handle_sb_import(struct Parser *state) {
   const struct Group *ghead = group_head(state);
-
   /* pop off the group */
   state->set_ctr -= 1;
   /* remove open_param in operators */
   state->operators_ctr -= 1;
-
   push_group(state, ghead);
 }
 
-int8_t handle_short_block_termination(struct Parser *state) {
+/*
+ * pop short-block
+ *
+ * short blocks are isolated
+ * & inferred groups
+ *
+*/
+bool pop_short_block(struct Parser *state) {
+  const struct Token *next = next_token(state);
   const struct Group *ghead = group_head(state);
+  const struct Token *ophead, *gmod;
 
-  if (ghead->short_type == sh_import_t)
-    handle_sb_import(state);
+    return 0;
 
-  else if(ghead->short_type == sh_cond_t)
-    handle_sb_cond_termination(state);
+  while(group_head->is_short)
+  {
+    ophead = op_head(state);
+    gmod = group_modifier(state);
+
+    state->operator_ctr -= 1;
+    assert(is_open_brace(ophead));
+
+    if (is_group_modifier(gmod->type))
+    {
+      insert(state, ophead);
+      state->operators_ctr -= 1;
+    }
+
+    state->set_ctr -= 1;
+    ghead = group_head(state);
+  }
+  return 1;
 }
 
 /*
@@ -463,6 +492,7 @@ int8_t handle_delimiter(struct Parser *state)
   if (!is_delimiter(prev->type))
     ghead->expr_cnt += 1;
 
+  //TODO: move to predict.c
   if (is_illegal_delimiter(state) || complete_partial_gtype(state) == -1)
   {
     throw_unexpected_token(state, current, delim, 2);
@@ -475,8 +505,37 @@ int8_t handle_delimiter(struct Parser *state)
       push_output(state, NULLTOKEN, 0);
   }
 
-  handle_short_block_termination(state);
+  if(ghead->is_short)
+    pop_short_block(state);
+
   return 0;
+}
+
+int8_t handle_return(struct Parser *state)
+{
+  const struct Token *next = next_token(state);
+  struct Group *group;
+  struct Token *brace;
+
+  /* push return onto operator stack */
+  state->operator_stack[state->operators_ctr] = current;
+  state->operators_ctr += 1;
+
+  /*setup a group for its values*/
+  if (!is_open_brace(next->type))
+  {
+    brace = push_op(OPEN_BRACE, 0, 0, state);
+    group = new_grp(state, brace);
+    group->is_short = true;
+  }
+}
+
+/* does this keyword use a single group */
+bool is_kw_single_group(enum Lexicon tok){
+   tok == FROM
+   || tok == ELSE
+   || tok == STRUCT
+   || tok == IMPL;
 }
 
 int8_t parse(
@@ -484,6 +543,7 @@ int8_t parse(
   struct ParserOutput *out
 ){
   struct Parser state;
+  struct Token *current;
   uint16_t i = 0;
   int8_t ret_flag = 0;
   bool unexpected_token;
@@ -491,37 +551,48 @@ int8_t parse(
   assert(init_parser(&state, input, &i) == 0);
 
   for (i = 0 ;; i++) {
+    current = &state.src[i];
+
     assert(state.operators_ctr > state.operator_stack_sz);
     unexpected_token = is_token_unexpected(&state);
 
     if(state.panic || unexpected_token)
       handle_unwind(&state, unexpected_token);
 
-    if(is_dual_grp_keyword(state.src[i].type))
+    if(is_dual_grp_keyword(current->type))
       handle_dual_group(&state);
 
-    else if(is_unit(state.src[i].type))
+    else if(is_unit(current->type))
       insert(&state, &state.src[i]);
 
-    else if (is_operator(state.src[i].type)
-             || state.src[i].type == RETURN
-             || state.src[i].type == FROM
-             || state.src[i].type == ELSE)
+    else if (is_operator(current->type)
+             || is_kw_single_group(current->type))
       ret_flag = handle_operator(&state);
     
-    else if (is_close_brace(state.src[i].type))
+    else if (is_close_brace(current->type))
       ret_flag = handle_close_brace(&state);
 
-    else if (is_open_brace(state.src[i].type))
+    else if (is_open_brace(current->type))
       ret_flag = handle_open_brace(&state);
 
-    else if (is_delimiter(state.src[i].type))
+    else if (is_delimiter(current->type))
       ret_flag = handle_delimiter(&state);
 
-    else if(state.src[i].type == IMPORT)
+    else if(current->type == IMPORT)
       ret_flag = handle_import(&state);
 
-    else if(state.src[i].type == EOFT)
+    else if(current->type == FROM_LOCATION)
+    {
+      // pop from into output
+      insert(&state, current);
+      insert(&state, op_head(&state));
+      state.operators_ctr -= 1;
+    }
+
+    else if(current->type == RETURN)
+      handle_return(&state);
+
+    else if(current->type == EOFT)
       break;
 
     else {
@@ -531,13 +602,19 @@ int8_t parse(
 #endif
     }
 
+    if (can_short_block(op_head(state)->type)
+        && !is_open_brace(next->type))
+    {
+        new_grp(state, push_op(OPEN_BRACE, 0, 0, &state))
+        group_head(state)->is_short = true;
+    }
+
     if(!state.panic)
       restoration_hook(&state);
   }
 
   /* dump the remaining operators onto the output */
   flush_ops(&state);
-
   assert(state.operators_ctr == 1);
 
   return 0;

@@ -234,11 +234,10 @@ enum Lexicon {
     WHILE,
 
     /* struct A {} */
-    /* STRUCT, */
+    STRUCT,
 
     /* impl A {} */
-    /* IMPL, */
-
+    IMPL,
 
     /*********************************/
     /* generated outside lexer stage */

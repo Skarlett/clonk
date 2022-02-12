@@ -93,13 +93,6 @@ struct ParserOutput {
     struct Vec errors;
 };
 
-enum ShortBlock_t {
-  sh_udef_t,
-  sh_cond_t,
-  sh_import_t
-};
-
-
 struct Group {
     //TODO: Implement this
     uint16_t seq;
@@ -136,6 +129,7 @@ struct Group {
 
     enum Lexicon type;
     bool is_empty;
+    bool is_short;
     // should be `[` `(` '{' or `0`
     const struct Token *origin;
     const struct Token *last_delim;
@@ -152,7 +146,7 @@ struct Group {
     ** else y;
     **/
     //uint8_t short_block;
-    enum ShortBlock_t short_type;
+    //enum ShortBlock_t short_type;
 
 };
 
@@ -182,7 +176,6 @@ struct PartialError {
     enum Lexicon *expect;
     uint16_t nexpected;
 };
-
 
 struct ParserError {
     enum ParserError_t type;
@@ -221,19 +214,6 @@ struct PostfixStageState {
     uint16_t stack_ctr;
     uint16_t *_i;
 };
-
-struct GroupBookKeeper {
-    uint16_t next_id;
-
-    /* Vec<struct GroupBooklet> */
-    struct Vec tabs;
-};
-
-struct GroupBooklet {
-    struct Token *start;
-    struct Token *end;
-};
-
 
 struct Parser {
     const struct Token *src;
@@ -338,8 +318,6 @@ int8_t parse(
 int8_t parser_free(struct Parser *state);
 int8_t parser_reset(struct Parser *state);
 int8_t is_token_unexpected(struct Parser *state);
-
-
 
 void restoration_hook(struct Parser *state);
 int8_t handle_unwind(
