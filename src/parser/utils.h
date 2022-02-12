@@ -7,6 +7,13 @@
 
 void insert(struct Parser *state, const struct Token *tok);
 const struct Token * new_token(struct Parser *state, struct Token *tok);
+void insert_new(
+  enum Lexicon type,
+  uint16_t start,
+  uint16_t end,
+  struct Parser *state
+);
+
 const struct Token * current_token(const struct Parser *state);
 const struct Token * prev_token(const struct Parser *state) ;
 const struct Token * next_token(const struct Parser *state);

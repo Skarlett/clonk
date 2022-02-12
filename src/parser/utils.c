@@ -15,6 +15,25 @@ const struct Token * new_token(struct Parser *state, struct Token *tok) {
   return vec_push(&state->pool, tok);
 }
 
+void insert_new(
+  enum Lexicon type,
+  uint16_t start,
+  uint16_t end,
+  struct Parser *state
+){
+
+  struct Token tok;
+  const struct Token *heap;
+
+  tok.start = start;
+  tok.end = end;
+  tok.type = type;
+  tok.seq = 0;
+
+  heap = new_token(state, &token)
+  insert(state, heap);
+}
+
 const struct Token * prev_token(const struct Parser *state) {
   if (*state->_i != 0)
     return &state->src[*state->_i - 1];
