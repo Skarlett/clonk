@@ -3,7 +3,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include "../prelude.h"
 
 struct Vec {
     void *base;
