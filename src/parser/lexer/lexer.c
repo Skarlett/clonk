@@ -1,5 +1,4 @@
 #include "lexer.h"
-#include "../../prelude.h"
 #include "../../error.h"
 #include "../../utils/vec.h"
 #include "../../utils/queue.h"
@@ -43,7 +42,6 @@ struct LexerStage {
   enum Lexicon forcing_next_token;
   uint16_t force_start;
   uint16_t force_span;
-
 };
 
 void init_lexer_stage(
@@ -148,6 +146,7 @@ enum Lexicon tokenize_char(char c) {
     return DOT;
   case '~':
     return TILDE;
+
   case '\\':
     return BACKSLASH;
   default:
@@ -394,8 +393,9 @@ int8_t derive_keyword(const char *src_code, struct Token *t) {
     FOR, WHILE,
     // EXTERN, AS,
     IF,
-    ELSE, FUNC_DEF, IMPORT,
-    // IMPL,
+    ELSE, FUNC_DEF,
+    IMPORT, FROM,
+    STRUCT, IMPL,
     AND, OR, 0
   };
 
@@ -403,8 +403,9 @@ int8_t derive_keyword(const char *src_code, struct Token *t) {
     // "static", "const",
     "return", "for", "while",
     //"extern", "as",
-    "if", "else",  "def", "import",
-    // "impl",
+    "if", "else",  "def",
+    "import", "from",
+    "struct", "impl",
     "and", "or", 0
   };
 

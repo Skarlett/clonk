@@ -128,7 +128,7 @@ enum Lexicon {
     /* a-zA-Z */
     CHAR,
 
-    /* 0-9 *single digit */
+    /* 0-9 single digit */
     DIGIT,
     
     /* , */
@@ -175,7 +175,7 @@ enum Lexicon {
     /* ELLISPES */
 
     /* |> */
-    PIPEOP,
+    //PIPEOP,
 
     /* |= */
     BOREQL,
@@ -211,7 +211,7 @@ enum Lexicon {
     /* EXTERN, */
     
     /* as */
-    /* AS, */
+    //AS,
     
     /* if */
     IF,
@@ -304,38 +304,6 @@ enum Lexicon {
     WhileBody
 };
 
-
-#define _EX_BIN_OPERATOR \
-    ADD, MUL, SUB, DIV, POW, MOD, \
-    ISEQL, ISNEQL, LT, LTEQ, OR, AND,\
-    GTEQ, GT, SHL, SHR, AMPER, PIPE, PIPEOP
-
-#define _EX_KEYWORDS_BEGINNING \
-    IF, FOR, WHILE, FUNC_DEF, RETURN
-
-#define _EX_KEYWORDS_ALL 0
-
-#define _EX_UNARY_OPERATOR \
-    TILDE, NOT
-
-#define _EX_DELIM \
-    COMMA, COLON, SEMICOLON
-
-#define _EX_ASN_OPERATOR \
-    EQUAL, PLUSEQ, MINUSEQ, \
-    BANDEQL, BOREQL, BNEQL
-
-#define _EX_OPEN_BRACE \
-    PARAM_OPEN, BRACE_OPEN, BRACKET_OPEN
-
-#define _EX_CLOSE_BRACE \
-    PARAM_CLOSE, BRACE_CLOSE, BRACKET_CLOSE
-
-#define _EX_DATA \
-    STRING_LITERAL, WORD, INTEGER
-
-#define _EX_EXPR \
-    _EX_DATA, _EX_OPEN_BRACE, _EX_UNARY_OPERATOR
 
 /*
     Tokens reference symbols derived from the 
