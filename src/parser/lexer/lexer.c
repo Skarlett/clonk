@@ -409,11 +409,11 @@ int8_t derive_keyword(const char *src_code, struct Token *t) {
     "and", "or", 0
   };
 
-  for (uint8_t i = 0; 8 > i; i++) {
+  for (uint8_t i = 0 ;; i++) {
     if (lexicon[i] == 0)
       break;
     
-    /*token.end+1 since the fields naturally are indexable*/
+    /* token.end + 1 due to index position */
     if (strlen(keywords[i]) == ((t->end + 1) - t->start) &&
         strncmp(src_code + t->start, keywords[i], t->end - t->start) == 0) {
       t->type = lexicon[i];

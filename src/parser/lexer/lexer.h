@@ -285,12 +285,25 @@ enum Lexicon {
     TupleGroup, // (x,x)
 
     ListGroup,  // [x,x]
+
+    // TODO: produce this
     IndexGroup, // [x:x]
 
     PartialBrace, // { - unknown type yet
-    MapGroup,   // {x:x}
+    MapGroup,   // {a:x, b:x}
     CodeBlock,  // {x; x;} or {x; x}
 
+    //TODO: make strict mode in predict.c
+    // for structure construction
+    // WORD { WORD = EXPR, ...};
+    StructGroup,// Name {a=b, y=z};
+
+    // struct Foo {f: v}
+    // Foo (f v mapG(2)) structDeclare
+
+    //(Name (field val structG(2)) structInit)
+    //StructBlock, // name = Name {field_1 = a, field_2 = "b"};
+    StructInit,
 
     IfCond,
     IfBody,
