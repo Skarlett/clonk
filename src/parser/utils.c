@@ -93,7 +93,6 @@ const group_type(
   const struct Group *group
 ){
 
-
   group->operator_idx
 }
 
@@ -113,14 +112,23 @@ int8_t push_group(struct Parser *state, const struct Group *grp) {
 bool is_op_keyword(enum Lexicon token) 
 {
   return token == IF
-     || token == ELSE
-     || token == RETURN
-     || token == FUNC_DEF
-     /* internal */
-     || token == IfCond
-     || token == IfBody
-     || token == DefSign
-     || token == DefBody;
+    || token == ELSE
+    || token == RETURN
+    || token == FUNC_DEF
+    /* internal */
+    || token == IfCond
+    || token == IfBody
+    || token == DefSign
+    || token == DefBody
+    || token == ForParams
+    || token == ForBody
+    || token == WhileCond
+    || token == WhileBody
+    || token == STRUCT
+    || token == StructInit
+    || token == IMPL
+    || token == FROM
+    || token == IMPORT;
 }
 
 struct Group * new_grp(
@@ -187,19 +195,17 @@ int8_t push_many_ops(
 
   for (uint16_t i = 0 ;; i++)
   {
-
+    assert(state->operators_state < ctr->operator_stack_sz);
     if(ops[i] == 0)
       break;
 
-    //assert(state->operators_ctr < state->operator_stack_sz);
-
     tmp.type = ops[i];
-
     heap = new_token(state, &tmp);
     assert(heap);
 
     state->operator_stack[state->operators_ctr] = heap;
     state->operators_ctr += 1;
+
   }
 
   return 0;
@@ -213,7 +219,6 @@ void push_output(
   struct Token marker;
   const struct Token *ret;
   assert(type != TOKEN_UNDEFINED);
-
 
   //TODO: double check sequence unwinding
   marker.seq = 0;
@@ -320,12 +325,12 @@ int8_t finish_idx_access(struct Parser *state)
 /*
     precendense table:
       ") ] }"   : 127 non-assoc
-      "."     : 126 L
-      "^"       : 6 R (1 ^ 2 ^ 3) -> (1 ^ (2 ^ 3))
-      "/ * %"   : 5 L  (4 / 2 * 2) -> ((4 / 2) * 2)
-      "+ -"     : 4 L
-      "!"       : 2 R
-      ">> << | &"
+      "."       : 126 L
+      "^"       : 7 R (1 ^ 2 ^ 3) -> (1 ^ (2 ^ 3))
+      "/ * %"   : 6 L  (4 / 2 * 2) -> ((4 / 2) * 2)
+      "+ -"     : 5 L
+      "! ~"     : 4 R
+      ">> << | &": 3
       "!= == >= > <= < && ||": 2 L
       "+= -= =" : 1 R
       "( [ { IF ELSE RETURN DEF" : 0 non-assoc
