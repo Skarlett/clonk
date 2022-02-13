@@ -44,6 +44,10 @@ enum Lexicon {
 
     COMMENT,
 
+    /*
+    ** braces start
+    */
+
     /* [ */
     BRACKET_OPEN,
 
@@ -61,45 +65,6 @@ enum Lexicon {
     
     /* ) */
     PARAM_CLOSE,
-    
-    /* ! */
-    NOT,
-
-    /* + */
-    ADD,
-    
-    /* - */
-    SUB,
-
-    /* > */
-    GT,
-
-    /* < */
-    LT,
-
-    /* * */
-    MUL,
-
-    /* / */
-    DIV,
-
-    /* ^ */
-    POW,
-
-    /* % */
-    MOD,
-
-    /* = */
-    EQUAL,
-
-    /* | */
-    PIPE,
-
-    /* & */
-    AMPER,
-
-    /* ~ */
-    TILDE,
 
     /* " */
     D_QUOTE,
@@ -112,9 +77,6 @@ enum Lexicon {
 
      /* _ */
     UNDERSCORE,
-
-    /* . */
-    DOT,
 
     /* # */
     POUND,
@@ -149,23 +111,41 @@ enum Lexicon {
     /* something */
     WORD,
 
+    FROM_LOCATION,
     /* [QUOTE, ... QUOTE] */
     /* something */
     STRING_LITERAL,
 
+    NULL_KEYWORD,
+
     /* >> */
     SHR,
-
-    /* >= */
-    GTEQ,
 
     /* << */
     SHL,
 
-    /* <= */
-    LTEQ,
+    /* ~ */
+    TILDE,
 
-    /* += */
+    /* | */
+    PIPE,
+
+    /* & */
+    AMPER,
+
+    /* = */
+    EQUAL,
+
+    /* |= */
+    BOREQL,
+
+    /* &= */
+    BANDEQL,
+
+    /* ~= */
+    BNEQL,
+
+     /* += */
     PLUSEQ,
 
     /* -= */
@@ -174,30 +154,53 @@ enum Lexicon {
     /* .. */
     /* ELLISPES */
 
-    /* |> */
-    //PIPEOP,
+    /* >= */
+    GTEQ,
 
-    /* |= */
-    BOREQL,
+    /* <= */
+    LTEQ,
 
     /* || */
     OR,
 
-    /* &= */
-    BANDEQL,
+    /* && */
+    AND,
 
     /* == */
     ISEQL,
 
-    /* ~= */
-    BNEQL,
-
     /* != */
     ISNEQL,
     
-    /* && */
-    AND,
+    /* ! */
+    NOT,
 
+    /* + */
+    ADD,
+
+    /* - */
+    SUB,
+
+    /* * */
+    MUL,
+
+    /* / */
+    DIV,
+
+    /* ^ */
+    POW,
+
+    /* % */
+    MOD,
+
+    /* > */
+    GT,
+
+    /* < */
+    LT,
+
+    /* . */
+    DOT,
     /* static */
     /* STATIC, */
 
@@ -227,8 +230,6 @@ enum Lexicon {
 
     /* from */
     FROM,
-
-    FROM_LOCATION,
 
     FOR,
     WHILE,
@@ -356,6 +357,21 @@ enum Selection_t {
   Scalar,
   Union
 };
+
+#define _BRACE_RNG_START BRACKET_OPEN
+#define _BRACE_RNG_STOP PARAM_CLOSE
+
+
+/* bool is_brace_new(enum Lexicon tok) */
+/* { */
+/*     return BRACKET_OPEN <= tok && PARAM_CLOSE >= tok; */
+/* } */
+
+/* bool is_operator_new(enum Lexicon tok) */
+/* { */
+/*     return SHR <= tok && DOT >= tok; */
+/* } */
+
 
 /*
 ** TokenSelection describes 1 or more tokens,
