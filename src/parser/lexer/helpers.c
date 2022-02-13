@@ -28,22 +28,14 @@ bool is_symbolic_data(enum Lexicon token) {
     );
 }
 
-bool is_cmp_operator(enum Lexicon token) {
-    return (
-        token == ISEQL
-        || token == ISNEQL  
-        || token == GTEQ 
-        || token == LTEQ
-        || token == AND
-        || token == OR
-    );
-}
-
-bool is_assignment_operator(enum Lexicon token) {
+bool is_asn_operator(enum Lexicon token) {
     return (
         token == EQUAL
         || token == MINUSEQ
         || token == PLUSEQ
+        || token == BOREQL
+        || token == BANDEQL
+        || token == BNOTEQL
     );
 }
 
@@ -132,15 +124,9 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
         if (inverted == TOKEN_UNDEFINED)
           return -1;
         
-<<<<<<< Updated upstream
-        /*
-            return 1 to stop iteration, 
-            and return `is_balanced` as false
-=======
-        /* 
+       /*
             return 1 to stop iteration, 
             and return `is_balanced` as false (0)
->>>>>>> Stashed changes
         */    
         else if (*tokens_ctr <= 0)
           return 1;
@@ -255,5 +241,7 @@ bool is_group_modifier(enum Lexicon tok) {
         || tok == WhileCond
         || tok == WhileBody
         || tok == IMPORT
-        || tok == RETURN;
+        || tok == RETURN
+        || tok == StructInit
+        || tok == STRUCT;
 }
