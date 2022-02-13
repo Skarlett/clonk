@@ -5,11 +5,13 @@
 #include <string.h>
 #include <assert.h>
 
+
 #include "lexer/lexer.h"
-#include "lexer/debug.h"
 #include "../utils/vec.h"
-#include "expr.h"
 #include "utils.h"
+
+#include "private.h"
+#include "parser.h"
 
 enum Associativity
 {
@@ -55,7 +57,8 @@ enum Associativity get_assoc(enum Lexicon token)
 ** postfix: ... <expr> <expr> <OPERATOR> ...
 ********************************************
 */
-int8_t handle_operator(struct Parser *state) {
+int8_t handle_operator(struct Parser *state)
+{
   int8_t precedense = 0, head_precedense = 0;
   const struct Token *current = current_token(state),
     *head = 0;
@@ -131,20 +134,27 @@ int8_t handle_operator(struct Parser *state) {
  * src: [body_expr, ...]
  * dbg: <body-expr> ... Group_t
  */
-int8_t pop_group(struct Parser *state)
+int8_t pop_group(struct Parser *state, bool do_checks)
 {
   struct Group *ghead = group_head(state);
+
+  if(do_checks && !is_open_brace(op_head(state)->type))
+     return -1;
 
   /* only add groups if they're not singular item paramethesis braced */
   if (ghead->origin->type != PARAM_OPEN
       || ghead->delimiter_cnt > 0
       || ghead->is_empty)
-
       push_output(
         state,
         ghead->type,
         ghead->expr_cnt
       );
+
+  /* drop open brace */
+  state->operators_ctr -= 1;
+  /* drop group */
+  state->set_ctr -= 1;
 
   return 0;
 }
@@ -172,7 +182,8 @@ int8_t pop_block_operator(struct Parser *state)
 }
 
 
-int8_t handle_close_brace(struct Parser *state) {
+int8_t handle_close_brace(struct Parser *state)
+{
   const enum Lexicon expected[] = {COLON, DIGIT, 0};
   struct Group *ghead = group_head(state);
   const struct Token *prev = prev_token(state),
@@ -192,13 +203,6 @@ int8_t handle_close_brace(struct Parser *state) {
     ghead->is_empty = true;
 
   /*
-  ** TODO:add to predict.c
-  ** allow for {x; x;;;}
-  ** but not [1,,]
-  **
-   */
-
-  /*
     flush out operators, until the open-brace
     type is found in the operator-stack.
   */
@@ -209,15 +213,7 @@ int8_t handle_close_brace(struct Parser *state) {
     finish_idx_access(state);
 
   /* handle grouping */
-  ret = pop_group(state);
-
-  /* drop open brace */
-  state->operators_ctr -= 1;
-  state->set_ctr -= 1;
-
-  /* After closing a code-block,
-    there may be an operator declared on it,
-    we'll check for it now. */
+  ret = pop_group(state, false);
 
   /* on index access group cannot be empty */
   if (ghead->is_empty && ghead->type == IndexGroup) {
@@ -225,12 +221,18 @@ int8_t handle_close_brace(struct Parser *state) {
       return -1;
   }
 
+  /*
+    After closing a code-block,
+    there may be an operator declared on it,
+    we'll check for it now.
+  */
   if (state->operators_ctr > 0
       && pop_block_operator(state) == -1)
     return -1;
 
   return ret;
 }
+
 
 
 /*
@@ -259,19 +261,33 @@ int8_t handle_close_brace(struct Parser *state) {
 **        ^-- current token.
 **
 */
-int8_t prefix_group(
-  struct Parser *state
-){
+int8_t prefix_group(struct Parser *state)
+{
   const struct Token * current = current_token(state);
   const struct Token * prev = prev_token(state);
 
-  /* function call pattern */
-  if (current->type == PARAM_OPEN && is_fncall_pattern(prev))
-    return op_push(Apply, 0, 0, state) != 0;
+  if (!prev)
+    return 0;
 
-  /* index call pattern */
-  else if (current->type == BRACKET_OPEN && is_index_pattern(prev))
-    return op_push(_IdxAccess, 0, 0, state) != 0;
+  switch (current->type)
+  {
+    case PARAM_OPEN:
+      if(is_fncall_pattern(current->type))
+        return op_push(Apply, 0, 0, state);
+      break;
+
+    case BRACKET_OPEN:
+      if(is_index_pattern(current->type))
+        return op_push(_IdxAccess, 0, 0, state);
+      break;
+
+    case BRACE_OPEN:
+      if(prev->type == WORD)
+        return op_push(StructInit, 0, 0, state);
+      break;
+  }
+
+  return 0;
 }
 
 /*
@@ -324,16 +340,6 @@ int8_t handle_dual_group(struct Parser *state)
   return push_many_ops(products[idx], current, state);
 }
 
-// todo predict
-bool _can_short_block(struct Token *op_head)
-{
-  return op_head == ForBody
-    || WhileBody
-    || ELSE
-    || IfBody
-    || DefBody;
-}
-
 /*
 ** consumes tokens until `import` token is found
 ** and converts it into a location token
@@ -350,7 +356,7 @@ int8_t handle_import(struct Parser *state)
   const struct Token *current = current_token(state);
 
   gtop = new_grp(state, next_token(state));
-  gtop->short_type = sh_import_t;
+  gtop->is_short = true;
 
   if(output_head(state)->type != FROM)
     ghead->expr_cnt += 1;
@@ -362,33 +368,6 @@ int8_t handle_import(struct Parser *state)
   return 0;
 }
 
-
-int8_t handle_sb_cond_termination(struct Parser *state)
-{
-
-  /* if(x)
-  **   if(b) c;
-  **   else d;
-  **
-  */
-  if (next_token(state)->type == ELSE)
-    state->operators_ctr -= 1;
-  else {
-    // TODO:
-    // implemented chained conditional short-blocks
-  }
-}
-
-
-int8_t handle_sb_import(struct Parser *state) {
-  const struct Group *ghead = group_head(state);
-  /* pop off the group */
-  state->set_ctr -= 1;
-  /* remove open_param in operators */
-  state->operators_ctr -= 1;
-  push_group(state, ghead);
-}
-
 /*
  * pop short-block
  *
@@ -396,12 +375,10 @@ int8_t handle_sb_import(struct Parser *state) {
  * & inferred groups
  *
 */
-bool pop_short_block(struct Parser *state) {
+void pop_short_block(struct Parser *state) {
   const struct Token *next = next_token(state);
   const struct Group *ghead = group_head(state);
   const struct Token *ophead, *gmod;
-
-    return 0;
 
   while(group_head->is_short)
   {
@@ -420,7 +397,6 @@ bool pop_short_block(struct Parser *state) {
     state->set_ctr -= 1;
     ghead = group_head(state);
   }
-  return 1;
 }
 
 /*
@@ -444,35 +420,14 @@ int8_t complete_partial_gtype(struct Parser *state){
         ghead->type = CodeBlock;
         break;
 
+      case COMMA:
+        ghead->type = StructGroup;
+        break;
+
       default: return -1;
     }
   }
   return 0;
-}
-
-/* throw unexpected token */
-int8_t is_illegal_delimiter(const struct Parser *state) {
-  struct Group *ghead = group_head(state);
-  const struct Token *gmod = group_modifier(state, ghead);
-
-
-  //TODO: add to predict.c
-  //if (ghead->type != CodeBlock)
-  //{
-  //  if(is_delimiter(next->type))
-  //    return -1;
-  //}
-
-  return \
-    gmod->type == WhileCond
-    || gmod->type == IfCond
-    || (ghead->type == _IdxAccess && ghead->delimiter_cnt > 2)
-    /* check for correct delimiter*/
-    // TODO: Handle in predict.c
-    //|| (gmod->type == _IdxAccess && current->type != COLON)
-    //|| ((ghead->type == TupleGroup || ghead->type == ListGroup) && current->type != COMMA)
-    //|| (ghead->type == CodeBlock && current->type != SEMICOLON)
-    ;
 }
 
 int8_t handle_delimiter(struct Parser *state)
@@ -493,7 +448,7 @@ int8_t handle_delimiter(struct Parser *state)
     ghead->expr_cnt += 1;
 
   //TODO: move to predict.c
-  if (is_illegal_delimiter(state) || complete_partial_gtype(state) == -1)
+  if (complete_partial_gtype(state) == -1)
   {
     throw_unexpected_token(state, current, delim, 2);
     return -1;
@@ -530,6 +485,14 @@ int8_t handle_return(struct Parser *state)
   }
 }
 
+bool do_short_block(struct Token *op_head)
+{
+  return op_head == ForBody
+    || WhileBody
+    || ELSE
+    || IfBody
+    || DefBody;
+}
 /* does this keyword use a single group */
 bool is_kw_single_group(enum Lexicon tok){
    tok == FROM
@@ -538,14 +501,20 @@ bool is_kw_single_group(enum Lexicon tok){
    || tok == IMPL;
 }
 
+bool use_as_op(enum Lexicon t)
+{
+  return is_operator(t)
+    || is_asn_operator(t)
+    || is_kw_single_group(t);
+}
+
 int8_t parse(
   struct ParserInput *input,
-  struct ParserOutput *out
+  truct ParserOutput *out
 ){
   struct Parser state;
   struct Token *current;
   uint16_t i = 0;
-  int8_t ret_flag = 0;
   bool unexpected_token;
 
   assert(init_parser(&state, input, &i) == 0);
@@ -559,31 +528,30 @@ int8_t parse(
     if(state.panic || unexpected_token)
       handle_unwind(&state, unexpected_token);
 
-    if(is_dual_grp_keyword(current->type))
+    else if(is_unit(current->type))
+      insert(&state, current);
+
+    else if (use_as_op(current->type))
+      handle_operator(&state);
+
+    else if(is_dual_grp_keyword(current->type))
       handle_dual_group(&state);
 
-    else if(is_unit(current->type))
-      insert(&state, &state.src[i]);
-
-    else if (is_operator(current->type)
-             || is_kw_single_group(current->type))
-      ret_flag = handle_operator(&state);
-    
     else if (is_close_brace(current->type))
-      ret_flag = handle_close_brace(&state);
+      handle_close_brace(&state);
 
     else if (is_open_brace(current->type))
-      ret_flag = handle_open_brace(&state);
+      handle_open_brace(&state);
 
     else if (is_delimiter(current->type))
-      ret_flag = handle_delimiter(&state);
+      handle_delimiter(&state);
 
     else if(current->type == IMPORT)
-      ret_flag = handle_import(&state);
+      handle_import(&state);
 
+    /* pop from into output */
     else if(current->type == FROM_LOCATION)
     {
-      // pop from into output
       insert(&state, current);
       insert(&state, op_head(&state));
       state.operators_ctr -= 1;
@@ -602,8 +570,8 @@ int8_t parse(
 #endif
     }
 
-    if (can_short_block(op_head(state)->type)
-        && !is_open_brace(next->type))
+    if (do_short_block(op_head(state)->type)
+        && !is_open_brace(next_token(state)->type))
     {
         new_grp(state, push_op(OPEN_BRACE, 0, 0, &state))
         group_head(state)->is_short = true;
