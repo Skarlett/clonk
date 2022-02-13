@@ -4,107 +4,37 @@
 #define BRACE_BUFFER_SZ 256
 
 bool is_delimiter(enum Lexicon token) {
-#if OPTIMIZE
-    return COLON <= token && SEMICOLON >= token;
-#else
-    return token == COLON
-        || token == COMMA
-        || token == SEMICOLON;
-#endif
+    return token > __MARKER_DELIM_START
+        && __MARKER_DELIM_END > token;
 }
 
 bool is_close_brace(enum Lexicon token)
 {
-#if OPTIMIZE
-  return token >= BRACKET_CLOSE && PARAM_CLOSE >= token;
-#else
-    return (token == PARAM_CLOSE
-    || token == BRACE_CLOSE  
-    || token == BRACKET_CLOSE);
-#endif
+    return token > __MARKER_CLOSE_BRACE_START
+        && __MARKER_CLOSE_BRACE_END > token;
 }
 
 bool is_open_brace(enum Lexicon token) {
-#if OPTIMIZE
-    return token >= BRACKET_OPEN  && BRACE_OPEN >= token;
-#else
-    return (token == PARAM_OPEN
-    || token == BRACE_OPEN  
-    || token == BRACKET_OPEN);
-#endif
+    return token > __MARKER_OPEN_BRACE_START
+        && __MARKER_OPEN_BRACE_END > token;
 }
 
 bool is_unit(enum Lexicon token) {
-#if OPTIMIZE
-  return token >= INTEGER && NULL_KEYWORD >= token;
-#else
-    return (token == WORD
-        || token == INTEGER 
-        || token == STRING_LITERAL
-        //|| token == NULLTOKEN
-        || token == NULL_KEYWORD
-    );
-#endif
+    return token > __MARKER_UNIT_START
+        && __MARKER_UNIT_END > token;
 }
 
 bool is_asn_operator(enum Lexicon token) {
-#if OPTIMIZE
-    return token >= EQUAL && MINUSEQ >= token;
-#else
-    return (
-        token == EQUAL
-        || token == MINUSEQ
-        || token == PLUSEQ
-        || token == BOREQL
-        || token == BANDEQL
-        || token == BNEQL
-    );
-#endif
+    return token > __MARKER_ASN_START
+        && __MARKER_ASN_END > token;
 }
 
 /*
    returns bool if token is a binary operator
 */
 bool is_operator(enum Lexicon token) {
-#if OPTIMIZE
-    return token >= NOT && ISNEQL >= token;
-#else
-    return (
-        /* comparison operators */
-        token == ISEQL
-        || token == ISNEQL 
-        || token == GTEQ 
-        || token == LTEQ
-        || token == GT
-        || token == LT
-        /* logic operators */
-        || token == OR
-        || token == AND
-        || token == NOT
-        /* arithmetic */
-        || token == ADD
-        || token == SUB
-        || token == MUL
-        || token == POW
-        || token == NOT
-        || token == MOD
-        || token == DIV
-        || token == DOT
-        /* assignments */
-        || token == EQUAL
-        || token == MINUSEQ
-        || token == PLUSEQ
-        /* bitwise operations */
-        || token == BOREQL
-        || token == BANDEQL
-        || token == PIPE
-        || token == AMPER
-        || token == SHL
-        || token == SHR
-        /* experimental */
-        //|| token == PIPEOP
-    );
-#endif
+    return token > __MARKER_OP_START
+        && __MARKER_OP_END > token;
 }
 
 /* null delimitated */
@@ -220,59 +150,22 @@ bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
     return braces_ctr == 0;
 }
 
-bool is_keyword(enum Lexicon token) {
-#if OPTIMIZE
-    return token >= RETURN && IMPL >= token;
-#else
-    return token == RETURN
-        || token == IF
-        || token == ELSE
-        || token == FUNC_DEF
-        || token == STRUCT
-        || token == IMPL
-        || token == FROM
-        || token == IMPORT
-        || token == FOR
-        || token == WHILE;
-#endif
-}
-
 bool is_num_negative(const char * source, struct Token *token) {
     return token->type == INTEGER && *(source + token->start) == '-';
 }
 
+bool is_keyword(enum Lexicon token) {
+    return token > __MARKER_KEYWORD_START
+        && __MARKER_KEYWORD_END > token;
+}
+
 bool is_group(enum Lexicon tok)
 {
-#if OPTIMIZE
-    return token >= TupleGroup && StructGroup >= token;
-#else
-  return tok == TupleGroup
-    || tok == ListGroup
-    || tok == IndexGroup
-    || tok == MapGroup
-    || tok == CodeBlock
-    || tok == StructGroup;
-#endif
+    return tok > __MARKER_GROUP_START
+        && __MARKER_GROUP_END > tok;
 }
 
 bool is_group_modifier(enum Lexicon tok) {
-#if OPTIMIZE
-    return tok >= STRUCT && WhileBody >= tok;
-#else
-    return tok == Apply
-        || tok == _IdxAccess
-        || tok == IfCond
-        || tok == IfBody
-        || tok == DefSign
-        || tok == DefBody
-        || tok == ForParams
-        || tok == ForBody
-        || tok == WhileCond
-        || tok == WhileBody
-        || tok == IMPORT
-        || tok == RETURN
-        || tok == StructInit
-        || tok == STRUCT
-        || tok == IMPL;
-#endif
+    return tok > __MARKER_GROUP_OP_START
+        && __MARKER_GROUP_OP_END > tok;
 }

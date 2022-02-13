@@ -17,6 +17,7 @@ enum Lexicon {
     /********************/
     /* Transition token */
     /********************/
+    __MARKER_TRANSITION_START,
 
     _COMPOUND_GT,
     /* -123 or -= */
@@ -30,9 +31,28 @@ enum Lexicon {
     /*  */
     _COMPOUND_LT,
 
+    __MARKER_TRANSITION_END,
     /**********************/
     /* Single byte tokens */
     /**********************/
+
+    __MARKER_GROUP_START,
+    TupleGroup, // (x,x)
+
+    ListGroup,  // [x,x]
+
+    // TODO: produce this
+    IndexGroup, // [x:x]
+
+    PartialBrace, // { - unknown type yet
+    MapGroup,   // {a:x, b:x}
+    CodeBlock,  // {x; x;} or {x; x}
+
+    //TODO: make strict mode in predict.c
+    // for structure construction
+    // WORD { WORD = EXPR, ...};
+    StructGroup,// Name {a=b, y=z};
+    __MARKER_GROUP_END,
 
     TOKEN_UNDEFINED = 1,
     
@@ -48,6 +68,7 @@ enum Lexicon {
     ** braces start
     */
 
+    __MARKER_OPEN_BRACE_START,
     /* [ */
     BRACKET_OPEN,
 
@@ -56,7 +77,10 @@ enum Lexicon {
     
     /* ( */
     PARAM_OPEN,
+    __MARKER_OPEN_BRACE_END,
 
+
+    __MARKER_CLOSE_BRACE_START,
     /* ] */
     BRACKET_CLOSE,
 
@@ -65,6 +89,7 @@ enum Lexicon {
     
     /* ) */
     PARAM_CLOSE,
+    __MARKER_CLOSE_BRACE_END,
 
     /* " */
     D_QUOTE,
@@ -87,7 +112,8 @@ enum Lexicon {
 
     /* 0-9 single digit */
     DIGIT,
-    
+
+    __MARKER_DELIM_START,
     /* , */
     COMMA,
 
@@ -96,13 +122,14 @@ enum Lexicon {
 
     /* ; */
     SEMICOLON,
-
+    __MARKER_DELIM_END,
     /* \ */
     BACKSLASH,
 
     /*********************/
     /* multi byte tokens */
     /*********************/
+    __MARKER_UNIT_START,
 
     /*  [NUM, ..] WHITESPACE|SEMICOLON    */
     /* // 20_392  */
@@ -118,9 +145,17 @@ enum Lexicon {
     STRING_LITERAL,
 
     NULL_KEYWORD,
+    __MARKER_UNIT_END,
+
+
+    __MARKER_OP_START,
+    __MARKER_UNARY_START__,
+    /* ~ */
+    TILDE,
 
     /* ! */
     NOT,
+    __MARKER_UNARY_STOP,
 
     /* + */
     ADD,
@@ -140,12 +175,6 @@ enum Lexicon {
     /* % */
     MOD,
 
-    /* > */
-    GT,
-
-    /* < */
-    LT,
-
     /* . */
     DOT,
 
@@ -155,15 +184,13 @@ enum Lexicon {
     /* << */
     SHL,
 
-    /* ~ */
-    TILDE,
-
     /* | */
     PIPE,
 
     /* & */
     AMPER,
 
+    __MARKER_ASN_START,
     /* = */
     EQUAL,
 
@@ -181,15 +208,11 @@ enum Lexicon {
 
     /* -= */
     MINUSEQ,
+    __MARKER_ASN_END,
 
     /* .. */
     /* ELLISPES */
 
-    /* >= */
-    GTEQ,
-
-    /* <= */
-    LTEQ,
 
     /* || */
     OR,
@@ -197,12 +220,43 @@ enum Lexicon {
     /* && */
     AND,
 
+    /* >= */
+    GTEQ,
+
+    /* <= */
+    LTEQ,
+
     /* == */
     ISEQL,
 
     /* != */
     ISNEQL,
-    
+
+    /* > */
+    GT,
+
+    /* < */
+    LT,
+
+    __MARKER_GROUP_OP_START,
+    _IdxAccess,
+    Apply,
+
+    //(Name (field val structG(2)) structInit)
+    //StructBlock, // name = Name {field_1 = a, field_2 = "b"};
+    StructInit,
+
+    IfCond,
+    IfBody,
+    DefSign,
+    DefBody,
+
+    ForParams, // ((i, i2 g(2)) forparams) (a b g(2)) forbody
+    ForBody,
+
+    WhileCond,
+    WhileBody,
+
     /* static */
     /* STATIC, */
 
@@ -214,7 +268,26 @@ enum Lexicon {
     
     /* as */
     //AS,
-    
+
+    __MARKER_KEYWORD_START,
+    /* struct A {} */
+    STRUCT,
+
+    /* impl A {} */
+    IMPL,
+
+    /* return */
+    RETURN,
+
+    /* import */
+    IMPORT,
+
+    /* from */
+    FROM,
+
+    __MARKER_GROUP_OP_END,
+    __MARKER_OP_END,
+
     /* if */
     IF,
 
@@ -227,28 +300,7 @@ enum Lexicon {
     FOR,
     WHILE,
 
-    /* struct A {} */
-    STRUCT,
-
-    /* impl A {} */
-    IMPL,
-
-    /*********************************/
-    /* generated outside lexer stage */
-    /*********************************/
-
-    /* return */
-    RETURN,
-
-    /* import */
-    IMPORT,
-
-    /* from */
-    FROM,
-
-
-    _IdxAccess,
-    Apply,
+    __MARKER_KEYWORD_END
 
     /*
       GROUPING token are generated in the expression parser
@@ -286,39 +338,8 @@ enum Lexicon {
       than the original token stream.
     */
 
-    //TODO: make strict mode in predict.c
-    // for structure construction
-    // WORD { WORD = EXPR, ...};
-    StructGroup,// Name {a=b, y=z};
-
     // struct Foo {f: v}
     // Foo (f v mapG(2)) structDeclare
-
-    //(Name (field val structG(2)) structInit)
-    //StructBlock, // name = Name {field_1 = a, field_2 = "b"};
-    StructInit,
-
-    IfCond,
-    IfBody,
-    DefSign,
-    DefBody,
-
-    ForParams, // ((i, i2 g(2)) forparams) (a b g(2)) forbody
-    ForBody,
-
-    WhileCond,
-    WhileBody,
-
-    TupleGroup, // (x,x)
-
-    ListGroup,  // [x,x]
-
-    // TODO: produce this
-    IndexGroup, // [x:x]
-
-    PartialBrace, // { - unknown type yet
-    MapGroup,   // {a:x, b:x}
-    CodeBlock,  // {x; x;} or {x; x}
 
 };
 
@@ -361,21 +382,6 @@ enum Selection_t {
   Scalar,
   Union
 };
-
-#define _BRACE_RNG_START BRACKET_OPEN
-#define _BRACE_RNG_STOP PARAM_CLOSE
-
-
-/* bool is_brace_new(enum Lexicon tok) */
-/* { */
-/*     return BRACKET_OPEN <= tok && PARAM_CLOSE >= tok; */
-/* } */
-
-/* bool is_operator_new(enum Lexicon tok) */
-/* { */
-/*     return SHR <= tok && DOT >= tok; */
-/* } */
-
 
 /*
 ** TokenSelection describes 1 or more tokens,
