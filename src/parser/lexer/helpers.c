@@ -1,48 +1,74 @@
 #include <stdbool.h>
 #include "lexer.h"
-#include "../../prelude.h"
 
 #define BRACE_BUFFER_SZ 256
 
 bool is_delimiter(enum Lexicon token) {
-    return token == COLON || token == COMMA;
+#if OPTIMIZE
+    return COLON <= token && SEMICOLON >= token;
+#else
+    return token == COLON
+        || token == COMMA
+        || token == SEMICOLON;
+#endif
 }
 
-bool is_close_brace(enum Lexicon token) {
-    return (token == PARAM_CLOSE 
+bool is_close_brace(enum Lexicon token)
+{
+#if OPTIMIZE
+  return token >= BRACKET_CLOSE && PARAM_CLOSE >= token;
+#else
+    return (token == PARAM_CLOSE
     || token == BRACE_CLOSE  
     || token == BRACKET_CLOSE);
+#endif
 }
 
 bool is_open_brace(enum Lexicon token) {
-    return (token == PARAM_OPEN 
+#if OPTIMIZE
+    return token >= BRACKET_OPEN  && BRACE_OPEN >= token;
+#else
+    return (token == PARAM_OPEN
     || token == BRACE_OPEN  
     || token == BRACKET_OPEN);
+#endif
 }
 
-bool is_symbolic_data(enum Lexicon token) {
+bool is_unit(enum Lexicon token) {
+#if OPTIMIZE
+  return token >= INTEGER && NULL_KEYWORD >= token;
+#else
     return (token == WORD
         || token == INTEGER 
         || token == STRING_LITERAL
-        || token == NULLTOKEN
+        //|| token == NULLTOKEN
+        || token == NULL_KEYWORD
     );
+#endif
 }
 
 bool is_asn_operator(enum Lexicon token) {
+#if OPTIMIZE
+    return token >= EQUAL && MINUSEQ >= token;
+#else
     return (
         token == EQUAL
         || token == MINUSEQ
         || token == PLUSEQ
         || token == BOREQL
         || token == BANDEQL
-        || token == BNOTEQL
+        || token == BNEQL
     );
+#endif
 }
 
 /*
    returns bool if token is a binary operator
 */
 bool is_operator(enum Lexicon token) {
+#if OPTIMIZE
+    return token >= NOT && ISNEQL >= token;
+#else
     return (
         /* comparison operators */
         token == ISEQL
@@ -76,20 +102,20 @@ bool is_operator(enum Lexicon token) {
         || token == SHL
         || token == SHR
         /* experimental */
-        || token == PIPEOP
+        //|| token == PIPEOP
     );
+#endif
 }
 
 /* null delimitated */
 uint8_t eq_any_tok(enum Lexicon cmp, enum Lexicon buffer[]) {
-  for (uint16_t i ;; i++)
+  for (uint16_t i=0 ;; i++)
     if(buffer[i] == 0) break;
     else if (buffer[i] == cmp)
       return i;
   
   return 0;
 }
-
 
 /* is character utf encoded */
 bool is_utf(char ch) {
@@ -195,41 +221,44 @@ bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
 }
 
 bool is_keyword(enum Lexicon token) {
-    static enum Lexicon keywords[10] = {
-        // STATIC, CONST,
-        RETURN,
-        // EXTERN, AS,
-        IF, ELSE, FUNC_DEF, IMPORT,
-        // IMPL,
-        0
-    };    
-    return eq_any_tok(token, keywords);
+#if OPTIMIZE
+    return token >= RETURN && IMPL >= token;
+#else
+    return token == RETURN
+        || token == IF
+        || token == ELSE
+        || token == FUNC_DEF
+        || token == STRUCT
+        || token == IMPL
+        || token == FROM
+        || token == IMPORT
+        || token == FOR
+        || token == WHILE;
+#endif
 }
 
 bool is_num_negative(const char * source, struct Token *token) {
     return token->type == INTEGER && *(source + token->start) == '-';
 }
 
-bool is_unit(enum Lexicon tok)
-{
-    
-  return \
-    tok == STRING_LITERAL 
-    || tok == INTEGER
-    || tok == WORD;
-}
-
 bool is_group(enum Lexicon tok)
 {
-  return \
-    tok == TupleGroup 
-    ||tok == ListGroup
-    ||tok == IndexGroup
-    ||tok == MapGroup  
-    ||tok == CodeBlock;
+#if OPTIMIZE
+    return token >= TupleGroup && StructGroup >= token;
+#else
+  return tok == TupleGroup
+    || tok == ListGroup
+    || tok == IndexGroup
+    || tok == MapGroup
+    || tok == CodeBlock
+    || tok == StructGroup;
+#endif
 }
 
 bool is_group_modifier(enum Lexicon tok) {
+#if OPTIMIZE
+    return tok >= STRUCT && WhileBody >= tok;
+#else
     return tok == Apply
         || tok == _IdxAccess
         || tok == IfCond
@@ -243,5 +272,7 @@ bool is_group_modifier(enum Lexicon tok) {
         || tok == IMPORT
         || tok == RETURN
         || tok == StructInit
-        || tok == STRUCT;
+        || tok == STRUCT
+        || tok == IMPL;
+#endif
 }

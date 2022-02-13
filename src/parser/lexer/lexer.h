@@ -51,17 +51,17 @@ enum Lexicon {
     /* [ */
     BRACKET_OPEN,
 
-    /* ] */
-    BRACKET_CLOSE,
-
     /* { */
     BRACE_OPEN,
     
-    /* } */
-    BRACE_CLOSE,
-    
     /* ( */
     PARAM_OPEN,
+
+    /* ] */
+    BRACKET_CLOSE,
+
+    /* } */
+    BRACE_CLOSE,
     
     /* ) */
     PARAM_CLOSE,
@@ -72,17 +72,12 @@ enum Lexicon {
     /* ' */
     S_QUOTE,
     
-    /* ; */
-    SEMICOLON,
-
      /* _ */
     UNDERSCORE,
 
     /* # */
     POUND,
 
-    /* : */
-    COLON,
 
     /* @ */
     ATSYM,
@@ -95,6 +90,12 @@ enum Lexicon {
     
     /* , */
     COMMA,
+
+    /* : */
+    COLON,
+
+    /* ; */
+    SEMICOLON,
 
     /* \ */
     BACKSLASH,
@@ -117,6 +118,36 @@ enum Lexicon {
     STRING_LITERAL,
 
     NULL_KEYWORD,
+
+    /* ! */
+    NOT,
+
+    /* + */
+    ADD,
+
+    /* - */
+    SUB,
+
+    /* * */
+    MUL,
+
+    /* / */
+    DIV,
+
+    /* ^ */
+    POW,
+
+    /* % */
+    MOD,
+
+    /* > */
+    GT,
+
+    /* < */
+    LT,
+
+    /* . */
+    DOT,
 
     /* >> */
     SHR,
@@ -172,44 +203,12 @@ enum Lexicon {
     /* != */
     ISNEQL,
     
-    /* ! */
-    NOT,
-
-    /* + */
-    ADD,
-
-    /* - */
-    SUB,
-
-    /* * */
-    MUL,
-
-    /* / */
-    DIV,
-
-    /* ^ */
-    POW,
-
-    /* % */
-    MOD,
-
-    /* > */
-    GT,
-
-    /* < */
-    LT,
-
-    /* . */
-    DOT,
     /* static */
     /* STATIC, */
 
     /* const */
     /* CONST, */
 
-    /* return */
-    RETURN,
-    
     /* extern */
     /* EXTERN, */
     
@@ -225,12 +224,6 @@ enum Lexicon {
     /* def */
     FUNC_DEF,
 
-    /* import */
-    IMPORT,
-
-    /* from */
-    FROM,
-
     FOR,
     WHILE,
 
@@ -243,6 +236,16 @@ enum Lexicon {
     /*********************************/
     /* generated outside lexer stage */
     /*********************************/
+
+    /* return */
+    RETURN,
+
+    /* import */
+    IMPORT,
+
+    /* from */
+    FROM,
+
 
     _IdxAccess,
     Apply,
@@ -283,17 +286,6 @@ enum Lexicon {
       than the original token stream.
     */
 
-    TupleGroup, // (x,x)
-
-    ListGroup,  // [x,x]
-
-    // TODO: produce this
-    IndexGroup, // [x:x]
-
-    PartialBrace, // { - unknown type yet
-    MapGroup,   // {a:x, b:x}
-    CodeBlock,  // {x; x;} or {x; x}
-
     //TODO: make strict mode in predict.c
     // for structure construction
     // WORD { WORD = EXPR, ...};
@@ -315,7 +307,19 @@ enum Lexicon {
     ForBody,
 
     WhileCond,
-    WhileBody
+    WhileBody,
+
+    TupleGroup, // (x,x)
+
+    ListGroup,  // [x,x]
+
+    // TODO: produce this
+    IndexGroup, // [x:x]
+
+    PartialBrace, // { - unknown type yet
+    MapGroup,   // {a:x, b:x}
+    CodeBlock,  // {x; x;} or {x; x}
+
 };
 
 
