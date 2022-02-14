@@ -12,19 +12,21 @@
 /* TODO: `IF`, `WHILE` signatures cannot */
 /*       contain delimiters, or keywords */
 /* TODO: ensure the following constrains on struct init */
-/*      WORD { WORD=.., } */
+/*      WORD { WORD=[expr], } */
 /* TODO: ensure the correct delimiter */
 /*      is choosen for the current group */
 /* TODO: allow for `{x;;}` but not `[x,,]` */
 /* TODO: ensure when `ELSE` can be used */
-/* TODO: limit delimiters in index access >3 */
+/* TODO: limit delimiters in index access 3 >= */
 /* TODO: import paths only accept WORD/DOT until delim */
+/* TODO: figure out if you can declare a new variable */
 
 /* NOTE: DOT token is excluded here because */
 /* because it can't be applied to integers */
 /* unlike the other operators which can be applied */
 /* to groupings, words & integers */
-#define _EX_BIN_OPERATOR \
+
+#define _EX_BIN_OPERATOR                 \
     ADD, MUL, SUB, DIV, POW, MOD,        \
     PIPE, AMPER, OR, AND,                \
     LT, LTEQ, SHL,                       \
@@ -43,25 +45,14 @@
 #define _EX_ASN_OPERATOR \
     EQUAL, PLUSEQ, MINUSEQ, \
     BANDEQL, BOREQL, BNEQL
-#define EX_ASN_OPERATOR_LEN 6
+#define _EX_ASN_OPERATOR_LEN 6
 
 #define _EX_OPEN_BRACE PARAM_OPEN, BRACE_OPEN, BRACKET_OPEN
 #define _EX_CLOSE_BRACE PARAM_CLOSE, BRACE_CLOSE, BRACKET_CLOSE
 #define _EX_BRACE_LEN 3
 
-#define _EX_DATA STRING_LITERAL, WORD, INTEGER
+#define _EX_DATA STRING_LITERAL, WORD, INTEGER, NULL_KEYWORD
 #define _EX_DATA_LEN 3
-
-#define _EX_EXPR \
-  _EX_DATA,                                     \
-  _EX_OPEN_BRACE,                               \
-  _EX_UNARY_OPERATOR
-
-#define _EX_EXPR_LEN                            \
-  _EX_DATA_LEN                                  \
-  + _EX_BRACE_LEN                               \
-  + _EX_UNARY_OPERATOR_LEN
-
 
 /* NOTE:
  * ELSE is not included,
@@ -79,81 +70,243 @@
 #define _PV_INT                                 \
   _EX_BIN_OPERATOR,                             \
   _EX_CLOSE_BRACE,                              \
-  _EX_DELIM
+//  _EX_DELIM
 
-#define _PV_INT_LEN                             \
+#define PV_INT_LEN                             \
   _EX_BIN_OPERATOR_LEN                          \
   + _EX_BRACE_LEN                               \
-  + _EX_DELIM_LEN
+//  + _EX_DELIM_LEN
+
+const enum Lexicon PV_INT[] = {_PV_INT};
 
 #define _PV_WORD                                \
   _EX_BIN_OPERATOR,                             \
   _EX_ASN_OPERATOR,                             \
-  _EX_DELIM,                                    \
   _EX_CLOSE_BRACE,                              \
   PARAM_OPEN,                                   \
   BRACKET_OPEN,                                 \
   DOT
+//  _EX_DELIM,
 
-#define _PV_WORD_LEN                            \
+#define PV_WORD_LEN                             \
   _EX_BIN_OPERATOR_LEN                          \
   + _EX_ASN_OPERATOR_LEN                        \
-  + _EX_DELIM_LEN                               \
   + _EX_BRACE_LEN                               \
   + 3
+//  + _EX_LEN_DELIM                               \
+
+const enum Lexicon PV_WORD[] = {_PV_WORD};
 
 #define _PV_STR                                 \
   _EX_BIN_OPERATOR,                             \
   _EX_CLOSE_BRACE,                              \
-  _EX_DELIM,                                    \
   BRACKET_OPEN,                                 \
   DOT
+//  _EX_DELIM,                                    \
 
-#define _PV_STR_LEN                             \
+#define PV_STR_LEN                             \
   _EX_BIN_OPERATOR_LEN                          \
   + _EX_BRACE_LEN                               \
-  + _EX_DELIM_LEN                               \
   + 2
+//  + _EX_DELIM_LEN
+const enum Lexicon PV_STR[] = {_PV_STR};
 
+//
 #define _PV_DOT WORD
 #define _PV_DOT_LEN 1
 
 #define _PV_CLOSE_PARAM                         \
   _EX_BIN_OPERATOR,                             \
   _EX_CLOSE_BRACE,                              \
-  _EX_DELIM,                                    \
   DOT,                                          \
   BRACKET_OPEN,                                 \
   PARAM_OPEN
+//  _EX_DELIM,                                    \
 
-#define _PV_CLOSE_PARAM_LEN                     \
+const enum Lexicon PV_CLOSE_BRACE[] = {_PV_CLOSE_PARAM};
+
+#define PV_CLOSE_PARAM_LEN                     \
   _EX_BIN_OPERATOR                              \
   + _EX_BRACE_LEN                               \
-  + _EX_DELIM_LEN                               \
   + 3
+//  + _EX_DELIM_LEN                               \
 
-/* throw unexpected token */
-int8_t is_illegal_delimiter(const struct Parser *state) {
+#define _EX_EXPR \
+  _EX_DATA,                                     \
+  _EX_OPEN_BRACE,                               \
+  _EX_UNARY_OPERATOR
+
+const enum Lexicon PV_DEFAULT[] = {_EX_EXPR};
+
+#define _EX_EXPR_LEN                            \
+  _EX_DATA_LEN                                  \
+  + _EX_BRACE_LEN                               \
+  + _EX_UNARY_OPERATOR_LEN
+
+
+int8_t select_init_buffer(enum Lexicon current) {
+  enum Lexicon *selected = 0;
+  enum Lexicon small[4];
+  uint16_t nitems;
+
+  if(is_operator(current) || is_delimiter(current))
+  {
+    selected = (enum Lexicon *)PV_DEFAULT;
+    nitems = _EX_EXPR_LEN;
+  }
+  else if (current == IF
+           || current == WHILE
+           || current == FOR)
+  {
+    small[0] = PARAM_OPEN;
+    nitems = 1;
+  }
+  else if (current == FUNC_DEF || current == STRUCT)
+  {
+    small[0] = WORD;
+    nitems = 1;
+  }
+
+  else
+  switch (current)
+  {
+    case WORD:
+      nitems = PV_WORD_LEN;
+      selected =  (enum Lexicon *)PV_WORD;
+      break;
+
+    case INTEGER:
+      nitems = PV_INT_LEN;
+      selected = (enum Lexicon *)PV_INT;
+      break;
+
+    case STRING_LITERAL:
+      nitems = PV_STR_LEN;
+      selected = (enum Lexicon *)PV_STR;
+      break;
+
+    case DOT:
+      nitems = 1;
+      small[0] = WORD;
+      break;
+
+    case FUNC_DEF:
+      nitems = 1;
+      small[0] = WORD;
+      break;
+
+    case IMPORT:
+      nitems = _PV_import_init_len  - 1;
+      selected = _PV_import_init;
+      state->expecting.mode = PV_Import;
+      break;
+
+    default:
+      break;
+  }
+
+  /* any open brace */
+  else if (is_open_brace(current))
+  {
+    memcpy(state->expecting.buffer, _PV_default, sizeof(enum Lexicon) * (_PV_default_len - 1));
+    /* add opposite brace type to expectation */
+    state->expecting.buffer[8] = invert_brace_tok_ty(current);
+    selected = (enum Lexicon *)&state->expecting.buffer;
+  }
+  /* any open brace */
+  else if (is_close_brace(current))
+    selected = exp_close_param;
+
+  else
+    return -1;
+
+  if (selected) {
+    memcpy(state->expecting.buffer, selected, sizeof(enum Lexicon) * nitems);
+  }
+
+  if(can_addon_keywords((op_head(state)->type == IfCond)))
+  {
+    memcpy(state->expecting.buffer + sizeof(enum Lexicon) * nitems, _PV_kw, _PV_kw_len - 1);
+    nitems += _PV_kw_len - 1;
+  }
+  // TODO: use operator stack head instead
+
+  if(state->operators_ctr > 0 && op_head(state)->type == IfCond)
+  {
+    state->expecting.buffer[nitems + 1] = ELSE;
+    nitems += 1;
+  }
+
+  state->expecting.buffer[nitems + 1] = 0;
+
+  return 0;
+  
+
+
+
+  state->buffer
+}
+
+
+/* null terminated */
+uint16_t lex_arr_len(enum Lexicon *arr)
+{
+  uint16_t i=0;
+  for (i=0 ;; i++)
+    if(arr[i] == 0)
+      break;
+  return i;
+}
+
+bool can_use_else(enum Lexicon output_head){
+  return output_head == IfBody;
+}
+
+
+void place_delimiter(struct Parser *state)
+{
   struct Group *ghead = group_head(state);
   const struct Token *gmod = group_modifier(state, ghead);
+  struct Previsioner *previsioner = &state->expecting;
+  enum Lexicon *buf = previsioner->buffer;
 
-  //TODO: add to predict.c
-  //if (ghead->type != CodeBlock)
-  //{
-  //  if(is_delimiter(next->type))
-  //    return -1;
-  //}
+  /* bool single_check = buf_ctr+1 > PREVISION_SZ; */
+  /* bool dual_check = buf_ctr+2 > PREVISION_SZ; */
 
-  return \
-    gmod->type == WhileCond
-    || gmod->type == IfCond
-    || (ghead->type == _IdxAccess && ghead->delimiter_cnt > 2)
-    /* check for correct delimiter*/
-    // TODO: Handle in predict.c
-    //|| (gmod->type == _IdxAccess && current->type != COLON)
-    //|| ((ghead->type == TupleGroup || ghead->type == ListGroup) && current->type != COMMA)
-    //|| (ghead->type == CodeBlock && current->type != SEMICOLON)
-    ;
+  if (gmod->type == WhileCond || gmod->type == IfCond)
+    return;
+
+  else if(ghead->type == _IdxAccess && ghead->delimiter_cnt > 2)
+     return; // give ] or expr
+
+  else if (ghead->type == PartialBrace)
+  {
+    previsioner->buffer[previsioner->buf_ctr] = SEMICOLON;
+    previsioner->buffer[previsioner->buf_ctr + 1] = COLON;
+    previsioner->buf_ctr += 2;
+    return;
+  }
+
+  if (ghead->type == ListGroup
+      || ghead->type == StructGroup
+      || ghead->type == TupleGroup)
+      previsioner->buffer[previsioner->buf_ctr] = COMMA;
+
+  else if (ghead->type == MapGroup)
+  {
+    if(ghead->delimiter_cnt % 2 == 0)
+       previsioner->buffer[previsioner->buf_ctr] = COLON;
+    else
+       previsioner->buffer[previsioner->buf_ctr] = COMMA;
+  }
+
+  else if (ghead->type == CodeBlock)
+    previsioner->buffer[previsioner->buf_ctr] = SEMICOLON;
+
+  else if(ghead->type == IndexGroup)
+    previsioner->buffer[previsioner->buf_ctr] = COLON;
+
+  previsioner->buf_ctr += 1;
 }
 
 //TODO probably deserves its own mode
@@ -167,213 +320,64 @@ int8_t is_illegal_delimiter(const struct Parser *state) {
 //#define _PV_KEYWORD _EX_KEYWORD
 //#define _PV_KEYWORD_LEN _EX_KEYWORD_LEN
 
-enum Lexicon _PV_import_init[] = {
-  WORD,
-  DOT,
-  0
-};
-#define _PV_import_init_len 3
-
-
-enum Lexicon _PV_import_word[] = {
-  DOT,
-  COMMA,
-  SEMICOLON,
-  0
-};
-#define _PV_import_word_len 4
-
-/* null terminated */
-uint16_t lex_arr_len(enum Lexicon *arr)
-{
-  uint16_t i=0;
-  for (i=0 ;; i++)
-    if(arr[i] == 0)
-      break;
-  return i;
-}
-
-bool can_use_else(enum Lexicon output_head) {
-  return output_head == IfBody;
-}
-
-bool can_use_keyword(enum Lexicon op_head) {
-  return is_open_brace(op_head);
-}
-
 /*
- * Write `_EX_EXPR` into state->expecting 
+ * Write `_EX_EXPR` into state->expecting
  */
 void init_expect_buffer(struct Previsioner *state)
 {
     memcpy(state->buffer, _PV_default, sizeof(enum Lexicon) * 8);
     state->buffer[9] = 0;
     /* cast removes cc warning */
-    state->data.default_mode.ref = (enum Lexicon *)&state->buffer;
+    state->data.default_mode.selected = (enum Lexicon *)&state->buffer;
     state->mode = PV_Default; 
 }
 
-bool can_addon_keywords(struct Parser *state)
+bool can_use_keywords(struct Parser *state)
 {
-  const struct Token *token;
   struct Group *ghead = group_head(state);
+  const struct Token *gmod = group_modifier(state, ghead);
+  const struct Token *ophead = ophead(state);
 
-  if(ghead->operator_idx > 0)
-    token = state->operator_stack[ghead->operator_idx-1];
+  if(!is_open_brace(ophead->type))
+    return false;
 
-  /* if open brace */
-  if(is_open_brace(ophead->type))
-    return  == 0;
+  else if(ghead->operator_idx > 0 && is_group_modifier(gmod->type))
+    return false;
 
   return true;
 }
 
-uint8_t prevision_keywords(enum Lexicon *buf, struct Expr *expr_head) {
-  uint8_t offset = _PV_kw_len - 1;
+uint8_t prevision_keywords(enum Lexicon *buf) {
+  uint8_t nitems = _PV_kw_len - 1;
 
-  memcpy(buf, _PV_kw, sizeof(enum Lexicon) * offset);
+  memcpy(buf, _PV_kw, sizeof(enum Lexicon) * nitems);
 
   /* if(expr_head->type == IfExprT) */
   /* { */
-  /*   buf[offset] = ELSE; */
-  /*   offset += 1; */
+  /*   buf[nitems] = ELSE; */
+  /*   nitems += 1; */
   /* } */
 
-  buf[offset] = 0;
-  offset += 1;
-  
-  return offset;
+
+  return nitems;
 }
 
+
+
+int8_t select_buffer(enum Lexicon tok)
+{
+  case
+}
+
+
 /* 
- * @param ref NULL terminated  
+ * @param selected NULL terminated
  */
 int8_t prevision_next(struct Parser *state)
 {
   enum Lexicon current = state->src[*state->_i].type;
-  enum Lexicon *ref = 0;
 
-  uint16_t offset = 0;
-
-  switch (current)
-  {
-    case WORD:
-      offset = _PV_word_len - 1;
-      ref =  _PV_word;
-      break;
-    
-    case INTEGER:
-      offset = _PV_int_len - 1;
-      ref = _PV_int;
-      break;
-    
-    case STRING_LITERAL:
-      offset = _PV_str_len - 1;
-      ref = _PV_str;
-      break;
-    
-    case DOT:
-      offset = 1;
-      state->expecting.buffer[0] = WORD;
-      state->expecting.buffer[1] = 0;
-      break;
-    
-    case IF:
-      //TODO make mode
-      offset = _PV_if_len - 1;
-      ref = _PV_if; 
-      break;
-    
-    case ELSE:
-      offset = _PV_default_len - 1;
-      ref = _PV_default;
-      break;
-    
-    case RETURN:
-      offset = _PV_default_len - 1;
-      ref = _PV_default;
-      break;
-
-    case FUNC_DEF:
-      offset = 1;
-      state->expecting.buffer[0] = WORD;
-      state->expecting.buffer[1] = 0;
-      state->expecting.mode = PV_DefSignature;
-      break;
-
-    case IMPORT:
-      offset = _PV_import_init_len  - 1;
-      ref = _PV_import_init;
-      state->expecting.mode = PV_Import; 
-      break;
-
-    default:
-      if (is_operator(current))
-        ref = _PV_default;
-
-      else if (is_delimiter(current))
-        ref = _PV_default;
-
-      /* any open brace */
-      else if (is_open_brace(current))
-      { 
-        memcpy(state->expecting.buffer, _PV_default, sizeof(enum Lexicon) * (_PV_default_len - 1));
-        /* add opposite brace type to expectation */
-        state->expecting.buffer[8] = invert_brace_tok_ty(current);
-        ref = (enum Lexicon *)&state->expecting.buffer;
-      }
-      /* any open brace */
-      else if (is_close_brace(current)) 
-        ref = exp_close_param;
-
-      else
-        return -1;
-  }
-
-  if (ref) {
-    memcpy(state->expecting.buffer, ref, sizeof(enum Lexicon) * offset); 
-  }
-
-  if(can_addon_keywords((op_head(state)->type == IfCond)))
-  {
-    memcpy(state->expecting.buffer + sizeof(enum Lexicon) * offset, _PV_kw, _PV_kw_len - 1);
-    offset += _PV_kw_len - 1;
-  }
-  // TODO: use operator stack head instead
-
-  if(state->operators_ctr > 0 && op_head(state)->type == IfCond)
-  {
-    state->expecting.buffer[offset + 1] = ELSE;
-    offset += 1; 
-  }
-
-  state->expecting.buffer[offset + 1] = 0;
-
-  return 0;
 }
-
-/* setup delimiter expectation */
-/* enum Lexicon get_expected_delimiter(struct Group *ghead) */
-/* {   */
-/*   if(ghead->state & GSTATE_CTX_CODE_GRP) */
-/*     return SEMICOLON; */
-
-/*   else if(ghead->state & GSTATE_CTX_DATA_GRP) */
-/*     return COMMA; */
-
-/*   else if (ghead->state & GSTATE_CTX_IDX) */
-/*     return COLON; */
-
-/*   else if (ghead->state & GSTATE_CTX_MAP_GRP) */
-/*   { */
-/*     if (ghead->delimiter_cnt % 2 == 0) */
-/*       return COMMA; */
-/*     else */
-/*       return COLON; */
-/*   } */
-/*   else */
-/*     return 0; */
-/* } */
 
 enum ModeResult {
   _MRMatchFailure = 0,
@@ -435,7 +439,7 @@ enum ModeResult mode_import(enum Lexicon current,  struct Previsioner *state)
 int8_t mode_default(enum Lexicon current, enum Lexicon grp_delim, struct Previsioner *expecting)
 {
   /* check previous expecting buffer */
-  if (!eq_any_tok(current, expecting->data.default_mode.ref))
+  if (!eq_any_tok(current, expecting->data.default_mode.selected))
     return -1;
 
   /* if current is delimiter, is correct delimiter? */
@@ -444,6 +448,7 @@ int8_t mode_default(enum Lexicon current, enum Lexicon grp_delim, struct Previsi
   
   return 0;
 }
+
 
 int8_t is_token_unexpected(struct Parser *state)
 {
@@ -473,9 +478,9 @@ int8_t is_token_unexpected(struct Parser *state)
     }
     else return -1;
   }
-  /* expecting buffers contain all delimiters, 
-   * so we may check any */
-  //else if(!eq_any_tok(SEMICOLON, state->expecting.exp_ref))
+  /* expecting buffers contain all delimiters,
+  * so we may check any */
+  //else if(!eq_any_tok(SEMICOLON, state->expecting.exp_selected))
     /* incomplete expression, must get another token */
    // state->panic_flags |= STATE_INCOMPLETE;
   //else 
