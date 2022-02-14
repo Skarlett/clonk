@@ -90,29 +90,26 @@ enum Lexicon {
     /* ) */
     PARAM_CLOSE,
     __MARKER_CLOSE_BRACE_END,
+    __MARKER_UPGRADE_DATA_START,
 
     /* " */
     D_QUOTE,
 
     /* ' */
     S_QUOTE,
-    
-     /* _ */
-    UNDERSCORE,
 
     /* # */
     POUND,
 
-
-    /* @ */
-    ATSYM,
+     /* _ */
+    UNDERSCORE,
 
     /* a-zA-Z */
     CHAR,
 
     /* 0-9 single digit */
     DIGIT,
-
+    __MARKER_UPGRADE_DATA_END,
     __MARKER_DELIM_START,
     /* , */
     COMMA,
@@ -123,9 +120,12 @@ enum Lexicon {
     /* ; */
     SEMICOLON,
     __MARKER_DELIM_END,
+
     /* \ */
     BACKSLASH,
 
+    /* @ */
+    ATSYM,
     /*********************/
     /* multi byte tokens */
     /*********************/
@@ -147,21 +147,21 @@ enum Lexicon {
     NULL_KEYWORD,
     __MARKER_UNIT_END,
 
-
     __MARKER_OP_START,
-    __MARKER_UNARY_START__,
+    __MARKER_UNARY_START,
     /* ~ */
     TILDE,
 
     /* ! */
     NOT,
-    __MARKER_UNARY_STOP,
+    __MARKER_UNARY_END,
+    __MARKER_BIN_START,
 
-    /* + */
-    ADD,
+    /* % */
+    MOD,
 
-    /* - */
-    SUB,
+    /* . */
+    DOT,
 
     /* * */
     MUL,
@@ -172,17 +172,12 @@ enum Lexicon {
     /* ^ */
     POW,
 
-    /* % */
-    MOD,
+    __MARKER_UPGRADE_OP_START,
+    /* + */
+    ADD,
 
-    /* . */
-    DOT,
-
-    /* >> */
-    SHR,
-
-    /* << */
-    SHL,
+    /* - */
+    SUB,
 
     /* | */
     PIPE,
@@ -190,9 +185,18 @@ enum Lexicon {
     /* & */
     AMPER,
 
+    /* > */
+    GT,
+
+    /* < */
+    LT,
+
     __MARKER_ASN_START,
     /* = */
     EQUAL,
+    __MARKER_UPGRADE_OP_END,
+
+    __MARKER_COMPOUND_BIN_START,
 
     /* |= */
     BOREQL,
@@ -213,6 +217,11 @@ enum Lexicon {
     /* .. */
     /* ELLISPES */
 
+    /* >> */
+    SHR,
+
+    /* << */
+    SHL,
 
     /* || */
     OR,
@@ -232,12 +241,8 @@ enum Lexicon {
     /* != */
     ISNEQL,
 
-    /* > */
-    GT,
-
-    /* < */
-    LT,
-
+    __MARKER_COMPOUND_BIN_END,
+    __MARKER_BIN_END,
     __MARKER_GROUP_OP_START,
     _IdxAccess,
     Apply,

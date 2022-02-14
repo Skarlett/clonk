@@ -1,9 +1,9 @@
 #include "lexer.h"
-#include "../../error.h"
+//#include "../../error.h"
 #include "../../utils/vec.h"
 #include "../../utils/queue.h"
 
-#include "debug.h"
+//#include "debug.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -167,41 +167,14 @@ enum Lexicon tokenize_char(char c) {
 }
 
 int8_t is_compound_bin_op(enum Lexicon tok) {
-  return 
-    tok == ISEQL 
-    || tok == ISNEQL
-    || tok == GTEQ
-    || tok == LTEQ
-    || tok == AND
-    || tok == OR
-    || tok == MINUSEQ
-    || tok == PLUSEQ
-    || tok == PIPEOP
-    || tok == SHR
-    || tok == SHL
-    || tok == BOREQL
-    || tok == BANDEQL
-    || tok == BNEQL;
+  return tok > __MARKER_COMPOUND_BIN_START
+    && __MARKER_COMPOUND_BIN_END > tok;
 }
 
 int8_t can_upgrade_token(enum Lexicon token) {
-  return token == DIGIT
-    || token == CHAR
-    || token == UNDERSCORE
-    || token == D_QUOTE
-    || token == EQUAL
-    || token == NOT
-    || token == GT
-    || token == LT
-    || token == ADD
-    || token == SUB
-    || token == AMPER
-    || token == PIPE
-    || token == POUND
-    || token == TILDE;
-}
-
-int8_t can_ignore_token(enum Lexicon lexed) {
+  return (token > __MARKER_UPGRADE_DATA_START && __MARKER_UPGRADE_DATA_END)
+    || (token > __MARKER_UPGRADE_OP_START && __MARKER_UPGRADE_OP_END > token)
+    || (token > __MARKER_UNARY_START && __MARKER_UNARY_END > token)
 }
 
 int8_t set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
@@ -364,10 +337,10 @@ enum Lexicon invert_operator_token(enum Lexicon compound_token) {
   
   case _COMPOUND_PIPE:
     return PIPE;
-  case PIPEOP:
-    return PIPE;
+
   case BOREQL:
     return PIPE;
+
   case OR:
     return PIPE;
   
@@ -445,9 +418,6 @@ int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
   {
     if (current == PIPE)
       return OR;
-
-    else if (current == GT)
-      return PIPEOP;
 
     else if (current == EQUAL)
       return BOREQL;

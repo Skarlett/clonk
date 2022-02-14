@@ -151,7 +151,8 @@ bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
 }
 
 bool is_num_negative(const char * source, struct Token *token) {
-    return token->type == INTEGER && *(source + token->start) == '-';
+    return token->type == INTEGER
+        && *(source + token->start) == '-';
 }
 
 bool is_keyword(enum Lexicon token) {
