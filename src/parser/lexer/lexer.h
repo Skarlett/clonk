@@ -606,16 +606,6 @@ bool is_group_modifier(enum Lexicon);
 */
 const char * ptoken(enum Lexicon t);
 
-
-/**
- * Checks if token is a unitary expression
- *
- * @param tok token to compare
- *
- * @return bool
- */
- /*char invert_brace_char(char brace);*/
-
 /**
  * Checks if token is a unitary expression
  *
