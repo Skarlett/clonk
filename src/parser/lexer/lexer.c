@@ -365,7 +365,7 @@ int8_t derive_keyword(const char *src_code, struct Token *t) {
     RETURN,
     FOR, WHILE,
     // EXTERN, AS,
-    IF,
+    IN, IF,
     ELSE, FUNC_DEF,
     IMPORT, FROM,
     STRUCT, IMPL,
@@ -375,6 +375,7 @@ int8_t derive_keyword(const char *src_code, struct Token *t) {
   static char *keywords[] = {
     // "static", "const",
     "return", "for", "while",
+    "in",
     //"extern", "as",
     "if", "else",  "def",
     "import", "from",

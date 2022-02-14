@@ -325,19 +325,42 @@ int8_t is_dual_grp_keyword(enum Lexicon tok) {
 int8_t handle_dual_group(struct Parser *state)
 {
   const struct Token *current = current_token(state);
+  const struct Token *next = next_token(state);
   struct Group *ghead = group_head(state);
   const enum Lexicon products[4][3] = {
     {ForBody, ForParams, 0},
     {WhileBody, WhileCond, 0},
     {IfBody, IfCond, 0},
-    {DefBody, DefSign, 0}
+    {DefBody, DefSign, 0},
   };
 
   int8_t idx = is_dual_grp_keyword(current->type);
   assert(idx >= 0);
 
   ghead->expr_cnt += 1;
-  return push_many_ops(products[idx], current, state);
+  push_many_ops(products[idx], current, state);
+
+  if(current->type == FOR)
+  {
+    // TODO: move to predict.c
+    if(next->type == is_open_brace(current->token)
+       && next->token != PARAM_OPEN)
+    {
+      throw_unexpected_token(current, state);
+      return
+    }
+    else
+    {
+      push_op(OPEN_BRACE, 0, 0, state);
+      ghead = new_grp(state);
+      state->set_ctr += 1;
+
+      if (current->token == FOR)
+        ghead->stop_short[0] = IN;
+
+      ghead->is_short = true;
+    }
+  }
 }
 
 /*
@@ -482,6 +505,7 @@ int8_t handle_return(struct Parser *state)
     brace = push_op(OPEN_BRACE, 0, 0, state);
     group = new_grp(state, brace);
     group->is_short = true;
+    group->stop_short = SEMICOLON;
   }
 }
 
@@ -575,6 +599,7 @@ int8_t parse(
     {
         new_grp(state, push_op(OPEN_BRACE, 0, 0, &state))
         group_head(state)->is_short = true;
+        stop_short = {SEMICOLON, CLOSE_BRACE};
     }
 
     if(!state.panic)

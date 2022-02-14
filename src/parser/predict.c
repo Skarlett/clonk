@@ -54,6 +54,22 @@
 #define _EX_DATA STRING_LITERAL, WORD, INTEGER, NULL_KEYWORD
 #define _EX_DATA_LEN 3
 
+#define _EX_EXPR_LIMITED                        \
+  _EX_UNARY_OPERATOR,                           \
+  _EX_DATA
+
+#define _EX_EXPR_LIMITED_LEN                    \
+  _EX_DATA_LEN                                  \
+  + _EX_UNARY_OPERATOR_LEN
+
+#define _EX_EXPR \
+  _EX_EXPR_LIMITED,                             \
+  _EX_OPEN_BRACE,
+
+#define _EX_EXPR_LEN                            \
+  _EX_EXPR_LIMITED_LEN                           \
+  + _EX_BRACE_LEN
+
 /* NOTE:
  * ELSE is not included,
  * because it needs special checks
@@ -121,7 +137,7 @@ const enum Lexicon PV_STR[] = {_PV_STR};
   DOT,                                          \
   BRACKET_OPEN,                                 \
   PARAM_OPEN
-//  _EX_DELIM,                                    \
+//  _EX_DELIM,
 
 const enum Lexicon PV_CLOSE_BRACE[] = {_PV_CLOSE_PARAM};
 
@@ -129,43 +145,55 @@ const enum Lexicon PV_CLOSE_BRACE[] = {_PV_CLOSE_PARAM};
   _EX_BIN_OPERATOR                              \
   + _EX_BRACE_LEN                               \
   + 3
-//  + _EX_DELIM_LEN                               \
-
-#define _EX_EXPR \
-  _EX_DATA,                                     \
-  _EX_OPEN_BRACE,                               \
-  _EX_UNARY_OPERATOR
+//  + _EX_DELIM_LEN
 
 const enum Lexicon PV_DEFAULT[] = {_EX_EXPR};
 
-#define _EX_EXPR_LEN                            \
-  _EX_DATA_LEN                                  \
-  + _EX_BRACE_LEN                               \
-  + _EX_UNARY_OPERATOR_LEN
-
+const enum Lexicon PV_LIMITED[] = {_EX_EXPR_LIMITED};
 
 int8_t select_init_buffer(enum Lexicon current) {
   enum Lexicon *selected = 0;
   enum Lexicon small[4];
   uint16_t nitems;
 
-  if(is_operator(current) || is_delimiter(current))
+  if(is_operator(current) || is_delimiter(current) || current == IN)
   {
     selected = (enum Lexicon *)PV_DEFAULT;
     nitems = _EX_EXPR_LEN;
   }
-  else if (current == IF
-           || current == WHILE
-           || current == FOR)
+
+  else if (current == IF || current == WHILE)
   {
     small[0] = PARAM_OPEN;
     nitems = 1;
   }
-  else if (current == FUNC_DEF || current == STRUCT)
+
+  else if (current == FUNC_DEF
+    || current == STRUCT
+    || current == IMPL
+    || current == FOR)
   {
     small[0] = WORD;
     nitems = 1;
   }
+
+  else if(current == FROM )
+  {
+    small[0] = FROM_LOCATION;
+    nitems = 1;
+  }
+
+  else if (is_open_brace(current))
+  {
+    memcpy(state->expecting.buffer, _PV_default, sizeof(enum Lexicon) * (_PV_default_len - 1));
+    /* add opposite brace type to expectation */
+    state->expecting.buffer[8] = invert_brace_tok_ty(current);
+    selected = (enum Lexicon *)&state->expecting.buffer;
+  }
+  /* any open brace */
+  else if (is_close_brace(current))
+    selected = exp_close_param;
+
 
   else
   switch (current)
@@ -201,22 +229,17 @@ int8_t select_init_buffer(enum Lexicon current) {
       state->expecting.mode = PV_Import;
       break;
 
+    case FOR:
+      selected = (enum Lexicon *)PV_LIMITED;
+      nitems = _EX_EXPR_LIMITED_LEN;
+      // TODO: Add PARAM_OPEN to expecting buffer
+      break;
+
     default:
       break;
   }
 
   /* any open brace */
-  else if (is_open_brace(current))
-  {
-    memcpy(state->expecting.buffer, _PV_default, sizeof(enum Lexicon) * (_PV_default_len - 1));
-    /* add opposite brace type to expectation */
-    state->expecting.buffer[8] = invert_brace_tok_ty(current);
-    selected = (enum Lexicon *)&state->expecting.buffer;
-  }
-  /* any open brace */
-  else if (is_close_brace(current))
-    selected = exp_close_param;
-
   else
     return -1;
 
@@ -362,12 +385,6 @@ uint8_t prevision_keywords(enum Lexicon *buf) {
   return nitems;
 }
 
-
-
-int8_t select_buffer(enum Lexicon tok)
-{
-  case
-}
 
 
 /* 

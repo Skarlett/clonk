@@ -293,6 +293,8 @@ enum Lexicon {
     __MARKER_GROUP_OP_END,
     __MARKER_OP_END,
 
+    IN,
+
     /* if */
     IF,
 
