@@ -64,6 +64,37 @@ bool is_balanced(struct Token tokens[], uint16_t ntokens) {
     return braces_ctr == 0;
 }
 
+
+/**
+ * Checks if token stream is balanced.
+ * To be balanced is every brace opening,
+ * having a pairing brace closing token
+ * following it eventually.
+ * The follow are examples:
+ *
+ *    a + b + (2 + 5)  Is balanced
+ *   (a + b            Is unbalanced.
+ *
+ * @param tokens array of tokens
+ * @param ntokens amount of tokens to read
+ *
+ * @return bool
+ */
+//bool is_balanced(struct Token tokens[], uint16_t ntokens);
+
+
+/**
+ * Checks if token stream is balanced by reference. see (src/parser/lexer/helpers.h#is_balance)
+ *
+ * @param tokens array of referenced tokens
+ * @param ntokens amount of tokens to read
+ *
+ * @return bool
+ */
+//bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens);
+
+
+
 /*
     function determines if an expression is unbalanced.
     an expression can be unbalanced
