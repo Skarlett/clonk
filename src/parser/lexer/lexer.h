@@ -465,7 +465,7 @@ enum Lexicon invert_brace_tok_ty(enum Lexicon token);
  * @param token
  * @return bool
  */
-bool is_cmp_operator(enum Lexicon compound_token);
+//bool is_cmp_operator(enum Lexicon compound_token);
 
 
 /**
@@ -508,19 +508,6 @@ bool is_close_brace(enum Lexicon token);
  */
 bool is_open_brace(enum Lexicon token); 
 
-
-/**
- * Check if parameter `token` is
- * symbolic or literal data.
- * returns `true` if `token` is
- * STRING_LITERAL, INTEGER or
- * WORD.
- * @param token
- * @return bool
- */
-bool is_symbolic_data(enum Lexicon token);
-
-
 /**
  * 
  * Checks if a byte is prefixed with utf
@@ -537,7 +524,6 @@ bool is_utf(char ch);
  * @return bool
  */
 bool is_keyword(enum Lexicon token);
-
 
 /**
  * Checks if token is an INTEGER, and is a negative notation.
