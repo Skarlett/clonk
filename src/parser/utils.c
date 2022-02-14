@@ -1,7 +1,6 @@
 
 #include <string.h>
 #include <assert.h>
-#include "expr.h"
 #include "utils.h"
 #include "../../utils/vec.h"
 
@@ -108,29 +107,6 @@ int8_t push_group(struct Parser *state, const struct Group *grp) {
   //TODO: implement
 }
 
-
-bool is_op_keyword(enum Lexicon token) 
-{
-  return token == IF
-    || token == ELSE
-    || token == RETURN
-    || token == FUNC_DEF
-    /* internal */
-    || token == IfCond
-    || token == IfBody
-    || token == DefSign
-    || token == DefBody
-    || token == ForParams
-    || token == ForBody
-    || token == WhileCond
-    || token == WhileBody
-    || token == STRUCT
-    || token == StructInit
-    || token == IMPL
-    || token == FROM
-    || token == IMPORT;
-}
-
 struct Group * new_grp(
   struct Parser * state,
   const struct Token * from
@@ -183,6 +159,7 @@ const struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, stru
   return heap;
 }
 
+/* NOTE: @param `ops` must be NULL terminated */
 int8_t push_many_ops(
   const enum Lexicon *ops,
   const struct Token *origin,
@@ -205,7 +182,6 @@ int8_t push_many_ops(
 
     state->operator_stack[state->operators_ctr] = heap;
     state->operators_ctr += 1;
-
   }
 
   return 0;
@@ -372,7 +348,7 @@ int8_t op_precedence(enum Lexicon token) {
       || token == MINUSEQ)
       return 1;
     
-    else if (is_open_brace(token) || is_op_keyword(token))
+    else if (is_open_brace(token) || is_group_modifer(token))
         return 0;
     
     return -1;
