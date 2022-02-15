@@ -28,6 +28,9 @@ enum ExprType {
     // def foo(a) x;|{x}
     FuncDefExprT,
 
+    WhileLoopExprT,
+    ForLoopExprT,
+
     // return x|{x};
     ReturnExprT,
 
