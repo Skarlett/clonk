@@ -5,9 +5,8 @@
 #include <string.h>
 #include <assert.h>
 
-
-#include "lexer/lexer.h"
 #include "../utils/vec.h"
+#include "lexer/lexer.h"
 #include "utils.h"
 
 #include "private.h"
@@ -82,6 +81,11 @@ int8_t handle_operator(struct Parser *state)
 
   /* Grab the head of the operators-stack */
   head = op_head(state);
+
+  /* skip IN operator if apart of ForLoopBody */
+  if(head->type == ForBody && current->type == IN)
+    return 0;
+
   head_precedense = op_precedence(head->type);
 
   assert(precedense != -1 || head_precedense != -1);
@@ -133,7 +137,7 @@ int8_t handle_operator(struct Parser *state)
  *
  * src: [body_expr, ...]
  * dbg: <body-expr> ... Group_t
- */
+*/
 int8_t pop_group(struct Parser *state, bool do_checks)
 {
   struct Group *ghead = group_head(state);
@@ -215,6 +219,7 @@ int8_t handle_close_brace(struct Parser *state)
   /* handle grouping */
   ret = pop_group(state, false);
 
+  /*TODO: move to predict.c*/
   /* on index access group cannot be empty */
   if (ghead->is_empty && ghead->type == IndexGroup) {
       throw_unexpected_token(state, current, expected, 2);
@@ -238,7 +243,7 @@ int8_t handle_close_brace(struct Parser *state)
 /*
 ** Handles group notation operations such as
 ** function call (`foo(x)`) & index access (`foo[x]`)
-**
+** `Init {a=b}`
 ** Places `Apply` before the open-brace type `(`
 ** when the opposite brace type is found,
 ** and the group is put into the output,
@@ -258,33 +263,41 @@ int8_t handle_close_brace(struct Parser *state)
 **        ][
 **     word[
 **        "[
-**        ^-- current token.
+**         ^-- current token.
+**
+**     word{
+**         ^---current token.
 **
 */
-int8_t prefix_group(struct Parser *state)
-{
+enum Lexicon push_group_modifier(
+  const struct Token * start,
+  const struct Token *prev
+){
   const struct Token * current = current_token(state);
   const struct Token * prev = prev_token(state);
 
-  if (!prev)
+  if(!prev)
     return 0;
 
   switch (current->type)
   {
     case PARAM_OPEN:
-      if(is_fncall_pattern(current->type))
-        return op_push(Apply, 0, 0, state);
+      if(is_fncall_pattern(prev->type))
+        return Apply;
       break;
 
     case BRACKET_OPEN:
-      if(is_index_pattern(current->type))
-        return op_push(_IdxAccess, 0, 0, state);
+      if(is_index_pattern(prev->type))
+        return _IdxAccess;
       break;
 
     case BRACE_OPEN:
       if(prev->type == WORD)
-        return op_push(StructInit, 0, 0, state);
+        return StructInit;
       break;
+
+    default:
+      return 0;
   }
 
   return 0;
@@ -297,11 +310,12 @@ int8_t handle_open_brace(struct Parser *state)
 {
   const struct Token *current = current_token(state);
   const struct Token *prev = prev_token(state);
+  enum Lexicon modifier = push_group_modifier(current, prev);
 
-  if (prev)
-    /* look behind & insert group modifier if needed. */
-    prefix_group(state);
+  if (prev && modifier)
+    push_op(modifier, 0, 0, state);
 
+  /* look behind & insert group modifier if needed. */
   if (new_grp(state, current) == 0)
       return -1;
   
@@ -505,18 +519,12 @@ int8_t handle_return(struct Parser *state)
     brace = push_op(OPEN_BRACE, 0, 0, state);
     group = new_grp(state, brace);
     group->is_short = true;
-    group->stop_short = SEMICOLON;
+
+    /* group->stop_short = {SEMICOLON, BRACKET_CLOSE}; */
+
   }
 }
 
-bool do_short_block(struct Token *op_head)
-{
-  return op_head == ForBody
-    || WhileBody
-    || ELSE
-    || IfBody
-    || DefBody;
-}
 /* does this keyword use a single group */
 bool is_kw_single_group(enum Lexicon tok){
    tok == FROM
@@ -525,13 +533,109 @@ bool is_kw_single_group(enum Lexicon tok){
    || tok == IMPL;
 }
 
-bool use_as_op(enum Lexicon t)
-{
-  return is_operator(t)
-    || is_asn_operator(t)
-    || is_kw_single_group(t);
-}
-
+/*
+** This function implements a "fancy" shunting yard parser.
+** returning a vec of pointers, of the source tokens in postfix notation.
+**
+** "Fancy" means to include extra features that will be described below.
+** These include the ulities needed to flourish the shunting yard
+** algorithm into a full parser.
+**
+** prerequisite know-how:
+**   shunting yard parses infix arithmitic notation,
+**   and converts it into postfix arithmitic nottation.
+**   Infix notation: "1 + 2 + 3"
+**   postfix notation: "1 2 + 3 +"
+**   postfix notation is much easier to compute using a stack.
+**
+** Fancy features:
+**  ## Grouping:
+**     Grouping occurs when a collection of units or expressions is
+**     surrounded in braces and delimated by group's type delimiter.
+**     Grouping creates its own tokens where the token type is the following
+**
+**     ```
+**     TupleGroup,
+**     StructGroup,
+**     ListGroup,
+**     IndexGroup,
+**     MapGroup,
+**     CodeBlock
+**     ```
+**     groups store the amount of members in `struct Token->end`
+**     Groups can be defined as empty by marking `end` as 0.
+**
+**     Example input: [1, 2, 3]; ()
+**     Example output: 1 2 3 ListGroup(end=3) TupleGroup(end=0)
+**
+**     # Tuple group
+**     Example: (a, b)
+**     Example output: a b TupleGroup(2)
+**     delimiter: ','
+**     Tuples are immutable collections of data
+**
+**     # StructGroup
+**     Example: Name {a = b}
+**     Output: Name (A b =) StructGroup(1) StructInit(operator)
+**     delimiter: ','
+**     Structures define a new type of data,
+**     composed of other types.
+**
+**     # ListGroup
+**     Example: [a, b]
+**     Output: a b ListGroup(2)
+**     delimiter: ','
+**
+**     dynamically sized array
+**
+**     # IndexGroup
+**     Example: foo[1:2:3]
+**     Output: foo (1 2 3 IndexGroup(3)) IndexAccess(operator)
+**     delimiter: ':'
+**
+**     Creates an index selection
+**     on the previous expression.
+**     The numbers wrapped in braces represent the following
+**     parameters.
+**
+**     ACCESSED [START:END:SKIP]
+**
+**     The value in these parameters may be skipped,
+**     and the value will be inferred from min/max
+**     value based on the parameter.
+**     START - min(0)
+**     END - max(N items)
+**     skip - min(0)
+**
+**     skipped argument example: foo[::2]
+**
+**     # MapGroup
+**     Example: {'a': 2, 'foo': 'bar'}
+**     Output: 'a' 2 'foo' 'bar' MapGroup(4),
+**     Delimiter: ':' & ','
+**
+**     HashMap are collections of keys, and data
+**     where each key is unique
+**
+**     # Code block
+**     Example: { foo(); bar(); }
+**     Output: foo() bar() CodeBlock(2)
+**     Delimiter: ';'
+**     A collection of proceedures
+**
+** ## Extended Operator:
+**
+**    ## `DOT` operator
+**
+**    `DOT` is used to access properities of its parent structure.
+**    Inside the parser, `DOT` is treated as if its an binary operation.
+**
+**    Exmaple input: abc.foo.last;
+**    Example output: abc foo . last .
+**
+**    ## `Apply` operator
+**    `Apply` is used to call function
+*/
 int8_t parse(
   struct ParserInput *input,
   truct ParserOutput *out
@@ -549,15 +653,37 @@ int8_t parse(
     assert(state.operators_ctr > state.operator_stack_sz);
     unexpected_token = is_token_unexpected(&state);
 
+    /*
+      unexpected_token is a boolean used to determine if we
+      failed on the previous loop, or the current one.
+
+      if either state.panic or unexpected_token are true
+      we begin unwinding
+    */
+
     if(state.panic || unexpected_token)
       handle_unwind(&state, unexpected_token);
 
+    /*
+     * Units are the the foundational symbols
+     * that represent proceedures & data
+     * WORDS, INTS, STRING_LITERAL
+    */
     else if(is_unit(current->type))
       insert(&state, current);
 
-    else if (use_as_op(current->type))
+    /*
+     * Operations are pushed onto a stack,
+     * and are popped off when an operator of greater
+     * precedense is pushed onto the stack, or whenever
+     * the operator-stack is flushed.
+    */
+    else if (is_operator(current->type))
       handle_operator(&state);
 
+    /*
+
+    */
     else if(is_dual_grp_keyword(current->type))
       handle_dual_group(&state);
 
@@ -594,13 +720,14 @@ int8_t parse(
 #endif
     }
 
-    if (do_short_block(op_head(state)->type)
-        && !is_open_brace(next_token(state)->type))
-    {
-        new_grp(state, push_op(OPEN_BRACE, 0, 0, &state))
-        group_head(state)->is_short = true;
-        stop_short = {SEMICOLON, CLOSE_BRACE};
-    }
+
+    /* if (do_short_block(op_head(state)->type) */
+    /*     && !is_open_brace(next_token(state)->type)) */
+    /* { */
+    /*     new_grp(state, push_op(OPEN_BRACE, 0, 0, &state)) */
+    /*     group_head(state)->is_short = true; */
+    /*     stop_short = {SEMICOLON, CLOSE_BRACE}; */
+    /* } */
 
     if(!state.panic)
       restoration_hook(&state);

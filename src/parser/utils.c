@@ -112,8 +112,10 @@ struct Group * new_grp(
   const struct Token * from
 ){
   struct Group *ghead;
+  const struct Token * ophead;
   assert(state->set_ctr < state->set_sz);
-  
+
+
   ghead = &state->set_stack[state->set_ctr];
   state->set_ctr += 1;
 
@@ -124,7 +126,7 @@ struct Group * new_grp(
   ghead->last_delim = 0;
   ghead->delimiter_cnt = 0;
   ghead->expr_cnt = 0;
-  ghead->short_type = sh_udef_t;
+  ghead->is_short = false;
 
   ghead->origin = from;
 
@@ -302,13 +304,13 @@ int8_t finish_idx_access(struct Parser *state)
     precendense table:
       ") ] }"   : 127 non-assoc
       "."       : 126 L
-      "^"       : 7 R (1 ^ 2 ^ 3) -> (1 ^ (2 ^ 3))
-      "/ * %"   : 6 L  (4 / 2 * 2) -> ((4 / 2) * 2)
-      "+ -"     : 5 L
-      "! ~"     : 4 R
-      ">> << | &": 3
-      "!= == >= > <= < && ||": 2 L
-      "+= -= =" : 1 R
+      "^"       : 8 R (1 ^ 2 ^ 3) -> (1 ^ (2 ^ 3))
+      "/ * %"   : 7 L  (4 / 2 * 2) -> ((4 / 2) * 2)
+      "+ -"     : 6 L
+      "! ~"     : 5 R
+      ">> << | &": 4
+      "!= == >= > <= < && || in": 3 L
+      "+= -= = &= |= ~=": 1 R
       "( [ { IF ELSE RETURN DEF" : 0 non-assoc
 */
 #define END_PRECEDENCE 127
