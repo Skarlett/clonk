@@ -242,6 +242,10 @@ enum Lexicon {
     ISNEQL,
 
     __MARKER_COMPOUND_BIN_END,
+
+    /* in */
+    IN,
+
     __MARKER_BIN_END,
     __MARKER_GROUP_OP_START,
     _IdxAccess,
@@ -293,7 +297,10 @@ enum Lexicon {
     __MARKER_GROUP_OP_END,
     __MARKER_OP_END,
 
-    IN,
+
+    TRUE,
+
+    FALSE,
 
     /* if */
     IF,
