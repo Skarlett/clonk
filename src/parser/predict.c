@@ -2,7 +2,7 @@
 **
 **
 */
-
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 #include "lexer/lexer.h"
@@ -93,7 +93,7 @@
   + _EX_BRACE_LEN                               \
 //  + _EX_DELIM_LEN
 
-const enum Lexicon PV_INT[] = {_PV_INT};
+const enum onk_lexicon_t PV_INT[] = {_PV_INT};
 
 #define _PV_WORD                                \
   _EX_BIN_OPERATOR,                             \
@@ -111,7 +111,7 @@ const enum Lexicon PV_INT[] = {_PV_INT};
   + 3
 //  + _EX_LEN_DELIM                               \
 
-const enum Lexicon PV_WORD[] = {_PV_WORD};
+const enum onk_lexicon_t PV_WORD[] = {_PV_WORD};
 
 #define _PV_STR                                 \
   _EX_BIN_OPERATOR,                             \
@@ -125,7 +125,7 @@ const enum Lexicon PV_WORD[] = {_PV_WORD};
   + _EX_BRACE_LEN                               \
   + 2
 //  + _EX_DELIM_LEN
-const enum Lexicon PV_STR[] = {_PV_STR};
+const enum onk_lexicon_t PV_STR[] = {_PV_STR};
 
 //
 #define _PV_DOT WORD
@@ -139,30 +139,41 @@ const enum Lexicon PV_STR[] = {_PV_STR};
   PARAM_OPEN
 //  _EX_DELIM,
 
-const enum Lexicon PV_CLOSE_BRACE[] = {_PV_CLOSE_PARAM};
+const enum onk_lexicon_t PV_CLOSE_BRACE[] = {_PV_CLOSE_PARAM};
 
-#define PV_CLOSE_PARAM_LEN                     \
+#define PV_CLOSE_BRACE_LEN                      \
   _EX_BIN_OPERATOR                              \
   + _EX_BRACE_LEN                               \
   + 3
 //  + _EX_DELIM_LEN
 
-const enum Lexicon PV_DEFAULT[] = {_EX_EXPR};
+const enum onk_lexicon_t PV_DEFAULT[] = {_EX_EXPR};
 
-const enum Lexicon PV_LIMITED[] = {_EX_EXPR_LIMITED};
+const enum onk_lexicon_t PV_LIMITED[] = {_EX_EXPR_LIMITED};
 
-int8_t select_init_buffer(enum Lexicon current) {
-  enum Lexicon *selected = 0;
-  enum Lexicon small[4];
-  uint16_t nitems;
+int8_t fill_buffer(
+  enum onk_lexicon_t current,
+  enum onk_lexicon_t *buf,
+  uint16_t buf_sz
+){
+
+  enum onk_lexicon_t *selected = 0;
+  enum onk_lexicon_t small[8];
+  uint16_t nitems = 0;
+  bool allow_delim = 0;
+
+  enum PrevisionerModeT mode = default_mode_t;
 
   if(is_operator(current) || is_delimiter(current) || current == IN)
   {
-    selected = (enum Lexicon *)PV_DEFAULT;
+    selected = (enum onk_lexicon_t *)PV_DEFAULT;
     nitems = _EX_EXPR_LEN;
   }
 
-  else if (current == IF || current == WHILE)
+  else if (
+    current == IF
+    || current == FOR
+    || current == WHILE)
   {
     small[0] = PARAM_OPEN;
     nitems = 1;
@@ -185,32 +196,42 @@ int8_t select_init_buffer(enum Lexicon current) {
 
   else if (is_open_brace(current))
   {
-    memcpy(state->expecting.buffer, _PV_default, sizeof(enum Lexicon) * (_PV_default_len - 1));
+
     /* add opposite brace type to expectation */
-    state->expecting.buffer[8] = invert_brace_tok_ty(current);
-    selected = (enum Lexicon *)&state->expecting.buffer;
+    selected = (enum onk_lexicon_t *)PV_DEFAULT;
+    nitems = _EX_EXPR_LEN;
+
+    //TODO:
+    //selected[nitems] = invert_brace_tok_ty(current);
+    //nitems += 1;
+
   }
   /* any open brace */
   else if (is_close_brace(current))
-    selected = exp_close_param;
+  {
+    allow_delim = 1;
+    selected = (enum onk_lexicon_t *)PV_CLOSE_BRACE;
+    nitems = PV_CLOSE_BRACE_LEN;
+  }
 
-
-  else
-  switch (current)
+  else switch (current)
   {
     case WORD:
+      allow_delim = 1;
       nitems = PV_WORD_LEN;
-      selected =  (enum Lexicon *)PV_WORD;
+      selected =  (enum onk_lexicon_t *)PV_WORD;
       break;
 
     case INTEGER:
+      allow_delim = 1;
       nitems = PV_INT_LEN;
-      selected = (enum Lexicon *)PV_INT;
+      selected = (enum onk_lexicon_t *)PV_INT;
       break;
 
     case STRING_LITERAL:
+      allow_delim = 1;
       nitems = PV_STR_LEN;
-      selected = (enum Lexicon *)PV_STR;
+      selected = (enum onk_lexicon_t *)PV_STR;
       break;
 
     case DOT:
@@ -224,15 +245,10 @@ int8_t select_init_buffer(enum Lexicon current) {
       break;
 
     case IMPORT:
-      nitems = _PV_import_init_len  - 1;
-      selected = _PV_import_init;
-      state->expecting.mode = PV_Import;
-      break;
-
-    case FOR:
-      selected = (enum Lexicon *)PV_LIMITED;
-      nitems = _EX_EXPR_LIMITED_LEN;
-      // TODO: Add PARAM_OPEN to expecting buffer
+        mode =
+      //nitems = PV_I_init_len  - 1;
+      //selected = _PV_import_init;
+      //state->expecting.mode = PV_Import;
       break;
 
     default:
@@ -243,13 +259,16 @@ int8_t select_init_buffer(enum Lexicon current) {
   else
     return -1;
 
-  if (selected) {
-    memcpy(state->expecting.buffer, selected, sizeof(enum Lexicon) * nitems);
-  }
+  if (selected)
+    assert(memcpy(
+      buf, selected,
+      sizeof(enum onk_lexicon_t) * nitems
+    ));
+
 
   if(can_addon_keywords((op_head(state)->type == IfCond)))
   {
-    memcpy(state->expecting.buffer + sizeof(enum Lexicon) * nitems, _PV_kw, _PV_kw_len - 1);
+    memcpy(state->expecting.buffer + sizeof(enum onk_lexicon_t) * nitems, _PV_kw, _PV_kw_len - 1);
     nitems += _PV_kw_len - 1;
   }
   // TODO: use operator stack head instead
@@ -272,7 +291,7 @@ int8_t select_init_buffer(enum Lexicon current) {
 
 
 /* null terminated */
-uint16_t lex_arr_len(enum Lexicon *arr)
+uint16_t lex_arr_len(enum onk_lexicon_t *arr)
 {
   uint16_t i=0;
   for (i=0 ;; i++)
@@ -281,7 +300,7 @@ uint16_t lex_arr_len(enum Lexicon *arr)
   return i;
 }
 
-bool can_use_else(enum Lexicon output_head){
+bool can_use_else(enum onk_lexicon_t output_head){
   return output_head == IfBody;
 }
 
@@ -291,7 +310,7 @@ void place_delimiter(struct Parser *state)
   struct Group *ghead = group_head(state);
   const struct Token *gmod = group_modifier(state, ghead);
   struct Previsioner *previsioner = &state->expecting;
-  enum Lexicon *buf = previsioner->buffer;
+  enum onk_lexicon_t *buf = previsioner->buffer;
 
   /* bool single_check = buf_ctr+1 > PREVISION_SZ; */
   /* bool dual_check = buf_ctr+2 > PREVISION_SZ; */
@@ -333,7 +352,7 @@ void place_delimiter(struct Parser *state)
 }
 
 //TODO probably deserves its own mode
-/* static enum Lexicon _PV_if[] = { */
+/* static enum onk_lexicon_t _PV_if[] = { */
 /*   PARAM_OPEN, */
 /*   0 */
 /* } */;
@@ -348,10 +367,10 @@ void place_delimiter(struct Parser *state)
  */
 void init_expect_buffer(struct Previsioner *state)
 {
-    memcpy(state->buffer, _PV_default, sizeof(enum Lexicon) * 8);
+    memcpy(state->buffer, _PV_default, sizeof(enum onk_lexicon_t) * 8);
     state->buffer[9] = 0;
     /* cast removes cc warning */
-    state->data.default_mode.selected = (enum Lexicon *)&state->buffer;
+    state->data.default_mode.selected = (enum onk_lexicon_t *)&state->buffer;
     state->mode = PV_Default; 
 }
 
@@ -370,10 +389,10 @@ bool can_use_keywords(struct Parser *state)
   return true;
 }
 
-uint8_t prevision_keywords(enum Lexicon *buf) {
+uint8_t prevision_keywords(enum onk_lexicon_t *buf) {
   uint8_t nitems = _PV_kw_len - 1;
 
-  memcpy(buf, _PV_kw, sizeof(enum Lexicon) * nitems);
+  memcpy(buf, _PV_kw, sizeof(enum onk_lexicon_t) * nitems);
 
   /* if(expr_head->type == IfExprT) */
   /* { */
@@ -392,7 +411,7 @@ uint8_t prevision_keywords(enum Lexicon *buf) {
  */
 int8_t prevision_next(struct Parser *state)
 {
-  enum Lexicon current = state->src[*state->_i].type;
+  enum onk_lexicon_t current = state->src[*state->_i].type;
 
 }
 
@@ -403,7 +422,7 @@ enum ModeResult {
   _MRError = -1
 };
 
-enum ModeResult mode_func_def(enum Lexicon current, struct Previsioner *state)
+enum ModeResult mode_func_def(enum onk_lexicon_t current, struct Previsioner *state)
 {
   enum ModeResult ret = _MRMatchFailure;
   uint16_t mod = 0;
@@ -427,7 +446,7 @@ enum ModeResult mode_func_def(enum Lexicon current, struct Previsioner *state)
   return ret;
 }
 
-enum ModeResult mode_import(enum Lexicon current,  struct Previsioner *state)
+enum ModeResult mode_import(enum onk_lexicon_t current,  struct Previsioner *state)
 {
 
   if(!state->data.import_mode.has_word){
@@ -453,7 +472,7 @@ enum ModeResult mode_import(enum Lexicon current,  struct Previsioner *state)
   return -1;
 }
 
-int8_t mode_default(enum Lexicon current, enum Lexicon grp_delim, struct Previsioner *expecting)
+int8_t mode_default(enum onk_lexicon_t current, enum Lexicon grp_delim, struct Previsioner *expecting)
 {
   /* check previous expecting buffer */
   if (!eq_any_tok(current, expecting->data.default_mode.selected))
@@ -472,7 +491,7 @@ int8_t is_token_unexpected(struct Parser *state)
   struct Token *current = &state->src[*state->_i];
   struct Group *ghead = 0;
   int8_t mode_ret = 0;
-  enum Lexicon delim = 0;
+  enum onk_lexicon_t delim = 0;
   
   if(state->expecting.mode == PV_Default
      && mode_default(current->type, get_expected_delimiter(ghead), &state->expecting) == -1)

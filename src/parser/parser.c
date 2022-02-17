@@ -4,13 +4,12 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
-
 #include "../utils/vec.h"
-#include "lexer/lexer.h"
-#include "utils.h"
+//#include "lexer/lexer.h"
+//#include "utils.h"
 
 #include "private.h"
-#include "parser.h"
+//#include "parser.h"
 
 enum Associativity
 {
@@ -19,7 +18,7 @@ enum Associativity
     LASSOC
 };
 
-enum Associativity get_assoc(enum Lexicon token)
+enum Associativity get_assoc(enum onk_lexicon_t token)
 {
     switch(token) {
         case POW:
@@ -188,7 +187,7 @@ int8_t pop_block_operator(struct Parser *state)
 
 int8_t handle_close_brace(struct Parser *state)
 {
-  const enum Lexicon expected[] = {COLON, DIGIT, 0};
+  const enum onk_lexicon_t expected[] = {COLON, DIGIT, 0};
   struct Group *ghead = group_head(state);
   const struct Token *prev = prev_token(state),
     *current = current_token(state);
@@ -269,7 +268,7 @@ int8_t handle_close_brace(struct Parser *state)
 **         ^---current token.
 **
 */
-enum Lexicon push_group_modifier(
+enum onk_lexicon_t push_group_modifier(
   const struct Token * start,
   const struct Token *prev
 ){
@@ -310,7 +309,7 @@ int8_t handle_open_brace(struct Parser *state)
 {
   const struct Token *current = current_token(state);
   const struct Token *prev = prev_token(state);
-  enum Lexicon modifier = push_group_modifier(current, prev);
+  enum onk_lexicon_t modifier = push_group_modifier(current, prev);
 
   if (prev && modifier)
     push_op(modifier, 0, 0, state);
@@ -326,7 +325,7 @@ int8_t handle_open_brace(struct Parser *state)
   return 0;
 }
 
-int8_t is_dual_grp_keyword(enum Lexicon tok) {
+int8_t is_dual_grp_keyword(enum onk_lexicon_t tok) {
   switch(tok){
     case FOR: return 0;
     case WHILE: return 1;
@@ -335,13 +334,49 @@ int8_t is_dual_grp_keyword(enum Lexicon tok) {
     default: return -1;
   }
 }
+/*
+   allows you to type in
+
+   for x, y, z instead
+*/
+int8_t pretty_handle_for(
+  struct Token *current,
+  struct Token *next
+){
+  if(current->type == FOR)
+  {
+    // TODO: move to predict.c
+    // Short
+    if(next->type == is_open_brace(current->token)
+       && next->token != PARAM_OPEN)
+    {
+      throw_unexpected_token(current, state);
+      return
+    }
+    else
+    {
+      push_op(OPEN_BRACE, 0, 0, state);
+      ghead = new_grp(state);
+      state->set_ctr += 1;
+
+      if (current->token == FOR)
+        ghead->stop_short[0] = IN;
+
+      ghead->is_short = true;
+      ghead->type = TupleGroup;
+
+    }
+  }
+
+}
+
 
 int8_t handle_dual_group(struct Parser *state)
 {
   const struct Token *current = current_token(state);
   const struct Token *next = next_token(state);
   struct Group *ghead = group_head(state);
-  const enum Lexicon products[4][3] = {
+  const enum onk_lexicon_t products[4][3] = {
     {ForBody, ForParams, 0},
     {WhileBody, WhileCond, 0},
     {IfBody, IfCond, 0},
@@ -357,6 +392,7 @@ int8_t handle_dual_group(struct Parser *state)
   if(current->type == FOR)
   {
     // TODO: move to predict.c
+    // Short
     if(next->type == is_open_brace(current->token)
        && next->token != PARAM_OPEN)
     {
@@ -467,9 +503,14 @@ int8_t complete_partial_gtype(struct Parser *state){
   return 0;
 }
 
+
+/*
+* flush the operator stack
+* pop short blocks
+*/
 int8_t handle_delimiter(struct Parser *state)
 {
-  const enum Lexicon delim[2] = {COLON, SEMICOLON};
+  const enum onk_lexicon_t delim[2] = {COLON, SEMICOLON};
   struct Group *ghead = group_head(state);
   const struct Token
     *current = current_token(state),
@@ -521,12 +562,11 @@ int8_t handle_return(struct Parser *state)
     group->is_short = true;
 
     /* group->stop_short = {SEMICOLON, BRACKET_CLOSE}; */
-
   }
 }
 
 /* does this keyword use a single group */
-bool is_kw_single_group(enum Lexicon tok){
+bool is_kw_single_group(enum onk_lexicon_t tok){
    tok == FROM
    || tok == ELSE
    || tok == STRUCT
@@ -534,107 +574,107 @@ bool is_kw_single_group(enum Lexicon tok){
 }
 
 /*
-** This function implements a "fancy" shunting yard parser.
-** returning a vec of pointers, of the source tokens in postfix notation.
-**
-** "Fancy" means to include extra features that will be described below.
-** These include the ulities needed to flourish the shunting yard
-** algorithm into a full parser.
-**
-** prerequisite know-how:
-**   shunting yard parses infix arithmitic notation,
-**   and converts it into postfix arithmitic nottation.
-**   Infix notation: "1 + 2 + 3"
-**   postfix notation: "1 2 + 3 +"
-**   postfix notation is much easier to compute using a stack.
-**
-** Fancy features:
-**  ## Grouping:
-**     Grouping occurs when a collection of units or expressions is
-**     surrounded in braces and delimated by group's type delimiter.
-**     Grouping creates its own tokens where the token type is the following
-**
-**     ```
-**     TupleGroup,
-**     StructGroup,
-**     ListGroup,
-**     IndexGroup,
-**     MapGroup,
-**     CodeBlock
-**     ```
-**     groups store the amount of members in `struct Token->end`
-**     Groups can be defined as empty by marking `end` as 0.
-**
-**     Example input: [1, 2, 3]; ()
-**     Example output: 1 2 3 ListGroup(end=3) TupleGroup(end=0)
-**
-**     # Tuple group
-**     Example: (a, b)
-**     Example output: a b TupleGroup(2)
-**     delimiter: ','
-**     Tuples are immutable collections of data
-**
-**     # StructGroup
-**     Example: Name {a = b}
-**     Output: Name (A b =) StructGroup(1) StructInit(operator)
-**     delimiter: ','
-**     Structures define a new type of data,
-**     composed of other types.
-**
-**     # ListGroup
-**     Example: [a, b]
-**     Output: a b ListGroup(2)
-**     delimiter: ','
-**
-**     dynamically sized array
-**
-**     # IndexGroup
-**     Example: foo[1:2:3]
-**     Output: foo (1 2 3 IndexGroup(3)) IndexAccess(operator)
-**     delimiter: ':'
-**
-**     Creates an index selection
-**     on the previous expression.
-**     The numbers wrapped in braces represent the following
-**     parameters.
-**
-**     ACCESSED [START:END:SKIP]
-**
-**     The value in these parameters may be skipped,
-**     and the value will be inferred from min/max
-**     value based on the parameter.
-**     START - min(0)
-**     END - max(N items)
-**     skip - min(0)
-**
-**     skipped argument example: foo[::2]
-**
-**     # MapGroup
-**     Example: {'a': 2, 'foo': 'bar'}
-**     Output: 'a' 2 'foo' 'bar' MapGroup(4),
-**     Delimiter: ':' & ','
-**
-**     HashMap are collections of keys, and data
-**     where each key is unique
-**
-**     # Code block
-**     Example: { foo(); bar(); }
-**     Output: foo() bar() CodeBlock(2)
-**     Delimiter: ';'
-**     A collection of proceedures
-**
-** ## Extended Operator:
-**
-**    ## `DOT` operator
-**
-**    `DOT` is used to access properities of its parent structure.
-**    Inside the parser, `DOT` is treated as if its an binary operation.
-**
-**    Exmaple input: abc.foo.last;
-**    Example output: abc foo . last .
-**
-**    ## `Apply` operator
-**    `Apply` is used to call function
+   This function implements a "fancy" shunting yard parser.
+   returning a vec of pointers, of the source tokens in postfix notation.
+
+   "Fancy" means to include extra features that will be described below.
+   These include the ulities needed to flourish the shunting yard
+   algorithm into a full parser.
+
+   prerequisite know-how:
+     shunting yard parses infix arithmitic notation,
+     and converts it into postfix arithmitic nottation.
+     Infix notation: "1 + 2 + 3"
+     postfix notation: "1 2 + 3 +"
+     postfix notation is much easier to compute using a stack.
+
+   Fancy features:
+    ## Grouping:
+       Grouping occurs when a collection of units or expressions is
+       surrounded in braces and delimated by group's type delimiter.
+       Grouping creates its own tokens where the token type is the following
+
+       ```
+       TupleGroup,
+       StructGroup,
+       ListGroup,
+       IndexGroup,
+       MapGroup,
+       CodeBlock
+       ```
+       groups store the amount of members in `struct Token->end`
+       Groups can be defined as empty by marking `end` as 0.
+
+       Example input: [1, 2, 3]; ()
+       Example output: 1 2 3 ListGroup(end=3) TupleGroup(end=0)
+
+       # Tuple group
+       Example: (a, b)
+       Example output: a b TupleGroup(2)
+       delimiter: ','
+       Tuples are immutable collections of data
+
+       # StructGroup
+       Example: Name {a = b}
+       Output: Name (A b =) StructGroup(1) StructInit(operator)
+       delimiter: ','
+       Structures define a new type of data,
+       composed of other types.
+
+       # ListGroup
+       Example: [a, b]
+       Output: a b ListGroup(2)
+       delimiter: ','
+
+       dynamically sized array
+
+       # IndexGroup
+       Example: foo[1:2:3]
+       Output: foo (1 2 3 IndexGroup(3)) IndexAccess(operator)
+       delimiter: ':'
+
+       Creates an index selection
+       on the previous expression.
+       The numbers wrapped in braces represent the following
+       parameters.
+
+       ACCESSED [START:END:SKIP]
+
+       The value in these parameters may be skipped,
+       and the value will be inferred from min/max
+       value based on the parameter.
+       START - min(0)
+       END - max(N items)
+       skip - min(0)
+
+       skipped argument example: foo[::2]
+
+       # MapGroup
+       Example: {'a': 2, 'foo': 'bar'}
+       Output: 'a' 2 'foo' 'bar' MapGroup(4),
+       Delimiter: ':' & ','
+
+       HashMap are collections of keys, and data
+       where each key is unique
+
+       # Code block
+       Example: { foo(); bar(); }
+       Output: foo() bar() CodeBlock(2)
+       Delimiter: ';'
+       A collection of proceedures
+
+   ## Extended Operator:
+
+      ## `DOT` operator
+
+      `DOT` is used to access properities of its parent structure.
+      Inside the parser, `DOT` is treated as if its an binary operation.
+
+      Exmaple input: abc.foo.last;
+      Example output: abc foo . last .
+
+      ## `Apply` operator
+      `Apply` is used to call function
 */
 int8_t parse(
   struct ParserInput *input,
@@ -660,7 +700,6 @@ int8_t parse(
       if either state.panic or unexpected_token are true
       we begin unwinding
     */
-
     if(state.panic || unexpected_token)
       handle_unwind(&state, unexpected_token);
 
@@ -682,19 +721,28 @@ int8_t parse(
       handle_operator(&state);
 
     /*
-
+      Places 2 operators on the stack, that are
+      popped when an open brace is
+      placed onto the stack
     */
     else if(is_dual_grp_keyword(current->type))
       handle_dual_group(&state);
 
+    /* flush operators and
+     * pop an operator (open brace) & grouping */
     else if (is_close_brace(current->type))
       handle_close_brace(&state);
 
+    /* push group modifier & open brace
+     * onto the operator stack.
+     * push another grouping */
     else if (is_open_brace(current->type))
       handle_open_brace(&state);
 
+    /* flush operators, check for short grouping & pop it */
     else if (is_delimiter(current->type))
       handle_delimiter(&state);
+
 
     else if(current->type == IMPORT)
       handle_import(&state);

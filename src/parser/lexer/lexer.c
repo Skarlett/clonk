@@ -17,13 +17,13 @@ struct LexerStage {
     const char * src_code;
     uint16_t src_code_sz;
 
-    enum Lexicon previous_buf[PREV_BUF_SZ];
+    enum onk_lexicon_t previous_buf[PREV_BUF_SZ];
 
-    /* struct OpenQueue<Lexicon> */
+    /* struct OpenQueue<onk_lexicon_t> */
     struct OpenQueue8_t previous;
 
-    enum Lexicon current;
-    enum Lexicon compound;
+    enum onk_lexicon_t current;
+    enum onk_lexicon_t compound;
 
     const uint16_t *i;
     uint16_t cmpd_span_size;
@@ -39,7 +39,7 @@ struct LexerStage {
      * hijacks the compound token until
      * it falls out of pattern
     */
-  enum Lexicon forcing_next_token;
+  enum onk_lexicon_t forcing_next_token;
   uint16_t force_start;
   uint16_t force_span;
 };
@@ -81,7 +81,7 @@ void init_lexer_output(
   out->src_code_sz = state->src_code_sz;
 }
 
-enum Lexicon tokenize_char(char c) {
+enum onk_lexicon_t tokenize_char(char c) {
   uint8_t i = 0;
 
   switch (c) {
@@ -166,18 +166,18 @@ enum Lexicon tokenize_char(char c) {
   return TOKEN_UNDEFINED;
 }
 
-int8_t is_compound_bin_op(enum Lexicon tok) {
+int8_t is_compound_bin_op(enum onk_lexicon_t tok) {
   return tok > __MARKER_COMPOUND_BIN_START
     && __MARKER_COMPOUND_BIN_END > tok;
 }
 
-int8_t can_upgrade_token(enum Lexicon token) {
+int8_t can_upgrade_token(enum onk_lexicon_t token) {
   return (token > __MARKER_UPGRADE_DATA_START && __MARKER_UPGRADE_DATA_END)
     || (token > __MARKER_UPGRADE_OP_START && __MARKER_UPGRADE_OP_END > token)
     || (token > __MARKER_UNARY_START && __MARKER_UNARY_END > token)
 }
 
-int8_t set_compound_token(enum Lexicon *compound_token, enum Lexicon token) {
+int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum Lexicon token) {
   switch (token) {
     case DIGIT:
       *compound_token = INTEGER;
@@ -255,7 +255,7 @@ int8_t continue_compound_token(
   struct LexerStage *state
 ){
   struct Token * prev;
-  enum Lexicon compound_token = state->compound,
+  enum onk_lexicon_t compound_token = state->compound,
     token = state->current;
   uint16_t span_size = state->cmpd_span_size;
 
@@ -306,7 +306,7 @@ int8_t continue_compound_token(
 }
 
 /* used for downgrading compound tokens */
-enum Lexicon invert_operator_token(enum Lexicon compound_token) {
+enum onk_lexicon_t invert_operator_token(enum Lexicon compound_token) {
   switch (compound_token) {
   case COMMENT:
     return POUND;
@@ -360,7 +360,7 @@ enum Lexicon invert_operator_token(enum Lexicon compound_token) {
 }
 
 int8_t derive_keyword(const char *src_code, struct Token *t) {
-  static enum Lexicon lexicon[] = {
+  static enum onk_lexicon_t lexicon[] = {
     //STATIC, CONST,
     RETURN,
     FOR, WHILE,
@@ -407,7 +407,7 @@ int8_t derive_keyword(const char *src_code, struct Token *t) {
 ** for example `-` (MINUS) can turn into many
 ** different compounds `-=`, `-1`.
 */
-int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
+int8_t compose_compound(enum onk_lexicon_t ctok, enum Lexicon current) {
   if (ctok == _COMPOUND_SUB)
   {
     if (current == DIGIT)
@@ -459,7 +459,7 @@ int8_t compose_compound(enum Lexicon ctok, enum Lexicon current) {
 int8_t finalize_compound_token(
   struct LexerStage *state,
   struct Token *token,
-  enum Lexicon lexed
+  enum onk_lexicon_t lexed
 ){
   struct LexerError err;
   if (token->type == STRING_LITERAL)
@@ -506,7 +506,7 @@ int8_t push_tok(
   struct LexerStage *state,
   struct Token *tok)
 {
-  enum Lexicon type = state->current;
+  enum onk_lexicon_t type = state->current;
   int8_t ret = 0;
 
   if (state->compound != TOKEN_UNDEFINED)

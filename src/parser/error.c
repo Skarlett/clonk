@@ -8,8 +8,8 @@
 /**
  * @param tok: comparsion token
  */
-int8_t is_continuable(enum Lexicon tok) {
-    static enum Lexicon __BREAK_POINTS_START[] = {
+int8_t is_continuable(enum onk_lexicon_t tok) {
+    static enum onk_lexicon_t __BREAK_POINTS_START[] = {
         _EX_BIN_OPERATOR,
         _EX_ASN_OPERATOR,
         _EX_CLOSE_BRACE,
@@ -24,15 +24,15 @@ int8_t is_continuable(enum Lexicon tok) {
 void throw_unexpected_token(
   struct Parser *state,
   const struct Token *start,
-  const enum Lexicon expected[],
+  const enum onk_lexicon_t expected[],
   uint16_t nexpected
 ){
 
     struct PartialError *err = &state->partial_err;
-    enum Lexicon *expect_heap;
+    enum onk_lexicon_t *expect_heap;
 
-    expect_heap = calloc(nexpected, sizeof(enum Lexicon));
-    memcpy(expect_heap, expected, sizeof(enum Lexicon) * nexpected);
+    expect_heap = calloc(nexpected, sizeof(enum onk_lexicon_t));
+    memcpy(expect_heap, expected, sizeof(enum onk_lexicon_t) * nexpected);
 
     err->type = parse_err_unexpected_token;
     err->start = *start;
@@ -53,7 +53,7 @@ const struct RestorationFrame * restoration_head(const struct Parser *state) {
 ** Returns boolean if restoration hook should be ran
 **
 */
-bool run_hook(enum Lexicon current){
+bool run_hook(enum onk_lexicon_t current){
     return is_delimiter(current)
         || is_open_brace(current)
         || is_close_brace(current);

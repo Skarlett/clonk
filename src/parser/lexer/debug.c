@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "lexer.h"
 
-const char * ptoken(enum Lexicon t) {
+const char * ptoken(enum onk_lexicon_t t) {
     switch (t) {
         case INTEGER: return "integer";
         case WORD: return "word";
@@ -67,7 +67,7 @@ const char * ptoken(enum Lexicon t) {
     };
 }
 
-/* char brace_as_char(enum Lexicon tok) { */
+/* char brace_as_char(enum onk_lexicon_t tok) { */
 /*     switch(tok){ */
 /*         case BRACE_OPEN: return '{'; */
 /*         case BRACE_CLOSE: return '}'; */
@@ -95,7 +95,7 @@ const char * ptoken(enum Lexicon t) {
 /* } */
 
 
-char * __sprintf_token_ty_slice(char *output, uint16_t output_sz, enum Lexicon token, uint16_t *ctr) {
+char * __sprintf_token_ty_slice(char *output, uint16_t output_sz, enum onk_lexicon_t token, uint16_t *ctr) {
     char token_buf[64];
     const char *ptok;
 
@@ -116,7 +116,7 @@ enum SPFMode {
 };
 
 union SPFData {
-    const enum Lexicon *lex_arr;
+    const enum onk_lexicon_t *lex_arr;
     const struct Token *tok_arr;
     const struct Token **tok_arr_by_ref;
 };
@@ -127,7 +127,7 @@ char * __sprintf_inner(
     union SPFData *ptr, enum SPFMode spf_ty
 ){
     uint16_t ctr = 0;
-    enum Lexicon item = 0;
+    enum onk_lexicon_t item = 0;
 
     if (!ptr || !output)
         return 0;
@@ -177,7 +177,7 @@ int8_t sprintf_token_slice(
 }
 
 int8_t sprintf_lexicon_slice(
-    const enum Lexicon tokens[],
+    const enum onk_lexicon_t tokens[],
     uint16_t ntokens,
     char * output,
     uint16_t output_sz

@@ -11,7 +11,7 @@ void AssertTokens(
     const char *file,
     const char *msg,
     const struct Token tokens[],
-    const enum Lexicon answer[]
+    const enum onk_lexicon_t answer[]
 );
 
 void AssertTokensByRef(
@@ -20,7 +20,7 @@ void AssertTokensByRef(
     const char *file,
     const char *msg,
     const struct Token *tokens[],
-    const enum Lexicon answer[]
+    const enum onk_lexicon_t answer[]
 );
 
 

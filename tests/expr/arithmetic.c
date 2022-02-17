@@ -34,7 +34,7 @@ void __test__simple_order_precedence(CuTest* tc) {
         0
     };
 
-    static enum Lexicon check_list[][16] = {
+    static enum onk_lexicon_t check_list[][16] = {
         {INTEGER, INTEGER, ADD, INTEGER, MUL, 0},
         {INTEGER, INTEGER, ADD, 0},
         {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},

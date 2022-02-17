@@ -67,7 +67,7 @@ void __test__you_know_too_much(CuTest* tc)
 
 
 // void __test__order_precedence_right_assoc(CuTest* tc) {
-//     static enum Lexicon answer[] = {INTEGER, INTEGER, INTEGER, POW, POW};
+//     static enum onk_lexicon_t answer[] = {INTEGER, INTEGER, INTEGER, POW, POW};
 //     static char * words[] = {"3", "2", "1", "^", "^", 0};
 
 //     uint16_t ntokens=0,
@@ -90,7 +90,7 @@ void __test__you_know_too_much(CuTest* tc)
 // void __test__order_precedence_not_op(CuTest* tc) {
 //     uint16_t ntokens=0,
 //         nqueue=0;
-//     static enum Lexicon answers[] = {NOT, WORD, WORD, ADD, NOT, WORD, SUB};
+//     static enum onk_lexicon_t answers[] = {NOT, WORD, WORD, ADD, NOT, WORD, SUB};
 //     struct Token tokens[32],
 //         *queue[32],
 //         *masks[2];

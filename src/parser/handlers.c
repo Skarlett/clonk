@@ -6,7 +6,7 @@
 #include <assert.h>
 
 
-enum Lexicon grp_dbg_sym(enum Group_t type)
+enum onk_lexicon_t grp_dbg_sym(enum Group_t type)
 {
   switch (type) {
     case ListT: return ListGroup;
@@ -135,7 +135,7 @@ int8_t mk_str(
   return 0;
 }
 
-enum Group_t get_group_t_from_tok(enum Lexicon tok) {
+enum Group_t get_group_t_from_tok(enum onk_lexicon_t tok) {
   switch (tok) {
     case TupleGroup: return MapT;
     case ListGroup: return ListT;
@@ -210,7 +210,7 @@ int8_t mk_binop(
   return 0;
 }
 
-bool is_unary(enum Lexicon tok)
+bool is_unary(enum onk_lexicon_t tok)
 {
   return tok == TILDE || tok == NOT;
 }

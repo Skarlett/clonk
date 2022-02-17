@@ -8,9 +8,9 @@
 
 #define FMT_STR "%s\nexpected: \n%s\ngot: \n%s\nsrc: \"%s\""
 
-int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon current) {
+int8_t inner_balance(enum onk_lexicon_t tokens[], uint16_t *tokens_ctr, enum Lexicon current) {
     //TODO: check for int overflow & buffer
-    enum Lexicon inverted;
+    enum onk_lexicon_t inverted;
 
     if (is_close_brace(current))
     {
@@ -47,7 +47,7 @@ int8_t inner_balance(enum Lexicon tokens[], uint16_t *tokens_ctr, enum Lexicon c
  *  if there is a nonmatching `[` / `(` / `{` character
 */
 bool is_balanced(struct Token tokens[], uint16_t ntokens) {
-    enum Lexicon braces[BRACE_BUFFER_SZ];
+    enum onk_lexicon_t braces[BRACE_BUFFER_SZ];
     uint16_t braces_ctr = 0;
     int8_t ret;
 
@@ -101,7 +101,7 @@ bool is_balanced(struct Token tokens[], uint16_t ntokens) {
     if there is a nonmatching `[` / `(` / `{` character
 */
 bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
-    enum Lexicon braces[BRACE_BUFFER_SZ];
+    enum onk_lexicon_t braces[BRACE_BUFFER_SZ];
     uint16_t braces_ctr = 0;
 
     int8_t ret;
@@ -121,7 +121,7 @@ bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
 
 bool seq_eql_ty(
     const struct Token tokens[],
-    const enum Lexicon lexicon[]
+    const enum onk_lexicon_t lexicon[]
 ){
     for (usize i=0 ;; i++) {
         if(lexicon[i] == 0)
@@ -135,7 +135,7 @@ bool seq_eql_ty(
 
 bool seq_eql_ty_by_ref(
     const struct Token *tokens[],
-    const enum Lexicon lexicon[]
+    const enum onk_lexicon_t lexicon[]
 ){
     for (usize i=0 ;; i++) {
         if (lexicon[i] == 0)
@@ -152,7 +152,7 @@ void AssertTokens(
     const char *file,
     const char *msg,
     const struct Token tokens[],
-    const enum Lexicon answer[]
+    const enum onk_lexicon_t answer[]
 ){
     char uneql_msg[2048];
     char uneql_len_msg[2048];
@@ -180,7 +180,7 @@ void AssertTokensByRef(
     const char *file,
     const char *msg,
     const struct Token *tokens[],
-    const enum Lexicon answer[]
+    const enum onk_lexicon_t answer[]
 ){
     char uneql_msg[2048];
     char uneql_len_msg[2048];

@@ -1,6 +1,6 @@
 #include "testutils.h"
 
-void mk_toks(struct Token token[], const enum Lexicon ty[]) {
+void mk_toks(struct Token token[], const enum onk_lexicon_t ty[]) {
   for (usize i = 0 ;; i++)
     if (ty[i] == 0)
       break;
@@ -11,7 +11,7 @@ void mk_toks(struct Token token[], const enum Lexicon ty[]) {
 void __test__check_tokens(CuTest* tc) {
      struct Token toks[8];
 
-     const static enum Lexicon check_list[][16] = {
+     const static enum onk_lexicon_t check_list[][16] = {
         {INTEGER, INTEGER, ADD, 0},
         {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},
         {INTEGER, INTEGER, DIV, INTEGER, ADD, 0},

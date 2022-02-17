@@ -43,7 +43,7 @@ void __test__fncall(CuTest* tc) {
 
     };
 
-    static enum Lexicon check_list[][16] = {
+    static enum onk_lexicon_t check_list[][16] = {
         {WORD, Apply, 0},
         {WORD, Apply, 0},
         {WORD, Apply, Apply, 0},

@@ -18,7 +18,7 @@ void __test__tuple_collection(CuTest* tc) {
         "((((((1, 2, 3))))))",
     };
 
-    static enum Lexicon check_list[][8] = {
+    static enum onk_lexicon_t check_list[][8] = {
         {TupleGroup, 0},
         {INTEGER, 0},
         {INTEGER, INTEGER, ADD, 0},

@@ -37,7 +37,7 @@ void __test__basic_perthensis(CuTest* tc)
         0
     };
     
-    static enum Lexicon check_list[][16] = {
+    static enum onk_lexicon_t check_list[][16] = {
         {PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, 0},
         {PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, ADD, INTEGER, 0},
         {INTEGER, ADD, PARAM_OPEN, INTEGER, ADD, INTEGER, PARAM_CLOSE, 0},
@@ -193,7 +193,7 @@ void __test__collapse_operator(CuTest* tc)
 {
     uint16_t sz=0;
     struct Token tokens[16];
-    static enum Lexicon answers[] = {
+    static enum onk_lexicon_t answers[] = {
         LTEQ,
         GTEQ,
         ISEQL,
@@ -288,7 +288,7 @@ void __test__oversized_bin_ops(CuTest* tc)
         3, 2, 2, 2,
         2, 2, 2
     };
-    static enum Lexicon answers[][8] = {
+    static enum onk_lexicon_t answers[][8] = {
         {LTEQ, EQUAL, 0}, {GTEQ, EQUAL, 0}, {ISEQL, LT, 0}, {ISEQL, GT, 0}, 
         {GTEQ, EQUAL, 0}, {LTEQ, EQUAL, 0}, {ISEQL, EQUAL, 0}, {ISNEQL, EQUAL, 0},
         {ISEQL, NOT, 0}, {ADD, PLUSEQ, 0}, {SUB, MINUSEQ, 0}, {EQUAL, ADD, ADD, 0},
@@ -328,7 +328,7 @@ void __test__derive_keywords(CuTest* tc)
 {
     uint16_t sz=0;
     struct Token tokens[16];
-    static enum Lexicon answers[] = {
+    static enum onk_lexicon_t answers[] = {
         IF,
         ELSE,
         FUNC_DEF,
@@ -374,7 +374,7 @@ void __test__derive_keywords(CuTest* tc)
 void __test__correct_tokenization(CuTest* tc)
 {
     static char * src_code = "[]{}()!+- ><*/^%=&|:;_ 5a,~";    
-    static enum Lexicon answers[] = {
+    static enum onk_lexicon_t answers[] = {
         BRACKET_OPEN, BRACKET_CLOSE, 
         BRACE_OPEN, BRACE_CLOSE,
         PARAM_OPEN, PARAM_CLOSE,
@@ -405,8 +405,8 @@ void __test__correct_tokenization(CuTest* tc)
 void __test__negative_num_var(CuTest* tc) {
     uint16_t ntokens=0;
     struct Token tokens[8];
-    enum Lexicon answer_1[8] = {INTEGER, 0};
-    enum Lexicon answer_2[8] = {INTEGER, SUB, INTEGER, 0};
+    enum onk_lexicon_t answer_1[8] = {INTEGER, 0};
+    enum onk_lexicon_t answer_2[8] = {INTEGER, SUB, INTEGER, 0};
 
     CuAssertTrue(tc, tokenize("-1234", tokens, &ntokens, 8, false, NULL) == 0);
     AssertTokens(tc, "-1234", "", tokens, answer_1);
@@ -432,7 +432,7 @@ void __test__underscored_number(CuTest* tc) {
     uint16_t ntokens=0;
     const char *src = "1_234";
     struct Token tokens[8];
-    enum Lexicon answer[4] = {INTEGER, 0};
+    enum onk_lexicon_t answer[4] = {INTEGER, 0};
 
     CuAssertTrue(tc, tokenize(src, tokens, &ntokens, 8, false, NULL) == 0);
     CuAssertTrue(tc, ntokens == 2);    
@@ -444,7 +444,7 @@ void __test__string_nested_quoted(CuTest* tc) {
     uint16_t ntokens=0;
     const char *src = "\"\\\"\""; /* "\"" */
     struct Token tokens[8];
-    enum Lexicon answer[4] = {STRING_LITERAL, 0};
+    enum onk_lexicon_t answer[4] = {STRING_LITERAL, 0};
 
     CuAssertTrue(tc, tokenize(src, tokens, &ntokens, 8, false, NULL) == 0);
     CuAssertTrue(tc, ntokens == 2);

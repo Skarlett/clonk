@@ -15,7 +15,7 @@ const struct Token * new_token(struct Parser *state, struct Token *tok) {
 }
 
 void insert_new(
-  enum Lexicon type,
+  enum onk_lexicon_t type,
   uint16_t start,
   uint16_t end,
   struct Parser *state
@@ -146,7 +146,7 @@ bool is_fncall_pattern(const struct Token *prev){
     || prev->type == WORD;
 }
 
-const struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, struct Parser *state)
+const struct Token * op_push(enum onk_lexicon_t op, uint16_t start, uint16_t end, struct Parser *state)
 {
   struct Token new, *heap = 0;
   new.type = op;
@@ -163,7 +163,7 @@ const struct Token * op_push(enum Lexicon op, uint16_t start, uint16_t end, stru
 
 /* NOTE: @param `ops` must be NULL terminated */
 int8_t push_many_ops(
-  const enum Lexicon *ops,
+  const enum onk_lexicon_t *ops,
   const struct Token *origin,
   struct Parser *state
 ){
@@ -191,7 +191,7 @@ int8_t push_many_ops(
 
 void push_output(
   struct Parser *state,
-  enum Lexicon type,
+  enum onk_lexicon_t type,
   uint16_t argc
 ){
   struct Token marker;
@@ -314,7 +314,7 @@ int8_t finish_idx_access(struct Parser *state)
       "( [ { IF ELSE RETURN DEF" : 0 non-assoc
 */
 #define END_PRECEDENCE 127
-int8_t op_precedence(enum Lexicon token) {
+int8_t op_precedence(enum onk_lexicon_t token) {
     
     if (is_close_brace(token))
         return END_PRECEDENCE;

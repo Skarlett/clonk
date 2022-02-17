@@ -3,28 +3,28 @@
 
 #define BRACE_BUFFER_SZ 256
 
-bool is_delimiter(enum Lexicon token) {
+bool is_delimiter(enum onk_lexicon_t token) {
     return token > __MARKER_DELIM_START
         && __MARKER_DELIM_END > token;
 }
 
-bool is_close_brace(enum Lexicon token)
+bool is_close_brace(enum onk_lexicon_t token)
 {
     return token > __MARKER_CLOSE_BRACE_START
         && __MARKER_CLOSE_BRACE_END > token;
 }
 
-bool is_open_brace(enum Lexicon token) {
+bool is_open_brace(enum onk_lexicon_t token) {
     return token > __MARKER_OPEN_BRACE_START
         && __MARKER_OPEN_BRACE_END > token;
 }
 
-bool is_unit(enum Lexicon token) {
+bool is_unit(enum onk_lexicon_t token) {
     return token > __MARKER_UNIT_START
         && __MARKER_UNIT_END > token;
 }
 
-bool is_asn_operator(enum Lexicon token) {
+bool is_asn_operator(enum onk_lexicon_t token) {
     return token > __MARKER_ASN_START
         && __MARKER_ASN_END > token;
 }
@@ -32,13 +32,13 @@ bool is_asn_operator(enum Lexicon token) {
 /*
    returns bool if token is a binary operator
 */
-bool is_operator(enum Lexicon token) {
+bool is_operator(enum onk_lexicon_t token) {
     return token > __MARKER_OP_START
         && __MARKER_OP_END > token;
 }
 
 /* null delimitated */
-uint8_t eq_any_tok(enum Lexicon cmp, enum Lexicon buffer[]) {
+uint8_t eq_any_tok(enum onk_lexicon_t cmp, enum Lexicon buffer[]) {
   for (uint16_t i=0 ;; i++)
     if(buffer[i] == 0) break;
     else if (buffer[i] == cmp)
@@ -58,7 +58,7 @@ bool is_utf(char ch) {
        input:"(" - outputs:")"
        input:"]" - output:"["
 */
-enum Lexicon invert_brace_tok_ty(enum Lexicon token) {
+enum onk_lexicon_t invert_brace_tok_ty(enum Lexicon token) {
     switch (token) {
         case PARAM_OPEN: return PARAM_CLOSE;
         case PARAM_CLOSE: return PARAM_OPEN;
@@ -75,18 +75,18 @@ bool is_num_negative(const char * source, struct Token *token) {
         && *(source + token->start) == '-';
 }
 
-bool is_keyword(enum Lexicon token) {
+bool is_keyword(enum onk_lexicon_t token) {
     return token > __MARKER_KEYWORD_START
         && __MARKER_KEYWORD_END > token;
 }
 
-bool is_group(enum Lexicon tok)
+bool is_group(enum onk_lexicon_t tok)
 {
     return tok > __MARKER_GROUP_START
         && __MARKER_GROUP_END > tok;
 }
 
-bool is_group_modifier(enum Lexicon tok) {
+bool is_group_modifier(enum onk_lexicon_t tok) {
     return tok > __MARKER_GROUP_OP_START
         && __MARKER_GROUP_OP_END > tok;
 }

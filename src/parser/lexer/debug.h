@@ -19,7 +19,7 @@ int8_t sprintf_token_slice_by_ref(
 );
 
 int8_t sprintf_lexicon_slice(
-    const enum Lexicon tokens[],
+    const enum onk_lexicon_t tokens[],
     uint16_t ntokens,
     char * output,
     uint16_t output_sz    
@@ -33,5 +33,5 @@ int8_t sprint_src_code(
     const struct Token *token
 );
 
-//char brace_as_char(enum Lexicon tok);
+//char brace_as_char(enum onk_lexicon_t tok);
 #endif

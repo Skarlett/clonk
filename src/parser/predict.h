@@ -20,7 +20,7 @@ enum PrevisionerModeT {
 union PrevisionerData {
   // default mode
   struct {
-    enum Lexicon *ref;
+    enum onk_lexicon_t *ref;
   } default_mode;
 
   struct {
@@ -36,7 +36,7 @@ union PrevisionerData {
 
 //TODO if top of operator stack has 0 precedense, you can push ret/if/else/import
 struct Previsioner {
-  enum Lexicon buffer[PREVISION_SZ];
+  enum onk_lexicon_t buffer[PREVISION_SZ];
   enum PrevisionerModeT mode;
   union PrevisionerData data;
 };
