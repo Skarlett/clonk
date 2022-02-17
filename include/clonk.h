@@ -4,11 +4,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+
 #include "utils/vec.h"
 
-#define VERSION "0.0.2"
-#define INCLUDE_TESTS 0 // -DINCLUDE_TESTS 1
-#define OPTIMIZE 0 // -DOPTIMIZE
+#define ONK_VERSION "0.0.2"
+#define ONK_INCLUDE_TESTS 0 // -DINCLUDE_TESTS 1
 
 
 // Macro for checking bitness (safer macros borrowed from
@@ -20,32 +20,31 @@
 #    define SYS_ARCH_PRIVATE_DEFINITION_64() 1
 #    define SYS_ARCH_PRIVATE_DEFINITION_32() 0
 #    define SYS_ARCH_IF_64_BIT_ELSE( x64, x86 ) (x64)
-#    define str_to_isize strtoll
-#    define str_to_usize strtoull
-#    define isize_sz sizeof(int64_t)
-#    define usize_sz sizeof(uint64_t)
+#    define onk_str_to_isize strtoll
+#    define onk_str_to_usize strtoull
+#    define onk_isize_sz sizeof(int64_t)
+#    define onk_usize_sz sizeof(uint64_t)
 #elif _WIN32 || __GNUC__
 #    define SYS_ARCH_PRIVATE_DEFINITION_64() 0
 #    define SYS_ARCH_PRIVATE_DEFINITION_32() 1
 #    define SYS_ARCH_IF_64_BIT_ELSE( x64, x86 ) (x86)
-#    define str_to_isize strtol
-#    define str_to_usize strtoul
-#    define isize_sz sizeof(int32_t)
-#    define usize_sz sizeof(uint32_t)
+#    define onk_str_to_isize strtol
+#    define onk_str_to_usize strtoul
+#    define onk_isize_sz sizeof(int32_t)
+#    define onk_usize_sz sizeof(uint32_t)
 #else
-#    define str_to_isize strtol
-#    define str_to_usize strtoul
-#    define isize_sz sizeof(int16_t)
-#    define usize_sz sizeof(uint16_t)
+#    define onk_str_to_isize strtol
+#    define onk_str_to_usize strtoul
+#    define onk_isize_sz sizeof(int16_t)
+#    define onk_usize_sz sizeof(uint16_t)
 #endif
 
-#define nop
+#define onk_nop
 
 /* 64kb */
 #define ONK_MAX_INPUT_FILE_SZ 65535
 
-/* end of src_code ?*/
-#define ONK_EOL 0
+#define ONK_EOF 0
 
 /* error buffer size */
 #define ONK_ERR_BUF_SZ 128
@@ -56,23 +55,19 @@
 typedef uint16_t onk_bufsz_t;
 
 #if SYS_ARCH(64)
-/* pointer sized unsigned integer*/
 typedef uint64_t usize;
-
-/* pointer sized signed integer*/
 typedef int64_t isize;
 
 #elif SYS_ARCH(86)
-/* pointer sized unsigned integer*/
 typedef uint32_t usize;
-
-/* pointer sized signed integer*/
 typedef int32_t isize;
+
+#else
+typedef uint16_t usize;
+typedef int16_t isize;
+
 #endif
 
-#include "parser/lexer/lexer.h"
-#include "parser/parser.h"
 
-//#include "parser/lexer/.h"
 
 #endif
