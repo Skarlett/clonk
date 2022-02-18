@@ -82,14 +82,14 @@ int parse(char * fp, struct Opts *opts) {
     init_block(&root, STMT_CAPACITY*2);
 
 
-    struct Token tokens[2048];
+    struct onk_token_t tokens[2048];
 
     size_t n_completed = 0;
     size_t buf_sz = 2048;
     size_t token_n = 0;
 
-    char line[buf_sz];
-    memset(line, 0, buf_sz);
+    char src_code[buf_sz];
+    memset(src_code, 0, buf_sz);
     
     if ((fd = fopen(fp, "r")) == NULL) {
         perror("Error! opening file");
@@ -99,11 +99,11 @@ int parse(char * fp, struct Opts *opts) {
     size_t n = 1;
 
     while (n > 0) {
-        fread(line, sizeof(char), buf_sz, fd);
+        fread(src_code, sizeof(char), buf_sz, fd);
 
         //calculate the index/position of the last character written to the buffer
         for (size_t i=0; buf_sz > i; i++) {
-            if (line[i] == 0) {
+            if (src_code[i] == 0) {
                 n=i;
                 break;
             }
@@ -113,18 +113,18 @@ int parse(char * fp, struct Opts *opts) {
             break;
         }
 
-        size_t ntokens = tokenize(line, tokens[token_n], ctr, error);
+        size_t ntokens = onk_tokenize(src_code, tokens[token_n], ctr, error);
         if (opts->print_tokens == 1) {
             printf("token stream: ");
             for (size_t p_i=0; ntokens > p_i; p_i++) {
-                printf("[%s(%d,%d)] ", ptoken(tokens[p_i].type), (int)tokens[p_i].start, (int)tokens[p_i].end);
+                printf("[%s(%d,%d)] ", onk_ptoken(tokens[p_i].type), (int)tokens[p_i].start, (int)tokens[p_i].end);
             }
             printf("\n\n");
         }
 
         int trap = 0;
-        assemble_ast(line, tokens, ntokens, &root, &trap);
-        memset(line, 0, buf_sz);
+        assemble_ast(src_code, tokens, ntokens, &root, &trap);
+        memset(src_code, 0, buf_sz);
         
         n_completed = 0;
     }
@@ -165,7 +165,7 @@ int parse(char * fp, struct Opts *opts) {
 
 int main(int argc, char* argv[]) {
     struct Opts opts;
-    struct Token tokens[2048];
+    struct onk_token_t tokens[2048];
     struct BlockStatement root, current;
 
     if (argc == 1) {

@@ -5,24 +5,22 @@
 #include "../src/prelude.h"
 #include "../src/parser/lexer/lexer.h"
 
-void AssertTokens(
+void onk_assert_tokens(
     CuTest *tc,
     const char *src_code,
     const char *file,
-    int line,
     const char *msg,
-    const struct Token tokens[],
-    const enum Lexicon answer[]
+    const struct onk_token_t tokens[],
+    const enum onk_lexicon_t answer[]
 );
 
-void AssertTokensByRef(
+void onk_assert_tokens_by_ref(
     CuTest *tc,
     const char *src_code,
     const char *file,
-    int line,
     const char *msg,
-    const struct Token *tokens[],
-    const enum Lexicon answer[]
+    const struct onk_token_t *tokens[],
+    const enum onk_lexicon_t answer[]
 );
 
 
@@ -34,7 +32,6 @@ void AssertTokensByRef(
  * @param tokens: tokens to check against answers 
  * @param answer: list of answers
  */
-#define AssertTokensByRef(tc, src, msg, tokens, answer) AssertTokensByRef((tc), (src), __FILE__, __LINE__, (msg), (tokens), (answer))
 
 /**
  *  Assert tokens match the type found in answer 
@@ -44,6 +41,5 @@ void AssertTokensByRef(
  * @param tokens: list of token pointers to check against answers 
  * @param answer: list of answers
  */
-#define AssertTokens(tc, src, msg, tokens, answer) AssertTokens((tc), (src), __FILE__, __LINE__, (msg), (tokens), (answer))
 
 #endif

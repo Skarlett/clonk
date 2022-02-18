@@ -1,0 +1,40 @@
+
+TODO (lexer):
+  make lexer always end with eof when finished
+TODO
+  new expr counting in blocks
+  every time the stack collapses on a non-associative operator
+  we increment the expr counter
+
+TODO (expr):
+  keyword import
+
+TODO (expr): 
+  code blocks
+
+TODO (expr):
+  eg (fig1),
+
+  (fig1)
+  if(x)
+    do_something();
+
+TODO (expr):
+  GSTATE_EMPTY doesn't not represent if expression is actually empty
+  example: (());
+
+TODO (expr):
+  Block certain keywords out of groups `should not be able to do `if(if`
+
+TODO (expr):
+  AST Unwinding
+
+TODO optimization:
+  Parser->pool 
+  
+doesn't need a new token allocated in the pool every time
+we need a marker/debug token.
+
+Instead, we could have a static array where we 
+grab the reference from, and place in the dbg/operator stack
+

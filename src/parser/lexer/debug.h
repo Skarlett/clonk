@@ -4,38 +4,34 @@
 #include "../../prelude.h"
 #include "lexer.h"
 
-const char * ptoken(enum Lexicon t);
-
-char invert_brace_char(char brace);
-
 int8_t sprintf_token_slice(
-    const struct Token tokens[],
-    usize ntokens,
+    const struct onk_token_t tokens[],
+    uint16_t ntokens,
     char * output,
-    usize output_sz    
+    uint16_t output_sz    
 );
 
 int8_t sprintf_token_slice_by_ref(
-    const struct Token *tokens[],
-    usize ntokens,
+    const struct onk_token_t *tokens[],
+    uint16_t ntokens,
     char * output,
-    usize output_sz    
+    uint16_t output_sz    
 );
 
 int8_t sprintf_lexicon_slice(
-    const enum Lexicon tokens[],
-    usize ntokens,
+    const enum onk_lexicon_t tokens[],
+    uint16_t ntokens,
     char * output,
-    usize output_sz    
+    uint16_t output_sz    
 );
 
 int8_t sprint_src_code(
     char * output,
-    usize output_sz,
-    usize *nbytes,
+    uint16_t output_sz,
+    uint16_t *nbytes,
     const char * source,
-    const struct Token *token
+    const struct onk_token_t *token
 );
 
-char brace_as_char(enum Lexicon tok);
+//char brace_as_char(enum onk_lexicon_t tok);
 #endif

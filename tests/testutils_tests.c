@@ -1,6 +1,6 @@
 #include "testutils.h"
 
-void mk_toks(struct Token token[], const enum Lexicon ty[]) {
+void mk_toks(struct onk_token_t token[], const enum onk_lexicon_t ty[]) {
   for (usize i = 0 ;; i++)
     if (ty[i] == 0)
       break;
@@ -9,27 +9,26 @@ void mk_toks(struct Token token[], const enum Lexicon ty[]) {
 }
 
 void __test__check_tokens(CuTest* tc) {
-     struct Token toks[8];
+     struct onk_token_t toks[8];
 
-     const static enum Lexicon check_list[][16] = {
-        {INTEGER, INTEGER, ADD, 0},
-        {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},
-        {INTEGER, INTEGER, DIV, INTEGER, ADD, 0},
-        {WORD, WORD, ADD, WORD, WORD, MUL, SUB, 0},
-        {INTEGER, INTEGER, MUL, INTEGER, ADD, 0},
-        {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},
+     const static enum onk_lexicon_t check_list[][16] = {
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_DIV_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_ADD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_MUL_TOKEN, ONK_SUB_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
     };
 
 
     for (uint8_t i=0; 6 > i; i++){
         mk_toks(toks, check_list[i]);
-        AssertTokens(tc, "n/a", "", toks, check_list[i]);
+        onk_assert_tokens(tc, "n/a", "", toks, check_list[i]);
     }
 }
 
 
 CuSuite* TestUtilTestSuite(void) {
 	CuSuite* suite = CuSuiteNew();
-    SUITE_ADD_TEST(suite, __test__check_tokens);
     return suite;
 }
