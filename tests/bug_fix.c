@@ -12,11 +12,11 @@
 #include "CuTest.h"
 
 void __test__bug_fix(CuTest* tc) {
-    struct Token tokens[32];
+    struct onk_token_t tokens[32];
     usize ctr = 0, ret=0;
     char msg[64];
     memset(msg, 0, sizeof(char[64]));
-    ret = tokenize("1234 - 1234", tokens, &ctr, 32, NULL);
+    ret = onk_tokenize("1234 - 1234", tokens, &ctr, 32, NULL);
     sprintf_token_slice(tokens, ret, msg, 64);
     printf("%s len: %ld\n", msg, ctr);
 }
@@ -24,7 +24,6 @@ void __test__bug_fix(CuTest* tc) {
 
 CuSuite* BugFix(void) {
 	CuSuite* suite = CuSuiteNew();
-	SUITE_ADD_TEST(suite, __test__bug_fix);
     return suite;
 }
 

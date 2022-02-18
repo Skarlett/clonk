@@ -58,7 +58,6 @@ typedef struct VMRegisters {
     
 
     // caller saves these
-    // NOTE: eax will be used as the return proceedure
     uint64_t rax;
     uint64_t rbx;
     uint64_t rcx;

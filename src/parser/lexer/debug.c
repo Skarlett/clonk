@@ -2,38 +2,38 @@
 #include <stdio.h>
 #include "lexer.h"
 
-const char * ptoken(enum onk_lexicon_t t) {
+const char * onk_ptoken(enum onk_lexicon_t t) {
     switch (t) {
-        case INTEGER: return "integer";
-        case WORD: return "word";
-        case CHAR: return "char";
-        case NULLTOKEN: return "nulltoken";
-        case WHITESPACE: return "whitespace";
-        case BRACE_OPEN: return "brace_open";
-        case BRACE_CLOSE: return "brace_close";
-        case PARAM_OPEN: return "param_open";
-        case PARAM_CLOSE: return "param_close";
-        case COMMA: return "comma";
-        case DIGIT: return "digit";
-        case D_QUOTE: return "d_quote";
+        case ONK_INTEGER_TOKEN: return "integer";
+        case ONK_WORD_TOKEN: return "word";
+        case ONK_CHAR_TOKEN: return "char";
+        case ONK_NULL_TOKEN: return "nulltoken";
+        case ONK_WHITESPACE_TOKEN: return "whitespace";
+        case ONK_BRACE_OPEN_TOKEN: return "brace_open";
+        case ONK_BRACE_CLOSE_TOKEN: return "brace_close";
+        case ONK_PARAM_OPEN_TOKEN: return "param_open";
+        case ONK_PARAM_CLOSE_TOKEN: return "param_close";
+        case ONK_COMMA_TOKEN: return "comma";
+        case ONK_DIGIT_TOKEN: return "digit";
+        case ONK_DOUBLE_QUOTE_TOKEN: return "d_quote";
         case EQUAL: return "eq";
-        case ADD: return "add";
-        case MUL: return "multiply";
-        case DIV: return "divide";
+        case ONK_ADD_TOKEN: return "add";
+        case ONK_MUL_TOKEN: return "multiply";
+        case ONK_DIV_TOKEN: return "divide";
         case GT: return "greater than";
         case LT: return "less than";
         case ISNEQL: return "is not eq";
         case ISEQL: return "is eq";
         case GTEQ: return "greater than or eq";
         case LTEQ: return "less than or eq";
-        case POW: return "exponent";
+        case ONK_POW_TOKEN: return "exponent";
         case PLUSEQ: return "plus eq";
         case MINUSEQ: return "minus eq";
-        case MOD: return "modolus";
-        case SUB: return "sub";
-        case COLON: return "colon";
-        case SEMICOLON: return "semi-colon";
-        case STRING_LITERAL: return "str_literal";
+        case ONK_MOD_TOKEN: return "modolus";
+        case ONK_SUB_TOKEN: return "sub";
+        case ONK_COLON_TOKEN: return "colon";
+        case ONK_SEMICOLON_TOKEN: return "semi-colon";
+        case ONK_STRING_LITERAL_TOKEN: return "str_literal";
         case AMPER: return "&";
         case PIPE: return "pipe";
         case AND: return "and";
@@ -44,10 +44,10 @@ const char * ptoken(enum onk_lexicon_t t) {
         case BOREQL: return "bit or eql";
         case BANDEQL: return "bit and eql";
         case BNEQL: return "bit not eql";
-        case TILDE: return "bit not";
+        case ONK_TILDE_TOKEN: return "bit not";
         case FROM: return "from";
-        case UNDERSCORE: return "underscore";
-        case NOT: return "not";
+        case ONK_UNDERSCORE_TOKEN: return "underscore";
+        case ONK_NOT_TOKEN: return "not";
         case POUND: return "pound";
 //        case STATIC: return "'static'";
 //        case CONST: return "'const'";
@@ -57,24 +57,24 @@ const char * ptoken(enum onk_lexicon_t t) {
         case FUNC_DEF: return "'def'";
         case RETURN: return "'return'";
 //        case AS: return "'as'";
-        case ATSYM: return "@";
+        case ONK_ATSYM__TOKEN: return "@";
         case IMPORT: return "'import'";
 //        case EXTERN: return "'extern'";
-        case COMMENT: return "comment";
-        case TOKEN_UNDEFINED: return "undef";
-        case DOT: return "dot";
-        default: return "PTOKEN_ERROR_UNKNOWN_TOKEN";
+        case ONK_COMMENT_TOKEN: return "comment";
+        case ONK_TOKEN_UNDEFINED: return "undef";
+        case ONK_DOT_TOKEN: return "dot";
+        default: return "ONK_PTOKEN_ERROR_UNKNOWN_TOKEN";
     };
 }
 
 /* char brace_as_char(enum onk_lexicon_t tok) { */
 /*     switch(tok){ */
-/*         case BRACE_OPEN: return '{'; */
-/*         case BRACE_CLOSE: return '}'; */
-/*         case PARAM_OPEN: return '('; */
-/*         case PARAM_CLOSE: return ')'; */
-/*         case BRACKET_OPEN: return '['; */
-/*         case BRACKET_CLOSE: return ']'; */
+/*         case ONK_BRACE_OPEN_TOKEN: return '{'; */
+/*         case ONK_BRACE_CLOSE_TOKEN: return '}'; */
+/*         case ONK_PARAM_OPEN_TOKEN: return '('; */
+/*         case ONK_PARAM_CLOSE_TOKEN: return ')'; */
+/*         case ONK_BRACKET_OPEN_TOKEN: return '['; */
+/*         case ONK_BRACKET_CLOSE_TOKEN: return ']'; */
 /*         default: */
 /*             return -1; */
 /*     } */
@@ -102,7 +102,7 @@ char * __sprintf_token_ty_slice(char *output, uint16_t output_sz, enum onk_lexic
     if (!ctr || !output)
         return 0;
     
-    ptok = ptoken(token);
+    ptok = onk_ptoken(token);
     sprintf(token_buf, "[%s], ", ptok);
     
     return strncat(output, token_buf, strlen(ptok)+4);
@@ -117,8 +117,8 @@ enum SPFMode {
 
 union SPFData {
     const enum onk_lexicon_t *lex_arr;
-    const struct Token *tok_arr;
-    const struct Token **tok_arr_by_ref;
+    const struct onk_token_t *tok_arr;
+    const struct onk_token_t **tok_arr_by_ref;
 };
 
 char * __sprintf_inner(
@@ -160,7 +160,7 @@ char * __sprintf_inner(
 
 
 int8_t sprintf_token_slice(
-    const struct Token tokens[],
+    const struct onk_token_t tokens[],
     uint16_t ntokens,
     char * output,
     uint16_t output_sz    
@@ -194,7 +194,7 @@ int8_t sprintf_lexicon_slice(
 }
 
 int8_t sprintf_token_slice_by_ref(
-    const struct Token *tokens[],
+    const struct onk_token_t *tokens[],
     uint16_t ntokens,
     char * output,
     uint16_t output_sz    
@@ -214,7 +214,7 @@ int8_t sprint_src_code(
     uint16_t output_sz,
     uint16_t *nbytes,
     const char * source,
-    const struct Token *token
+    const struct onk_token_t *token
 
 ){
     if (!source || !output || !token 

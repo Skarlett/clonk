@@ -17,13 +17,13 @@ int8_t is_continuable(enum onk_lexicon_t tok) {
         _EX_DELIM,  
         0
     };
-    return eq_any_tok(tok, __BREAK_POINTS_START);    
+    return onk_eq_any_tok(tok, __BREAK_POINTS_START);    
 }
 
 
 void throw_unexpected_token(
   struct Parser *state,
-  const struct Token *start,
+  const struct onk_token_t *start,
   const enum onk_lexicon_t expected[],
   uint16_t nexpected
 ){
@@ -54,28 +54,28 @@ const struct RestorationFrame * restoration_head(const struct Parser *state) {
 **
 */
 bool run_hook(enum onk_lexicon_t current){
-    return is_delimiter(current)
-        || is_open_brace(current)
-        || is_close_brace(current);
+    return onk_is_tok_delimiter(current)
+        || onk_is_tok_open_brace(current)
+        || onk_is_tok_close_brace(current);
 }
 
 
 void restoration_hook(struct Parser *state)
 {
     struct RestorationFrame rframe;
-    const struct Token *current = &state->src[*state->_i];
+    const struct onk_token_t *current = &state->src[*state->_i];
 
     if (run_hook(current->type))
     {
         /* pop last delimiter restore point  */
-        if (is_delimiter(current->type))
+        if (onk_is_tok_delimiter(current->type))
             state->restoration_ctr -= 1;
 
         /* pop last delimiter & open brace */
-        else if (is_close_brace(current->type))
+        else if (onk_is_tok_close_brace(current->type))
             state->restoration_ctr -= 2;
 
-        /* debug = Vec<struct Token*> */
+        /* debug = Vec<struct onk_token_t*> */
         rframe.operator_stack_tok = state->operator_stack[state->operators_ctr];
         rframe.output_tok = vec_head(&state->debug);
         rframe.current = &state->src[*state->_i];
@@ -108,7 +108,7 @@ uint16_t recover_cursor(
 //      marked as their sequence
 void unwind_stacks(struct Parser *state)
 {
-    const struct Token *token;
+    const struct onk_token_t *token;
     const struct RestorationFrame *rframe;
     struct Group *grp;
     uint16_t head = 0;
@@ -155,8 +155,8 @@ void unwind_stacks(struct Parser *state)
 
 void mk_window_union(
     struct ParserError *err,
-    struct Token start,
-    struct Token end
+    struct onk_token_t start,
+    struct onk_token_t end
 ){
     err->window.type = Union;
     err->window.token.union_t.start = start;
@@ -165,7 +165,7 @@ void mk_window_union(
 
 void mk_window_scalar(
     struct ParserError *err,
-    struct Token token
+    struct onk_token_t token
 ){
     err->window.type = Scalar;
     err->window.token.scalar_t = token;
@@ -174,7 +174,7 @@ void mk_window_scalar(
 int8_t mk_window(
     struct ParserError *err,
     struct Parser *state,
-    const struct Token *start,
+    const struct onk_token_t *start,
     uint16_t ctr)
 {
 
@@ -219,7 +219,7 @@ int8_t handle_unwind(
     struct Parser *state,
     bool preloop
 ){
-    const struct Token *start;
+    const struct onk_token_t *start;
     struct PartialError *perr;
     struct ParserError err;
 

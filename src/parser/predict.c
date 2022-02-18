@@ -12,34 +12,33 @@
 /* TODO: `IF`, `WHILE` signatures cannot */
 /*       contain delimiters, or keywords */
 /* TODO: ensure the following constrains on struct init */
-/*      WORD { WORD=[expr], } */
+/*      ONK_WORD_TOKEN { ONK_WORD_TOKEN=[expr], } */
 /* TODO: ensure the correct delimiter */
 /*      is choosen for the current group */
 /* TODO: allow for `{x;;}` but not `[x,,]` */
 /* TODO: ensure when `ELSE` can be used */
 /* TODO: limit delimiters in index access 3 >= */
-/* TODO: import paths only accept WORD/DOT until delim */
+/* TODO: import paths only accept ONK_WORD_TOKEN/ONK_DOT_TOKEN until delim */
 /* TODO: figure out if you can declare a new variable */
 
-/* NOTE: DOT token is excluded here because */
 /* because it can't be applied to integers */
 /* unlike the other operators which can be applied */
 /* to groupings, words & integers */
 
 #define _EX_BIN_OPERATOR                 \
-    ADD, MUL, SUB, DIV, POW, MOD,        \
+    ONK_ADD_TOKEN, ONK_MUL_TOKEN, ONK_SUB_TOKEN, ONK_DIV_TOKEN, ONK_POW_TOKEN, ONK_MOD_TOKEN,        \
     PIPE, AMPER, OR, AND,                \
     LT, LTEQ, SHL,                       \
     GT, GTEQ, SHR                        \
     //MINUSEQ, PLUSEQ
-    // TILDE, NOT
+    // ONK_TILDE_TOKEN, ONK_NOT_TOKEN
 #define _EX_BIN_OPERATOR_LEN 16
 
 
-#define _EX_UNARY_OPERATOR TILDE, NOT
+#define _EX_UNARY_OPERATOR ONK_TILDE_TOKEN, ONK_NOT_TOKEN
 #define _EX_UNARY_OPERATOR_LEN 2
 
-#define _EX_DELIM COMMA, COLON, SEMICOLON
+#define _EX_DELIM ONK_COMMA_TOKEN, ONK_COLON_TOKEN, ONK_SEMICOLON_TOKEN
 #define _EX_DELIM_LEN 3
 
 #define _EX_ASN_OPERATOR \
@@ -47,11 +46,11 @@
     BANDEQL, BOREQL, BNEQL
 #define _EX_ASN_OPERATOR_LEN 6
 
-#define _EX_OPEN_BRACE PARAM_OPEN, BRACE_OPEN, BRACKET_OPEN
-#define _EX_CLOSE_BRACE PARAM_CLOSE, BRACE_CLOSE, BRACKET_CLOSE
+#define _EX_OPEN_BRACE ONK_PARAM_OPEN_TOKEN, ONK_BRACE_OPEN_TOKEN, ONK_BRACKET_OPEN_TOKEN
+#define _EX_CLOSE_BRACE ONK_PARAM_CLOSE_TOKEN, ONK_BRACE_CLOSE_TOKEN, ONK_BRACKET_CLOSE_TOKEN
 #define _EX_BRACE_LEN 3
 
-#define _EX_DATA STRING_LITERAL, WORD, INTEGER, NULL_KEYWORD
+#define _EX_DATA ONK_STRING_LITERAL_TOKEN, ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, ONK_KEYWORD_TOKEN
 #define _EX_DATA_LEN 3
 
 #define _EX_EXPR_LIMITED                        \
@@ -70,15 +69,14 @@
   _EX_EXPR_LIMITED_LEN                           \
   + _EX_BRACE_LEN
 
-/* NOTE:
  * ELSE is not included,
  * because it needs special checks
 */
-#define _EX_KEYWORD                             \
+#define _EX_KEYONK_WORD_TOKEN                             \
     IF, FUNC_DEF, FROM,                         \
     IMPORT, STRUCT, FOR, WHILE, RETURN
 
-#define _EX_KEYWORD_LEN 8
+#define _EX_KEYONK_WORD_TOKEN_LEN 8
 
 #define _PV_DEFAULT _EX_EXPR
 #define _PV_DEFAULT_LEN _EX_EXPR_LEN
@@ -95,29 +93,29 @@
 
 const enum onk_lexicon_t PV_INT[] = {_PV_INT};
 
-#define _PV_WORD                                \
+#define _PV_ONK_WORD_TOKEN                                \
   _EX_BIN_OPERATOR,                             \
   _EX_ASN_OPERATOR,                             \
   _EX_CLOSE_BRACE,                              \
-  PARAM_OPEN,                                   \
-  BRACKET_OPEN,                                 \
-  DOT
+  ONK_PARAM_OPEN_TOKEN,                                   \
+  ONK_BRACKET_OPEN_TOKEN,                                 \
+  ONK_DOT_TOKEN
 //  _EX_DELIM,
 
-#define PV_WORD_LEN                             \
+#define PV_ONK_WORD_TOKEN_LEN                             \
   _EX_BIN_OPERATOR_LEN                          \
   + _EX_ASN_OPERATOR_LEN                        \
   + _EX_BRACE_LEN                               \
   + 3
 //  + _EX_LEN_DELIM                               \
 
-const enum onk_lexicon_t PV_WORD[] = {_PV_WORD};
+const enum onk_lexicon_t PV_ONK_WORD_TOKEN[] = {_PV_ONK_WORD_TOKEN};
 
 #define _PV_STR                                 \
   _EX_BIN_OPERATOR,                             \
   _EX_CLOSE_BRACE,                              \
-  BRACKET_OPEN,                                 \
-  DOT
+  ONK_BRACKET_OPEN_TOKEN,                                 \
+  ONK_DOT_TOKEN
 //  _EX_DELIM,                                    \
 
 #define PV_STR_LEN                             \
@@ -128,15 +126,15 @@ const enum onk_lexicon_t PV_WORD[] = {_PV_WORD};
 const enum onk_lexicon_t PV_STR[] = {_PV_STR};
 
 //
-#define _PV_DOT WORD
-#define _PV_DOT_LEN 1
+#define _PV_ONK_DOT_TOKEN ONK_WORD_TOKEN
+#define _PV_ONK_DOT_TOKEN_LEN 1
 
 #define _PV_CLOSE_PARAM                         \
   _EX_BIN_OPERATOR,                             \
   _EX_CLOSE_BRACE,                              \
-  DOT,                                          \
-  BRACKET_OPEN,                                 \
-  PARAM_OPEN
+  ONK_DOT_TOKEN,                                          \
+  ONK_BRACKET_OPEN_TOKEN,                                 \
+  ONK_PARAM_OPEN_TOKEN
 //  _EX_DELIM,
 
 const enum onk_lexicon_t PV_CLOSE_BRACE[] = {_PV_CLOSE_PARAM};
@@ -164,7 +162,7 @@ int8_t fill_buffer(
 
   enum PrevisionerModeT mode = default_mode_t;
 
-  if(is_operator(current) || is_delimiter(current) || current == IN)
+  if(onk_is_tok_operator(current) || onk_is_tok_delimiter(current) || current == IN)
   {
     selected = (enum onk_lexicon_t *)PV_DEFAULT;
     nitems = _EX_EXPR_LEN;
@@ -175,7 +173,7 @@ int8_t fill_buffer(
     || current == FOR
     || current == WHILE)
   {
-    small[0] = PARAM_OPEN;
+    small[0] = ONK_PARAM_OPEN_TOKEN;
     nitems = 1;
   }
 
@@ -184,17 +182,17 @@ int8_t fill_buffer(
     || current == IMPL
     || current == FOR)
   {
-    small[0] = WORD;
+    small[0] = ONK_WORD_TOKEN;
     nitems = 1;
   }
 
   else if(current == FROM )
   {
-    small[0] = FROM_LOCATION;
+    small[0] = ONK_FROM_LOCATION_TOKEN;
     nitems = 1;
   }
 
-  else if (is_open_brace(current))
+  else if (onk_is_tok_open_brace(current))
   {
 
     /* add opposite brace type to expectation */
@@ -207,7 +205,7 @@ int8_t fill_buffer(
 
   }
   /* any open brace */
-  else if (is_close_brace(current))
+  else if (onk_is_tok_close_brace(current))
   {
     allow_delim = 1;
     selected = (enum onk_lexicon_t *)PV_CLOSE_BRACE;
@@ -216,32 +214,32 @@ int8_t fill_buffer(
 
   else switch (current)
   {
-    case WORD:
+    case ONK_WORD_TOKEN:
       allow_delim = 1;
-      nitems = PV_WORD_LEN;
-      selected =  (enum onk_lexicon_t *)PV_WORD;
+      nitems = PV_ONK_WORD_TOKEN_LEN;
+      selected =  (enum onk_lexicon_t *)PV_ONK_WORD_TOKEN;
       break;
 
-    case INTEGER:
+    case ONK_INTEGER_TOKEN:
       allow_delim = 1;
       nitems = PV_INT_LEN;
       selected = (enum onk_lexicon_t *)PV_INT;
       break;
 
-    case STRING_LITERAL:
+    case ONK_STRING_LITERAL_TOKEN:
       allow_delim = 1;
       nitems = PV_STR_LEN;
       selected = (enum onk_lexicon_t *)PV_STR;
       break;
 
-    case DOT:
+    case ONK_DOT_TOKEN:
       nitems = 1;
-      small[0] = WORD;
+      small[0] = ONK_WORD_TOKEN;
       break;
 
     case FUNC_DEF:
       nitems = 1;
-      small[0] = WORD;
+      small[0] = ONK_WORD_TOKEN;
       break;
 
     case IMPORT:
@@ -308,7 +306,7 @@ bool can_use_else(enum onk_lexicon_t output_head){
 void place_delimiter(struct Parser *state)
 {
   struct Group *ghead = group_head(state);
-  const struct Token *gmod = group_modifier(state, ghead);
+  const struct onk_token_t *gmod = group_modifier(state, ghead);
   struct Previsioner *previsioner = &state->expecting;
   enum onk_lexicon_t *buf = previsioner->buffer;
 
@@ -321,46 +319,46 @@ void place_delimiter(struct Parser *state)
   else if(ghead->type == _IdxAccess && ghead->delimiter_cnt > 2)
      return; // give ] or expr
 
-  else if (ghead->type == PartialBrace)
+  else if (ghead->type == onk_partial_brace_group_token)
   {
-    previsioner->buffer[previsioner->buf_ctr] = SEMICOLON;
-    previsioner->buffer[previsioner->buf_ctr + 1] = COLON;
+    previsioner->buffer[previsioner->buf_ctr] = ONK_SEMICOLON_TOKEN;
+    previsioner->buffer[previsioner->buf_ctr + 1] = ONK_COLON_TOKEN;
     previsioner->buf_ctr += 2;
     return;
   }
 
-  if (ghead->type == ListGroup
-      || ghead->type == StructGroup
-      || ghead->type == TupleGroup)
-      previsioner->buffer[previsioner->buf_ctr] = COMMA;
+  if (ghead->type == onk_list_group_token
+      || ghead->type == onk_struct_group_token
+      || ghead->type == onk_tuple_group_token)
+      previsioner->buffer[previsioner->buf_ctr] = ONK_COMMA_TOKEN;
 
-  else if (ghead->type == MapGroup)
+  else if (ghead->type == onk_map_group_token)
   {
     if(ghead->delimiter_cnt % 2 == 0)
-       previsioner->buffer[previsioner->buf_ctr] = COLON;
+       previsioner->buffer[previsioner->buf_ctr] = ONK_COLON_TOKEN;
     else
-       previsioner->buffer[previsioner->buf_ctr] = COMMA;
+       previsioner->buffer[previsioner->buf_ctr] = ONK_COMMA_TOKEN;
   }
 
-  else if (ghead->type == CodeBlock)
-    previsioner->buffer[previsioner->buf_ctr] = SEMICOLON;
+  else if (ghead->type == onk_code_group_token)
+    previsioner->buffer[previsioner->buf_ctr] = ONK_SEMICOLON_TOKEN;
 
-  else if(ghead->type == IndexGroup)
-    previsioner->buffer[previsioner->buf_ctr] = COLON;
+  else if(ghead->type == onk_idx_group_token)
+    previsioner->buffer[previsioner->buf_ctr] = ONK_COLON_TOKEN;
 
   previsioner->buf_ctr += 1;
 }
 
 //TODO probably deserves its own mode
 /* static enum onk_lexicon_t _PV_if[] = { */
-/*   PARAM_OPEN, */
+/*   ONK_PARAM_OPEN_TOKEN, */
 /*   0 */
 /* } */;
 
 /* #define _PV_if_len 2 */
 
-//#define _PV_KEYWORD _EX_KEYWORD
-//#define _PV_KEYWORD_LEN _EX_KEYWORD_LEN
+//#define _PV_KEYONK_WORD_TOKEN _EX_KEYONK_WORD_TOKEN
+//#define _PV_KEYONK_WORD_TOKEN_LEN _EX_KEYONK_WORD_TOKEN_LEN
 
 /*
  * Write `_EX_EXPR` into state->expecting
@@ -377,13 +375,13 @@ void init_expect_buffer(struct Previsioner *state)
 bool can_use_keywords(struct Parser *state)
 {
   struct Group *ghead = group_head(state);
-  const struct Token *gmod = group_modifier(state, ghead);
-  const struct Token *ophead = ophead(state);
+  const struct onk_token_t *gmod = group_modifier(state, ghead);
+  const struct onk_token_t *ophead = ophead(state);
 
-  if(!is_open_brace(ophead->type))
+  if(!onk_is_tok_open_brace(ophead->type))
     return false;
 
-  else if(ghead->operator_idx > 0 && is_group_modifier(gmod->type))
+  else if(ghead->operator_idx > 0 && onk_is_tok_group_modifier(gmod->type))
     return false;
 
   return true;
@@ -430,17 +428,17 @@ enum ModeResult mode_func_def(enum onk_lexicon_t current, struct Previsioner *st
   switch(state->data.fndef_mode.ctr)
   {
     case 0:
-      return current == WORD;
+      return current == ONK_WORD_TOKEN;
     case 1:
-      return current == PARAM_OPEN;
+      return current == ONK_PARAM_OPEN_TOKEN;
     default:
       mod = state->data.fndef_mode.ctr % 2;
 
-      if (current == PARAM_CLOSE)
+      if (current == ONK_PARAM_CLOSE_TOKEN)
         return _MRComplete;
       
-      return (current == WORD && mod) 
-        || (current == COMMA && !mod);
+      return (current == ONK_WORD_TOKEN && mod) 
+        || (current == ONK_COMMA_TOKEN && !mod);
   }
 
   return ret;
@@ -454,32 +452,32 @@ enum ModeResult mode_import(enum onk_lexicon_t current,  struct Previsioner *sta
     return 1;
   }
     
-  else if (current == WORD)
+  else if (current == ONK_WORD_TOKEN)
   {
     memcpy(state->buffer, _PV_import_word, _PV_import_word_len);
     return 1;
   }
   
-  else if(current == DOT || current == COMMA) {
-    state->buffer[0] = WORD;
+  else if(current == ONK_DOT_TOKEN || current == ONK_COMMA_TOKEN) {
+    state->buffer[0] = ONK_WORD_TOKEN;
     state->buffer[1] = 0;
   }
 
-  else if(current == SEMICOLON)
+  else if(current == ONK_SEMICOLON_TOKEN)
     return 2;
 
   else return -1;
   return -1;
 }
 
-int8_t mode_default(enum onk_lexicon_t current, enum Lexicon grp_delim, struct Previsioner *expecting)
+int8_t mode_default(enum onk_lexicon_t current, enum onk_lexicon_t grp_delim, struct Previsioner *expecting)
 {
   /* check previous expecting buffer */
-  if (!eq_any_tok(current, expecting->data.default_mode.selected))
+  if (!onk_eq_any_tok(current, expecting->data.default_mode.selected))
     return -1;
 
   /* if current is delimiter, is correct delimiter? */
-  else if(is_delimiter(current) && grp_delim != current)
+  else if(onk_is_tok_delimiter(current) && grp_delim != current)
     return -1;
   
   return 0;
@@ -488,7 +486,7 @@ int8_t mode_default(enum onk_lexicon_t current, enum Lexicon grp_delim, struct P
 
 int8_t is_token_unexpected(struct Parser *state)
 {
-  struct Token *current = &state->src[*state->_i];
+  struct onk_token_t *current = &state->src[*state->_i];
   struct Group *ghead = 0;
   int8_t mode_ret = 0;
   enum onk_lexicon_t delim = 0;
@@ -516,7 +514,7 @@ int8_t is_token_unexpected(struct Parser *state)
   }
   /* expecting buffers contain all delimiters,
   * so we may check any */
-  //else if(!eq_any_tok(SEMICOLON, state->expecting.exp_selected))
+  //else if(!onk_eq_any_tok(ONK_SEMICOLON_TOKEN, state->expecting.exp_selected))
     /* incomplete expression, must get another token */
    // state->panic_flags |= STATE_INCOMPLETE;
   //else 

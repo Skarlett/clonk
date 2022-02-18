@@ -14,6 +14,5 @@ void __test__swap_expr(CuTest* tc) {
 
 CuSuite* SwapTestSuite(void) {
 	CuSuite* suite = CuSuiteNew();
-    //SUITE_ADD_TEST(suite, __test__index_operation);
     return suite;
 }

@@ -8,14 +8,14 @@
 
 #define FMT_STR "%s\nexpected: \n%s\ngot: \n%s\nsrc: \"%s\""
 
-int8_t inner_balance(enum onk_lexicon_t tokens[], uint16_t *tokens_ctr, enum Lexicon current) {
+int8_t inner_balance(enum onk_lexicon_t tokens[], uint16_t *tokens_ctr, enum onk_lexicon_t current) {
     //TODO: check for int overflow & buffer
     enum onk_lexicon_t inverted;
 
-    if (is_close_brace(current))
+    if (onk_is_tok_close_brace(current))
     {
         inverted = invert_brace_tok_ty(current);
-        if (inverted == TOKEN_UNDEFINED)
+        if (inverted == ONK_TOKEN_UNDEFINED)
           return -1;
 
        /*
@@ -29,7 +29,7 @@ int8_t inner_balance(enum onk_lexicon_t tokens[], uint16_t *tokens_ctr, enum Lex
           *tokens_ctr -= 1;
     }
 
-    else if (is_open_brace(current)) {
+    else if (onk_is_tok_open_brace(current)) {
         if (*tokens_ctr >= BRACE_BUFFER_SZ) {
             return -1;
         }
@@ -46,7 +46,7 @@ int8_t inner_balance(enum onk_lexicon_t tokens[], uint16_t *tokens_ctr, enum Lex
  *  an expression can be unbalanced
  *  if there is a nonmatching `[` / `(` / `{` character
 */
-bool is_balanced(struct Token tokens[], uint16_t ntokens) {
+bool is_balanced(struct onk_token_t tokens[], uint16_t ntokens) {
     enum onk_lexicon_t braces[BRACE_BUFFER_SZ];
     uint16_t braces_ctr = 0;
     int8_t ret;
@@ -80,7 +80,7 @@ bool is_balanced(struct Token tokens[], uint16_t ntokens) {
  *
  * @return bool
  */
-//bool is_balanced(struct Token tokens[], uint16_t ntokens);
+//bool is_balanced(struct onk_token_t tokens[], uint16_t ntokens);
 
 
 /**
@@ -91,7 +91,7 @@ bool is_balanced(struct Token tokens[], uint16_t ntokens) {
  *
  * @return bool
  */
-//bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens);
+//bool is_balanced_by_ref(struct onk_token_t *tokens[], uint16_t ntokens);
 
 
 
@@ -100,7 +100,7 @@ bool is_balanced(struct Token tokens[], uint16_t ntokens) {
     an expression can be unbalanced
     if there is a nonmatching `[` / `(` / `{` character
 */
-bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
+bool is_balanced_by_ref(struct onk_token_t *tokens[], uint16_t ntokens) {
     enum onk_lexicon_t braces[BRACE_BUFFER_SZ];
     uint16_t braces_ctr = 0;
 
@@ -120,7 +120,7 @@ bool is_balanced_by_ref(struct Token *tokens[], uint16_t ntokens) {
 }
 
 bool seq_eql_ty(
-    const struct Token tokens[],
+    const struct onk_token_t tokens[],
     const enum onk_lexicon_t lexicon[]
 ){
     for (usize i=0 ;; i++) {
@@ -134,7 +134,7 @@ bool seq_eql_ty(
 }
 
 bool seq_eql_ty_by_ref(
-    const struct Token *tokens[],
+    const struct onk_token_t *tokens[],
     const enum onk_lexicon_t lexicon[]
 ){
     for (usize i=0 ;; i++) {
@@ -146,12 +146,12 @@ bool seq_eql_ty_by_ref(
     return true;
 }
 
-void AssertTokens(
+void onk_assert_tokens(
     CuTest *tc,
     const char *source_code,
     const char *file,
     const char *msg,
-    const struct Token tokens[],
+    const struct onk_token_t tokens[],
     const enum onk_lexicon_t answer[]
 ){
     char uneql_msg[2048];
@@ -174,12 +174,12 @@ void AssertTokens(
 
 }
 
-void AssertTokensByRef(
+void onk_assert_tokens_by_ref(
     CuTest *tc,
     const char *source_code,
     const char *file,
     const char *msg,
-    const struct Token *tokens[],
+    const struct onk_token_t *tokens[],
     const enum onk_lexicon_t answer[]
 ){
     char uneql_msg[2048];

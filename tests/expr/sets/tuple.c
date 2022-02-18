@@ -1,6 +1,6 @@
 
 void __test__tuple_collection(CuTest* tc) {
-    struct Token tokens[32];
+    struct onk_token_t tokens[32];
     struct Parser state;
     struct Expr *ret;
 
@@ -19,14 +19,14 @@ void __test__tuple_collection(CuTest* tc) {
     };
 
     static enum onk_lexicon_t check_list[][8] = {
-        {TupleGroup, 0},
-        {INTEGER, 0},
-        {INTEGER, INTEGER, ADD, 0},
-        {INTEGER, INTEGER, TupleGroup, 0},
-        {INTEGER, INTEGER, INTEGER, TupleGroup, TupleGroup, 0},
-        {INTEGER, INTEGER,  TupleGroup, INTEGER, TupleGroup, 0},
-        {INTEGER, INTEGER, INTEGER, TupleGroup, 0},
-        {INTEGER, INTEGER, INTEGER, TupleGroup, 0},
+        {onk_tuple_group_token, 0},
+        {ONK_INTEGER_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, onk_tuple_group_token, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, onk_tuple_group_token, onk_tuple_group_token, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN,  onk_tuple_group_token, ONK_INTEGER_TOKEN, onk_tuple_group_token, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, onk_tuple_group_token, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, onk_tuple_group_token, 0},
         0
     };
 }

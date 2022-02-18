@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void insert(struct Parser *state, const struct Token *tok);
-const struct Token * new_token(struct Parser *state, struct Token *tok);
+void insert(struct Parser *state, const struct onk_token_t *tok);
+const struct onk_token_t * new_token(struct Parser *state, struct onk_token_t *tok);
 void insert_new(
   enum onk_lexicon_t type,
   uint16_t start,
@@ -13,14 +13,14 @@ void insert_new(
   struct Parser *state
 );
 
-const struct Token * current_token(const struct Parser *state);
-const struct Token * prev_token(const struct Parser *state) ;
-const struct Token * next_token(const struct Parser *state);
-const struct Token * op_head(const struct Parser *state);
-const struct Token * op_push(enum onk_lexicon_t op, uint16_t start, uint16_t end, struct Parser *state);
-const struct Token * output_head(const struct Parser *state);
+const struct onk_token_t * current_token(const struct Parser *state);
+const struct onk_token_t * prev_token(const struct Parser *state) ;
+const struct onk_token_t * next_token(const struct Parser *state);
+const struct onk_token_t * op_head(const struct Parser *state);
+const struct onk_token_t * op_push(enum onk_lexicon_t op, uint16_t start, uint16_t end, struct Parser *state);
+const struct onk_token_t * output_head(const struct Parser *state);
 struct Group * group_head(struct Parser *state);
-struct Group * new_grp(struct Parser *state, const struct Token * origin);
+struct Group * new_grp(struct Parser *state, const struct onk_token_t * origin);
 
 /*create token in pool, and push to output*/
 void push_output(
@@ -29,7 +29,7 @@ void push_output(
   uint16_t argc
 );
 
-const struct Token * group_modifier(
+const struct onk_token_t * group_modifier(
   const struct Parser *state,
   const struct Group *group
 );
@@ -47,22 +47,22 @@ int8_t finish_idx_access(struct Parser *state);
 
 int8_t push_many_ops(
     const enum onk_lexicon_t *ops,
-    const struct Token *origin,
+    const struct onk_token_t *origin,
     struct Parser *state
 );
 
 
 int8_t is_short_blockable(enum onk_lexicon_t tok);
-bool is_unit(enum onk_lexicon_t tok);
+bool onk_is_tok_unit(enum onk_lexicon_t tok);
 
 enum Operation operation_from_token(enum onk_lexicon_t t);
 //int8_t mk_error(struct Parser *state, enum ErrorT type, const char * msg);
 
 int8_t throw_internal_error(struct Parser *state, const char * meta, const char * msg);
 
-bool is_index_pattern(const struct Token *prev);
+bool is_index_pattern(const struct onk_token_t *prev);
 
-bool is_fncall_pattern(const struct Token *prev);
+bool is_fncall_pattern(const struct onk_token_t *prev);
 
 int8_t init_parser(
   struct Parser *state,

@@ -93,7 +93,6 @@ const void * vec_head(const struct Vec *vec)
 ** if `dest` is equal to 0,
 ** no copy is performed.
 **
-** NOTE: does not zero out data
 */
 int8_t vec_pop(struct Vec *vec, void * dest) {
     const void *head = vec_head(vec);
@@ -110,7 +109,6 @@ int8_t vec_pop(struct Vec *vec, void * dest) {
 /*
 ** clears expandable buffer.
 **
-** NOTE: does not zero out data.
 ** returns -1 if vector not initalized
  */
 int8_t vec_clear(struct Vec *vec) {

@@ -1,6 +1,6 @@
 
 void __test__map_collection(CuTest* tc) {
-    struct Token tokens[32];
+    struct onk_token_t tokens[32];
     struct Parser state;
     struct Expr *ret;
 

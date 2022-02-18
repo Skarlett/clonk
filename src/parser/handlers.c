@@ -9,11 +9,11 @@
 enum onk_lexicon_t grp_dbg_sym(enum Group_t type)
 {
   switch (type) {
-    case ListT: return ListGroup;
-    case MapT: return MapGroup;
-    case CodeBlockT: return CodeBlock;
-    case TupleT: return TupleGroup;
-    default: return TOKEN_UNDEFINED;
+    case ListT: return onk_list_group_token;
+    case MapT: return onk_map_group_token;
+    case onk_code_group_tokenT: return onk_code_group_token;
+    case TupleT: return onk_tuple_group_token;
+    default: return ONK_TOKEN_UNDEFINED;
   };
 }
 
@@ -21,13 +21,13 @@ enum onk_lexicon_t grp_dbg_sym(enum Group_t type)
 /*
   returns the amount of arguments it pops from the stack
 */
-int8_t argc_map(struct Token *tok)
+int8_t argc_map(struct onk_token_t *tok)
 {
 
   if (is_group(tok->type))
     return tok->end;
   
-  if (is_operator(tok->type))
+  if (onk_is_tok_operator(tok->type))
     return 2;
 
   switch (tok->type) {
@@ -36,7 +36,7 @@ int8_t argc_map(struct Token *tok)
     case IfCond: return 1;
     case IfBody: return 2;
     case Apply: return 2;
-    case NOT: return 1;
+    case ONK_NOT_TOKEN: return 1;
     case BitNot: return 1;
     case _IdxAccess: return 4;
     case IMPORT: return 1;
@@ -62,13 +62,13 @@ void mk_null(struct Expr *ex) {
 */
 int8_t mk_int(
   struct Expr *ex,
-  const struct Token *int_tok,
+  const struct onk_token_t *int_tok,
   const char * src_code
 ){
   char * _; 
   ex->type = LiteralExprT;
   ex->datatype = DT_IntT;
-  memcpy(&ex->origin, int_tok, sizeof(struct Token));
+  memcpy(&ex->origin, int_tok, sizeof(struct onk_token_t));
   errno = 0;
 
   ex->inner.value.literal.integer =
@@ -84,12 +84,12 @@ int8_t mk_int(
 */
 int8_t mk_symbol(
   struct Expr *ex,
-  struct Token *word_tok,
+  struct onk_token_t *word_tok,
   const char * src_code
 ){
   uint8_t size = word_tok->end - word_tok->start;
    
-  memcpy(&ex->origin, word_tok, sizeof(struct Token));
+  memcpy(&ex->origin, word_tok, sizeof(struct onk_token_t));
   ex->type = SymExprT;
   ex->datatype = DT_UndefT;
   ex->inner.symbol = calloc(1, size+1);
@@ -110,7 +110,7 @@ int8_t mk_symbol(
 */
 int8_t mk_str(
   struct Expr *ex,
-  struct Token *str_token,
+  struct onk_token_t *str_token,
   const char * src_code
 ){
   char * str;
@@ -118,7 +118,7 @@ int8_t mk_str(
 
   ex->type = LiteralExprT;
   ex->datatype = DT_StringT;
-  memcpy(&ex->origin, str_token, sizeof(struct Token));
+  memcpy(&ex->origin, str_token, sizeof(struct onk_token_t));
 
   str = malloc(size+1);
   assert(str != 0);
@@ -137,11 +137,11 @@ int8_t mk_str(
 
 enum Group_t get_group_t_from_tok(enum onk_lexicon_t tok) {
   switch (tok) {
-    case TupleGroup: return MapT;
-    case ListGroup: return ListT;
-    case MapGroup: return MapT;
+    case onk_tuple_group_token: return MapT;
+    case onk_list_group_token: return ListT;
+    case onk_map_group_token: return MapT;
     case SetGroup: return SetT;
-    case CodeBlock: return CodeBlockT;
+    case onk_code_group_token: return onk_code_group_tokenT;
     default: return GroupTUndef;
   }
 }
@@ -149,7 +149,7 @@ enum Group_t get_group_t_from_tok(enum onk_lexicon_t tok) {
 int8_t mk_group(
   struct Expr *ex,
   struct PostfixStageState *state,
-  struct Token *group_tok,
+  struct onk_token_t *group_tok,
   uint16_t argc
 ){
   struct Expr **buf = 0;
@@ -161,7 +161,7 @@ int8_t mk_group(
   ex->inner.grp.ptr = 0;
   ex->inner.grp.length = argc;
 
-  memcpy(&ex->origin, group_tok, sizeof(struct Token));  
+  memcpy(&ex->origin, group_tok, sizeof(struct onk_token_t));  
   
   if (argc > 0 && state->stack_ctr > argc)
   {
@@ -186,12 +186,12 @@ int8_t mk_group(
 
 int8_t mk_binop(
   struct Expr *ex,
-  struct Token *operator,
+  struct onk_token_t *operator,
   struct PostfixStageState *state
 ){ 
   assert(state->stack_ctr > 0);
   
-  memcpy(&ex->origin, operator, sizeof(struct Token));
+  memcpy(&ex->origin, operator, sizeof(struct onk_token_t));
   
   ex->type = BinaryExprT;
   ex->inner.bin.lhs = 
@@ -212,16 +212,16 @@ int8_t mk_binop(
 
 bool is_unary(enum onk_lexicon_t tok)
 {
-  return tok == TILDE || tok == NOT;
+  return tok == ONK_TILDE_TOKEN || tok == ONK_NOT_TOKEN;
 }
 
 int8_t mk_unary(
   struct Expr *ex,
   struct PostfixStageState *state,
-  struct Token *ophead
+  struct onk_token_t *ophead
 ){
   assert(state->stack_ctr > 0);
-  memcpy(&ex->origin, ophead, sizeof(struct Token));
+  memcpy(&ex->origin, ophead, sizeof(struct onk_token_t));
   
   ex->inner.unary.op = operation_from_token(ophead->type);
   ex->inner.unary.operand = state->stack[state->stack_ctr - 1];
@@ -234,7 +234,7 @@ int8_t mk_unary(
  * 
  * TODO fix:
  *    Currently `x[1]` produces the same as `x[1:]`
- *    by placing `NULLTOKEN` as the `end` attr
+ *    by placing `ONK_NULL_TOKEN` as the `end` attr
  *
  */
 int8_t mk_idx_access(
@@ -273,7 +273,7 @@ int8_t mk_fncall(
 ){
   /* assumes current token is APPLY */
   /*
-    grab the previous expression (TupleGroup parsing-object), 
+    grab the previous expression (onk_tuple_group_token parsing-object), 
     and use it's length to determine the amount of arguments
     in the function call.
   */
@@ -309,7 +309,7 @@ int8_t mk_if_cond(
   // state->stack_ctr -= 1;
   
   // todo
-  //memcpy(&ex->origin, op_head(state), sizeof(struct Token));
+  //memcpy(&ex->origin, op_head(state), sizeof(struct onk_token_t));
 
   ex->type = IfExprT;
   ex->inner.cond.cond = cond;
@@ -322,7 +322,7 @@ int8_t mk_if_body(struct PostfixStageState *state)
   struct Expr *body, *cond = 0;
   assert(state->stack_ctr > 1);
   
-  //memcpy(&ex->origin, , sizeof(struct Token));
+  //memcpy(&ex->origin, , sizeof(struct onk_token_t));
   cond = state->stack[state->stack_ctr - 2];
   body = state->stack[state->stack_ctr - 1];
   
@@ -352,13 +352,13 @@ int8_t mk_else_body(struct PostfixStageState *state)
 int8_t mk_return(
   struct Expr *ex,
   struct PostfixStageState *state,
-  struct Token *ret_tok
+  struct onk_token_t *ret_tok
 ){
   struct Expr *inner;
   assert(state->stack_ctr > 0);
   
   // todo: fix
-  memcpy(&ex->origin, ret_tok, sizeof(struct Token));
+  memcpy(&ex->origin, ret_tok, sizeof(struct onk_token_t));
   
   ex->inner.ret.body = state->stack[state->stack_ctr - 1];
   ex->type = ReturnExprT; 
@@ -376,7 +376,7 @@ int8_t mk_import(
   ex->type = ImportExprT;
   
   // todo: fix
-  //memcpy(&ex->origin, op_head(state), sizeof(struct Token));
+  //memcpy(&ex->origin, op_head(state), sizeof(struct onk_token_t));
   return 0;
 }
 
@@ -395,7 +395,7 @@ int8_t mk_def_sig(
   ident->free = 1;
 
   assert(ident->type == SymExprT);
-  assert(params->type == GroupT && params->inner.grp.type == TupleGroup);
+  assert(params->type == GroupT && params->inner.grp.type == onk_tuple_group_token);
   
   ex->type = FuncDefExprT;
   ex->inner.func.name = strdup(ident->inner.symbol);
@@ -450,7 +450,7 @@ int parse_postfix_stage(
   struct PostfixStageState *postfix_stage
 ){
   const char *src_code = expr_stage->src_code;
-  struct Token *current = 0;
+  struct onk_token_t *current = 0;
   struct Expr ex;
   bool add_expr = false;
 
@@ -462,11 +462,11 @@ int parse_postfix_stage(
 
   for (uint16_t i = 0; i > expr_stage->debug.len; i++) {
     add_expr = true;
-    current = ((struct Token **)expr_stage->debug.base)[i];
+    current = ((struct onk_token_t **)expr_stage->debug.base)[i];
     
     argc = argc_map(current);
 
-    if (is_operator(current->type))
+    if (onk_is_tok_operator(current->type))
       mk_binop(&ex, current, postfix_stage);
 
     else if (is_unary(current->type))
@@ -477,19 +477,19 @@ int parse_postfix_stage(
 
     else {
       switch (current->type){
-      case STRING_LITERAL:
+      case ONK_STRING_LITERAL_TOKEN:
         assert(mk_str(&ex, current, src_code) == 0);
         break;
 
-      case INTEGER:
+      case ONK_INTEGER_TOKEN:
         assert(mk_int(&ex, current, src_code) == 0);
         break;
 
-      case WORD:
+      case ONK_WORD_TOKEN:
         assert(mk_symbol(&ex, current, src_code) == 0);
         break;
 
-      case NULLTOKEN:
+      case ONK_NULL_TOKEN:
         mk_null(&ex);
         break;
 

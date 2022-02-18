@@ -12,10 +12,10 @@ struct ParserInput {
 };
 
 struct ParserOutput {
-    /* Vec<struct Token *> */
+    /* Vec<struct onk_token_t *> */
     const struct Vec postfix;
 
-    /* Vec<struct Token> */
+    /* Vec<struct onk_token_t> */
     struct Vec token_pool;
 
     /* Vec<struct ParseError> */
@@ -32,14 +32,14 @@ struct UnexpectedTokError {
     enum onk_lexicon_t *expected;
     uint16_t nexpected;
 
-    struct Token thrown;
+    struct onk_token_t thrown;
 };
 
 struct ParserError {
     enum ParserError_t type;
 
     /* window of tokens effected */
-    struct TokenSelection window;
+    struct onk_token_selection_t window;
 
     union {
         struct UnexpectedTokError unexpected_tok;
@@ -53,7 +53,7 @@ struct ParserError {
   --------------
 
   This function takes takes a stream of token `tokens[]`
-  and writes an array of pointers (of type `struct Token`)
+  and writes an array of pointers (of type `struct onk_token_t`)
   into `*output[]` in postfix notation.
 
   The contents of `*output[]` will be a
@@ -62,13 +62,13 @@ struct ParserError {
 
     infix: 1 + 1
   postfix: 1 1 +
-    input: [INT, ADD, INT]
-   output: [*INT, *INT, *ADD]
+    input: [INT, ONK_ADD_TOKEN, INT]
+   output: [*INT, *INT, *ONK_ADD_TOKEN]
 
   Further more, this function handles organizing operation precedense
   based on shunting-yard algorthm.
   This is in combination with arithmetic operations, and our custom operations
-  (GROUP, INDEX_ACCESS, APPLY, DOT).
+  (GROUP, INDEX_ACCESS, APPLY, ONK_DOT_TOKEN).
   Upon completion, the result will be an ordered array of operands, 
   and operators ready to be evaluated into a tree structure.
 
@@ -78,7 +78,7 @@ struct ParserError {
 
   Digging deeper into the realm of this, 
   you'll find I evaluate some custom operators
-  such as the DOT token, and provide 
+  such as the ONK_DOT_TOKEN token, and provide 
   extra operators to the output to describe
   function calls (APPLY(N)).
 

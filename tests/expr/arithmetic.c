@@ -1,6 +1,6 @@
 
 void __test__simple_order_precedence(CuTest* tc) {
-    struct Token tokens[32];
+    struct onk_token_t tokens[32];
     struct Parser state;
     struct Expr *ret;
 
@@ -35,28 +35,28 @@ void __test__simple_order_precedence(CuTest* tc) {
     };
 
     static enum onk_lexicon_t check_list[][16] = {
-        {INTEGER, INTEGER, ADD, INTEGER, MUL, 0},
-        {INTEGER, INTEGER, ADD, 0},
-        {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},
-        {INTEGER, INTEGER, DIV, INTEGER, ADD, 0},
-        {WORD, WORD, ADD, WORD, WORD, MUL, SUB, 0},
-        {INTEGER, INTEGER, MUL, INTEGER, ADD, 0},
-        {INTEGER, INTEGER, INTEGER, MUL, ADD, 0},
-        {INTEGER, INTEGER, ADD, 0},
-        {INTEGER, INTEGER, ADD, 0},
-        {INTEGER, INTEGER, ADD, INTEGER, MUL, 0},
-        {INTEGER, INTEGER, INTEGER, ADD, DIV, 0},
-        {WORD, WORD, WORD, SUB, WORD, MUL, ADD, 0},
-        {INTEGER, INTEGER, INTEGER, ADD, MUL, 0},
-        {WORD, WORD, DOT, INTEGER, ADD, 0},
-        {INTEGER, WORD, WORD, DOT, ADD, 0},
-        {WORD, WORD, DOT, WORD, DOT, INTEGER, ADD, 0},
-        {WORD, INTEGER, EQUAL, 0},
-        {WORD, WORD, WORD, EQUAL, EQUAL, 0},
-        {WORD, WORD, WORD, EQUAL, EQUAL, 0},
-        {WORD, WORD, INTEGER, WORD, MUL, EQUAL, EQUAL, 0},
-        {WORD, WORD, INTEGER, MUL, WORD, EQUAL, EQUAL, 0},
-        {WORD, WORD, DOT, WORD, DOT, WORD, WORD, DOT, INTEGER, MUL, EQUAL,  0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_DIV_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_ADD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_MUL_TOKEN, ONK_SUB_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_DIV_TOKEN, 0},
+        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_SUB_TOKEN, ONK_WORD_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_MUL_TOKEN, 0},
+        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_DOT_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_DOT_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_DOT_TOKEN, ONK_WORD_TOKEN, ONK_DOT_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, EQUAL, 0},
+        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, EQUAL, EQUAL, 0},
+        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, EQUAL, EQUAL, 0},
+        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, ONK_WORD_TOKEN, ONK_MUL_TOKEN, EQUAL, EQUAL, 0},
+        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_WORD_TOKEN, EQUAL, EQUAL, 0},
+        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_DOT_TOKEN, ONK_WORD_TOKEN, ONK_DOT_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_DOT_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, EQUAL,  0},
         0
     };
 
@@ -65,7 +65,7 @@ void __test__simple_order_precedence(CuTest* tc) {
             break;
         ntokens=0;
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
-        CuAssert(tc, msg, tokenize(src_code[i], tokens, &ntokens, 32, false, NULL) == 0);
+        CuAssert(tc, msg, onk_tokenize(src_code[i], tokens, &ntokens, 32, false, NULL) == 0);
         
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "failed on parsing expr (idx): %d", i);
@@ -73,7 +73,7 @@ void __test__simple_order_precedence(CuTest* tc) {
 
         memset(msg, 0, sizeof(char[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ]));
         sprintf(msg, "failed on index %d", i);
-        AssertTokensByRef(tc, src_code[i], msg, state.debug.base, check_list[i]);
+        onk_assert_tokens_by_ref(tc, src_code[i], msg, state.debug.base, check_list[i]);
         parser_reset(&state);
     }
 }

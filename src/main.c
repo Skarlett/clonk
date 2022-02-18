@@ -82,7 +82,7 @@ int parse(char * fp, struct Opts *opts) {
     init_block(&root, STMT_CAPACITY*2);
 
 
-    struct Token tokens[2048];
+    struct onk_token_t tokens[2048];
 
     size_t n_completed = 0;
     size_t buf_sz = 2048;
@@ -113,11 +113,11 @@ int parse(char * fp, struct Opts *opts) {
             break;
         }
 
-        size_t ntokens = tokenize(src_code, tokens[token_n], ctr, error);
+        size_t ntokens = onk_tokenize(src_code, tokens[token_n], ctr, error);
         if (opts->print_tokens == 1) {
             printf("token stream: ");
             for (size_t p_i=0; ntokens > p_i; p_i++) {
-                printf("[%s(%d,%d)] ", ptoken(tokens[p_i].type), (int)tokens[p_i].start, (int)tokens[p_i].end);
+                printf("[%s(%d,%d)] ", onk_ptoken(tokens[p_i].type), (int)tokens[p_i].start, (int)tokens[p_i].end);
             }
             printf("\n\n");
         }
@@ -165,7 +165,7 @@ int parse(char * fp, struct Opts *opts) {
 
 int main(int argc, char* argv[]) {
     struct Opts opts;
-    struct Token tokens[2048];
+    struct onk_token_t tokens[2048];
     struct BlockStatement root, current;
 
     if (argc == 1) {

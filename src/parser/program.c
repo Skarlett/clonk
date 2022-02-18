@@ -13,7 +13,7 @@ struct Program {
     const char * src_code;
 
 
-    /* Vec<Token> */
+    /* Vec<onk_token_t> */
     struct Vec tokens;
     struct Expr *ast;
 
@@ -27,7 +27,7 @@ struct ParseOutput {
     enum ParserOutput status;
 
     /* tokens[] on heap */
-    struct Token * tokens;
+    struct onk_token_t * tokens;
 
     union {
         struct OKOutput ok;
@@ -43,10 +43,10 @@ int parse_code(
 ){
 
     struct Parser prefix_stage;
-    struct LexerInput lex_input;
+    struct onk_lexer_input_t lex_input;
 
 
-    assert(tokenize(
+    assert(onk_tokenize(
         input->source_code,
         input->tokens,
         &token_ctr,

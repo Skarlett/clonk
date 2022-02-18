@@ -35,7 +35,5 @@ void __test__vec_push(CuTest* tc) {
 
 CuSuite* VecTestSuite(void) {
 	CuSuite* suite = CuSuiteNew();
-    SUITE_ADD_TEST(suite, __test__vec_init);
-    SUITE_ADD_TEST(suite, __test__vec_push);
     return suite;
 }

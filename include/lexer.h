@@ -9,29 +9,27 @@
 
 //#include "utils/vec.h"
 
-#define ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
-#define DIGITS "1234567890"
+#define ONK_ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
 
-enum Lexicon {
+enum onk_lexicon_t {
     /* end of file */
-    EOFT = 255,
+    ONK_EOFT = 255,
 
     /********************/
     /* Transition token */
     /********************/
     __MARKER_TRANSITION_START,
 
-    _COMPOUND_GT,
+    _ONK_GT_TRANSMISSION_TOKEN,
     /* -123 or -= */
-    _COMPOUND_SUB,
+    _ONK_SUB_TRANSMISSION_TOKEN,
 
     /* may turn into BOREQL or PIPEOP or OR */
-    _COMPOUND_PIPE,
 
-    _COMPOUND_AMPER,
+    _ONK_AMPER_TRANSMISSION_TOKEN,
 
     /*  */
-    _COMPOUND_LT,
+    _ONK_LT_TRANSMISSION_TOKEN,
 
     __MARKER_TRANSITION_END,
     /**********************/
@@ -39,147 +37,148 @@ enum Lexicon {
     /**********************/
 
     __MARKER_GROUP_START,
-    TupleGroup, // (x,x)
+    onk_tuple_group_token, // (x,x)
 
-    ListGroup,  // [x,x]
+    onk_list_group_token,  // [x,x]
 
     // TODO: produce this
-    IndexGroup, // [x:x]
+    onk_idx_group_token, // [x:x]
 
-    PartialBrace, // { - unknown type yet
-    MapGroup,   // {a:x, b:x}
-    CodeBlock,  // {x; x;} or {x; x}
+    onk_partial_brace_group_token, // { - unknown type yet
+    onk_map_group_token,   // {a:x, b:x}
+    onk_code_group_token,  // {x; x;} or {x; x}
 
     //TODO: make strict mode in predict.c
     // for structure construction
-    // WORD { WORD = EXPR, ...};
-    StructGroup,// Name {a=b, y=z};
+    // ONK_WORD_TOKEN { ONK_WORD_TOKEN = EXPR, ...};
+    onk_struct_group_token,// Name {a=b, y=z};
+
     __MARKER_GROUP_END,
 
-    TOKEN_UNDEFINED = 1,
-    
-    NULLTOKEN,
-    
-    WHITESPACE,
-    
-    NEWLINE,
+    ONK_TOKEN_UNDEFINED = 1,
 
-    COMMENT,
+    ONK_NULL_TOKEN,
+
+    ONK_WHITESPACE_TOKEN,
+    ONK_NEWLINE_TOKEN,
+    ONK_COMMENT_TOKEN,
 
     /*
     ** braces start
     */
 
     __MARKER_OPEN_BRACE_START,
+
     /* [ */
-    BRACKET_OPEN,
+    ONK_BRACKET_OPEN_TOKEN,
 
     /* { */
-    BRACE_OPEN,
+    ONK_BRACE_OPEN_TOKEN,
     
     /* ( */
-    PARAM_OPEN,
+    ONK_PARAM_OPEN_TOKEN,
     __MARKER_OPEN_BRACE_END,
 
 
     __MARKER_CLOSE_BRACE_START,
     /* ] */
-    BRACKET_CLOSE,
+    ONK_BRACKET_CLOSE_TOKEN,
 
     /* } */
-    BRACE_CLOSE,
+    ONK_BRACE_CLOSE_TOKEN,
     
     /* ) */
-    PARAM_CLOSE,
+    ONK_PARAM_CLOSE_TOKEN,
     __MARKER_CLOSE_BRACE_END,
     __MARKER_UPGRADE_DATA_START,
 
     /* " */
-    D_QUOTE,
+    ONK_DOUBLE_QUOTE_TOKEN,
 
     /* ' */
-    S_QUOTE,
+    ONK_SINGLE_QUOTE_TOKEN,
 
     /* # */
     POUND,
 
      /* _ */
-    UNDERSCORE,
+    ONK_UNDERSCORE_TOKEN,
 
     /* a-zA-Z */
-    CHAR,
+    ONK_CHAR_TOKEN,
 
     /* 0-9 single digit */
-    DIGIT,
+    ONK_DIGIT_TOKEN,
     __MARKER_UPGRADE_DATA_END,
     __MARKER_DELIM_START,
     /* , */
-    COMMA,
+    ONK_COMMA_TOKEN,
 
     /* : */
-    COLON,
+    ONK_COLON_TOKEN,
 
     /* ; */
-    SEMICOLON,
+    ONK_SEMICOLON_TOKEN,
     __MARKER_DELIM_END,
 
     /* \ */
-    BACKSLASH,
+    ONK_BACKSLASH_TOKEN,
 
     /* @ */
-    ATSYM,
+    ONK_ATSYM__TOKEN,
     /*********************/
     /* multi byte tokens */
     /*********************/
     __MARKER_UNIT_START,
 
-    /*  [NUM, ..] WHITESPACE|SEMICOLON    */
+    /*  [NUM, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN    */
     /* // 20_392  */
-    INTEGER,
+    ONK_INTEGER_TOKEN,
 
-    /* [CHARACTER, ..] WHITESPACE|SEMICOLON */
+    /* [ONK_CHAR_TOKENACTER, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN */
     /* something */
-    WORD,
+    ONK_WORD_TOKEN,
 
-    FROM_LOCATION,
+    ONK_FROM_LOCATION_TOKEN,
+
     /* [QUOTE, ... QUOTE] */
     /* something */
-    STRING_LITERAL,
+    ONK_STRING_LITERAL_TOKEN,
 
-    NULL_KEYWORD,
+    ONK_KEYWORD_TOKEN,
     __MARKER_UNIT_END,
 
     __MARKER_OP_START,
     __MARKER_UNARY_START,
     /* ~ */
-    TILDE,
+    ONK_TILDE_TOKEN,
 
     /* ! */
-    NOT,
+    ONK_NOT_TOKEN,
     __MARKER_UNARY_END,
     __MARKER_BIN_START,
 
     /* % */
-    MOD,
+    ONK_MOD_TOKEN,
 
     /* . */
-    DOT,
+    ONK_DOT_TOKEN,
 
     /* * */
-    MUL,
+    ONK_MUL_TOKEN,
 
     /* / */
-    DIV,
+    ONK_DIV_TOKEN,
 
     /* ^ */
-    POW,
+    ONK_POW_TOKEN,
 
     __MARKER_UPGRADE_OP_START,
     /* + */
-    ADD,
+    ONK_ADD_TOKEN,
 
     /* - */
-    SUB,
+    ONK_SUB_TOKEN,
 
     /* | */
     PIPE,
@@ -280,7 +279,7 @@ enum Lexicon {
     /* as */
     //AS,
 
-    __MARKER_KEYWORD_START,
+    __MARKER_KEYONK_WORD_TOKEN_START,
     /* struct A {} */
     STRUCT,
 
@@ -316,7 +315,7 @@ enum Lexicon {
     FOR,
     WHILE,
 
-    __MARKER_KEYWORD_END
+    __MARKER_KEYONK_WORD_TOKEN_END
 
     /*
       GROUPING token are generated in the expression parser
@@ -361,7 +360,7 @@ enum Lexicon {
 
 
 /*
-    Tokens reference symbols derived from the 
+    onk_token_ts reference symbols derived from the 
     source code given to the interpreter.
     the following fields correlate with the following,
     except when `type` is equal to FNMASK, or COMPOSITE.
@@ -381,81 +380,82 @@ enum Lexicon {
         `end` correlates to the ending position of the token instead the token array.
         The position is directly indexable against its source (tokens[]).
 */
-struct Token {
+struct onk_token_t {
     uint16_t start;
     uint16_t end;
     uint16_t seq;
-    enum Lexicon type;
+    enum onk_lexicon_t type;
 };
 
 /* sequence of tokens */
-struct TokenSpan {
-    struct Token start;
-    struct Token end;
+struct onk_token_span_t {
+    struct onk_token_t start;
+    struct onk_token_t end;
 };
 
-enum Selection_t {
+enum onk_selection_t {
   Scalar,
   Union
 };
 
 /*
-** TokenSelection describes 1 or more tokens,
+** onk_token_selection_t describes 1 or more tokens,
 ** either as a sequencial span
 ** of token, or as an individual token.
 */
-struct TokenSelection {
-    enum Selection_t type;
+struct onk_token_selection_t {
+    enum onk_selection_t type;
     union {
-        struct Token scalar_t;
-        struct TokenSpan union_t;
+        struct onk_token_t scalar_t;
+        struct onk_token_span_t union_t;
     } token;
 };
 
 /* Output of lexer function */
-struct LexerOutput {
+struct onk_lexer_output_t {
     const char * src_code;
     uint16_t src_code_sz;
 
-    /* Vec<Token> */
+    /* Vec<onk_token_t> */
     const struct Vec tokens;
 
-    /* Vec<LexerError> */
+    /* Vec<onk_lexer_error_t> */
     const struct Vec errors;
 };
 
-enum LexerError_t {
+enum onk_lexer_errno {
     lex_err_missing_end_quote,
     lex_err_non_ascii_token,
     lex_err_input_too_big
 };
 
-struct LexerError {
-    enum LexerError_t type;
+struct onk_lexer_error_t {
+    enum onk_lexer_errno type;
     union {
-        struct Token bad_str;
-        struct Token non_ascii_token;
+        struct onk_token_t bad_str;
+        struct onk_token_t non_ascii_token;
         //struct UnexpectedErrT unexpected_tok;
     } type_data;
 };
 
-struct LexerInput {
+struct onk_lexer_input_t {
     const char *src_code;
     struct Vec tokens;
     bool add_eoft;
 };
 
-int8_t tokenize(
-    struct LexerInput *in,
-    struct LexerOutput *out
+int8_t onk_tokenize(
+    struct onk_lexer_input_t *in,
+    struct onk_lexer_output_t *out
 );
 
 /**
- * returns true if token is of type COLON or COMMA
+ * returns true if token is of type ONK_COLON_TOKEN or ONK_COMMA_TOKEN
  * @param token
  * @return bool
  */
-bool is_delimiter(enum Lexicon token);
+bool onk_is_tok_delimiter(enum onk_lexicon_t token);
+
 
 /**
  * Return the parameter `token` into its inverse token type. 
@@ -465,9 +465,9 @@ bool is_delimiter(enum Lexicon token);
  * All other tokens will return UNDEFINED
  *
  * @param token
- * @return enum Lexicon
+ * @return enum onk_lexicon_t
  */
-enum Lexicon invert_brace_tok_ty(enum Lexicon token);
+enum onk_lexicon_t invert_brace_tok_ty(enum onk_lexicon_t token);
 
 
 /**
@@ -476,7 +476,7 @@ enum Lexicon invert_brace_tok_ty(enum Lexicon token);
  * @param token
  * @return bool
  */
-//bool is_cmp_operator(enum Lexicon compound_token);
+//bool is_cmp_operator(enum onk_lexicon_t compound_token);
 
 
 /**
@@ -486,20 +486,20 @@ enum Lexicon invert_brace_tok_ty(enum Lexicon token);
  * @param buffer collection to be searched
  * @return bool
  */
-uint8_t eq_any_tok(enum Lexicon cmp, enum Lexicon *buffer);
+uint8_t onk_eq_any_tok(enum onk_lexicon_t cmp, enum onk_lexicon_t *buffer);
 
 
 /**
  * Check if the parameter `token` is equal the token type 
- *   ADD, SUB, DIV, MOD, MUL,
- *   AND, OR, ACCESS, DOT, 
- *   POW, LT, GT, ISEQL,
+ *   ONK_ADD_TOKEN, ONK_SUB_TOKEN, ONK_DIV_TOKEN, ONK_MOD_TOKEN, ONK_MUL_TOKEN,
+ *   AND, OR, ACCESS, ONK_DOT_TOKEN, 
+ *   ONK_POW_TOKEN, LT, GT, ISEQL,
  *   LTEQ, GTEQ, EQUAL, PLUSEQ
- *   MINUSEQ, NOT
+ *   MINUSEQ, ONK_NOT_TOKEN
  * @param token
  * @return bool
  */
-bool is_operator(enum Lexicon compound_token);
+bool onk_is_tok_operator(enum onk_lexicon_t compound_token);
 
 
 /**
@@ -508,7 +508,7 @@ bool is_operator(enum Lexicon compound_token);
  * @param token
  * @return bool
  */
-bool is_close_brace(enum Lexicon token);
+bool onk_is_tok_close_brace(enum onk_lexicon_t token);
 
 
 /**
@@ -517,7 +517,7 @@ bool is_close_brace(enum Lexicon token);
  * @param token
  * @return bool
  */
-bool is_open_brace(enum Lexicon token); 
+bool onk_is_tok_open_brace(enum onk_lexicon_t token); 
 
 /**
  * 
@@ -525,7 +525,7 @@ bool is_open_brace(enum Lexicon token);
  * @param token
  * @return bool
  */
-bool is_utf(char ch);
+bool onk_is_utf_byte(char ch);
 
 
 /**
@@ -534,17 +534,17 @@ bool is_utf(char ch);
  * @param token
  * @return bool
  */
-bool is_keyword(enum Lexicon token);
+bool onk_is_tok_keyword(enum onk_lexicon_t token);
 
 /**
- * Checks if token is an INTEGER, and is a negative notation.
+ * Checks if token is an ONK_INTEGER_TOKEN, and is a negative notation.
  *
  * @param token token to compare
  * @param src source code
  *
  * @return bool
  */
-bool is_num_negative(const char *src, struct Token *token);
+bool onk_is_int_tok_negative(const char *src, struct onk_token_t *token);
 
 /**
  * Checks if token is a unitary expression
@@ -553,7 +553,7 @@ bool is_num_negative(const char *src, struct Token *token);
  *
  * @return bool
  */
-bool is_operator(enum Lexicon token);
+bool onk_is_tok_operator(enum onk_lexicon_t token);
 
 
 /**
@@ -563,7 +563,7 @@ bool is_operator(enum Lexicon token);
  *
  * @return bool
 */
-bool is_group_modifier(enum Lexicon);
+bool onk_is_tok_group_modifier(enum onk_lexicon_t);
 
 /**
  * Checks if token is a unitary expression
@@ -572,7 +572,7 @@ bool is_group_modifier(enum Lexicon);
  *
  * @return bool
 */
-const char * ptoken(enum Lexicon t);
+const char * onk_ptoken(enum onk_lexicon_t t);
 
 /**
  * Checks if token is a unitary expression
@@ -581,7 +581,7 @@ const char * ptoken(enum Lexicon t);
  *
  * @return bool
  */
-bool is_unit(enum Lexicon tok);
+bool onk_is_tok_unit(enum onk_lexicon_t tok);
 
 
 /**
@@ -592,6 +592,7 @@ bool is_unit(enum Lexicon tok);
  *
  * @return bool
  */
-bool is_group(enum Lexicon tok);
+bool is_group(enum onk_lexicon_t tok);
+
 #endif
 

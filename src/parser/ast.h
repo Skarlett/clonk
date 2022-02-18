@@ -5,7 +5,8 @@
     when defining a group,
     it may not have more literal elements than
 */
-enum ExprType {
+enum onk_expr_t {
+
     NopExprT,
     // variable names
     // x
@@ -97,8 +98,6 @@ enum Operation {
     ShiftRight,
     ShiftLeft,
 
-    PipeOp,
-
     UndefinedOp = 255
 };
 
@@ -115,13 +114,13 @@ enum Group_t {
     TupleT,
 
     // {
-    PartialBrace,
+    onk_partial_brace_group_token,
 
     //{1:2, 3:4}
     MapT,
 
     // {1; 2;}
-    CodeBlockT
+    onk_code_group_tokenT
 };
 
 struct GroupExpr {
@@ -151,7 +150,7 @@ struct FnCallExpr {
     char * func_name;
     struct Expr *caller;
 
-    /* TupleGroup(N) expr */
+    /* onk_tuple_group_token(N) expr */
     struct Expr *args;
     enum DataType returns;
 };
@@ -192,6 +191,18 @@ struct IdxExpr {
 };
 
 
+struct ForLoopExpr {
+    struct Expr * params;
+    struct Expr * src;
+};
+
+struct WhileLoopExpr {
+    struct Expr * params;
+    struct Expr * src;
+};
+
+
+
 /* can be a single token or a string of congruent tokens*/
 enum ExprSizeType {
     /* singular */
@@ -202,16 +213,16 @@ enum ExprSizeType {
 };
 
 struct Expr {
-    enum ExprType type;
+    enum onk_expr_t type;
     enum DataType datatype;
     // ****
 
     union {
-        struct Token unit;
-        struct TokenSpan span;
+        struct onk_token_t unit;
+        struct onk_token_span_t span;
     } origin;
 
-    //struct Token origin;
+    //struct onk_token_t origin;
     // ****
     uint8_t free;
 
@@ -235,10 +246,10 @@ struct Expr {
 // int8_t mk_int(struct PostfixStageState *state, struct Expr *ex);
 // int8_t mk_symbol(struct PostfixStageState *state, struct Expr *ex);
 
-// int8_t mk_operator(struct PostfixStageState *state, struct Expr *ex, struct Token *op_head);
+// int8_t mk_operator(struct PostfixStageState *state, struct Expr *ex, struct onk_token_t *op_head);
 // int8_t mk_group(struct PostfixStageState *state, struct Expr *ex);
 
-// int8_t mk_binop(struct Token *op, struct PostfixStageState *state, struct Expr *ex);
+// int8_t mk_binop(struct onk_token_t *op, struct PostfixStageState *state, struct Expr *ex);
 // int8_t mk_not(struct PostfixStageState *state, struct Expr *ex);
 // int8_t mk_idx_access(struct PostfixStageState *state, struct Expr *ex);
 // int8_t mk_fncall(struct PostfixStageState *state, struct Expr *ex);

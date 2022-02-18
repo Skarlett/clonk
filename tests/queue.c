@@ -26,6 +26,5 @@ void __test__queue_push(CuTest* tc) {
 
 CuSuite* VecTestSuite(void) {
 	CuSuite* suite = CuSuiteNew();
-    SUITE_ADD_TEST(suite, __test__queue_push);
     return suite;
 }

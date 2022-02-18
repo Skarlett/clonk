@@ -8,7 +8,7 @@ void __test__is_balanced(CuTest* tc)
 {
     uint16_t sz=0;
     char msg[64];
-    struct Token tokens[32];
+    struct onk_token_t tokens[32];
 
     int8_t answers[] = {
         1, 1, 1, 1,
@@ -38,7 +38,7 @@ void __test__is_balanced(CuTest* tc)
     };
     
     for (int i=0; 16 > i; i++) {
-        CuAssertTrue(tc, tokenize(src_code[i], tokens, &sz, 32, false, NULL) == 0);
+        CuAssertTrue(tc, onk_tokenize(src_code[i], tokens, &sz, 32, false, NULL) == 0);
         sprintf(msg, "failed on `src_code[%d]`", i);
         CuAssert(tc, msg, is_balanced(tokens, sz) == answers[i]);
         sz=0;
@@ -49,6 +49,5 @@ void __test__is_balanced(CuTest* tc)
 
 CuSuite* LexerHelpersUnitTestSuite(void) {
 	CuSuite* suite = CuSuiteNew();
-	SUITE_ADD_TEST(suite, __test__is_balanced);
     return suite;
 }

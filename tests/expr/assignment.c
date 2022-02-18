@@ -10,7 +10,7 @@
 #include "../CuTest.h"
 
 void __test__set_collection(CuTest* tc) {
-    struct Token tokens[32];
+    struct onk_token_t tokens[32];
     struct Parser state;
     struct Expr *ret;
 

@@ -1,7 +1,7 @@
 
 
 void __test__effectively_empty_group(CuTest* tc) {
-    struct Token tokens[32];
+    struct onk_token_t tokens[32];
     struct Parser state;
     struct Expr *ret;
 
