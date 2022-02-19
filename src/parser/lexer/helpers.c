@@ -1,40 +1,73 @@
 #include <stdbool.h>
 #include "lexer.h"
 
-#define BRACE_BUFFER_SZ 256
-
 bool onk_is_tok_delimiter(enum onk_lexicon_t token) {
-    return token > __MARKER_DELIM_START
-        && __MARKER_DELIM_END > token;
+    return token > __ONK_MARKER_DELIM_START
+        && __ONK_MARKER_DELIM_END > token;
 }
 
-bool onk_is_tok_close_brace(enum onk_lexicon_t token)
-{
-    return token > __MARKER_CLOSE_BRACE_START
-        && __MARKER_CLOSE_BRACE_END > token;
+bool onk_is_tok_close_brace(enum onk_lexicon_t token) {
+    return token > __ONK_MARKER_CLOSE_BRACE_START
+        && __ONK_MARKER_CLOSE_BRACE_END > token;
 }
 
 bool onk_is_tok_open_brace(enum onk_lexicon_t token) {
-    return token > __MARKER_OPEN_BRACE_START
-        && __MARKER_OPEN_BRACE_END > token;
+    return token > __ONK_MARKER_OPEN_BRACE_START
+        && __ONK_MARKER_OPEN_BRACE_END > token;
 }
 
 bool onk_is_tok_unit(enum onk_lexicon_t token) {
-    return token > __MARKER_UNIT_START
-        && __MARKER_UNIT_END > token;
+    return token > __ONK_MARKER_UNIT_START
+        && __ONK_MARKER_UNIT_END > token;
 }
 
-bool is_asn_operator(enum onk_lexicon_t token) {
-    return token > __MARKER_ASN_START
-        && __MARKER_ASN_END > token;
+bool onk_is_tok_asn_operator(enum onk_lexicon_t token) {
+    return token > __ONK_MARKER_ASN_START
+        && __ONK_MARKER_ASN_END > token;
 }
 
-/*
-   returns bool if token is a binary operator
-*/
+bool onk_is_tok_bin_operator(enum onk_lexicon_t token) {
+    return token > __ONK_MARKER_BIN_START
+        && __ONK_MARKER_BIN_END > token;
+}
+
+bool onk_is_tok_unary_operator(enum onk_lexicon_t token) {
+    return token > __ONK_MARKER_UNARY_START
+        && __ONK_MARKER_UNARY_END > token;
+}
+
 bool onk_is_tok_operator(enum onk_lexicon_t token) {
-    return token > __MARKER_OP_START
-        && __MARKER_OP_END > token;
+    return token > __ONK_MARKER_OP_START
+        && __ONK_MARKER_OP_END > token;
+}
+
+bool onk_is_int_tok_negative(const char * source, struct onk_token_t *token) {
+    return token->type == ONK_INTEGER_TOKEN
+        && *(source + token->start) == '-';
+}
+
+bool onk_is_tok_keyword(enum onk_lexicon_t token) {
+    return token > __ONK_MARKER_KEYONK_WORD_TOKEN_START
+        && __ONK_MARKER_KEYONK_WORD_TOKEN_END > token;
+}
+
+bool _onk_is_group(enum onk_lexicon_t tok) {
+    return tok > __ONK_MARKER_GROUP_START
+        && __ONK_MARKER_GROUP_END > tok;
+}
+
+bool onk_is_tok_group_modifier(enum onk_lexicon_t tok) {
+    return tok > __ONK_MARKER_GROUP_OP_START
+        && __ONK_MARKER_GROUP_OP_END > tok;
+}
+
+bool onk_is_tok_whitespace(enum onk_lexicon_t tok) {
+    return tok > __ONK_MARKER_WHITESPACE_START
+        && __ONK_MARKER_WHITESPACE_END > tok;
+}
+
+bool onk_is_utf_byte(char ch) {
+    return ((unsigned char)ch >= 0x80);
 }
 
 /* null delimitated */
@@ -45,11 +78,6 @@ uint8_t onk_eq_any_tok(enum onk_lexicon_t cmp, enum onk_lexicon_t buffer[]) {
       return i;
   
   return 0;
-}
-
-/* is character utf encoded */
-bool onk_is_utf_byte(char ch) {
-    return ((unsigned char)ch >= 0x80);
 }
 
 /*
@@ -70,23 +98,3 @@ enum onk_lexicon_t invert_brace_tok_ty(enum onk_lexicon_t token) {
     }
 }
 
-bool onk_is_int_tok_negative(const char * source, struct onk_token_t *token) {
-    return token->type == ONK_INTEGER_TOKEN
-        && *(source + token->start) == '-';
-}
-
-bool onk_is_tok_keyword(enum onk_lexicon_t token) {
-    return token > __MARKER_KEYONK_WORD_TOKEN_START
-        && __MARKER_KEYONK_WORD_TOKEN_END > token;
-}
-
-bool is_group(enum onk_lexicon_t tok)
-{
-    return tok > __MARKER_GROUP_START
-        && __MARKER_GROUP_END > tok;
-}
-
-bool onk_is_tok_group_modifier(enum onk_lexicon_t tok) {
-    return tok > __MARKER_GROUP_OP_START
-        && __MARKER_GROUP_OP_END > tok;
-}

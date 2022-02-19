@@ -172,14 +172,14 @@ enum onk_lexicon_t onk_tokenize_char(char c) {
 }
 
 int8_t is_compound_bin_op(enum onk_lexicon_t tok) {
-  return tok > __MARKER_COMPOUND_BIN_START
-    && __MARKER_COMPOUND_BIN_END > tok;
+  return tok > __ONK_MARKER_COMPOUND_BIN_START
+    && __ONK_MARKER_COMPOUND_BIN_END > tok;
 }
 
 int8_t can_upgrade_token(enum onk_lexicon_t token) {
-  return (token > __MARKER_UPGRADE_DATA_START && __MARKER_UPGRADE_DATA_END > token)
-    || (token > __MARKER_UPGRADE_OP_START && __MARKER_UPGRADE_OP_END > token)
-    || (token > __MARKER_UNARY_START && __MARKER_UNARY_END > token);
+  return (token > __ONK_MARKER_UPGRADE_DATA_START && __ONK_MARKER_UPGRADE_DATA_END > token)
+    || (token > __ONK_MARKER_UPGRADE_OP_START && __ONK_MARKER_UPGRADE_OP_END > token)
+    || (token > __ONK_MARKER_UNARY_START && __ONK_MARKER_UNARY_END > token);
 }
 
 int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t token) {
@@ -632,11 +632,11 @@ int8_t onk_tokenize(
     else if (state.compound != ONK_TOKEN_UNDEFINED || state.forcing_next_token) {
       // state._is_repeating = false;
 
-      if (state.compound == ONK_COMMENT_TOKEN)
-      {
-        state.compound = ONK_TOKEN_UNDEFINED;
-        continue;
-      }
+      /* if (state.compound == ONK_COMMENT_TOKEN) */
+      /* { */
+      /*   state.compound = ONK_TOKEN_UNDEFINED; */
+      /*   continue; */
+      /* } */
 
       if(state.compound != ONK_TOKEN_UNDEFINED)
       {
@@ -683,8 +683,7 @@ int8_t onk_tokenize(
         because if a compound token is compleed,
         the current token being lexed still needs to be added.
     */
-    else if (state.current != ONK_WHITESPACE_TOKEN
-             && state.current != ONK_TOKEN_UNDEFINED)
+    else if (state.current != ONK_TOKEN_UNDEFINED)
     {
       state.compound = ONK_TOKEN_UNDEFINED;
 
@@ -709,7 +708,7 @@ int8_t onk_tokenize(
 
       This checks, and fixes it.
   */
-  if (state.compound != ONK_TOKEN_UNDEFINED && state.compound != ONK_COMMENT_TOKEN)
+  if (state.compound != ONK_TOKEN_UNDEFINED)
   {
     token.start = state.cmpd_start_at;
     token.end = state.cmpd_start_at + state.cmpd_span_size;
