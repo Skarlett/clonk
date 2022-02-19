@@ -9,8 +9,6 @@
 
 //#include "utils/vec.h"
 
-#define ONK_ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
-
 enum onk_lexicon_t {
     /* end of file */
     ONK_EOFT = 255,
@@ -24,6 +22,7 @@ enum onk_lexicon_t {
     /* -123 or -= */
     _ONK_SUB_TRANSMISSION_TOKEN,
 
+    _ONK_PIPE_TRANSMISSION_TOKEN,
     /* may turn into BOREQL or PIPEOP or OR */
 
     _ONK_AMPER_TRANSMISSION_TOKEN,

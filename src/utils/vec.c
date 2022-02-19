@@ -4,7 +4,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "vec.h"
+#include "utils/vec.h"
 
 #define VEC_STATE_FREED 1
 #define VEC_STATE_INITALIZED 2

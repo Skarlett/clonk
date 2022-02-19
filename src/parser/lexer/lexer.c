@@ -1,14 +1,19 @@
-//#include "lexer.h"
-//#include "../../error.h"
-//#include "../../utils/vec.h"
-//#include "../../utils/queue.h"
+/******
+ * ----
+ * TODO: escape quotes `\"` and `\'`
+ * TODO: single quote strings `'hello world'`
+ * TODO: triple quoted string that
+ *       interprets carriage return literallty
+ *       `'''this lets new src_codes'''`
+ * TODO: whitespace interpretation `\n\t\r`
+ * TODO: negative numbers (maybe done?)
+ *
+ * ----
+*/
 
-//#include "debug.h"
-
-#include <stdint.h>
 #include <stdio.h>
-#include <string.h>
-#include <assert.h>
+#include "clonk.h"
+#include "lexer.h"
 
 #define PREV_BUF_SZ 8
 #define ONK_BUF_SZ 65355
@@ -153,13 +158,13 @@ enum onk_lexicon_t onk_tokenize_char(char c) {
     break;
   }
 
-  for (i = 0; strlen(ONK_DIGIT_TOKENS) > i; i++) {
-    if (c == ONK_DIGITS[i])
+  for (i = 0; strlen(ONK_DIGIT_STR) > i; i++) {
+    if (c == ONK_DIGIT_STR[i])
       return ONK_DIGIT_TOKEN;
   }
 
-  for (i = 0; strlen(ALPHABET) > i; i++) {
-    if (c == ALPHABET[i])
+  for (i = 0; strlen(ONK_ALPHABET) > i; i++) {
+    if (c == ONK_ALPHABET[i])
       return ONK_CHAR_TOKEN;
   }
 
@@ -172,9 +177,9 @@ int8_t is_compound_bin_op(enum onk_lexicon_t tok) {
 }
 
 int8_t can_upgrade_token(enum onk_lexicon_t token) {
-  return (token > __MARKER_UPGRADE_DATA_START && __MARKER_UPGRADE_DATA_END)
+  return (token > __MARKER_UPGRADE_DATA_START && __MARKER_UPGRADE_DATA_END > token)
     || (token > __MARKER_UPGRADE_OP_START && __MARKER_UPGRADE_OP_END > token)
-    || (token > __MARKER_UNARY_START && __MARKER_UNARY_END > token)
+    || (token > __MARKER_UNARY_START && __MARKER_UNARY_END > token);
 }
 
 int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t token) {
@@ -224,7 +229,7 @@ int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t
       break;
 
     case PIPE:
-      *compound_token = _COMPOUND_PIPE;
+      *compound_token = _ONK_PIPE_TRANSMISSION_TOKEN;
       break;
     
     case POUND:
@@ -279,7 +284,7 @@ int8_t continue_compound_token(
       // String literal "..."
       ||(compound_token == ONK_STRING_LITERAL_TOKEN
         && (
-          (token != ONK_DOUBLE_QUOTE_TOKEN || token == ONK_DOUBLE_QUOTE_TOKEN && prev && prev == ONK_BACKSLASH_TOKEN)
+          (token != ONK_DOUBLE_QUOTE_TOKEN || (token == ONK_DOUBLE_QUOTE_TOKEN && prev && prev == ONK_BACKSLASH_TOKEN))
           // TODO:
           //|| (token != ONK_SINGLE_QUOTE_TOKEN || token == ONK_SINGLE_QUOTE_TOKEN && prev == ONK_BACKSLASH_TOKEN)
           )
@@ -295,7 +300,7 @@ int8_t continue_compound_token(
       //  `-=` or `-123`
       || (compound_token == _ONK_SUB_TRANSMISSION_TOKEN && (token == ONK_DIGIT_TOKEN || (token == EQUAL && 1 > span_size)))
       // `|=`, `|>`, `||`
-      || (compound_token == _COMPOUND_PIPE && (token == EQUAL || token == GT || token == PIPE) && 1 > span_size)
+      || (compound_token == _ONK_PIPE_TRANSMISSION_TOKEN && (token == EQUAL || token == GT || token == PIPE) && 1 > span_size)
       // `&=` `&&`
       || (compound_token == _ONK_AMPER_TRANSMISSION_TOKEN && (token == AMPER || token == EQUAL) && 1 > span_size)
       // `>=` `>>`
@@ -332,10 +337,11 @@ enum onk_lexicon_t invert_operator_token(enum onk_lexicon_t compound_token) {
     return AMPER;
   case AND:
     return AMPER;
+
   case BANDEQL:
     return AMPER;
 
-  case _COMPOUND_PIPE:
+  case _ONK_PIPE_TRANSMISSION_TOKEN:
     return PIPE;
 
   case BOREQL:
@@ -417,7 +423,7 @@ int8_t compose_compound(enum onk_lexicon_t ctok, enum onk_lexicon_t current) {
       return MINUSEQ;
   }
 
-  else if (ctok == _COMPOUND_PIPE ){
+  else if (ctok == _ONK_PIPE_TRANSMISSION_TOKEN){
     if (current == PIPE)
       return OR;
 
@@ -537,17 +543,6 @@ int8_t continue_forcing(struct LexerStage *state)
   return state->current == ONK_WORD_TOKEN || state->current == ONK_DOT_TOKEN;
 }
 
-/******
- * ----
- * TODO: escape quotes `\"` and `\'`
- * TODO: single quote strings `'hello world'`
- * TODO: triple quoted string that
- *       interprets carriage return literallty
- *       `'''this lets new src_codes'''`
- * TODO: whitespace interpretation `\n\t\r`
- * TODO: negative numbers
- * ----
- ******/
 int8_t onk_tokenize(
   struct onk_lexer_input_t *in,
   struct onk_lexer_output_t *out

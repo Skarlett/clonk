@@ -40,7 +40,7 @@ const char * onk_ptoken(enum onk_lexicon_t t) {
         case OR: return "or";
         case SHR: return "shr";
         case SHL: return "shl";
-        case PIPEOP: return "pipe op";
+        //case PIPEOP: return "pipe op";
         case BOREQL: return "bit or eql";
         case BANDEQL: return "bit and eql";
         case BNEQL: return "bit not eql";

@@ -1,15 +1,7 @@
 #include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <assert.h>
-#include "../utils/vec.h"
-//#include "lexer/lexer.h"
-//#include "utils.h"
 
+#include "clonk.h"
 #include "private.h"
-//#include "parser.h"
 
 enum Associativity
 {
@@ -146,13 +138,12 @@ int8_t pop_group(struct Parser *state, bool do_checks)
 
   /* only add groups if they're not singular item paramethesis braced */
   if (ghead->origin->type != ONK_PARAM_OPEN_TOKEN
-      || ghead->delimiter_cnt > 0
-      || ghead->is_empty)
-      push_output(
-        state,
-        ghead->type,
-        ghead->expr_cnt
-      );
+      && delimiter_cnt != 1)
+        push_output(
+          state,
+          ghead->type,
+          ghead->expr_cnt
+  );
 
   /* drop open brace */
   state->operators_ctr -= 1;
@@ -343,6 +334,9 @@ int8_t pretty_handle_for(
   struct onk_token_t *current,
   struct onk_token_t *next
 ){
+  struct Group *ghead;
+  const enum onk_lexicon_t expected;
+
   if(current->type == FOR)
   {
     // TODO: move to predict.c
@@ -350,7 +344,7 @@ int8_t pretty_handle_for(
     if(next->type == onk_is_tok_open_brace(current->token)
        && next->token != ONK_PARAM_OPEN_TOKEN)
     {
-      throw_unexpected_token(current, state);
+      throw_unexpected_token(current, state, ONK_OPEN_PARAM_TOKEN, 1);
       return
     }
     else

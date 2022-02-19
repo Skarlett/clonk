@@ -3,14 +3,13 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "utils/vec.h"
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 
-#define ONK_VERSION "0.0.2"
+#define ONK_VERSION "0.0.3"
 #define ONK_INCLUDE_TESTS 0 // -DINCLUDE_TESTS 1
-
-
-
-#define onk_nop
 
 /* 64kb */
 #define ONK_MAX_INPUT_FILE_SZ 65535
@@ -23,11 +22,13 @@
 /* operator stack size */
 #define ONK_PARSER_OP_BUF_SZ 2048
 
+#define ONK_ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
+#define ONK_DIGIT_STR "0987654321"
 
 #define ONK_EOF 0
 
+#define onk_nop
 typedef uint16_t onk_buf_int_t;
-
 
 // Macro for checking bitness (safer macros borrowed from
 // https://www.fluentcpp.com/2019/05/28/better-macros-better-flags/)
@@ -63,5 +64,10 @@ typedef uint16_t onk_buf_int_t;
      typedef uint16_t onk_usize;
      typedef int16_t onk_isize;
 #endif
+
+
+
+#include "utils/queue.h"
+#include "utils/vec.h"
 
 #endif

@@ -1,13 +1,17 @@
 # Source, Executable, Includes, Library Defines
-INCL  = 
+
+INCL  =
+
 SRC   = src/utils/vec.c \
+		src/utils/queue.c \
 		src/parser/lexer/lexer.c \
 		src/parser/lexer/helpers.c \
 		src/parser/lexer/debug.c \
-		src/parser/expr/expect.c \
-		src/parser/expr/expr.c \
-		src/parser/expr/debug.c \
-		src/parser/ast.c \
+		src/parser/parser.c \
+		src/parser/utils.c \
+		src/parser/predict.c \
+		src/parser/handlers.c \
+		src/parser/error.c
 
 TESTS = tests/CuTest.c \
 		tests/CuTestTest.c \
@@ -22,7 +26,8 @@ LIBS =
 EXE	= clonky
 # Compiler, Linker Defines
 CC	  = clang
-CFLAGS  = -ansi -pedantic -Wall –fstack-protector-all -O3 $(LDFLAGS)
+CFLAGS  = -ansi -I "include/" -pedantic -fstack-protector-all -O3 $(LDFLAGS) -Wall
+
 LIBPATH = -L.
 LDFLAGS = -o $(EXE) $(LIBPATH) $(LIBS)
 CFDEBUG = -ansi -pedantic -Wall -DDEBUG -Wcomment -ggdb -DINCLUDE_TESTS $(LDFLAGS)

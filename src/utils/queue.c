@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
-#include "queue.h"
+#include "utils/queue.h"
 
 void init_queue8(
     struct OpenQueue8_t *queue,

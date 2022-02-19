@@ -1,26 +1,15 @@
 // CLONK interpreter
 // my very own 1990s retro built interpreter
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include <unistd.h>
 
-#include "parser/lexer/lexer.h"
-#include "parser/expr/expr.h"
-#include "parser/expr/debug.h"
-#include "parser/ast.h"
-#include "parser/synthetize.h"
-#include "prelude.h"
-
+#include "clonk.h"
 
 #define HELP_TEXT \
     "\t -h | brings up this help menu\n" \
     "\t -V | print version\n" \
-    "\t -a | prints ast\n" \
-    "\t -t | prints token stream\n" \
-    "\t --extree | prints expression tree in a simplier format"
-   
+    "\t -x --examine <tokenizer|parser|ast>,... \n" \
+
 
 void print_help(char *name) {
     printf("usage: %s [opts] [file]\nversion: %s\n\n", name, VERSION);
@@ -28,9 +17,9 @@ void print_help(char *name) {
 }
 
 struct Opts {
-    uint_fast8_t print_ast;
-    uint_fast8_t print_expr_tree;
-    uint_fast8_t print_tokens;
+    uint8_t print_ast;
+    uint8_t print_parser;
+    uint8_t print_tokens;
 };
 
 void init_opts(struct Opts *opts) {
@@ -66,6 +55,7 @@ void setup_opts(int argc, char *argv[], struct Opts *opts) {
         else if (strcmp(argv[i], "-a") == 0) {
             opts->print_ast=1;
         }
+
         else if (strcmp(argv[i], "--extree") == 0) {
             opts->print_expr_tree=1;
         }
@@ -74,99 +64,9 @@ void setup_opts(int argc, char *argv[], struct Opts *opts) {
 }
 
 
-
-int parse(char * fp, struct Opts *opts) {
-    FILE *fd;
-    
-    struct BlockStatement root;
-    init_block(&root, STMT_CAPACITY*2);
-
-
-    struct onk_token_t tokens[2048];
-
-    size_t n_completed = 0;
-    size_t buf_sz = 2048;
-    size_t token_n = 0;
-
-    char src_code[buf_sz];
-    memset(src_code, 0, buf_sz);
-    
-    if ((fd = fopen(fp, "r")) == NULL) {
-        perror("Error! opening file");
-        exit(1);
-    }
-
-    size_t n = 1;
-
-    while (n > 0) {
-        fread(src_code, sizeof(char), buf_sz, fd);
-
-        //calculate the index/position of the last character written to the buffer
-        for (size_t i=0; buf_sz > i; i++) {
-            if (src_code[i] == 0) {
-                n=i;
-                break;
-            }
-        }
-
-        if (n <= 0) {
-            break;
-        }
-
-        size_t ntokens = onk_tokenize(src_code, tokens[token_n], ctr, error);
-        if (opts->print_tokens == 1) {
-            printf("token stream: ");
-            for (size_t p_i=0; ntokens > p_i; p_i++) {
-                printf("[%s(%d,%d)] ", onk_ptoken(tokens[p_i].type), (int)tokens[p_i].start, (int)tokens[p_i].end);
-            }
-            printf("\n\n");
-        }
-
-        int trap = 0;
-        assemble_ast(src_code, tokens, ntokens, &root, &trap);
-        memset(src_code, 0, buf_sz);
-        
-        n_completed = 0;
-    }
-    fclose(fd);
-    
-    if (synthesize(&root) == -1) {
-        printf("synth failed");
-    }
-    if (opts->print_ast == 1) {    
-        printf("\n\n");
-        printf("----------------\n");
-        printf("AST\n");
-        printf("----------------\n");
-        print_ast(&root);
-    }
-
-    if (opts->print_expr_tree == 1) {
-        printf("\n\n");
-        printf("----------------\n");
-        printf("Expr Tree\n");
-        printf("----------------\n");
-        ExprStatement *temp;
-        for (int i=0; root.length > i; i++) {
-            temp=((ExprStatement *)root.statements[i]->internal_data);
-            if (root.statements[i]->type == Expression) {
-                printf("statement: %d\n", i+1);
-                printf("length: %lu\n", expr_len(temp->expr));
-                ptree(temp->expr);
-                printf("----------------\n");
-            }
-        }
-        
-    }
-
-    return 0;
-}
-
-
 int main(int argc, char* argv[]) {
     struct Opts opts;
-    struct onk_token_t tokens[2048];
-    struct BlockStatement root, current;
+    struct onk_token_t * tokens;
 
     if (argc == 1) {
         print_help(argv[0]);
@@ -177,11 +77,12 @@ int main(int argc, char* argv[]) {
     setup_opts(argc, argv, &opts);
 
 
-    if(access(argv[argc-1], F_OK) == 0)
-        return parse(argv[argc-1], &opts);
-    
 
-    printf("bad arguments\n");
+    /* if(access(argv[argc-1], F_OK) == 0) */
+    /*     return parse(argv[argc-1], &opts); */
+
+
+    /* printf("bad arguments\n"); */
     return 1;
 
 }
