@@ -16,7 +16,7 @@ enum onk_lexicon_t {
     /********************/
     /* Transition token */
     /********************/
-    __MARKER_TRANSITION_START,
+    __ONK_MARKER_TRANSITION_START,
 
     _ONK_GT_TRANSMISSION_TOKEN,
     /* -123 or -= */
@@ -30,12 +30,12 @@ enum onk_lexicon_t {
     /*  */
     _ONK_LT_TRANSMISSION_TOKEN,
 
-    __MARKER_TRANSITION_END,
+    __ONK_MARKER_TRANSITION_END,
     /**********************/
     /* Single byte tokens */
     /**********************/
 
-    __MARKER_GROUP_START,
+    __ONK_MARKER_GROUP_START,
     onk_tuple_group_token, // (x,x)
 
     onk_list_group_token,  // [x,x]
@@ -52,21 +52,24 @@ enum onk_lexicon_t {
     // ONK_WORD_TOKEN { ONK_WORD_TOKEN = EXPR, ...};
     onk_struct_group_token,// Name {a=b, y=z};
 
-    __MARKER_GROUP_END,
+    __ONK_MARKER_GROUP_END,
 
     ONK_TOKEN_UNDEFINED = 1,
 
     ONK_NULL_TOKEN,
 
+    __ONK_MARKER_WHITESPACE_START,
     ONK_WHITESPACE_TOKEN,
     ONK_NEWLINE_TOKEN,
+    __ONK_MARKER_WHITESPACE_END,
+
     ONK_COMMENT_TOKEN,
 
     /*
     ** braces start
     */
 
-    __MARKER_OPEN_BRACE_START,
+    __ONK_MARKER_OPEN_BRACE_START,
 
     /* [ */
     ONK_BRACKET_OPEN_TOKEN,
@@ -76,10 +79,10 @@ enum onk_lexicon_t {
     
     /* ( */
     ONK_PARAM_OPEN_TOKEN,
-    __MARKER_OPEN_BRACE_END,
+    __ONK_MARKER_OPEN_BRACE_END,
 
 
-    __MARKER_CLOSE_BRACE_START,
+    __ONK_MARKER_CLOSE_BRACE_START,
     /* ] */
     ONK_BRACKET_CLOSE_TOKEN,
 
@@ -88,8 +91,8 @@ enum onk_lexicon_t {
     
     /* ) */
     ONK_PARAM_CLOSE_TOKEN,
-    __MARKER_CLOSE_BRACE_END,
-    __MARKER_UPGRADE_DATA_START,
+    __ONK_MARKER_CLOSE_BRACE_END,
+    __ONK_MARKER_UPGRADE_DATA_START,
 
     /* " */
     ONK_DOUBLE_QUOTE_TOKEN,
@@ -108,8 +111,8 @@ enum onk_lexicon_t {
 
     /* 0-9 single digit */
     ONK_DIGIT_TOKEN,
-    __MARKER_UPGRADE_DATA_END,
-    __MARKER_DELIM_START,
+    __ONK_MARKER_UPGRADE_DATA_END,
+    __ONK_MARKER_DELIM_START,
     /* , */
     ONK_COMMA_TOKEN,
 
@@ -118,7 +121,7 @@ enum onk_lexicon_t {
 
     /* ; */
     ONK_SEMICOLON_TOKEN,
-    __MARKER_DELIM_END,
+    __ONK_MARKER_DELIM_END,
 
     /* \ */
     ONK_BACKSLASH_TOKEN,
@@ -128,7 +131,7 @@ enum onk_lexicon_t {
     /*********************/
     /* multi byte tokens */
     /*********************/
-    __MARKER_UNIT_START,
+    __ONK_MARKER_UNIT_START,
 
     /*  [NUM, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN    */
     /* // 20_392  */
@@ -145,17 +148,17 @@ enum onk_lexicon_t {
     ONK_STRING_LITERAL_TOKEN,
 
     ONK_KEYWORD_TOKEN,
-    __MARKER_UNIT_END,
+    __ONK_MARKER_UNIT_END,
 
-    __MARKER_OP_START,
-    __MARKER_UNARY_START,
+    __ONK_MARKER_OP_START,
+    __ONK_MARKER_UNARY_START,
     /* ~ */
     ONK_TILDE_TOKEN,
 
     /* ! */
     ONK_NOT_TOKEN,
-    __MARKER_UNARY_END,
-    __MARKER_BIN_START,
+    __ONK_MARKER_UNARY_END,
+    __ONK_MARKER_BIN_START,
 
     /* % */
     ONK_MOD_TOKEN,
@@ -172,7 +175,7 @@ enum onk_lexicon_t {
     /* ^ */
     ONK_POW_TOKEN,
 
-    __MARKER_UPGRADE_OP_START,
+    __ONK_MARKER_UPGRADE_OP_START,
     /* + */
     ONK_ADD_TOKEN,
 
@@ -191,12 +194,12 @@ enum onk_lexicon_t {
     /* < */
     LT,
 
-    __MARKER_ASN_START,
+    __ONK_MARKER_ASN_START,
     /* = */
     EQUAL,
-    __MARKER_UPGRADE_OP_END,
+    __ONK_MARKER_UPGRADE_OP_END,
 
-    __MARKER_COMPOUND_BIN_START,
+    __ONK_MARKER_COMPOUND_BIN_START,
 
     /* |= */
     BOREQL,
@@ -212,7 +215,7 @@ enum onk_lexicon_t {
 
     /* -= */
     MINUSEQ,
-    __MARKER_ASN_END,
+    __ONK_MARKER_ASN_END,
 
     /* .. */
     /* ELLISPES */
@@ -241,13 +244,13 @@ enum onk_lexicon_t {
     /* != */
     ISNEQL,
 
-    __MARKER_COMPOUND_BIN_END,
+    __ONK_MARKER_COMPOUND_BIN_END,
 
     /* in */
     IN,
 
-    __MARKER_BIN_END,
-    __MARKER_GROUP_OP_START,
+    __ONK_MARKER_BIN_END,
+    __ONK_MARKER_GROUP_OP_START,
     _IdxAccess,
     Apply,
 
@@ -278,7 +281,7 @@ enum onk_lexicon_t {
     /* as */
     //AS,
 
-    __MARKER_KEYONK_WORD_TOKEN_START,
+    __ONK_MARKER_KEYONK_WORD_TOKEN_START,
     /* struct A {} */
     STRUCT,
 
@@ -294,8 +297,8 @@ enum onk_lexicon_t {
     /* from */
     FROM,
 
-    __MARKER_GROUP_OP_END,
-    __MARKER_OP_END,
+    __ONK_MARKER_GROUP_OP_END,
+    __ONK_MARKER_OP_END,
 
 
     TRUE,
@@ -314,7 +317,7 @@ enum onk_lexicon_t {
     FOR,
     WHILE,
 
-    __MARKER_KEYONK_WORD_TOKEN_END
+    __ONK_MARKER_KEYONK_WORD_TOKEN_END
 
     /*
       GROUPING token are generated in the expression parser
@@ -582,6 +585,23 @@ const char * onk_ptoken(enum onk_lexicon_t t);
  */
 bool onk_is_tok_unit(enum onk_lexicon_t tok);
 
+/**
+ * Checks if token is a whitespace
+ *
+ * @param tok token to compare
+ *
+ * @return bool
+*/
+bool onk_is_tok_whitespace(enum onk_lexicon_t tok);
+
+/**
+ * Checks if token is a whitespace
+ *
+ * @param tok token to compare
+ *
+ * @return bool
+*/
+bool onk_is_tok_asn_operator(enum onk_lexicon_t token) {
 
 /**
  * Checks if token is a grouping token
@@ -591,7 +611,7 @@ bool onk_is_tok_unit(enum onk_lexicon_t tok);
  *
  * @return bool
  */
-bool is_group(enum onk_lexicon_t tok);
+bool _onk_is_group(enum onk_lexicon_t tok);
 
 #endif
 

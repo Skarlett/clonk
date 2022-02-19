@@ -24,7 +24,7 @@ enum onk_lexicon_t grp_dbg_sym(enum Group_t type)
 int8_t argc_map(struct onk_token_t *tok)
 {
 
-  if (is_group(tok->type))
+  if (_onk_is_group(tok->type))
     return tok->end;
   
   if (onk_is_tok_operator(tok->type))

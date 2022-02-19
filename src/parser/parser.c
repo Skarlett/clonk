@@ -349,12 +349,10 @@ int8_t pretty_handle_for(
     }
     else
     {
+      /* popped off with ForParam on `in` keyword */
       push_op(OPEN_BRACE, 0, 0, state);
       ghead = new_grp(state);
       state->set_ctr += 1;
-
-      if (current->token == FOR)
-        ghead->stop_short[0] = IN;
 
       ghead->is_short = true;
       ghead->type = onk_tuple_group_token;
@@ -395,13 +393,10 @@ int8_t handle_dual_group(struct Parser *state)
     }
     else
     {
-      push_op(OPEN_BRACE, 0, 0, state);
-      ghead = new_grp(state);
+      ghead = new_grp(state, push_op(OPEN_BRACE, 0, 0, state));
       state->set_ctr += 1;
 
-      if (current->token == FOR)
-        ghead->stop_short[0] = IN;
-
+      ghead->type = onk_tuple_group_token;
       ghead->is_short = true;
     }
   }
@@ -696,6 +691,10 @@ int8_t parse(
     */
     if(state.panic || unexpected_token)
       handle_unwind(&state, unexpected_token);
+
+    /* skip */
+    else if(current->type == ONK_WHITESPACE_TOKEN || current->type == ONK_COMMENT_TOKEN)
+      continue;
 
     /*
      * Units are the the foundational symbols

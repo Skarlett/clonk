@@ -347,7 +347,7 @@ int8_t op_precedence(enum onk_lexicon_t token) {
       || token == MINUSEQ)
       return 1;
     
-    else if (onk_is_tok_open_brace(token) || is_group_modifer(token))
+    else if (onk_is_tok_open_brace(token) || _onk_is_group_modifer(token))
         return 0;
     
     return -1;
