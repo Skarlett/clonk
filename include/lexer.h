@@ -23,7 +23,7 @@ enum onk_lexicon_t {
     _ONK_SUB_TRANSMISSION_TOKEN,
 
     _ONK_PIPE_TRANSMISSION_TOKEN,
-    /* may turn into BOREQL or PIPEOP or OR */
+    /* may turn into ONK_BIT_OR_EQL or PIPEOP or OR */
 
     _ONK_AMPER_TRANSMISSION_TOKEN,
 
@@ -141,7 +141,7 @@ enum onk_lexicon_t {
     /* something */
     ONK_WORD_TOKEN,
 
-    ONK_FROM_LOCATION_TOKEN,
+    ONK_FROM_LOCATION,
 
     /* [QUOTE, ... QUOTE] */
     /* something */
@@ -183,91 +183,91 @@ enum onk_lexicon_t {
     ONK_SUB_TOKEN,
 
     /* | */
-    PIPE,
+    ONK_PIPE_TOKEN,
 
     /* & */
-    AMPER,
+    ONK_AMPER_TOKEN,
 
     /* > */
-    GT,
+    ONK_GT_TOKEN,
 
     /* < */
-    LT,
+    ONK_LT_TOKEN,
 
     __ONK_MARKER_ASN_START,
     /* = */
-    EQUAL,
+    ONK_EQUAL_TOKEN,
     __ONK_MARKER_UPGRADE_OP_END,
 
     __ONK_MARKER_COMPOUND_BIN_START,
 
     /* |= */
-    BOREQL,
+    ONK_BIT_OR_EQL,
 
     /* &= */
-    BANDEQL,
+    ONK_BIT_AND_EQL,
 
     /* ~= */
-    BNEQL,
+    ONK_BIT_NOT_EQL,
 
      /* += */
-    PLUSEQ,
+    ONK_PLUSEQ_TOKEN,
 
     /* -= */
-    MINUSEQ,
+    ONK_MINUS_EQL_TOKEN,
     __ONK_MARKER_ASN_END,
 
     /* .. */
     /* ELLISPES */
 
     /* >> */
-    SHR,
+    ONK_SHR_TOKEN,
 
     /* << */
-    SHL,
+    ONK_SHL_TOKEN,
 
     /* || */
-    OR,
+    ONK_OR_TOKEN,
 
     /* && */
-    AND,
+    ONK_AND_TOKEN,
 
     /* >= */
-    GTEQ,
+    ONK_GT_EQL_TOKEN,
 
     /* <= */
-    LTEQ,
+    ONK_LT_EQL_TOKEN,
 
     /* == */
-    ISEQL,
+    ONK_ISEQL_TOKEN,
 
     /* != */
-    ISNEQL,
+    ONK_NOT_EQL_TOKEN,
 
     __ONK_MARKER_COMPOUND_BIN_END,
 
     /* in */
-    IN,
+    ONK_IN_TOKEN,
 
     __ONK_MARKER_BIN_END,
     __ONK_MARKER_GROUP_OP_START,
-    _IdxAccess,
-    Apply,
+    onk_idx_op_token,
+    onk_apply_op_token,
 
     //(Name (field val structG(2)) structInit)
     //StructBlock, // name = Name {field_1 = a, field_2 = "b"};
-    StructInit,
+    onk_struct_init_op_token,
 
-    IfCond,
-    IfBody,
+    onk_ifcond_op_token,
+    onk_ifbody_op_token,
     DefSign,
-    DefBody,
+    onk_defbody_op_token,
 
-    ForParams, // ((i, i2 g(2)) forparams) (a b g(2)) forbody
-    ForBody,
+    onk_for_args_op_token, // ((i, i2 g(2)) forparams) (a b g(2)) forbody
+    onk_for_body_op_token,
 
-    WhileCond,
-    WhileBody,
+    onk_while_cond_op_token,
+    onk_while_body_op_token,
 
     /* static */
     /* STATIC, */
@@ -283,39 +283,37 @@ enum onk_lexicon_t {
 
     __ONK_MARKER_KEYONK_WORD_TOKEN_START,
     /* struct A {} */
-    STRUCT,
+    ONK_STRUCT_TOKEN,
 
     /* impl A {} */
-    IMPL,
+    ONK_IMPL_TOKEN,
 
     /* return */
-    RETURN,
+    ONK_RETURN_TOKEN,
 
     /* import */
-    IMPORT,
+    ONK_IMPORT_TOKEN,
 
     /* from */
-    FROM,
+    ONK_FROM_TOKEN,
 
     __ONK_MARKER_GROUP_OP_END,
     __ONK_MARKER_OP_END,
 
-
-    TRUE,
-
-    FALSE,
+    ONK_TRUE_TOKEN,
+    ONK_FALSE_TOKEN,
 
     /* if */
-    IF,
+    ONK_IF_TOKEN,
 
     /* else */
-    ELSE,
+    ONK_ELSE_TOKEN,
 
     /* def */
-    FUNC_DEF,
+    ONK_DEF_TOKEN,
 
-    FOR,
-    WHILE,
+    ONK_FOR_TOKEN,
+    ONK_WHILE_TOKEN,
 
     __ONK_MARKER_KEYONK_WORD_TOKEN_END
 
@@ -474,7 +472,7 @@ enum onk_lexicon_t invert_brace_tok_ty(enum onk_lexicon_t token);
 
 /**
  * Check if the parameter `token` is
- * LT, GT, ISEQL, LTEQ, GTEQ
+ * LT, GT, ONK_ISEQL_TOKEN, ONK_LT_EQL_TOKEN, ONK_GT_EQL_TOKEN
  * @param token
  * @return bool
  */
@@ -495,9 +493,9 @@ uint8_t onk_eq_any_tok(enum onk_lexicon_t cmp, enum onk_lexicon_t *buffer);
  * Check if the parameter `token` is equal the token type 
  *   ONK_ADD_TOKEN, ONK_SUB_TOKEN, ONK_DIV_TOKEN, ONK_MOD_TOKEN, ONK_MUL_TOKEN,
  *   AND, OR, ACCESS, ONK_DOT_TOKEN, 
- *   ONK_POW_TOKEN, LT, GT, ISEQL,
- *   LTEQ, GTEQ, EQUAL, PLUSEQ
- *   MINUSEQ, ONK_NOT_TOKEN
+ *   ONK_POW_TOKEN, LT, GT, ONK_ISEQL_TOKEN,
+ *   ONK_LT_EQL_TOKEN, ONK_GT_EQL_TOKEN, ONK_EQUAL_TOKEN, ONK_PLUSEQ_TOKEN
+ *   ONK_MINUS_EQL_TOKEN, ONK_NOT_TOKEN
  * @param token
  * @return bool
  */
@@ -601,7 +599,7 @@ bool onk_is_tok_whitespace(enum onk_lexicon_t tok);
  *
  * @return bool
 */
-bool onk_is_tok_asn_operator(enum onk_lexicon_t token) {
+bool onk_is_tok_asn_operator(enum onk_lexicon_t token);
 
 /**
  * Checks if token is a grouping token

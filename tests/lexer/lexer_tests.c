@@ -194,19 +194,19 @@ void __test__collapse_operator(CuTest* tc)
     uint16_t sz=0;
     struct onk_token_t tokens[16];
     static enum onk_lexicon_t answers[] = {
-        LTEQ,
-        GTEQ,
-        ISEQL,
-        ISNEQL,
-        PLUSEQ,
-        MINUSEQ,
+        ONK_LT_EQL_TOKEN,
+        ONK_GT_EQL_TOKEN,
+        ONK_ISEQL_TOKEN,
+        ONK_NOT_EQL_TOKEN,
+        ONK_PLUSEQ_TOKEN,
+        ONK_MINUS_EQL_TOKEN,
         AND,
         OR,
-        SHR,
-        SHL,
-        BOREQL,
-        BANDEQL,
-        BNEQL,
+        ONK_SHR_TOKEN,
+        ONK_SHL_TOKEN,
+        ONK_BIT_OR_EQL,
+        ONK_BIT_AND_EQL,
+        ONK_BIT_NOT_EQL,
         0
     };
 
@@ -288,13 +288,13 @@ void __test__oversized_bin_ops(CuTest* tc)
         2, 2, 2
     };
     static enum onk_lexicon_t answers[][8] = {
-        {LTEQ, EQUAL, 0}, {GTEQ, EQUAL, 0}, {ISEQL, LT, 0}, {ISEQL, GT, 0}, 
-        {GTEQ, EQUAL, 0}, {LTEQ, EQUAL, 0}, {ISEQL, EQUAL, 0}, {ISNEQL, EQUAL, 0},
-        {ISEQL, ONK_NOT_TOKEN, 0}, {ONK_ADD_TOKEN, PLUSEQ, 0}, {ONK_SUB_TOKEN, MINUSEQ, 0}, {EQUAL, ONK_ADD_TOKEN, ONK_ADD_TOKEN, 0},
-        {EQUAL, ONK_SUB_TOKEN, ONK_SUB_TOKEN, 0}, {PLUSEQ, EQUAL, 0}, {MINUSEQ, EQUAL, 0}, {ISEQL, ONK_ADD_TOKEN, 0}, 
-        {ISEQL, ONK_SUB_TOKEN, 0}, {AND, AMPER, 0}, {OR, PIPE, 0}, {SHR, GT, 0}, {SHR, EQUAL, 0},
-        {SHL, EQUAL, 0}, {SHL, LT, 0}, {BOREQL, EQUAL, 0}, {ISEQL, PIPE, 0},
-        {OR, GT, 0}, 0
+        {ONK_LT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_GT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_ISEQL_TOKEN, LT, 0}, {ONK_ISEQL_TOKEN, GT, 0}, 
+        {ONK_GT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_LT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_ISEQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_NOT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0},
+        {ONK_ISEQL_TOKEN, ONK_NOT_TOKEN, 0}, {ONK_ADD_TOKEN, ONK_PLUSEQ_TOKEN, 0}, {ONK_SUB_TOKEN, ONK_MINUS_EQL_TOKEN, 0}, {ONK_EQUAL_TOKEN, ONK_ADD_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_EQUAL_TOKEN, ONK_SUB_TOKEN, ONK_SUB_TOKEN, 0}, {ONK_PLUSEQ_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_MINUS_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_ISEQL_TOKEN, ONK_ADD_TOKEN, 0}, 
+        {ONK_ISEQL_TOKEN, ONK_SUB_TOKEN, 0}, {ONK_AND_TOKEN, ONK_AMPER_TOKEN, 0}, {ONK_OR_TOKEN, ONK_PIPE_TOKEN, 0}, {ONK_SHR_TOKEN, ONK_GT_TOKEN, 0}, {ONK_SHR_TOKEN, ONK_EQUAL_TOKEN, 0},
+        {ONK_SHL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_SHL_TOKEN, LT, 0}, {ONK_BIT_OR_EQL, ONK_EQUAL_TOKEN, 0}, {ONK_ISEQL_TOKEN, PIPE, 0},
+        {OR, ONK_GT_TOKEN, 0}, 0
     };
 
     static char * src_code[] =  {
@@ -328,13 +328,13 @@ void __test__derive_keywords(CuTest* tc)
     uint16_t sz=0;
     struct onk_token_t tokens[16];
     static enum onk_lexicon_t answers[] = {
-        IF,
-        ELSE,
-        FUNC_DEF,
-        IMPL,
+        ONK_IF_TOKEN,
+        ONK_ELSE_TOKEN,
+        ONK_DEF_TOKEN,
+        ONK_IMPL_TOKEN,
         EXTERN,
-        RETURN,
-        IMPORT,
+        ONK_RETURN_TOKEN,
+        ONK_IMPORT_TOKEN,
         CONST,
         STATIC,
         AND,
@@ -378,9 +378,9 @@ void __test__correct_tokenization(CuTest* tc)
         ONK_BRACE_OPEN_TOKEN, ONK_BRACE_CLOSE_TOKEN,
         ONK_PARAM_OPEN_TOKEN, ONK_PARAM_CLOSE_TOKEN,
         ONK_NOT_TOKEN, ONK_ADD_TOKEN, ONK_SUB_TOKEN,
-        GT, LT, ONK_MUL_TOKEN,
+        ONK_GT_TOKEN, ONK_LT_TOKEN, ONK_MUL_TOKEN,
         ONK_DIV_TOKEN, ONK_POW_TOKEN, ONK_MOD_TOKEN,
-        EQUAL, AMPER, PIPE,
+        ONK_EQUAL_TOKEN, AMPER, PIPE,
         ONK_COLON_TOKEN, ONK_SEMICOLON_TOKEN,
         ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, ONK_WORD_TOKEN,
         ONK_COMMA_TOKEN, ONK_TILDE_TOKEN, 0

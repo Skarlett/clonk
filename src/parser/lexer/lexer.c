@@ -40,7 +40,7 @@ struct LexerStage {
     /* struct Vec<onk_lexer_error_t> */
     struct Vec errors;
 
-    /* used to construct ONK_FROM_LOCATION_TOKEN
+    /* used to construct ONK_FROM_LOCATION
      * hijacks the compound token until
      * it falls out of pattern
     */
@@ -100,7 +100,7 @@ enum onk_lexicon_t onk_tokenize_char(char c) {
   case '/':
     return ONK_DIV_TOKEN;
   case '=':
-    return EQUAL;
+    return ONK_EQUAL_TOKEN;
   case '"':
     return ONK_DOUBLE_QUOTE_TOKEN;
   case '{':
@@ -189,7 +189,7 @@ int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t
       break;
 
     case ONK_NOT_TOKEN:
-      *compound_token = ISNEQL;
+      *compound_token = ONK_NOT_EQL_TOKEN;
       break;
 
     case ONK_CHAR_TOKEN:
@@ -204,12 +204,12 @@ int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t
       *compound_token = ONK_STRING_LITERAL_TOKEN;
       break;
 
-    case EQUAL:
-      *compound_token = ISEQL;
+    case ONK_EQUAL_TOKEN:
+      *compound_token = ONK_ISEQL_TOKEN;
       break;
 
     case ONK_ADD_TOKEN:
-      *compound_token = PLUSEQ;
+      *compound_token = ONK_PLUSEQ_TOKEN;
       break;
     
     case GT:
@@ -237,7 +237,7 @@ int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t
       break;
 
     case ONK_TILDE_TOKEN:
-      *compound_token = BNEQL;
+      *compound_token = ONK_BIT_NOT_EQL;
       break;
     
     default:
@@ -290,76 +290,84 @@ int8_t continue_compound_token(
           )
         )
       // !=
-      || (compound_token == ISNEQL && token == EQUAL && 1 > span_size)
+      || (compound_token == ONK_NOT_EQL_TOKEN && token == ONK_EQUAL_TOKEN && 1 > span_size)
       // ==
-      || (compound_token == ISEQL && token == EQUAL && 1 > span_size)
+      || (compound_token == ONK_ISEQL_TOKEN && token == ONK_EQUAL_TOKEN && 1 > span_size)
       // +=
-      || (compound_token == PLUSEQ && token == EQUAL && 1 > span_size)
+      || (compound_token == ONK_PLUSEQ_TOKEN && token == ONK_EQUAL_TOKEN && 1 > span_size)
       // ~=
-      || (compound_token == BNEQL && token == EQUAL && 1 > span_size)
+      || (compound_token == ONK_BIT_NOT_EQL && token == ONK_EQUAL_TOKEN && 1 > span_size)
       //  `-=` or `-123`
-      || (compound_token == _ONK_SUB_TRANSMISSION_TOKEN && (token == ONK_DIGIT_TOKEN || (token == EQUAL && 1 > span_size)))
+      || (compound_token == _ONK_SUB_TRANSMISSION_TOKEN && (token == ONK_DIGIT_TOKEN || (token == ONK_EQUAL_TOKEN && 1 > span_size)))
       // `|=`, `|>`, `||`
-      || (compound_token == _ONK_PIPE_TRANSMISSION_TOKEN && (token == EQUAL || token == GT || token == PIPE) && 1 > span_size)
+      || (compound_token == _ONK_PIPE_TRANSMISSION_TOKEN && (token == ONK_EQUAL_TOKEN || token == GT || token == PIPE) && 1 > span_size)
       // `&=` `&&`
-      || (compound_token == _ONK_AMPER_TRANSMISSION_TOKEN && (token == AMPER || token == EQUAL) && 1 > span_size)
+      || (compound_token == _ONK_AMPER_TRANSMISSION_TOKEN && (token == AMPER || token == ONK_EQUAL_TOKEN) && 1 > span_size)
       // `>=` `>>`
-      || (compound_token == _ONK_GT_TRANSMISSION_TOKEN && (token == GT || token == EQUAL) && 1 > span_size)
+      || (compound_token == _ONK_GT_TRANSMISSION_TOKEN && (token == GT || token == ONK_EQUAL_TOKEN) && 1 > span_size)
       // `<<` `<=`
-      || (compound_token == _ONK_LT_TRANSMISSION_TOKEN && (token == LT || token == EQUAL) && 1 > span_size)
+      || (compound_token == _ONK_LT_TRANSMISSION_TOKEN && (token == LT || token == ONK_EQUAL_TOKEN) && 1 > span_size)
   );    
+}
+
+
+bool downgrade_cmpd_gt(enum onk_lexicon_t tok)
+{
+  return tok == _ONK_GT_TRANSMISSION_TOKEN
+    || tok == ONK_SHR_TOKEN
+    || tok == ONK_GT_EQL_TOKEN;
+}
+
+bool downgrade_cmpd_lt(enum onk_lexicon_t tok)
+{
+  return tok == _ONK_LT_TRANSMISSION_TOKEN
+    || tok == ONK_SHL_TOKEN
+    || tok == ONK_LT_EQL_TOKEN;
 }
 
 /* used for downgrading compound tokens */
 enum onk_lexicon_t invert_operator_token(enum onk_lexicon_t compound_token) {
-  switch (compound_token) {
+
+  if(downgrade_cmpd_gt(compound_token))
+    return ONK_GT_TOKEN;
+
+  else if(downgrade_cmpd_lt(compound_token))
+    return ONK_LT_TOKEN;
+
+  else switch (compound_token) {
+
   case ONK_COMMENT_TOKEN:
     return POUND;
   
-  case BNEQL:
+  case ONK_BIT_NOT_EQL:
     return ONK_TILDE_TOKEN;
-  
-  case _ONK_GT_TRANSMISSION_TOKEN:
-    return GT;
-  case SHR:
-    return GT;
-  case GTEQ:
-    return GT;
-  
-  case _ONK_LT_TRANSMISSION_TOKEN:
-    return LT;
-  case SHL:
-    return LT;
-  case LTEQ:
-    return LT;
-  
-  case _ONK_AMPER_TRANSMISSION_TOKEN:
-    return AMPER;
-  case AND:
-    return AMPER;
 
-  case BANDEQL:
-    return AMPER;
+  case _ONK_AMPER_TRANSMISSION_TOKEN:
+    return ONK_AMPER_TOKEN;
+
+  case AND:
+    return ONK_AMPER_TOKEN;
+  case ONK_BIT_AND_EQL:
+    return ONK_AMPER_TOKEN;
 
   case _ONK_PIPE_TRANSMISSION_TOKEN:
-    return PIPE;
-
-  case BOREQL:
-    return PIPE;
-
-  case OR:
-    return PIPE;
+    return ONK_PIPE_TOKEN;
+  case ONK_BIT_OR_EQL:
+    return ONK_PIPE_TOKEN;
+  case ONK_OR_TOKEN:
+    return ONK_PIPE_TOKEN;
   
   case _ONK_SUB_TRANSMISSION_TOKEN:
     return ONK_SUB_TOKEN;
   
-  case PLUSEQ:
+  case ONK_PLUSEQ_TOKEN:
     return ONK_ADD_TOKEN;
   
-  case ISEQL:
-    return EQUAL;
-  case ISNEQL:
+  case ONK_ISEQL_TOKEN:
+    return ONK_EQUAL_TOKEN;
+  case ONK_NOT_EQL_TOKEN:
     return ONK_NOT_TOKEN;
+
   default:
     return ONK_TOKEN_UNDEFINED;
   }
@@ -368,15 +376,15 @@ enum onk_lexicon_t invert_operator_token(enum onk_lexicon_t compound_token) {
 int8_t derive_keyword(const char *src_code, struct onk_token_t *t) {
   static enum onk_lexicon_t lexicon[] = {
     //STATIC, CONST,
-    RETURN,
-    FOR, WHILE,
+    ONK_RETURN_TOKEN,
+    ONK_FOR_TOKEN, ONK_WHILE_TOKEN,
     // EXTERN, AS,
-    TRUE, FALSE,
-    IN, IF,
-    ELSE, FUNC_DEF,
-    IMPORT, FROM,
-    STRUCT, IMPL,
-    AND, OR, 0
+    ONK_TRUE_TOKEN, ONK_FALSE_TOKEN,
+    ONK_IN_TOKEN, ONK_IF_TOKEN,
+    ONK_ELSE_TOKEN, ONK_DEF_TOKEN,
+    ONK_IMPORT_TOKEN, ONK_FROM_TOKEN,
+    ONK_STRUCT_TOKEN, ONK_IMPL_TOKEN,
+    ONK_AND_TOKEN, ONK_OR_TOKEN, 0
   };
 
   static char *keywords[] = {
@@ -419,43 +427,43 @@ int8_t compose_compound(enum onk_lexicon_t ctok, enum onk_lexicon_t current) {
     if (current == ONK_DIGIT_TOKEN)
       return ONK_INTEGER_TOKEN;
         
-    else if (current == EQUAL)
-      return MINUSEQ;
+    else if (current == ONK_EQUAL_TOKEN)
+      return ONK_MINUS_EQL_TOKEN;
   }
 
   else if (ctok == _ONK_PIPE_TRANSMISSION_TOKEN){
-    if (current == PIPE)
-      return OR;
+    if (current == ONK_PIPE_TOKEN)
+      return ONK_OR_TOKEN;
 
-    else if (current == EQUAL)
-      return BOREQL;
+    else if (current == ONK_EQUAL_TOKEN)
+      return ONK_BIT_OR_EQL;
   }
 
   else if (ctok == _ONK_AMPER_TRANSMISSION_TOKEN)
   {
-    if (current == AMPER)
-      return AND;
+    if (current == ONK_AMPER_TOKEN)
+      return ONK_AND_TOKEN;
 
-    else if (current == EQUAL)
-      return BANDEQL;
+    else if (current == ONK_EQUAL_TOKEN)
+      return ONK_BIT_AND_EQL;
   }
 
   else if (ctok == _ONK_LT_TRANSMISSION_TOKEN)
   {
-    if(current == LT)
-      return SHL;
+    if(current == ONK_LT_TOKEN)
+      return ONK_SHL_TOKEN;
 
-    else if (current == EQUAL)
-      return LTEQ;
+    else if (current == ONK_EQUAL_TOKEN)
+      return ONK_LT_EQL_TOKEN;
   }
 
   else if (ctok == _ONK_GT_TRANSMISSION_TOKEN)
   {
-    if(current == GT)
-      return SHR;
+    if(current == ONK_GT_TOKEN)
+      return ONK_SHR_TOKEN;
 
-    else if (current == EQUAL)
-      return GTEQ;
+    else if (current == ONK_EQUAL_TOKEN)
+      return ONK_GT_EQL_TOKEN;
   }
 
   return 0;
@@ -483,7 +491,7 @@ int8_t finalize_compound_token(
       );
 
       /* push error */
-      vec_push(&state->errors, &err);
+      onk_vec_push(&state->errors, &err);
       return -1;
     }
 
@@ -523,15 +531,15 @@ int8_t push_tok(
     type
   );
 
-  assert(vec_push(state->tokens, tok) != 0);
+  assert(onk_vec_push(state->tokens, tok) != 0);
   queue8_push(&state->previous, &tok);
 
 
-  if (type == FROM)
+  if (type == ONK_FROM_TOKEN)
   {
     assert(UINT16_MAX > *state->i);
 
-    state->forcing_next_token = ONK_FROM_LOCATION_TOKEN;
+    state->forcing_next_token = ONK_FROM_LOCATION;
     state->force_start = *state->i + 1;
   }
   return ret;
@@ -573,7 +581,7 @@ int8_t onk_tokenize(
 
     else {
       err.type = lex_err_input_too_big;
-      assert(vec_push(&state.errors, &err) != 0);
+      assert(onk_vec_push(&state.errors, &err) != 0);
       return -1;
     }
 
@@ -597,7 +605,7 @@ int8_t onk_tokenize(
         err.type_data.non_ascii_token = token;
 
         /* push error */
-        vec_push(&state.errors, &err);
+        onk_vec_push(&state.errors, &err);
 
         utf_error_flag = 0;
       }
@@ -692,7 +700,7 @@ int8_t onk_tokenize(
       token.type = state.current;
       token.seq = state.tokens->len;
 
-      vec_push(state.tokens, &token);
+      onk_vec_push(state.tokens, &token);
       state.cmpd_start_at = 0;
     }
   }
@@ -718,14 +726,14 @@ int8_t onk_tokenize(
     if (push_tok(&state, &token) == -1)
       return -1;
 
-    //assert(vec_push(state.tokens, &token) > 0);
+    //assert(onk_vec_push(state.tokens, &token) > 0);
   }
   
   token.type = ONK_EOFT;
   token.start = i;
   token.end = i;
   token.seq = state.tokens->len;
-  vec_push(state.tokens, &token);
+  onk_vec_push(state.tokens, &token);
 
   /* setup return values */
   init_lexer_output(&state, out);

@@ -32,14 +32,14 @@ int8_t argc_map(struct onk_token_t *tok)
 
   switch (tok->type) {
     case DefSign: return 1;
-    case DefBody: return 2;
-    case IfCond: return 1;
-    case IfBody: return 2;
-    case Apply: return 2;
+    case onk_defbody_op_token: return 2;
+    case onk_ifcond_op_token: return 1;
+    case onk_ifbody_op_token: return 2;
+    case onk_apply_op_token: return 2;
     case ONK_NOT_TOKEN: return 1;
     case BitNot: return 1;
-    case _IdxAccess: return 4;
-    case IMPORT: return 1;
+    case onk_idx_op_token: return 4;
+    case ONK_IMPORT_TOKEN: return 1;
     default: return 0;
   }
 }
@@ -254,7 +254,7 @@ int8_t mk_idx_access(
 }
 
 /* 
- * Apply operations pop N+1 arguments from the stack where 
+ * onk_apply_op_token operations pop N+1 arguments from the stack where 
  * N is derived from `struct Group`'s `delmiter_ctr` + 1.
  *
  * `delimiter_ctr + 1` representing the total number of arguments.
@@ -264,7 +264,7 @@ int8_t mk_idx_access(
  * with a nested APPLY expression
  * 
  * src: name(args, ...) 
- * dbg: <name> <args> ... Apply
+ * dbg: <name> <args> ... onk_apply_op_token
  *
  */
 int8_t mk_fncall(
@@ -431,7 +431,7 @@ int8_t mk_def_body(struct PostfixStageState *state)
 
 int inc_stack(struct PostfixStageState *stage, struct Expr *ex)
 {
-    struct Expr * ret = vec_push(&stage->pool, ex);
+    struct Expr * ret = onk_vec_push(&stage->pool, ex);
     assert(ret != 0);
 
     stage->stack[stage->stack_ctr] = ret;
@@ -442,7 +442,7 @@ int inc_stack(struct PostfixStageState *stage, struct Expr *ex)
 
 int init_postfix_stage(struct PostfixStageState *stage) {
     stage->stack_ctr = 0;
-    init_vec(&stage->pool, 2048, sizeof(struct Expr));
+    onk_vec_init(&stage->pool, 2048, sizeof(struct Expr));
 }
 
 int parse_postfix_stage(
@@ -497,33 +497,33 @@ int parse_postfix_stage(
         mk_def_sig(&ex, postfix_stage);
         break;
 
-      case DefBody:
+      case onk_defbody_op_token:
         mk_def_body(postfix_stage);
         add_expr = false;
         break;
 
-      case IfCond:
+      case onk_ifcond_op_token:
         mk_if_cond(&ex, postfix_stage);
         break;
 
-      case IfBody:
+      case onk_ifbody_op_token:
         mk_if_body(postfix_stage);
         add_expr = false;
         break;
 
-      case Apply:
+      case onk_apply_op_token:
         mk_fncall(&ex, postfix_stage);
         break;
 
-      case _IdxAccess:
+      case onk_idx_op_token:
         mk_idx_access(&ex, postfix_stage);
         break;
 
-      case IMPORT:
+      case ONK_IMPORT_TOKEN:
         // mk_import(, struct Expr *ex)
         break;
 
-      case RETURN:
+      case ONK_RETURN_TOKEN:
         mk_return(&ex, postfix_stage, current);
         break;
 

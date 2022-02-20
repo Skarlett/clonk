@@ -1,17 +1,55 @@
 
 #include <string.h>
 #include <assert.h>
-#include "utils.h"
-#include "../../utils/vec.h"
+#include "clonk.h"
+#include "private.h"
+
+/*
+  Add 2 unsigned 16bit integers within bounds
+*/
+uint16_t onkstd_add_u16(uint16_t a, uint16_t b)
+{
+  if (UINT16_MAX == a || UINT16_MAX == b)
+    return UINT16_MAX;
+
+  else if(UINT16_MAX - a > b)
+    return a + b;
+
+  return UINT16_MAX;
+}
+
+uint16_t onkstd_sub_u16(uint16_t a, uint16_t b)
+{
+  if (b > a) return 0;
+
+  return a - b;
+}
+
+
+void assert_op_pop_n(const struct Parser *state, uint16_t n)
+{
+  assert(state->operators_ctr >= n);
+}
+
+void assert_op_push_n(const struct Parser *state, uint16_t n)
+{
+  assert(UINT16_MAX - state->operators_ctr >= n);
+}
+
+void assert_vec_len(const struct Vec *vec, uint16_t n)
+{
+  assert(vec->len >= n);
+}
+
 
 /* push to output */
 void insert(struct Parser *state, const struct onk_token_t *tok) {
-  assert(vec_push(&state->debug, &tok) != 0);
+  assert(onk_vec_push(&state->debug, &tok) != 0);
 }
 
 /* push token into pool */
 const struct onk_token_t * new_token(struct Parser *state, struct onk_token_t *tok) {
-  return vec_push(&state->pool, tok);
+  return onk_vec_push(&state->pool, tok);
 }
 
 void insert_new(
@@ -29,7 +67,7 @@ void insert_new(
   tok.type = type;
   tok.seq = 0;
 
-  heap = new_token(state, &token)
+  heap = new_token(state, &tok);
   insert(state, heap);
 }
 
@@ -51,8 +89,9 @@ const struct onk_token_t * current_token(const struct Parser *state){
   return &state->src[*state->_i];
 }
 
+
 struct Group * group_head(struct Parser *state){
-  if (STACK_SZ - 1 > state->set_ctr && state->set_ctr > 0)
+  if (state->set_sz > state->set_ctr && state->set_ctr > 0)
     return &state->set_stack[state->set_ctr - 1];
   return 0;
 }
@@ -64,13 +103,13 @@ const struct onk_token_t * op_head(const struct Parser *state){
 }
 
 const struct onk_token_t * output_head(const struct Parser *state) {
-  return vec_head(&state->debug);
+  return onk_vec_head(&state->debug);
 }
 
 const struct onk_token_t * group_modifier(
   const struct Parser *state,
-  const struct Group *group
-){
+  const struct Group *group)
+{
   const struct onk_token_t *modifier;
 
   if (group->operator_idx > 0)
@@ -90,8 +129,8 @@ const group_type(
   const struct onk_token_t *brace,
   const struct Group *group
 ){
-
-  group->operator_idx
+  /* TODO */
+  group->operator_idx;
 }
 
 /*
@@ -124,7 +163,9 @@ struct Group * new_grp(
   ghead->last_delim = 0;
   ghead->delimiter_cnt = 0;
   ghead->expr_cnt = 0;
+
   ghead->is_short = false;
+  ghead->collapse = false;
 
   ghead->origin = from;
 
@@ -147,11 +188,14 @@ bool is_fncall_pattern(const struct onk_token_t *prev){
 const struct onk_token_t * op_push(enum onk_lexicon_t op, uint16_t start, uint16_t end, struct Parser *state)
 {
   struct onk_token_t new, *heap = 0;
+  assert_op_push_n(state, 1);
+
+
   new.type = op;
   new.end = end;
   new.start = start;
 
-  heap = vec_push(&state->pool, &new);
+  heap = onk_vec_push(&state->pool, &new);
   assert(heap);
   
   state->operator_stack[state->operators_ctr] = heap;  
@@ -162,19 +206,19 @@ const struct onk_token_t * op_push(enum onk_lexicon_t op, uint16_t start, uint16
 int8_t push_many_ops(
   const enum onk_lexicon_t *ops,
   const struct onk_token_t *origin,
-  struct Parser *state
+  struct Parser *state,
+  uint16_t nitems
 ){
   struct onk_token_t tmp;
   const struct onk_token_t *heap;
+
+  assert_op_push_n(state, nitems);
+
   tmp.start = origin->start;
   tmp.end = origin->end;
 
-  for (uint16_t i = 0 ;; i++)
+  for (uint16_t i = 0; nitems > i; i++)
   {
-    assert(state->operators_state < ctr->operator_stack_sz);
-    if(ops[i] == 0)
-      break;
-
     tmp.type = ops[i];
     heap = new_token(state, &tmp);
     assert(heap);
@@ -217,13 +261,11 @@ void push_output(
 */
 int8_t flush_ops(struct Parser *state)
 {
-  const struct onk_token_t *head = 0;
-  head = state->operator_stack[(state->operators_ctr || 1) - 1];
-
-  if (state->operators_ctr == 0)
-    return 0;
+  const struct onk_token_t *head;
 
   while (state->operators_ctr > 0) {
+    head = op_head(state);
+
     /* ends if tokens inverted brace is found*/
     if (op_precedence(head->type) == 0)
       break;
@@ -233,9 +275,6 @@ int8_t flush_ops(struct Parser *state)
       insert(state, head);
       state->operators_ctr -= 1;
     }
-
-    /* Grab the head of the stack */
-    head = state->operator_stack[state->operators_ctr - 1];
   }
 
   return 0;
@@ -293,7 +332,7 @@ int8_t finish_idx_access(struct Parser *state)
   for (uint16_t i=ghead->expr_cnt; 3 > i; i++)
     push_output(state, ONK_NULL_TOKEN, 0);
 
-  push_output(state, _IdxAccess, 0);
+  push_output(state, onk_idx_op_token, 0);
 
   return 0;
 }
@@ -308,7 +347,7 @@ int8_t finish_idx_access(struct Parser *state)
       ">> << | &": 4
       "!= == >= > <= < && || in": 3 L
       "+= -= = &= |= ~=": 1 R
-      "( [ { IF ELSE RETURN DEF" : 0 non-assoc
+      "( [ { ONK_IF_TOKEN ONK_ELSE_TOKEN ONK_RETURN_TOKEN DEF" : 0 non-assoc
 */
 #define END_PRECEDENCE 127
 int8_t op_precedence(enum onk_lexicon_t token) {
@@ -331,24 +370,25 @@ int8_t op_precedence(enum onk_lexicon_t token) {
         || token == ONK_SUB_TOKEN)
         return 4;
     
-    else if (token == ISEQL
-        || token == ISNEQL
-        || token == GTEQ
-        || token == LTEQ
-        || token == GT
-        || token == LT
-        || token == AND
-        || token == OR
+    else if (token == ONK_ISEQL_TOKEN
+        || token == ONK_NOT_EQL_TOKEN
+        || token == ONK_GT_EQL_TOKEN
+        || token == ONK_LT_EQL_TOKEN
+        || token == ONK_GT_TOKEN
+        || token == ONK_LT_TOKEN
+        || token == ONK_AND_TOKEN
+        || token == ONK_OR_TOKEN
         || token == ONK_NOT_TOKEN)
         return 2;
     
-    else if (token == EQUAL
-      || token == PLUSEQ
-      || token == MINUSEQ)
+    else if (token == ONK_EQUAL_TOKEN
+      || token == ONK_PLUSEQ_TOKEN
+      || token == ONK_MINUS_EQL_TOKEN)
       return 1;
     
-    else if (onk_is_tok_open_brace(token) || _onk_is_group_modifer(token))
-        return 0;
+    else if (onk_is_tok_open_brace(token)
+      || onk_is_tok_group_modifier(token))
+      return 0;
     
     return -1;
 }
@@ -359,10 +399,10 @@ int8_t init_parser(
   uint16_t *i
 ){
   if (
-    init_vec(&state->pool, 256, sizeof(struct onk_token_t)) == -1
-    ||init_vec(&state->debug, 2048, sizeof(void *)) == -1
-    ||init_vec(&state->errors, 64, sizeof(struct ParserError)) == -1
-    ||init_vec(&state->restoration_stack, 2048, sizeof(struct RestorationFrame)) == -1
+    onk_vec_init(&state->pool, 256, sizeof(struct onk_token_t)) == -1
+    ||onk_vec_init(&state->debug, 2048, sizeof(void *)) == -1
+    ||onk_vec_init(&state->errors, 64, sizeof(struct ParserError)) == -1
+    ||onk_vec_init(&state->restoration_stack, 2048, sizeof(struct RestorationFrame)) == -1
   ) return -1;
 
   state->src_code = in->src_code;
@@ -372,10 +412,10 @@ int8_t init_parser(
   state->src_sz = in->tokens.len;
 
   state->set_ctr = 0;
-  state->set_sz = STACK_SZ;
+  state->set_sz = ONK_STACK_SZ;
 
   state->operators_ctr = 0;
-  state->operator_stack_sz = STACK_SZ;
+  state->operator_stack_sz = ONK_STACK_SZ;
 
   init_expect_buffer(&state->expecting);
 
@@ -385,10 +425,10 @@ int8_t init_parser(
 
 int8_t parser_free(struct Parser *state) {
   if (
-    vec_free(&state->debug) == -1
-    || vec_free(&state->pool) == -1
-    || vec_free(&state->errors) == -1
-    || vec_free(&state->restoration_stack) == -1)
+    onk_vec_free(&state->debug) == -1
+    || onk_vec_free(&state->pool) == -1
+    || onk_vec_free(&state->errors) == -1
+    || onk_vec_free(&state->restoration_stack) == -1)
     return -1;
 
   return 0;
@@ -396,10 +436,10 @@ int8_t parser_free(struct Parser *state) {
 
 int8_t parser_reset(struct Parser *state)
 {
-  memset(state->operator_stack, 0, sizeof(void *[STACK_SZ]));
+  memset(state->operator_stack, 0, sizeof(void *[ONK_STACK_SZ]));
   state->operators_ctr = 0;
 
-  memset(state->set_stack, 0, sizeof(void *[STACK_SZ]));
+  memset(state->set_stack, 0, sizeof(void *[ONK_STACK_SZ]));
   state->set_ctr = 0;
 
   state->src_sz = 0;

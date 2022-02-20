@@ -77,10 +77,10 @@ void restoration_hook(struct Parser *state)
 
         /* debug = Vec<struct onk_token_t*> */
         rframe.operator_stack_tok = state->operator_stack[state->operators_ctr];
-        rframe.output_tok = vec_head(&state->debug);
+        rframe.output_tok = onk_vec_head(&state->debug);
         rframe.current = &state->src[*state->_i];
 
-        vec_push(&state->restoration_stack, &rframe);
+        onk_vec_push(&state->restoration_stack, &rframe);
     }
 }
 
@@ -117,20 +117,20 @@ void unwind_stacks(struct Parser *state)
     if (state->restoration_ctr == 0) {
         state->set_ctr = 0;
         state->operators_ctr = 0;
-        vec_clear(&state->debug);
+        onk_vec_clear(&state->debug);
         return;
     }
 
     /* get last good restoration */
     rframe = restoration_head(state);
     head = rframe->output_tok->seq;
-    token = vec_head(&state->debug);
+    token = onk_vec_head(&state->debug);
 
     // pop until out matches restoration
     while (state->debug.len > 0 && token->seq > head)
     {
-        vec_pop(&state->debug, 0);
-        token = vec_head(&state->debug);
+        onk_vec_pop(&state->debug, 0);
+        token = onk_vec_head(&state->debug);
     }
 
     head = rframe->operator_stack_tok->seq;
@@ -243,7 +243,7 @@ int8_t handle_unwind(
 
 
     err.error.unexpected_tok = unexpected_tok;
-    vec_push(&state->errors, &err);
+    onk_vec_push(&state->errors, &err);
 }
 
 

@@ -7,7 +7,7 @@
 #include <stdbool.h>
 
 /*
- * FIFO data
+ * FONK_IF_TOKENO data
  */
 struct OpenQueue8_t {
     void * base;

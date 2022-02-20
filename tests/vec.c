@@ -8,7 +8,7 @@
 
 void __test__vec_init(CuTest* tc) {
     struct Vec vec;
-    CuAssertTrue(tc, init_vec(&vec, 4, 10) == 0);
+    CuAssertTrue(tc, onk_vec_init(&vec, 4, 10) == 0);
 
     CuAssertTrue(tc, vec.base != 0);
     CuAssertTrue(tc, vec.type_sz == 10);
@@ -17,17 +17,17 @@ void __test__vec_init(CuTest* tc) {
     free(vec.base);
 }
 
-void __test__vec_push(CuTest* tc) {
+void __test__onk_vec_push(CuTest* tc) {
     struct Vec vec;
     uint8_t num = 1;
     char msg[64];
 
-    init_vec(&vec, 4, sizeof(uint8_t));
+    onk_vec_init(&vec, 4, sizeof(uint8_t));
     // push 5 elements into a vec sized 4
     for(int i=0; 5 > i; i++) {
       memset(msg, 0, sizeof(char[64]));
       sprintf(msg, "failed on vec push, index [%d]", i);
-      CuAssert(tc, msg, vec_push(&vec, &num) != 0);
+      CuAssert(tc, msg, onk_vec_push(&vec, &num) != 0);
     }
     CuAssertTrue(tc, vec.capacity == 8);
     free(vec.base);

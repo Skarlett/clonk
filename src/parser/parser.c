@@ -1,7 +1,8 @@
 #include <stdio.h>
 
-#include "clonk.h"
+#include "parser.h"
 #include "private.h"
+#include "clonk.h"
 
 enum Associativity
 {
@@ -47,6 +48,8 @@ enum Associativity get_assoc(enum onk_lexicon_t token)
 ** postfix: ... <expr> <expr> <OPERATOR> ...
 ********************************************
 */
+
+
 int8_t handle_operator(struct Parser *state)
 {
   int8_t precedense = 0, head_precedense = 0;
@@ -74,7 +77,7 @@ int8_t handle_operator(struct Parser *state)
   head = op_head(state);
 
   /* skip IN operator if apart of ForLoopBody */
-  if(head->type == ForBody && current->type == IN)
+  if(head->type == onk_for_body_op_token && current->type == ONK_IN_TOKEN)
     return 0;
 
   head_precedense = op_precedence(head->type);
@@ -138,12 +141,12 @@ int8_t pop_group(struct Parser *state, bool do_checks)
 
   /* only add groups if they're not singular item paramethesis braced */
   if (ghead->origin->type != ONK_PARAM_OPEN_TOKEN
-      && delimiter_cnt != 1)
-        push_output(
+      && ghead->delimiter_cnt != 1)
+      push_output(
           state,
           ghead->type,
           ghead->expr_cnt
-  );
+      );
 
   /* drop open brace */
   state->operators_ctr -= 1;
@@ -234,11 +237,11 @@ int8_t handle_close_brace(struct Parser *state)
 ** Handles group notation operations such as
 ** function call (`foo(x)`) & index access (`foo[x]`)
 ** `Init {a=b}`
-** Places `Apply` before the open-brace type `(`
+** Places `onk_apply_op_token` before the open-brace type `(`
 ** when the opposite brace type is found,
 ** and the group is put into the output,
 ** `pop_block_operators` will be ran,
-** and insert the token before it (`Apply`/`IndexAccess`)
+** and insert the token before it (`onk_apply_op_token`/`IndexAccess`)
 ** if that token is defined as a block-descriptor.
 **
 **  accepts the following patterns as function calls
@@ -260,11 +263,11 @@ int8_t handle_close_brace(struct Parser *state)
 **
 */
 enum onk_lexicon_t push_group_modifier(
-  const struct onk_token_t * start,
+  const struct onk_token_t * current,
   const struct onk_token_t *prev
 ){
-  const struct onk_token_t * current = current_token(state);
-  const struct onk_token_t * prev = prev_token(state);
+  //const struct onk_token_t * current = current_token(state);
+  //const struct onk_token_t * prev = prev_token(state);
 
   if(!prev)
     return 0;
@@ -273,17 +276,17 @@ enum onk_lexicon_t push_group_modifier(
   {
     case ONK_PARAM_OPEN_TOKEN:
       if(is_fncall_pattern(prev->type))
-        return Apply;
+        return onk_apply_op_token;
       break;
 
     case ONK_BRACKET_OPEN_TOKEN:
       if(is_index_pattern(prev->type))
-        return _IdxAccess;
+        return onk_idx_op_token;
       break;
 
     case ONK_BRACE_OPEN_TOKEN:
       if(prev->type == ONK_WORD_TOKEN)
-        return StructInit;
+        return onk_struct_init_op_token;
       break;
 
     default:
@@ -318,10 +321,10 @@ int8_t handle_open_brace(struct Parser *state)
 
 int8_t is_dual_grp_keyword(enum onk_lexicon_t tok) {
   switch(tok){
-    case FOR: return 0;
-    case WHILE: return 1;
-    case IF: return 2;
-    case FUNC_DEF: return 3;
+    case ONK_FOR_TOKEN: return 0;
+    case ONK_WHILE_TOKEN: return 1;
+    case ONK_IF_TOKEN: return 2;
+    case ONK_DEF_TOKEN: return 3;
     default: return -1;
   }
 }
@@ -337,15 +340,15 @@ int8_t pretty_handle_for(
   struct Group *ghead;
   const enum onk_lexicon_t expected;
 
-  if(current->type == FOR)
+  if(current->type == ONK_FOR_TOKEN)
   {
     // TODO: move to predict.c
     // Short
-    if(next->type == onk_is_tok_open_brace(current->token)
-       && next->token != ONK_PARAM_OPEN_TOKEN)
+    if(next->type == onk_is_tok_open_brace(current->type)
+       && next->type != ONK_PARAM_OPEN_TOKEN)
     {
       throw_unexpected_token(current, state, ONK_OPEN_PARAM_TOKEN, 1);
-      return
+      return -1;
     }
     else
     {
@@ -356,24 +359,24 @@ int8_t pretty_handle_for(
 
       ghead->is_short = true;
       ghead->type = onk_tuple_group_token;
-
     }
   }
-
 }
 
 
-int8_t handle_dual_group(struct Parser *state)
+void handle_dual_group(struct Parser *state)
 {
   const struct onk_token_t *current = current_token(state);
   const struct onk_token_t *next = next_token(state);
   struct Group *ghead = group_head(state);
   const enum onk_lexicon_t products[4][3] = {
-    {ForBody, ForParams, 0},
-    {WhileBody, WhileCond, 0},
-    {IfBody, IfCond, 0},
-    {DefBody, DefSign, 0},
+    {onk_for_body_op_token, onk_for_args_op_token, 0},
+    {onk_while_body_op_token, onk_while_cond_op_token, 0},
+    {onk_ifbody_op_token, onk_ifcond_op_token, 0},
+    {onk_defbody_op_token, DefSign, 0},
   };
+
+  const enum onk_lexicon_t expected = ONK_PARAM_OPEN_TOKEN;
 
   int8_t idx = is_dual_grp_keyword(current->type);
   assert(idx >= 0);
@@ -381,25 +384,65 @@ int8_t handle_dual_group(struct Parser *state)
   ghead->expr_cnt += 1;
   push_many_ops(products[idx], current, state);
 
-  if(current->type == FOR)
+  if(current->type == ONK_FOR_TOKEN)
   {
     // TODO: move to predict.c
     // Short
-    if(next->type == onk_is_tok_open_brace(current->token)
-       && next->token != ONK_PARAM_OPEN_TOKEN)
+    if(next->type == onk_is_tok_open_brace(current->type)
+       && next->type != ONK_PARAM_OPEN_TOKEN)
     {
-      throw_unexpected_token(current, state);
-      return
+      throw_unexpected_token(state, current, &expected, 1);
+      return;
     }
     else
     {
-      ghead = new_grp(state, push_op(OPEN_BRACE, 0, 0, state));
+      ghead = new_grp(state, op_push(ONK_BRACE_OPEN_TOKEN, 0, 0, state));
       state->set_ctr += 1;
 
       ghead->type = onk_tuple_group_token;
       ghead->is_short = true;
     }
   }
+}
+
+/*
+ * pop short-block
+ *
+ * short blocks are isolated
+ * & inferred groups
+ *
+*/
+void pop_short_block(struct Parser *state) {
+  const struct Group *ghead;
+  const struct onk_token_t *ophead, *gmod;
+  const struct onk_token_t *next;
+
+  next = next_token(state);
+  if (next->type == ONK_ELSE_TOKEN)
+    return;
+
+  /*
+   TODO: check for ONK_ELSE_TOKEN before collapsing
+
+   // const struct onk_token_t *next = next_token(state);
+  */
+  do {
+    ghead = group_head(state);
+    ophead = op_head(state);
+    gmod = group_modifier(state, ghead);
+
+    state->operators_ctr -= 1;
+    assert(onk_is_tok_open_brace(ophead->type));
+
+    if (onk_is_tok_group_modifier(gmod->type))
+    {
+      insert(state, ophead);
+      state->operators_ctr -= 1;
+    }
+
+    state->set_ctr -= 1;
+
+  } while(ghead->is_short && ghead->collapsable);
 }
 
 /*
@@ -414,14 +457,16 @@ int8_t handle_dual_group(struct Parser *state)
 */
 int8_t handle_import(struct Parser *state)
 {
-  struct Group *gtop, *ghead = group_head(state);
+  struct Group *gtop;
   const struct onk_token_t *current = current_token(state);
 
   gtop = new_grp(state, next_token(state));
   gtop->is_short = true;
 
-  if(output_head(state)->type != FROM)
-    ghead->expr_cnt += 1;
+  /* check tail of output */
+  if(output_head(state)->type == ONK_FROM_TOKEN)
+    /* pop from's short-block */
+    pop_short_block(state);
 
   state->operator_stack[state->operators_ctr] = current;
   state->operators_ctr += 1;
@@ -430,36 +475,6 @@ int8_t handle_import(struct Parser *state)
   return 0;
 }
 
-/*
- * pop short-block
- *
- * short blocks are isolated
- * & inferred groups
- *
-*/
-void pop_short_block(struct Parser *state) {
-  const struct onk_token_t *next = next_token(state);
-  const struct Group *ghead = group_head(state);
-  const struct onk_token_t *ophead, *gmod;
-
-  while(group_head->is_short)
-  {
-    ophead = op_head(state);
-    gmod = group_modifier(state);
-
-    state->operator_ctr -= 1;
-    assert(onk_is_tok_open_brace(ophead));
-
-    if (onk_is_tok_group_modifier(gmod->type))
-    {
-      insert(state, ophead);
-      state->operators_ctr -= 1;
-    }
-
-    state->set_ctr -= 1;
-    ghead = group_head(state);
-  }
-}
 
 /*
 ** turns `onk_partial_brace_group_token` into either `onk_map_group_token`
@@ -535,9 +550,10 @@ int8_t handle_delimiter(struct Parser *state)
 
 int8_t handle_return(struct Parser *state)
 {
+  const struct onk_token_t *current = current_token(state);
   const struct onk_token_t *next = next_token(state);
+  const struct onk_token_t *brace;
   struct Group *group;
-  struct onk_token_t *brace;
 
   /* push return onto operator stack */
   state->operator_stack[state->operators_ctr] = current;
@@ -546,20 +562,12 @@ int8_t handle_return(struct Parser *state)
   /*setup a group for its values*/
   if (!onk_is_tok_open_brace(next->type))
   {
-    brace = push_op(OPEN_BRACE, 0, 0, state);
+    brace = op_push(ONK_BRACE_OPEN_TOKEN, 0, 0, state);
     group = new_grp(state, brace);
     group->is_short = true;
-
+    group->collapse = true;
     /* group->stop_short = {ONK_SEMICOLON_TOKEN, ONK_BRACKET_CLOSE_TOKEN}; */
   }
-}
-
-/* does this keyword use a single group */
-bool is_kw_single_group(enum onk_lexicon_t tok){
-   tok == FROM
-   || tok == ELSE
-   || tok == STRUCT
-   || tok == IMPL;
 }
 
 /*
@@ -605,7 +613,7 @@ bool is_kw_single_group(enum onk_lexicon_t tok){
 
        # onk_struct_group_token
        Example: Name {a = b}
-       Output: Name (A b =) onk_struct_group_token(1) StructInit(operator)
+       Output: Name (A b =) onk_struct_group_token(1) onk_struct_init_op_token(operator)
        delimiter: ','
        Structures define a new type of data,
        composed of other types.
@@ -662,12 +670,12 @@ bool is_kw_single_group(enum onk_lexicon_t tok){
       Exmaple input: abc.foo.last;
       Example output: abc foo . last .
 
-      ## `Apply` operator
-      `Apply` is used to call function
+      ## `onk_apply_op_token` operator
+      `onk_apply_op_token` is used to call function
 */
-int8_t parse(
+int8_t onk_parse(
   struct ParserInput *input,
-  truct ParserOutput *out
+  struct ParserOutput *out
 ){
   struct Parser state;
   struct onk_token_t *current;
@@ -693,7 +701,8 @@ int8_t parse(
       handle_unwind(&state, unexpected_token);
 
     /* skip */
-    else if(current->type == ONK_WHITESPACE_TOKEN || current->type == ONK_COMMENT_TOKEN)
+    else if(onk_is_tok_whitespace(current->type)
+      || current->type == ONK_COMMENT_TOKEN)
       continue;
 
     /*
@@ -722,13 +731,15 @@ int8_t parse(
       handle_dual_group(&state);
 
     /* flush operators and
-     * pop an operator (open brace) & grouping */
+     * pop an operator (open brace) & grouping
+    */
     else if (onk_is_tok_close_brace(current->type))
       handle_close_brace(&state);
 
     /* push group modifier & open brace
      * onto the operator stack.
-     * push another grouping */
+     * push another grouping
+    */
     else if (onk_is_tok_open_brace(current->type))
       handle_open_brace(&state);
 
@@ -737,18 +748,18 @@ int8_t parse(
       handle_delimiter(&state);
 
 
-    else if(current->type == IMPORT)
+    else if(current->type == ONK_IMPORT_TOKEN)
       handle_import(&state);
 
     /* pop from into output */
-    else if(current->type == ONK_FROM_LOCATION_TOKEN)
+    else if(current->type == ONK_FROM_LOCATION)
     {
       insert(&state, current);
       insert(&state, op_head(&state));
       state.operators_ctr -= 1;
     }
 
-    else if(current->type == RETURN)
+    else if(current->type == ONK_RETURN_TOKEN)
       handle_return(&state);
 
     else if(current->type == ONK_EOFT)

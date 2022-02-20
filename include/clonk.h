@@ -39,17 +39,20 @@ typedef uint16_t onk_buf_int_t;
 #if _WIN64 || ( __GNUC__ && __x86_64__ )
 #    define SYS_ARCH_PRIVATE_DEFINITION_64() 1
 #    define SYS_ARCH_PRIVATE_DEFINITION_32() 0
-#    define SYS_ARCH_IF_64_BIT_ELSE( x64, x86 ) (x64)
+#    define SYS_ARCH_PRIVATE_DEFINITION_16() 0
+#    define SYS_ARCH_IF_64_BIT( x64, x86 ) (x64)
 #    define onk_str_to_isize strtoll
 #    define onk_str_to_usize strtoull
 #    define onk_isize_sz sizeof(int64_t)
 #    define onk_usize_sz sizeof(uint64_t)
      typedef uint64_t onk_usize;
      typedef int64_t onk_isize;
+
 #elif _WIN32 || __GNUC__
 #    define SYS_ARCH_PRIVATE_DEFINITION_64() 0
 #    define SYS_ARCH_PRIVATE_DEFINITION_32() 1
-#    define SYS_ARCH_IF_64_BIT_ELSE( x64, x86 ) (x86)
+#    define SYS_ARCH_PRIVATE_DEFINITION_16() 0
+#    define SYS_ARCH_IF_64_BIT_ONK_ELSE_TOKEN( x64, x86 ) (x86)
 #    define onk_str_to_isize strtol
 #    define onk_str_to_usize strtoul
 #    define onk_isize_sz sizeof(int32_t)
@@ -57,6 +60,10 @@ typedef uint16_t onk_buf_int_t;
      typedef uint32_t onk_usize;
      typedef int32_t onk_isize;
 #else
+#    define SYS_ARCH_PRIVATE_DEFINITION_64() 0
+#    define SYS_ARCH_PRIVATE_DEFINITION_32() 0
+#    define SYS_ARCH_PRIVATE_DEFINITION_16() 1
+#    define SYS_ARCH_IF_64_BIT_ONK_ELSE_TOKEN( x64, x86 ) (x16)
 #    define onk_str_to_isize strtol
 #    define onk_str_to_usize strtoul
 #    define onk_isize_sz sizeof(int16_t)
@@ -64,8 +71,6 @@ typedef uint16_t onk_buf_int_t;
      typedef uint16_t onk_usize;
      typedef int16_t onk_isize;
 #endif
-
-
 
 #include "utils/queue.h"
 #include "utils/vec.h"

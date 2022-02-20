@@ -16,7 +16,7 @@ void __test__queue_push(CuTest* tc) {
     for(int i=0; 5 > i; i++) {
       memset(msg, 0, sizeof(char[64]));
       sprintf(msg, "failed on vec push, index [%d]", i);
-      CuAssert(tc, msg, vec_push(&vec, &num) != 0);
+      CuAssert(tc, msg, onk_vec_push(&vec, &num) != 0);
     }
     CuAssertTrue(tc, vec.capacity == 8);
     free(vec.base);

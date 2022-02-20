@@ -5,18 +5,19 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
-#include "lexer/lexer.h"
+
+#include "lexer.h"
 #include "private.h"
 
-/* TODO: Rules for `FOR`, `WHILE`, `IF` must follow an `(` */
-/* TODO: `IF`, `WHILE` signatures cannot */
+/* TODO: Rules for `ONK_FOR_TOKEN`, `ONK_WHILE_TOKEN`, `ONK_IF_TOKEN` must follow an `(` */
+/* TODO: `ONK_IF_TOKEN`, `ONK_WHILE_TOKEN` signatures cannot */
 /*       contain delimiters, or keywords */
 /* TODO: ensure the following constrains on struct init */
 /*      ONK_WORD_TOKEN { ONK_WORD_TOKEN=[expr], } */
 /* TODO: ensure the correct delimiter */
 /*      is choosen for the current group */
 /* TODO: allow for `{x;;}` but not `[x,,]` */
-/* TODO: ensure when `ELSE` can be used */
+/* TODO: ensure when `ONK_ELSE_TOKEN` can be used */
 /* TODO: limit delimiters in index access 3 >= */
 /* TODO: import paths only accept ONK_WORD_TOKEN/ONK_DOT_TOKEN until delim */
 /* TODO: figure out if you can declare a new variable */
@@ -27,10 +28,10 @@
 
 #define _EX_BIN_OPERATOR                 \
     ONK_ADD_TOKEN, ONK_MUL_TOKEN, ONK_SUB_TOKEN, ONK_DIV_TOKEN, ONK_POW_TOKEN, ONK_MOD_TOKEN,        \
-    PIPE, AMPER, OR, AND,                \
-    LT, LTEQ, SHL,                       \
-    GT, GTEQ, SHR                        \
-    //MINUSEQ, PLUSEQ
+    ONK_PIPE_TOKEN, ONK_AMPER_TOKEN, ONK_OR_TOKEN, ONK_AND_TOKEN,                \
+    ONK_LT_TOKEN, ONK_LT_EQL_TOKEN, ONK_SHL_TOKEN,                       \
+    ONK_GT_TOKEN, ONK_GT_EQL_TOKEN, ONK_SHR_TOKEN                        \
+    //ONK_MINUS_EQL_TOKEN, ONK_PLUSEQ_TOKEN
     // ONK_TILDE_TOKEN, ONK_NOT_TOKEN
 #define _EX_BIN_OPERATOR_LEN 16
 
@@ -42,8 +43,8 @@
 #define _EX_DELIM_LEN 3
 
 #define _EX_ASN_OPERATOR \
-    EQUAL, PLUSEQ, MINUSEQ, \
-    BANDEQL, BOREQL, BNEQL
+    ONK_EQUAL_TOKEN, ONK_PLUSEQ_TOKEN, ONK_MINUS_EQL_TOKEN, \
+    ONK_BIT_AND_EQL, ONK_BIT_OR_EQL, ONK_BIT_NOT_EQL
 #define _EX_ASN_OPERATOR_LEN 6
 
 #define _EX_OPEN_BRACE ONK_PARAM_OPEN_TOKEN, ONK_BRACE_OPEN_TOKEN, ONK_BRACKET_OPEN_TOKEN
@@ -69,12 +70,14 @@
   _EX_EXPR_LIMITED_LEN                           \
   + _EX_BRACE_LEN
 
- * ELSE is not included,
+
+/*
+ * ONK_ELSE_TOKEN is not included,
  * because it needs special checks
 */
 #define _EX_KEYONK_WORD_TOKEN                             \
-    IF, FUNC_DEF, FROM,                         \
-    IMPORT, STRUCT, FOR, WHILE, RETURN
+    ONK_IF_TOKEN, ONK_DEF_TOKEN, ONK_FROM_TOKEN,                         \
+    ONK_IMPORT_TOKEN, ONK_STRUCT_TOKEN, ONK_FOR_TOKEN, ONK_WHILE_TOKEN, ONK_RETURN_TOKEN
 
 #define _EX_KEYONK_WORD_TOKEN_LEN 8
 
@@ -149,6 +152,13 @@ const enum onk_lexicon_t PV_DEFAULT[] = {_EX_EXPR};
 
 const enum onk_lexicon_t PV_LIMITED[] = {_EX_EXPR_LIMITED};
 
+
+bool kw_follows_open_param(enum onk_lexicon_t tok)
+{
+  return (tok == ONK_IF_TOKEN || tok == ONK_WHILE_TOKEN);
+}
+
+
 int8_t fill_buffer(
   enum onk_lexicon_t current,
   enum onk_lexicon_t *buf,
@@ -162,33 +172,35 @@ int8_t fill_buffer(
 
   enum PrevisionerModeT mode = default_mode_t;
 
-  if(onk_is_tok_operator(current) || onk_is_tok_delimiter(current) || current == IN)
+  if(onk_is_tok_operator(current)
+     || onk_is_tok_delimiter(current)
+     || current == ONK_IN_TOKEN)
   {
-    selected = (enum onk_lexicon_t *)PV_DEFAULT;
-    nitems = _EX_EXPR_LEN;
+     selected = (enum onk_lexicon_t *)PV_DEFAULT;
+     nitems = _EX_EXPR_LEN;
   }
 
   else if (
-    current == IF
-    || current == FOR
-    || current == WHILE)
+    current == ONK_IF_TOKEN
+    //|| current == ONK_FOR_TOKEN - [WORD, ]
+    || current == ONK_WHILE_TOKEN)
   {
     small[0] = ONK_PARAM_OPEN_TOKEN;
     nitems = 1;
   }
 
-  else if (current == FUNC_DEF
-    || current == STRUCT
-    || current == IMPL
-    || current == FOR)
+  else if (current == ONK_DEF_TOKEN
+    || current == ONK_STRUCT_TOKEN
+    || current == ONK_IMPL_TOKEN
+    || current == ONK_FOR_TOKEN)
   {
     small[0] = ONK_WORD_TOKEN;
     nitems = 1;
   }
 
-  else if(current == FROM )
+  else if(current == ONK_FROM_TOKEN )
   {
-    small[0] = ONK_FROM_LOCATION_TOKEN;
+    small[0] = ONK_FROM_LOCATION;
     nitems = 1;
   }
 
@@ -237,12 +249,12 @@ int8_t fill_buffer(
       small[0] = ONK_WORD_TOKEN;
       break;
 
-    case FUNC_DEF:
+    case ONK_DEF_TOKEN:
       nitems = 1;
       small[0] = ONK_WORD_TOKEN;
       break;
 
-    case IMPORT:
+    case ONK_IMPORT_TOKEN:
         mode =
       //nitems = PV_I_init_len  - 1;
       //selected = _PV_import_init;
@@ -264,24 +276,23 @@ int8_t fill_buffer(
     ));
 
 
-  if(can_addon_keywords((op_head(state)->type == IfCond)))
+  if(can_addon_keywords((op_head(state)->type == onk_ifcond_op_token)))
   {
     memcpy(state->expecting.buffer + sizeof(enum onk_lexicon_t) * nitems, _PV_kw, _PV_kw_len - 1);
     nitems += _PV_kw_len - 1;
   }
-  // TODO: use operator stack head instead
 
-  if(state->operators_ctr > 0 && op_head(state)->type == IfCond)
+
+  // TODO: use operator stack head instead
+  if(state->operators_ctr > 0 && op_head(state)->type == onk_ifcond_op_token)
   {
-    state->expecting.buffer[nitems + 1] = ELSE;
+    state->expecting.buffer[nitems + 1] = ONK_ELSE_TOKEN;
     nitems += 1;
   }
 
   state->expecting.buffer[nitems + 1] = 0;
 
   return 0;
-  
-
 
 
   state->buffer
@@ -299,7 +310,7 @@ uint16_t lex_arr_len(enum onk_lexicon_t *arr)
 }
 
 bool can_use_else(enum onk_lexicon_t output_head){
-  return output_head == IfBody;
+  return output_head == onk_ifbody_op_token;
 }
 
 
@@ -313,10 +324,10 @@ void place_delimiter(struct Parser *state)
   /* bool single_check = buf_ctr+1 > PREVISION_SZ; */
   /* bool dual_check = buf_ctr+2 > PREVISION_SZ; */
 
-  if (gmod->type == WhileCond || gmod->type == IfCond)
+  if (gmod->type == onk_while_cond_op_token || gmod->type == onk_ifcond_op_token)
     return;
 
-  else if(ghead->type == _IdxAccess && ghead->delimiter_cnt > 2)
+  else if(ghead->type == onk_idx_op_token && ghead->delimiter_cnt > 2)
      return; // give ] or expr
 
   else if (ghead->type == onk_partial_brace_group_token)
@@ -394,7 +405,7 @@ uint8_t prevision_keywords(enum onk_lexicon_t *buf) {
 
   /* if(expr_head->type == IfExprT) */
   /* { */
-  /*   buf[nitems] = ELSE; */
+  /*   buf[nitems] = ONK_ELSE_TOKEN; */
   /*   nitems += 1; */
   /* } */
 

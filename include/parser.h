@@ -1,5 +1,5 @@
-#ifndef _HEADER_EXPR__
-#define _HEADER_EXPR__
+#ifndef __ONK_PARSER_HEADER__
+#define __ONK_PARSER_HEADER__
 
 #include "lexer.h"
 
@@ -23,7 +23,7 @@ struct ParserOutput {
 };
 
 enum ParserError_t {
-    parse_err_unexpected_token,
+    parse_err_unexpected_token
 };
 
 
@@ -88,7 +88,7 @@ struct ParserError {
            ((foo a (b c +) APPLY(3)) bar 1 APPLY(2) .)
 */
 
-int8_t parse(
+int8_t onk_parse(
     struct ParserInput *input,
     struct ParserOutput *out
 );
