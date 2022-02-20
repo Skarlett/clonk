@@ -6,20 +6,20 @@
 struct ParserInput {
     const char * src_code;
     uint16_t src_code_sz;
-    struct Vec tokens;
+    struct onk_vec_t tokens;
 
     bool add_glob_scope;
 };
 
 struct ParserOutput {
     /* Vec<struct onk_token_t *> */
-    const struct Vec postfix;
+    const struct onk_vec_t postfix;
 
     /* Vec<struct onk_token_t> */
-    struct Vec token_pool;
+    struct onk_vec_t token_pool;
 
     /* Vec<struct ParseError> */
-    struct Vec errors;
+    struct onk_vec_t errors;
 };
 
 enum ParserError_t {

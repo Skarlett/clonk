@@ -25,7 +25,7 @@ struct LexerStage {
     enum onk_lexicon_t previous_buf[PREV_BUF_SZ];
 
     /* struct OpenQueue<onk_lexicon_t> */
-    struct OpenQueue8_t previous;
+    struct onk_open_queue_t previous;
 
     enum onk_lexicon_t current;
     enum onk_lexicon_t compound;
@@ -34,11 +34,11 @@ struct LexerStage {
     uint16_t cmpd_span_size;
     uint16_t cmpd_start_at;
 
-    /* struct Vec<onk_token_t> *ptr */
-    struct Vec *tokens;
+    /* struct onk_vec_t<onk_token_t> *ptr */
+    struct onk_vec_t *tokens;
 
-    /* struct Vec<onk_lexer_error_t> */
-    struct Vec errors;
+    /* struct onk_vec_t<onk_lexer_error_t> */
+    struct onk_vec_t errors;
 
     /* used to construct ONK_FROM_LOCATION
      * hijacks the compound token until
@@ -51,7 +51,7 @@ struct LexerStage {
 
 void init_lexer_stage(
   struct LexerStage * stage,
-  struct Vec * tokens,
+  struct onk_vec_t * tokens,
   const char * src_code,
   const uint16_t * i
 ){
@@ -59,7 +59,7 @@ void init_lexer_stage(
   stage->i = i;
   stage->src_code = src_code;
 
-  init_queue8(
+  onk_init_queue8(
     &stage->previous,
     stage->previous_buf,
     sizeof(struct onk_token_t),
@@ -80,8 +80,8 @@ void init_lexer_output(
   struct onk_lexer_output_t *out
 ){
   /* avoid const warnings with (void *) */
-  assert(memcpy((void *)&out->tokens, &state->tokens, sizeof(struct Vec)) != 0);
-  assert(memcpy((void *)&out->errors, &state->errors, sizeof(struct Vec)) != 0);
+  assert(memcpy((void *)&out->tokens, &state->tokens, sizeof(struct onk_vec_t)) != 0);
+  assert(memcpy((void *)&out->errors, &state->errors, sizeof(struct onk_vec_t)) != 0);
   out->src_code = state->src_code;
   out->src_code_sz = state->src_code_sz;
 }
@@ -266,7 +266,7 @@ int8_t continue_compound_token(
 
   prev = 0;
   if (state->previous.nitems > 0)
-     prev = queue8_head(&state->previous);
+     prev = onk_queue8_head(&state->previous);
 
   return (
       (compound_token == ONK_COMMENT_TOKEN && token != ONK_NEWLINE_TOKEN)
@@ -532,7 +532,7 @@ int8_t push_tok(
   );
 
   assert(onk_vec_push(state->tokens, tok) != 0);
-  queue8_push(&state->previous, &tok);
+  onk_queue8_push(&state->previous, &tok);
 
 
   if (type == ONK_FROM_TOKEN)
@@ -632,7 +632,7 @@ int8_t onk_tokenize(
     else if (continue_compound_token(&state)) {
       state.compound = compose_compound(state.compound, state.current);
       state.cmpd_span_size += 1;
-      queue8_push(&state.previous, &token);
+      onk_queue8_push(&state.previous, &token);
       continue;
     }
 

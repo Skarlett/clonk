@@ -417,10 +417,10 @@ struct onk_lexer_output_t {
     uint16_t src_code_sz;
 
     /* Vec<onk_token_t> */
-    const struct Vec tokens;
+    const struct onk_vec_t tokens;
 
     /* Vec<onk_lexer_error_t> */
-    const struct Vec errors;
+    const struct onk_vec_t errors;
 };
 
 enum onk_lexer_errno {
@@ -440,7 +440,7 @@ struct onk_lexer_error_t {
 
 struct onk_lexer_input_t {
     const char *src_code;
-    struct Vec tokens;
+    struct onk_vec_t tokens;
     bool add_eoft;
 };
 

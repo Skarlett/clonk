@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include "utils/queue.h"
 
-void init_queue8(
-    struct OpenQueue8_t *queue,
+void onk_init_queue8(
+    struct onk_open_queue_t *queue,
     void * buffer,
     uint16_t item_sz,
     uint8_t capacity
@@ -22,8 +22,8 @@ void init_queue8(
 **
 ** README: Copies @param "item" into buffer
 */
-void queue8_push(
-    struct OpenQueue8_t *self,
+void onk_queue8_push(
+    struct onk_open_queue_t *self,
     void *item
 ){
 
@@ -45,8 +45,8 @@ void queue8_push(
 ** Get last item inserted in buffer
 **
 */
-void * queue8_head(
-    const struct OpenQueue8_t *self
+void * onk_queue8_head(
+    const struct onk_open_queue_t *self
 ){
     return self->base + ((self->tail || 1) - 1) * self->item_sz;
 }
@@ -55,8 +55,8 @@ void * queue8_head(
 ** get last item in buffer
 **
 */
-void * queue8_tail(
-    const struct OpenQueue8_t *self
+void * onk_queue8_tail(
+    const struct onk_open_queue_t *self
 ){
 
     /* if not circular yet */
@@ -75,8 +75,8 @@ void * queue8_tail(
  * steps back N steps in circular buffer
  *
 */
-void * queue8_step_back(
-    const struct OpenQueue8_t *self,
+void * onk_queue8_step_back(
+    const struct onk_open_queue_t *self,
     uint8_t n
 ){
     uint16_t working_int;

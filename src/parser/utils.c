@@ -36,7 +36,7 @@ void assert_op_push_n(const struct Parser *state, uint16_t n)
   assert(UINT16_MAX - state->operators_ctr >= n);
 }
 
-void assert_vec_len(const struct Vec *vec, uint16_t n)
+void assert_vec_len(const struct onk_vec_t *vec, uint16_t n)
 {
   assert(vec->len >= n);
 }
@@ -460,6 +460,6 @@ void parser_input_from_lexer_output(
 {
   parser_in->src_code = lex->src_code;
   parser_in->src_code_sz = lex->src_code_sz;
-  memcpy(&parser_in->tokens, &lex->tokens, sizeof(struct Vec));
+  memcpy(&parser_in->tokens, &lex->tokens, sizeof(struct onk_vec_t));
   parser_in->add_glob_scope = add_glob_scope;
 }

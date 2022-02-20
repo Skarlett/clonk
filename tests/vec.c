@@ -7,7 +7,7 @@
 #include "../src/utils/vec.h"
 
 void __test__vec_init(CuTest* tc) {
-    struct Vec vec;
+    struct onk_vec_t vec;
     CuAssertTrue(tc, onk_vec_init(&vec, 4, 10) == 0);
 
     CuAssertTrue(tc, vec.base != 0);
@@ -18,7 +18,7 @@ void __test__vec_init(CuTest* tc) {
 }
 
 void __test__onk_vec_push(CuTest* tc) {
-    struct Vec vec;
+    struct onk_vec_t vec;
     uint8_t num = 1;
     char msg[64];
 

@@ -14,11 +14,11 @@ struct Program {
 
 
     /* Vec<onk_token_t> */
-    struct Vec tokens;
+    struct onk_vec_t tokens;
     struct Expr *ast;
 
     /* Vec<Error> */
-    struct Vec errors;
+    struct onk_vec_t errors;
 
 };
 

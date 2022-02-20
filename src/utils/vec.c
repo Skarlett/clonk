@@ -10,7 +10,7 @@
 #define VEC_STATE_INITALIZED 2
 #define VEC_STATE_LOCK_ALLOC 3
 
-int8_t onk_vec_init(struct Vec *vec, size_t capacity, size_t type_sz)
+int8_t onk_vec_init(struct onk_vec_t *vec, size_t capacity, size_t type_sz)
 {
     vec->type_sz = type_sz;
     vec->base = calloc(capacity, type_sz);
@@ -24,7 +24,7 @@ int8_t onk_vec_init(struct Vec *vec, size_t capacity, size_t type_sz)
     return 0;
 }
 
-int8_t onk_vec_realloc(struct Vec *vec)
+int8_t onk_vec_realloc(struct onk_vec_t *vec)
 {
     if (vec->state != VEC_STATE_INITALIZED || vec->base == 0)
         return -1;
@@ -39,7 +39,7 @@ int8_t onk_vec_realloc(struct Vec *vec)
     return 0;
 }
 
-int8_t onk_vec_free(struct Vec *vec) {
+int8_t onk_vec_free(struct onk_vec_t *vec) {
     if (vec->state != VEC_STATE_INITALIZED || vec->base == 0)
         return -1;
     
@@ -53,7 +53,7 @@ int8_t onk_vec_free(struct Vec *vec) {
 ** returns pointer to item in expandable buffer
 ** otherwise returns 0 to indicate error.
 */
-void * onk_vec_push(struct Vec *vec, const void *src)
+void * onk_vec_push(struct onk_vec_t *vec, const void *src)
 {
     void * ret;
     if (vec->state != VEC_STATE_INITALIZED || vec->base == 0 || vec->head == 0)
@@ -77,7 +77,7 @@ void * onk_vec_push(struct Vec *vec, const void *src)
 ** return last valid item in buffer
 ** returns 0 if empty
 */
-const void * onk_vec_head(const struct Vec *vec)
+const void * onk_vec_head(const struct onk_vec_t *vec)
 {
     if (vec->len > 0)
         return vec->base + vec->type_sz * vec->len - 1;
@@ -94,7 +94,7 @@ const void * onk_vec_head(const struct Vec *vec)
 ** no copy is performed.
 **
 */
-int8_t onk_vec_pop(struct Vec *vec, void * dest) {
+int8_t onk_vec_pop(struct onk_vec_t *vec, void * dest) {
     const void *head = onk_vec_head(vec);
     if (head != 0){
         if (dest != 0)
@@ -111,7 +111,7 @@ int8_t onk_vec_pop(struct Vec *vec, void * dest) {
 **
 ** returns -1 if vector not initalized
  */
-int8_t onk_vec_clear(struct Vec *vec) {
+int8_t onk_vec_clear(struct onk_vec_t *vec) {
     if (vec->state == VEC_STATE_INITALIZED)
         vec->len = 0;
     else

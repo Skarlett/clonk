@@ -8,7 +8,7 @@
 
 
 void __test__queue_push(CuTest* tc) {
-    struct Vec vec;
+    struct onk_vec_t vec;
     uint8_t num = 1;
     char msg[64];
 

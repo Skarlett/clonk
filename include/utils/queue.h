@@ -9,7 +9,7 @@
 /*
  * FONK_IF_TOKENO data
  */
-struct OpenQueue8_t {
+struct onk_open_queue_t {
     void * base;
 
     /* denotes the oldest element in the fifo*/
@@ -22,8 +22,8 @@ struct OpenQueue8_t {
 };
 
 
-void init_queue8(
-    struct OpenQueue8_t *queue,
+void onk_init_queue8(
+    struct onk_open_queue_t *queue,
     void * buffer,
     uint16_t item_sz,
     uint8_t capacity
@@ -36,17 +36,17 @@ void init_queue8(
  *
  * README: Copies @param "item" into buffer
  */
-void queue8_push(struct OpenQueue8_t *self, void * item);
-void * queue8_head(const struct OpenQueue8_t *self);
-void * queue8_tail(const struct OpenQueue8_t *self);
+void onk_queue8_push(struct onk_open_queue_t *self, void * item);
+void * onk_queue8_head(const struct onk_open_queue_t *self);
+void * onk_queue8_tail(const struct onk_open_queue_t *self);
 
 
 /*
  * Get previous tokens up to N tokens
  * implemented as circular buffer.
 */
-void * queue8_prev(
-    const struct OpenQueue8_t *self,
+void * onk_queue8_prev(
+    const struct onk_open_queue_t *self,
     uint8_t i
 );
 
