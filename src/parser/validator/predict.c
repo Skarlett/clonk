@@ -155,9 +155,17 @@ const enum onk_lexicon_t PV_LIMITED[] = {_EX_EXPR_LIMITED};
 
 bool kw_follows_open_param(enum onk_lexicon_t tok)
 {
-  return (tok == ONK_IF_TOKEN || tok == ONK_WHILE_TOKEN);
+  return tok == ONK_IF_TOKEN || tok == ONK_WHILE_TOKEN;
 }
 
+
+bool follows_word(enum onk_lexicon_t tok)
+{
+  return (tok == ONK_STRUCT_TOKEN
+    || tok == ONK_DEF_TOKEN
+    || tok == ONK_IMPL_TOKEN
+  );
+}
 
 int8_t fill_buffer(
   enum onk_lexicon_t current,
@@ -180,19 +188,13 @@ int8_t fill_buffer(
      nitems = _EX_EXPR_LEN;
   }
 
-  else if (
-    current == ONK_IF_TOKEN
-    //|| current == ONK_FOR_TOKEN - [WORD, ]
-    || current == ONK_WHILE_TOKEN)
+  else if (kw_follows_open_param(current))
   {
     small[0] = ONK_PARAM_OPEN_TOKEN;
     nitems = 1;
   }
 
-  else if (current == ONK_DEF_TOKEN
-    || current == ONK_STRUCT_TOKEN
-    || current == ONK_IMPL_TOKEN
-    || current == ONK_FOR_TOKEN)
+  else if (follows_word(current))
   {
     small[0] = ONK_WORD_TOKEN;
     nitems = 1;
@@ -255,20 +257,17 @@ int8_t fill_buffer(
       break;
 
     case ONK_IMPORT_TOKEN:
-        mode =
+        mode = 0;
       //nitems = PV_I_init_len  - 1;
       //selected = _PV_import_init;
       //state->expecting.mode = PV_Import;
       break;
 
     default:
-      break;
+      return -1;
   }
 
   /* any open brace */
-  else
-    return -1;
-
   if (selected)
     assert(memcpy(
       buf, selected,
@@ -312,7 +311,6 @@ uint16_t lex_arr_len(enum onk_lexicon_t *arr)
 bool can_use_else(enum onk_lexicon_t output_head){
   return output_head == onk_ifbody_op_token;
 }
-
 
 void place_delimiter(struct Parser *state)
 {
@@ -383,19 +381,19 @@ void init_expect_buffer(struct Previsioner *state)
     state->mode = PV_Default; 
 }
 
+/*
+ * Can use Keywords if operator stack is flushed
+ * and the top frame is a codeblock
+*/
 bool can_use_keywords(struct Parser *state)
 {
   struct Group *ghead = group_head(state);
-  const struct onk_token_t *gmod = group_modifier(state, ghead);
-  const struct onk_token_t *ophead = ophead(state);
+  const struct onk_token_t *ophead = op_head(state);
 
-  if(!onk_is_tok_open_brace(ophead->type))
-    return false;
+  return (ophead->type == ONK_BRACE_OPEN_TOKEN
+          && (ghead->type == onk_partial_brace_group_token
+              || ghead->type == onk_code_group_token));
 
-  else if(ghead->operator_idx > 0 && onk_is_tok_group_modifier(gmod->type))
-    return false;
-
-  return true;
 }
 
 uint8_t prevision_keywords(enum onk_lexicon_t *buf) {
