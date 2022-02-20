@@ -1,5 +1,6 @@
 /******
  * ----
+ * TODO: make £ (0x9c) interchangable with $
  * TODO: escape quotes `\"` and `\'`
  * TODO: single quote strings `'hello world'`
  * TODO: triple quoted string that

@@ -40,7 +40,7 @@ typedef uint16_t onk_buf_int_t;
 #    define SYS_ARCH_PRIVATE_DEFINITION_64() 1
 #    define SYS_ARCH_PRIVATE_DEFINITION_32() 0
 #    define SYS_ARCH_PRIVATE_DEFINITION_16() 0
-#    define SYS_ARCH_IF_64_BIT( x64, x86 ) (x64)
+#    define SYS_ARCH_IF_64_BIT( x64, x86, x16 ) (x64)
 #    define onk_str_to_isize strtoll
 #    define onk_str_to_usize strtoull
 #    define onk_isize_sz sizeof(int64_t)
@@ -52,7 +52,7 @@ typedef uint16_t onk_buf_int_t;
 #    define SYS_ARCH_PRIVATE_DEFINITION_64() 0
 #    define SYS_ARCH_PRIVATE_DEFINITION_32() 1
 #    define SYS_ARCH_PRIVATE_DEFINITION_16() 0
-#    define SYS_ARCH_IF_64_BIT_ONK_ELSE_TOKEN( x64, x86 ) (x86)
+#    define SYS_ARCH_IF_64_BIT_ELSE( x64, x86, x16 ) (x86)
 #    define onk_str_to_isize strtol
 #    define onk_str_to_usize strtoul
 #    define onk_isize_sz sizeof(int32_t)
@@ -63,7 +63,7 @@ typedef uint16_t onk_buf_int_t;
 #    define SYS_ARCH_PRIVATE_DEFINITION_64() 0
 #    define SYS_ARCH_PRIVATE_DEFINITION_32() 0
 #    define SYS_ARCH_PRIVATE_DEFINITION_16() 1
-#    define SYS_ARCH_IF_64_BIT_ONK_ELSE_TOKEN( x64, x86 ) (x16)
+#    define SYS_ARCH_IF_64_BIT_ONK_ELSE_TOKEN( x64, x86, x16 ) (x16)
 #    define onk_str_to_isize strtol
 #    define onk_str_to_usize strtoul
 #    define onk_isize_sz sizeof(int16_t)
