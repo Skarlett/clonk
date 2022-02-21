@@ -3,7 +3,7 @@
 #include <assert.h>
 #include "clonk.h"
 #include "private.h"
-
+#include "validator/predict.h"
 /*
   Add 2 unsigned 16bit integers within bounds
 */
@@ -218,15 +218,24 @@ struct Group * new_grp(
   return ghead;
 }
 
-bool is_index_pattern(const struct onk_token_t *prev) {
-  return onk_is_tok_close_brace(prev->type)
-    || prev->type == ONK_WORD_TOKEN
-    || prev->type == ONK_STRING_LITERAL_TOKEN;
+bool is_index_pattern(enum onk_lexicon_t prev) {
+  return onk_is_tok_close_brace(prev)
+    || prev == ONK_WORD_TOKEN
+    || prev == ONK_STRING_LITERAL_TOKEN;
 }
 
-bool is_fncall_pattern(const struct onk_token_t *prev){
-  return onk_is_tok_close_brace(prev->type)
-    || prev->type == ONK_WORD_TOKEN;
+bool is_fncall_pattern(enum onk_lexicon_t prev){
+  return onk_is_tok_close_brace(prev)
+    || prev == ONK_WORD_TOKEN;
+}
+
+void idx_infer_value(struct Parser *state)
+{
+  const struct onk_token_t *prev = prev_token(state);
+  if(prev) {
+    if (prev->type == ONK_COLON_TOKEN || prev->type == ONK_BRACKET_OPEN_TOKEN)
+      push_output(state, ONK_NULL_TOKEN, 0);
+  }
 }
 
 const struct onk_token_t * op_push(enum onk_lexicon_t op, uint16_t start, uint16_t end, struct Parser *state)

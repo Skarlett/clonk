@@ -258,6 +258,8 @@ bool is_op_keyword(enum onk_lexicon_t token);
 int8_t op_precedence(enum onk_lexicon_t token);
 
 int8_t finish_idx_access(struct Parser *state);
+void idx_infer_value(struct Parser *state);
+
 
 // enum onk_lexicon_t grp_dbg_sym(enum Group_t type);
 
@@ -276,9 +278,8 @@ enum Operation operation_from_token(enum onk_lexicon_t t);
 //int8_t mk_error(struct Parser *state, enum ErrorT type, const char * msg);
 
 
-bool is_index_pattern(const struct onk_token_t *prev);
-
-bool is_fncall_pattern(const struct onk_token_t *prev);
+bool is_fncall_pattern(enum onk_lexicon_t prev);
+bool is_index_pattern(enum onk_lexicon_t prev);
 
 int8_t init_parser(
   struct Parser *state,
