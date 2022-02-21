@@ -356,18 +356,24 @@ int8_t finish_idx_access(struct Parser *state)
 
   return 0;
 }
+
 /*
     precendense table:
       ") ] }"   : 127 non-assoc
       "."       : 126 L
-      "^"       : 8 R (1 ^ 2 ^ 3) -> (1 ^ (2 ^ 3))
-      "/ * %"   : 7 L  (4 / 2 * 2) -> ((4 / 2) * 2)
-      "+ -"     : 6 L
-      "! ~"     : 5 R
-      ">> << | &": 4
-      "!= == >= > <= < && || in": 3 L
-      "+= -= = &= |= ~=": 1 R
-      "( [ { ONK_IF_TOKEN ONK_ELSE_TOKEN ONK_RETURN_TOKEN DEF" : 0 non-assoc
+      "! ~":    : 13 R
+      "^"       : 12 R (1 ^ 2 ^ 3) -> (1 ^ (2 ^ 3))
+      "/ * %"   : 11 L  (4 / 2 * 2) -> ((4 / 2) * 2)
+      "+ -"     : 10 L
+      ">> <<"   : 9 L
+     "> < >= <=": 8 L
+     "==" "!="  : 7 L
+      "&":      : 6 L
+      "|"       : 5 L
+      "&&"      : 4 L
+      "||"      : 3 L
+      "= |= &= ~= += -=" : 2 L
+      "( [ { keywords "  : 0 non-assoc
 */
 #define END_PRECEDENCE 127
 int8_t op_precedence(enum onk_lexicon_t token) {
@@ -377,35 +383,62 @@ int8_t op_precedence(enum onk_lexicon_t token) {
     
     if (token == ONK_DOT_TOKEN)
         return 126;
-    
-    else if (token == ONK_POW_TOKEN)
-        return 6;
 
-    else if (token == ONK_MUL_TOKEN 
+    else if(onk_is_tok_unary_operator(token))
+      return 13;
+
+    else if (token == ONK_POW_TOKEN)
+        return 12;
+
+    else if (
+        token == ONK_MUL_TOKEN
         || token == ONK_DIV_TOKEN
         || token == ONK_MOD_TOKEN)
-        return 5;
+        return 11;
 
-    else if (token == ONK_ADD_TOKEN
+    else if (
+        token == ONK_ADD_TOKEN
         || token == ONK_SUB_TOKEN)
-        return 4;
-    
-    else if (token == ONK_ISEQL_TOKEN
-        || token == ONK_NOT_EQL_TOKEN
-        || token == ONK_GT_EQL_TOKEN
-        || token == ONK_LT_EQL_TOKEN
-        || token == ONK_GT_TOKEN
-        || token == ONK_LT_TOKEN
-        || token == ONK_AND_TOKEN
-        || token == ONK_OR_TOKEN
-        || token == ONK_NOT_TOKEN)
-        return 2;
-    
-    else if (token == ONK_EQUAL_TOKEN
+        return 10;
+
+    else if(
+      token == ONK_SHL_TOKEN
+      || token == ONK_SHR_TOKEN)
+      return 9;
+
+    else if(
+      token == ONK_GT_TOKEN
+      || token == ONK_LT_TOKEN
+      || token == ONK_LT_EQL_TOKEN
+      || token == ONK_GT_EQL_TOKEN)
+      return 8;
+
+    else if(
+      token == ONK_ISEQL_TOKEN
+      || token == ONK_NOT_EQL_TOKEN)
+      return 7;
+
+    else if(token == ONK_AMPER_TOKEN)
+      return 6;
+
+    else if(token == ONK_PIPE_TOKEN)
+      return 5;
+
+    else if(token == ONK_AND_TOKEN)
+      return 4;
+
+    else if(token == ONK_OR_TOKEN)
+      return 3;
+
+    else if (
+      token == ONK_EQUAL_TOKEN
+      || token == ONK_BIT_OR_EQL
+      || token == ONK_BIT_AND_EQL
+      || token == ONK_BIT_NOT_EQL
       || token == ONK_PLUSEQ_TOKEN
       || token == ONK_MINUS_EQL_TOKEN)
-      return 1;
-    
+      return 2;
+
     else if (onk_is_tok_open_brace(token)
       || onk_is_tok_group_modifier(token))
       return 0;
