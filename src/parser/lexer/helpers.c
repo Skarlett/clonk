@@ -48,8 +48,8 @@ bool onk_is_int_tok_negative(const char * source, struct onk_token_t *token) {
 }
 
 bool onk_is_tok_keyword(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_KEYONK_WORD_TOKEN_START
-        && __ONK_MARKER_KEYONK_WORD_TOKEN_END > token;
+    return token > __ONK_MARKER_KEYWORD_START
+        && __ONK_MARKER_KEYWORD_TOKEN_END > token;
 }
 
 bool _onk_is_group(enum onk_lexicon_t tok) {
@@ -95,6 +95,7 @@ enum onk_lexicon_t invert_brace_tok_ty(enum onk_lexicon_t token) {
         case ONK_BRACE_CLOSE_TOKEN: return ONK_BRACE_OPEN_TOKEN;
         case ONK_BRACKET_CLOSE_TOKEN: return ONK_BRACKET_OPEN_TOKEN;
         case ONK_BRACKET_OPEN_TOKEN: return ONK_BRACKET_CLOSE_TOKEN;
+        case ONK_HASHMAP_LITERAL_START_TOKEN: return ONK_BRACE_CLOSE_TOKEN;
         default: return ONK_UNDEFINED_TOKEN;
     }
 }
