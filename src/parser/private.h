@@ -83,55 +83,6 @@ struct Group {
     //uint8_t short_block;
     //enum ShortBlock_t short_type;
 };
-
-enum PrevisionerModeT {
-  /* give list of next possible
-   * tokens based on the input */
-  default_mode_t,
-
-  /* follow a sequence of
-   * tokens until completed */
-  PV_DefSignature,
-  PV_Import
-};
-
-/* Predicts the next possible tokens
- * from the current token.
- * Used to check for unexpected tokens.
- * functionality is
-*/
-
-#define PREVISION_SZ 64
-union PrevisionerData {
-  // default mode
-  struct {
-    enum onk_lexicon_t *ref;
-  } default_mode;
-
-  struct {
-    uint16_t ctr;
-  } fndef_mode;
-
-  struct {
-    bool has_word;
-    bool expecting_junction;
-  } import_mode;
-};
-
-
-// TODO: if top of operator stack has 0 precedense,
-// you can push ret/if/else/import
-struct Previsioner
-{
-  enum onk_lexicon_t buffer[PREVISION_SZ];
-  uint16_t buf_ctr;
-
-
-  enum PrevisionerModeT mode;
-  union PrevisionerData data;
-};
-
-void init_expect_buffer(struct Previsioner *state);
 /*
 ** restoration works by destroying a
 ** portion of the upper part of the stack.
@@ -221,12 +172,16 @@ struct Parser {
     struct onk_vec_t restoration_stack;
     uint16_t restoration_ctr;
 
+
     /* whenever panic is set a
      * partial_err is valid, and
      * caused on previous loop */
     bool panic;
     struct PartialError partial_err;
 
+
+    uint16_t peek_next;
+    uint16_t peek_prev;
 
     /* enabled if parser cannot
      * move to the next stage */
@@ -279,6 +234,9 @@ const struct onk_token_t * output_head(const struct Parser *state);
 struct Group * group_head(struct Parser *state);
 struct Group * new_grp(struct Parser *state, const struct onk_token_t * origin);
 
+bool can_ignore_token(enum onk_lexicon_t tok);
+
+uint16_t find_next(struct Parser *state);
 /*create token in pool, and push to output*/
 void push_output(
   struct Parser *state,
