@@ -126,6 +126,8 @@ enum onk_lexicon_t {
     /* \ */
     ONK_BACKSLASH_TOKEN,
 
+    ONK_DOLLAR_TOKEN,
+
     /* @ */
     ONK_ATSYM__TOKEN,
     /*********************/

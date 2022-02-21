@@ -129,13 +129,13 @@ enum onk_lexicon_t onk_tokenize_char(char c) {
   case '^':
     return ONK_POW_TOKEN;
   case '>':
-    return GT;
+    return ONK_GT_TOKEN;
   case '<':
-    return LT;
+    return ONK_LT_TOKEN;
   case '&':
-    return AMPER;
+    return ONK_AMPER_TOKEN;
   case '|':
-    return PIPE;
+    return ONK_PIPE_TOKEN;
   case '%':
     return ONK_MOD_TOKEN;
   case '_':
@@ -152,6 +152,8 @@ enum onk_lexicon_t onk_tokenize_char(char c) {
     return ONK_DOT_TOKEN;
   case '~':
     return ONK_TILDE_TOKEN;
+  case '$':
+    return ONK_DOLLAR_TOKEN;
 
   case '\\':
     return ONK_BACKSLASH_TOKEN;
@@ -213,11 +215,11 @@ int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t
       *compound_token = ONK_PLUSEQ_TOKEN;
       break;
     
-    case GT:
+    case ONK_GT_TOKEN:
       *compound_token = _ONK_GT_TRANSMISSION_TOKEN;
       break;
 
-    case LT:
+    case ONK_LT_TOKEN:
       *compound_token = _ONK_LT_TRANSMISSION_TOKEN;
       break;
 
@@ -225,11 +227,11 @@ int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t
       *compound_token = _ONK_SUB_TRANSMISSION_TOKEN;
       break;
 
-    case AMPER:
+    case ONK_AMPER_TOKEN:
       *compound_token = _ONK_AMPER_TRANSMISSION_TOKEN;
       break;
 
-    case PIPE:
+    case ONK_PIPE_TOKEN:
       *compound_token = _ONK_PIPE_TRANSMISSION_TOKEN;
       break;
     
@@ -285,7 +287,7 @@ int8_t continue_compound_token(
       // String literal "..."
       ||(compound_token == ONK_STRING_LITERAL_TOKEN
         && (
-          (token != ONK_DOUBLE_QUOTE_TOKEN || (token == ONK_DOUBLE_QUOTE_TOKEN && prev && prev == ONK_BACKSLASH_TOKEN))
+          (token != ONK_DOUBLE_QUOTE_TOKEN || (token == ONK_DOUBLE_QUOTE_TOKEN && prev && prev->type == ONK_BACKSLASH_TOKEN))
           // TODO:
           //|| (token != ONK_SINGLE_QUOTE_TOKEN || token == ONK_SINGLE_QUOTE_TOKEN && prev == ONK_BACKSLASH_TOKEN)
           )
