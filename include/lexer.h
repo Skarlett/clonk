@@ -71,30 +71,6 @@ enum onk_lexicon_t {
     ** braces start
     **
     */
-
-    __ONK_MARKER_OPEN_BRACE_START,
-
-    /* [ */
-    ONK_BRACKET_OPEN_TOKEN,
-
-    /* { */
-    ONK_BRACE_OPEN_TOKEN,
-    
-    /* ( */
-    ONK_PARAM_OPEN_TOKEN,
-    __ONK_MARKER_OPEN_BRACE_END,
-
-
-    __ONK_MARKER_CLOSE_BRACE_START,
-    /* ] */
-    ONK_BRACKET_CLOSE_TOKEN,
-
-    /* } */
-    ONK_BRACE_CLOSE_TOKEN,
-    
-    /* ) */
-    ONK_PARAM_CLOSE_TOKEN,
-    __ONK_MARKER_CLOSE_BRACE_END,
     __ONK_MARKER_UPGRADE_DATA_START,
 
     /* " */
@@ -138,11 +114,32 @@ enum onk_lexicon_t {
 
     __ONK_MARKER_OP_START,
 
+    __ONK_MARKER_OPEN_BRACE_START,
+
     /* ${ */
     ONK_HASHMAP_LITERAL_START_TOKEN,
+    /* [ */
+    ONK_BRACKET_OPEN_TOKEN,
+
+    /* { */
+    ONK_BRACE_OPEN_TOKEN,
+
+    /* ( */
+    ONK_PARAM_OPEN_TOKEN,
+    __ONK_MARKER_OPEN_BRACE_END,
+
+    __ONK_MARKER_CLOSE_BRACE_START,
+    /* ] */
+    ONK_BRACKET_CLOSE_TOKEN,
+
+    /* } */
+    ONK_BRACE_CLOSE_TOKEN,
+
+    /* ) */
+    ONK_PARAM_CLOSE_TOKEN,
+    __ONK_MARKER_CLOSE_BRACE_END,
 
     __ONK_MARKER_BIN_START,
-
     /* % */
     ONK_MOD_TOKEN,
 
@@ -506,16 +503,19 @@ uint8_t onk_eq_any_tok(enum onk_lexicon_t cmp, enum onk_lexicon_t *buffer);
 
 
 /**
- * Check if the parameter `token` is equal the token type 
- *   ONK_ADD_TOKEN, ONK_SUB_TOKEN, ONK_DIV_TOKEN, ONK_MOD_TOKEN, ONK_MUL_TOKEN,
- *   AND, OR, ACCESS, ONK_DOT_TOKEN, 
- *   ONK_POW_TOKEN, LT, GT, ONK_ISEQL_TOKEN,
- *   ONK_LT_EQL_TOKEN, ONK_GT_EQL_TOKEN, ONK_EQUAL_TOKEN, ONK_PLUSEQ_TOKEN
- *   ONK_MINUS_EQL_TOKEN, ONK_NOT_TOKEN
+ * Check if the parameter `token` is an operator
  * @param token
  * @return bool
  */
 bool onk_is_tok_operator(enum onk_lexicon_t compound_token);
+
+
+/**
+ * Check if the parameter `token` is an operator
+ * @param token
+ * @return bool
+ */
+bool onk_is_tok_unary_operator(enum onk_lexicon_t compound_token);
 
 
 /**
