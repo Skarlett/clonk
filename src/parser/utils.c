@@ -25,7 +25,6 @@ uint16_t onkstd_sub_u16(uint16_t a, uint16_t b)
   return a - b;
 }
 
-
 void assert_op_pop_n(const struct Parser *state, uint16_t n)
 {
   assert(state->operators_ctr >= n);
@@ -41,11 +40,12 @@ void assert_vec_len(const struct onk_vec_t *vec, uint16_t n)
   assert(vec->len >= n);
 }
 
-
 /* push to output */
-void insert(struct Parser *state, const struct onk_token_t *tok) {
+void insert(struct Parser *state, const struct onk_token_t *tok)
+{
   assert(onk_vec_push(&state->debug, &tok) != 0);
 }
+
 
 /* push token into pool */
 const struct onk_token_t * new_token(struct Parser *state, struct onk_token_t *tok) {
@@ -71,16 +71,47 @@ void insert_new(
   insert(state, heap);
 }
 
-const struct onk_token_t * prev_token(const struct Parser *state) {
-  if (*state->_i != 0)
-    return &state->src[*state->_i - 1];
+/*
+**
+** TODO: Now that the parser accepts white-space
+** We have to ensure that `next_token`,
+** `prev_token`
+**
+**
+ */
+
+
+bool can_ignore_token(enum onk_lexicon_t tok)
+{
+  return onk_is_tok_whitespace(tok) || tok == ONK_COMMENT_TOKEN;
+}
+
+/* */
+uint16_t find_next(struct Parser *state) {
+  uint16_t i = *state->_i;
+
+  for (; state->src_sz > i; i++)
+  {
+    if(can_ignore_token(state->src[i].type))
+      continue;
+
+    return i;
+  }
+
   return 0;
 }
 
+
+const struct onk_token_t * prev_token(const struct Parser *state) {
+  if (*state->_i == 0)
+    return 0;
+  return &state->src[state->peek_prev];
+}
+
 const struct onk_token_t * next_token(const struct Parser *state) {
-  if(UINT16_MAX > *state->_i && state->src_sz > *state->_i)
-    return &state->src[*state->_i + 1];
-  return 0;
+  if(state->peek_next == 0)
+    return 0;
+  return &state->src[state->peek_next];
 }
 
 /*
@@ -416,6 +447,9 @@ int8_t init_parser(
 
   state->operators_ctr = 0;
   state->operator_stack_sz = ONK_STACK_SZ;
+
+  state->peek_next = 0;
+  state->peek_prev = 0;
 
   init_expect_buffer(&state->expecting);
 

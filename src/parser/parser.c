@@ -678,17 +678,19 @@ int8_t onk_parse(
   struct ParserOutput *out
 ){
   struct Parser state;
-  struct onk_token_t *current;
+  const struct onk_token_t *current;
   uint16_t i = 0;
   bool unexpected_token;
 
   assert(init_parser(&state, input, &i) == 0);
 
-  for (i = 0 ;; i++) {
+  for (i = 0 ;state.src_sz > i; i++) {
     current = &state.src[i];
 
     assert(state.operators_ctr > state.operator_stack_sz);
     unexpected_token = is_token_unexpected(&state);
+
+
 
     /*
       unexpected_token is a boolean used to determine if we
@@ -700,17 +702,22 @@ int8_t onk_parse(
     if(state.panic || unexpected_token)
       handle_unwind(&state, unexpected_token);
 
-    /* skip */
-    else if(onk_is_tok_whitespace(current->type)
-      || current->type == ONK_COMMENT_TOKEN)
+    /*
+     * This should only be ran until
+     * find_next is ran, afterwards,
+    */
+    else if (can_ignore_token(current->type))
       continue;
+
+    else
+      state.peek_next = find_next(&state);
 
     /*
      * Units are the the foundational symbols
      * that represent proceedures & data
      * ONK_WORD_TOKENS, INTS, ONK_STRING_LITERAL_TOKEN
     */
-    else if(onk_is_tok_unit(current->type))
+    if(onk_is_tok_unit(current->type))
       insert(&state, current);
 
     /*
@@ -772,18 +779,15 @@ int8_t onk_parse(
 #endif
     }
 
-
-    /* if (do_short_block(op_head(state)->type) */
-    /*     && !onk_is_tok_open_brace(next_token(state)->type)) */
-    /* { */
-    /*     new_grp(state, push_op(OPEN_BRACE, 0, 0, &state)) */
-    /*     group_head(state)->is_short = true; */
-    /*     stop_short = {ONK_SEMICOLON_TOKEN, CLOSE_BRACE}; */
-    /* } */
-
     if(!state.panic)
       restoration_hook(&state);
-  }
+
+    state.peek_prev = i;
+
+    if (state.peek_next != 0)
+      *state._i = state.peek_next;
+
+}
 
   /* dump the remaining operators onto the output */
   flush_ops(&state);
