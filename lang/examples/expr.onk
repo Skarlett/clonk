@@ -1,0 +1,31 @@
+my_string = "hello world!";
+my_esc_str = "hello \"person\"";
+
+
+my_int = 1234;
+my_nint = -4567;
+my_large_int = 12_345_567_223;
+
+my_expr = (1 + 2) * 3 << 1;
+
+my_list = [1, 2, 3];
+
+my_tuple = (1, 2, 3);
+
+my_mapping = ${
+  "key": "value",
+  123: 456
+};
+
+# instance
+foo = Foo { field='hello', data=123 };
+
+# definition
+struct Foo { field, data };
+
+impl Foo {
+  def bar(self)
+  {
+    return "boo";
+  }
+}
