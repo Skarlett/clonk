@@ -112,6 +112,17 @@ enum onk_lexicon_t {
     /* multi byte tokens */
     /*********************/
 
+    __ONK_MARKER_CLOSE_BRACE_START,
+    /* ] */
+    ONK_BRACKET_CLOSE_TOKEN,
+
+    /* } */
+    ONK_BRACE_CLOSE_TOKEN,
+
+    /* ) */
+    ONK_PARAM_CLOSE_TOKEN,
+    __ONK_MARKER_CLOSE_BRACE_END,
+
     __ONK_MARKER_OP_START,
 
     __ONK_MARKER_OPEN_BRACE_START,
@@ -128,16 +139,7 @@ enum onk_lexicon_t {
     ONK_PARAM_OPEN_TOKEN,
     __ONK_MARKER_OPEN_BRACE_END,
 
-    __ONK_MARKER_CLOSE_BRACE_START,
-    /* ] */
-    ONK_BRACKET_CLOSE_TOKEN,
 
-    /* } */
-    ONK_BRACE_CLOSE_TOKEN,
-
-    /* ) */
-    ONK_PARAM_CLOSE_TOKEN,
-    __ONK_MARKER_CLOSE_BRACE_END,
 
     __ONK_MARKER_BIN_START,
     /* % */
@@ -304,7 +306,6 @@ enum onk_lexicon_t {
 
     ONK_FOR_TOKEN,
     ONK_WHILE_TOKEN,
-
 
     __ONK_MARKER_UNIT_START,
 
