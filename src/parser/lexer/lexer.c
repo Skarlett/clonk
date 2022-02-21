@@ -1,6 +1,5 @@
 /******
  * ----
- * TODO: make £ (0x9c) interchangable with $
  * TODO: escape quotes `\"` and `\'`
  * TODO: single quote strings `'hello world'`
  * TODO: triple quoted string that
@@ -160,6 +159,10 @@ enum onk_lexicon_t onk_tokenize_char(char c) {
   default:
     break;
   }
+
+  /* £ -> $ */
+  if ((unsigned char)c == 0xa3)
+    return ONK_DOLLAR_TOKEN;
 
   for (i = 0; strlen(ONK_DIGIT_STR) > i; i++) {
     if (c == ONK_DIGIT_STR[i])

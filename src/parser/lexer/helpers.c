@@ -68,7 +68,11 @@ bool onk_is_tok_whitespace(enum onk_lexicon_t tok) {
 }
 
 bool onk_is_utf_byte(char ch) {
-    return ((unsigned char)ch >= 0x80);
+    unsigned char copy = ch;
+
+    return (copy >= 0x80
+        /* accept £ */
+        && copy != 0xa3);
 }
 
 /* null delimitated */
