@@ -303,10 +303,11 @@ int8_t handle_open_brace(struct Parser *state)
 {
   const struct onk_token_t *current = current_token(state);
   const struct onk_token_t *prev = prev_token(state);
+
   enum onk_lexicon_t modifier = push_group_modifier(current, prev);
 
   if (prev && modifier)
-    push_op(modifier, 0, 0, state);
+    op_push(modifier, 0, 0, state);
 
   /* look behind & insert group modifier if needed. */
   if (new_grp(state, current) == 0)
@@ -747,7 +748,8 @@ int8_t onk_parse(
      * onto the operator stack.
      * push another grouping
     */
-    else if (onk_is_tok_open_brace(current->type))
+    else if (onk_is_tok_open_brace(current->type)
+      || current->type == ONK_HASHMAP_LITERAL_START_TOKEN)
       handle_open_brace(&state);
 
     /* flush operators, check for short grouping & pop it */

@@ -61,7 +61,7 @@ const char * onk_ptoken(enum onk_lexicon_t t) {
         case ONK_IMPORT_TOKEN: return "'import'";
 //        case EXTERN: return "'extern'";
         case ONK_COMMENT_TOKEN: return "comment";
-        case ONK_TOKEN_UNDEFINED: return "undef";
+        case ONK_UNDEFINED_TOKEN: return "undef";
         case ONK_DOT_TOKEN: return "dot";
         default: return "ONK_PTOKEN_ERROR_UNKNOWN_TOKEN";
     };

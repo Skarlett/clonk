@@ -12,8 +12,9 @@ bool onk_is_tok_close_brace(enum onk_lexicon_t token) {
 }
 
 bool onk_is_tok_open_brace(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_OPEN_BRACE_START
-        && __ONK_MARKER_OPEN_BRACE_END > token;
+    return (token > __ONK_MARKER_OPEN_BRACE_START
+      && __ONK_MARKER_OPEN_BRACE_END > token)
+      || token == ONK_HASHMAP_LITERAL_START_TOKEN;
 }
 
 bool onk_is_tok_unit(enum onk_lexicon_t token) {
@@ -94,7 +95,7 @@ enum onk_lexicon_t invert_brace_tok_ty(enum onk_lexicon_t token) {
         case ONK_BRACE_CLOSE_TOKEN: return ONK_BRACE_OPEN_TOKEN;
         case ONK_BRACKET_CLOSE_TOKEN: return ONK_BRACKET_OPEN_TOKEN;
         case ONK_BRACKET_OPEN_TOKEN: return ONK_BRACKET_CLOSE_TOKEN;
-        default: return ONK_TOKEN_UNDEFINED;
+        default: return ONK_UNDEFINED_TOKEN;
     }
 }
 

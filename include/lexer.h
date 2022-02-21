@@ -27,10 +27,13 @@ enum onk_lexicon_t {
 
     _ONK_AMPER_TRANSMISSION_TOKEN,
 
+    _ONK_DOLLAR_TRANSMISSION_TOKEN,
+
     /*  */
     _ONK_LT_TRANSMISSION_TOKEN,
 
     __ONK_MARKER_TRANSITION_END,
+
     /**********************/
     /* Single byte tokens */
     /**********************/
@@ -43,7 +46,6 @@ enum onk_lexicon_t {
     // TODO: produce this
     onk_idx_group_token, // [x:x]
 
-    onk_partial_brace_group_token, // { - unknown type yet
     onk_map_group_token,   // {a:x, b:x}
     onk_code_group_token,  // {x; x;} or {x; x}
 
@@ -54,7 +56,7 @@ enum onk_lexicon_t {
 
     __ONK_MARKER_GROUP_END,
 
-    ONK_TOKEN_UNDEFINED = 1,
+    ONK_UNDEFINED_TOKEN = 1,
 
     ONK_NULL_TOKEN,
 
@@ -67,6 +69,7 @@ enum onk_lexicon_t {
 
     /*
     ** braces start
+    **
     */
 
     __ONK_MARKER_OPEN_BRACE_START,
@@ -126,40 +129,18 @@ enum onk_lexicon_t {
     /* \ */
     ONK_BACKSLASH_TOKEN,
 
-    ONK_DOLLAR_TOKEN,
-
     /* @ */
     ONK_ATSYM__TOKEN,
+
     /*********************/
     /* multi byte tokens */
     /*********************/
-    __ONK_MARKER_UNIT_START,
-
-    /*  [NUM, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN    */
-    /* // 20_392  */
-    ONK_INTEGER_TOKEN,
-
-    /* [ONK_CHAR_TOKENACTER, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN */
-    /* something */
-    ONK_WORD_TOKEN,
-
-    ONK_FROM_LOCATION,
-
-    /* [QUOTE, ... QUOTE] */
-    /* something */
-    ONK_STRING_LITERAL_TOKEN,
-
-    ONK_KEYWORD_TOKEN,
-    __ONK_MARKER_UNIT_END,
 
     __ONK_MARKER_OP_START,
-    __ONK_MARKER_UNARY_START,
-    /* ~ */
-    ONK_TILDE_TOKEN,
 
-    /* ! */
-    ONK_NOT_TOKEN,
-    __ONK_MARKER_UNARY_END,
+    /* ${ */
+    ONK_HASHMAP_LITERAL_START_TOKEN,
+
     __ONK_MARKER_BIN_START,
 
     /* % */
@@ -178,6 +159,18 @@ enum onk_lexicon_t {
     ONK_POW_TOKEN,
 
     __ONK_MARKER_UPGRADE_OP_START,
+
+    __ONK_MARKER_UNARY_START,
+    /* ~ */
+    ONK_TILDE_TOKEN,
+
+    /* ! */
+    ONK_NOT_TOKEN,
+    __ONK_MARKER_UNARY_END,
+
+    /* $  */
+    ONK_DOLLAR_TOKEN,
+
     /* + */
     ONK_ADD_TOKEN,
 
@@ -199,6 +192,7 @@ enum onk_lexicon_t {
     __ONK_MARKER_ASN_START,
     /* = */
     ONK_EQUAL_TOKEN,
+
     __ONK_MARKER_UPGRADE_OP_END,
 
     __ONK_MARKER_COMPOUND_BIN_START,
@@ -283,7 +277,7 @@ enum onk_lexicon_t {
     /* as */
     //AS,
 
-    __ONK_MARKER_KEYONK_WORD_TOKEN_START,
+    __ONK_MARKER_KEYWORD_START,
     /* struct A {} */
     ONK_STRUCT_TOKEN,
 
@@ -302,9 +296,6 @@ enum onk_lexicon_t {
     __ONK_MARKER_GROUP_OP_END,
     __ONK_MARKER_OP_END,
 
-    ONK_TRUE_TOKEN,
-    ONK_FALSE_TOKEN,
-
     /* if */
     ONK_IF_TOKEN,
 
@@ -317,7 +308,30 @@ enum onk_lexicon_t {
     ONK_FOR_TOKEN,
     ONK_WHILE_TOKEN,
 
-    __ONK_MARKER_KEYONK_WORD_TOKEN_END
+
+    __ONK_MARKER_UNIT_START,
+
+    ONK_TRUE_TOKEN,
+    ONK_FALSE_TOKEN,
+
+    __ONK_MARKER_KEYWORD_TOKEN_END,
+
+    /*  [NUM, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN    */
+    /* // 20_392  */
+    ONK_INTEGER_TOKEN,
+
+    /* [ONK_CHAR_TOKENACTER, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN */
+    /* something */
+    ONK_WORD_TOKEN,
+
+    /* from location */
+    ONK_FROM_LOCATION,
+
+    /* [QUOTE, ... QUOTE] */
+    /* something */
+    ONK_STRING_LITERAL_TOKEN,
+    __ONK_MARKER_UNIT_END,
+
 
     /*
       GROUPING token are generated in the expression parser

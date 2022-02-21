@@ -13,7 +13,7 @@ enum onk_lexicon_t grp_dbg_sym(enum Group_t type)
     case MapT: return onk_map_group_token;
     case onk_code_group_tokenT: return onk_code_group_token;
     case TupleT: return onk_tuple_group_token;
-    default: return ONK_TOKEN_UNDEFINED;
+    default: return ONK_UNDEFINED_TOKEN;
   };
 }
 

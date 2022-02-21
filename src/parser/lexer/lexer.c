@@ -68,9 +68,9 @@ void init_lexer_stage(
   );
 
   /* stage->_is_repeating = false; */
-  stage->current = ONK_TOKEN_UNDEFINED;
-  stage->compound = ONK_TOKEN_UNDEFINED;
-  stage->forcing_next_token = ONK_TOKEN_UNDEFINED;
+  stage->current = ONK_UNDEFINED_TOKEN;
+  stage->compound = ONK_UNDEFINED_TOKEN;
+  stage->forcing_next_token = ONK_UNDEFINED_TOKEN;
   stage->cmpd_span_size = 0;
   stage->cmpd_start_at = 0;
   stage->src_code_sz = 0;
@@ -171,7 +171,7 @@ enum onk_lexicon_t onk_tokenize_char(char c) {
       return ONK_CHAR_TOKEN;
   }
 
-  return ONK_TOKEN_UNDEFINED;
+  return ONK_UNDEFINED_TOKEN;
 }
 
 int8_t is_compound_bin_op(enum onk_lexicon_t tok) {
@@ -242,7 +242,11 @@ int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t
     case ONK_TILDE_TOKEN:
       *compound_token = ONK_BIT_NOT_EQL;
       break;
-    
+
+    case ONK_DOLLAR_TOKEN:
+      *compound_token = _ONK_DOLLAR_TRANSMISSION_TOKEN;
+      break;
+
     default:
       return -1;
   }
@@ -303,14 +307,16 @@ int8_t continue_compound_token(
       //  `-=` or `-123`
       || (compound_token == _ONK_SUB_TRANSMISSION_TOKEN && (token == ONK_DIGIT_TOKEN || (token == ONK_EQUAL_TOKEN && 1 > span_size)))
       // `|=`, `|>`, `||`
-      || (compound_token == _ONK_PIPE_TRANSMISSION_TOKEN && (token == ONK_EQUAL_TOKEN || token == GT || token == PIPE) && 1 > span_size)
+      || (compound_token == _ONK_PIPE_TRANSMISSION_TOKEN && (token == ONK_EQUAL_TOKEN || token == ONK_GT_TOKEN || token == ONK_PIPE_TOKEN) && 1 > span_size)
       // `&=` `&&`
-      || (compound_token == _ONK_AMPER_TRANSMISSION_TOKEN && (token == AMPER || token == ONK_EQUAL_TOKEN) && 1 > span_size)
+      || (compound_token == _ONK_AMPER_TRANSMISSION_TOKEN && (token == ONK_AMPER_TOKEN || token == ONK_EQUAL_TOKEN) && 1 > span_size)
       // `>=` `>>`
-      || (compound_token == _ONK_GT_TRANSMISSION_TOKEN && (token == GT || token == ONK_EQUAL_TOKEN) && 1 > span_size)
+      || (compound_token == _ONK_GT_TRANSMISSION_TOKEN && (token == ONK_GT_TOKEN || token == ONK_EQUAL_TOKEN) && 1 > span_size)
       // `<<` `<=`
-      || (compound_token == _ONK_LT_TRANSMISSION_TOKEN && (token == LT || token == ONK_EQUAL_TOKEN) && 1 > span_size)
-  );    
+      || (compound_token == _ONK_LT_TRANSMISSION_TOKEN && (token == ONK_LT_TOKEN || token == ONK_EQUAL_TOKEN) && 1 > span_size)
+      // ${
+      || (compound_token == _ONK_DOLLAR_TRANSMISSION_TOKEN && token == ONK_BRACE_OPEN_TOKEN && 1 > span_size)
+  );
 }
 
 
@@ -348,7 +354,7 @@ enum onk_lexicon_t invert_operator_token(enum onk_lexicon_t compound_token) {
   case _ONK_AMPER_TRANSMISSION_TOKEN:
     return ONK_AMPER_TOKEN;
 
-  case AND:
+  case ONK_AND_TOKEN:
     return ONK_AMPER_TOKEN;
   case ONK_BIT_AND_EQL:
     return ONK_AMPER_TOKEN;
@@ -362,7 +368,10 @@ enum onk_lexicon_t invert_operator_token(enum onk_lexicon_t compound_token) {
   
   case _ONK_SUB_TRANSMISSION_TOKEN:
     return ONK_SUB_TOKEN;
-  
+
+  case _ONK_DOLLAR_TRANSMISSION_TOKEN:
+    return ONK_DOLLAR_TOKEN;
+
   case ONK_PLUSEQ_TOKEN:
     return ONK_ADD_TOKEN;
   
@@ -372,7 +381,7 @@ enum onk_lexicon_t invert_operator_token(enum onk_lexicon_t compound_token) {
     return ONK_NOT_TOKEN;
 
   default:
-    return ONK_TOKEN_UNDEFINED;
+    return ONK_UNDEFINED_TOKEN;
   }
 }
 
@@ -424,7 +433,7 @@ int8_t derive_keyword(const char *src_code, struct onk_token_t *t) {
 ** for example `-` (MINUS) can turn into many
 ** different compounds `-=`, `-1`.
 */
-int8_t compose_compound(enum onk_lexicon_t ctok, enum onk_lexicon_t current) {
+enum onk_lexicon_t compose_compound(enum onk_lexicon_t ctok, enum onk_lexicon_t current) {
   if (ctok == _ONK_SUB_TRANSMISSION_TOKEN)
   {
     if (current == ONK_DIGIT_TOKEN)
@@ -469,6 +478,9 @@ int8_t compose_compound(enum onk_lexicon_t ctok, enum onk_lexicon_t current) {
       return ONK_GT_EQL_TOKEN;
   }
 
+  else if (ctok == _ONK_DOLLAR_TRANSMISSION_TOKEN)
+    return ONK_HASHMAP_LITERAL_START_TOKEN;
+
   return 0;
 }
 
@@ -512,7 +524,7 @@ int8_t finalize_compound_token(
     token->type = invert_operator_token(token->type);
 
     /* Error: UNDEFINED/null token when inverted*/
-    assert(token->type != ONK_TOKEN_UNDEFINED);
+    assert(token->type != ONK_UNDEFINED_TOKEN);
   }
 
   return 0;
@@ -525,7 +537,7 @@ int8_t push_tok(
   enum onk_lexicon_t type = state->current;
   int8_t ret = 0;
 
-  if (state->compound != ONK_TOKEN_UNDEFINED)
+  if (state->compound != ONK_UNDEFINED_TOKEN)
     type = state->compound;
 
   ret = finalize_compound_token(
@@ -602,7 +614,7 @@ int8_t onk_tokenize(
       {
         token.start = utf_error_flag;
         token.end = (i || 1) - 1;
-        token.type = ONK_TOKEN_UNDEFINED;
+        token.type = ONK_UNDEFINED_TOKEN;
 
         err.type = lex_err_non_ascii_token;
         err.type_data.non_ascii_token = token;
@@ -619,13 +631,13 @@ int8_t onk_tokenize(
     state.current = onk_tokenize_char(state.src_code[i]);
 
     /* create compound token*/
-    if (state.compound == ONK_TOKEN_UNDEFINED && can_upgrade_token(state.current)) {
+    if (state.compound == ONK_UNDEFINED_TOKEN && can_upgrade_token(state.current)) {
       set_compound_token(&state.compound, state.current);
       state.cmpd_start_at = i;
       state.cmpd_span_size = 0;
       continue;
     }
-    else if (state.forcing_next_token != ONK_TOKEN_UNDEFINED && continue_forcing(&state))
+    else if (state.forcing_next_token != ONK_UNDEFINED_TOKEN && continue_forcing(&state))
     {
       state.force_span += 1;
       continue;
@@ -640,22 +652,22 @@ int8_t onk_tokenize(
     }
 
     /* completed compound token */
-    else if (state.compound != ONK_TOKEN_UNDEFINED || state.forcing_next_token) {
+    else if (state.compound != ONK_UNDEFINED_TOKEN || state.forcing_next_token) {
       // state._is_repeating = false;
 
       /* if (state.compound == ONK_COMMENT_TOKEN) */
       /* { */
-      /*   state.compound = ONK_TOKEN_UNDEFINED; */
+      /*   state.compound = ONK_UNDEFINED_TOKEN; */
       /*   continue; */
       /* } */
 
-      if(state.compound != ONK_TOKEN_UNDEFINED)
+      if(state.compound != ONK_UNDEFINED_TOKEN)
       {
         token.start = state.cmpd_start_at;
         token.end = state.cmpd_start_at + state.cmpd_span_size;
         token.type = state.compound;
         token.seq = state.tokens->len;
-        state.compound = ONK_TOKEN_UNDEFINED;
+        state.compound = ONK_UNDEFINED_TOKEN;
       }
       else {
         token.start = state.force_start;
@@ -663,7 +675,7 @@ int8_t onk_tokenize(
         token.type = state.forcing_next_token;
         token.seq = state.tokens->len;
 
-        state.forcing_next_token = ONK_TOKEN_UNDEFINED;
+        state.forcing_next_token = ONK_UNDEFINED_TOKEN;
         state.force_start = 0;
         state.force_span = 0;
       }
@@ -694,9 +706,9 @@ int8_t onk_tokenize(
         because if a compound token is compleed,
         the current token being lexed still needs to be added.
     */
-    else if (state.current != ONK_TOKEN_UNDEFINED)
+    else if (state.current != ONK_UNDEFINED_TOKEN)
     {
-      state.compound = ONK_TOKEN_UNDEFINED;
+      state.compound = ONK_UNDEFINED_TOKEN;
 
       token.start = i;
       token.end = i;
@@ -719,7 +731,7 @@ int8_t onk_tokenize(
 
       This checks, and fixes it.
   */
-  if (state.compound != ONK_TOKEN_UNDEFINED)
+  if (state.compound != ONK_UNDEFINED_TOKEN)
   {
     token.start = state.cmpd_start_at;
     token.end = state.cmpd_start_at + state.cmpd_span_size;

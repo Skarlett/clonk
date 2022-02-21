@@ -237,6 +237,7 @@ struct Group * new_grp(struct Parser *state, const struct onk_token_t * origin);
 bool can_ignore_token(enum onk_lexicon_t tok);
 
 uint16_t find_next(struct Parser *state);
+
 /*create token in pool, and push to output*/
 void push_output(
   struct Parser *state,

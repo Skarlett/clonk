@@ -86,11 +86,13 @@ bool can_ignore_token(enum onk_lexicon_t tok)
   return onk_is_tok_whitespace(tok) || tok == ONK_COMMENT_TOKEN;
 }
 
-/* */
+/*
+ * assuming the current token is not ignored-type
+ * give the position of the next non-ignored typed token
+ */
 uint16_t find_next(struct Parser *state) {
-  uint16_t i = *state->_i;
 
-  for (; state->src_sz > i; i++)
+  for (uint16_t i = *state->_i; state->src_sz > i; i++)
   {
     if(can_ignore_token(state->src[i].type))
       continue;
@@ -115,7 +117,8 @@ const struct onk_token_t * next_token(const struct Parser *state) {
 }
 
 /*
-*/
+**
+ */
 const struct onk_token_t * current_token(const struct Parser *state){
   return &state->src[*state->_i];
 }
@@ -145,7 +148,7 @@ const struct onk_token_t * group_modifier(
 
   if (group->operator_idx > 0)
   {
-    modifier=state->operator_stack[group->operator_idx - 1];
+    modifier = state->operator_stack[group->operator_idx - 1];
 
     if (onk_is_tok_group_modifier(modifier->type))
       return modifier;
@@ -155,13 +158,25 @@ const struct onk_token_t * group_modifier(
 }
 
 
-const group_type(
-  struct Parser *state,
-  const struct onk_token_t *brace,
-  const struct Group *group
-){
-  /* TODO */
-  group->operator_idx;
+enum onk_lexicon_t group_type_init(enum onk_lexicon_t brace)
+{
+
+  switch (brace) {
+    case ONK_PARAM_OPEN_TOKEN:
+      return onk_tuple_group_token;
+
+    case ONK_BRACKET_OPEN_TOKEN:
+      return onk_list_group_token;
+
+    case ONK_BRACE_OPEN_TOKEN:
+      return onk_code_group_token;
+
+    case ONK_HASHMAP_LITERAL_START_TOKEN:
+      return onk_map_group_token;
+
+    default:
+      return ONK_UNDEFINED_TOKEN;
+  }
 }
 
 /*
@@ -180,7 +195,6 @@ struct Group * new_grp(
   const struct onk_token_t * from
 ){
   struct Group *ghead;
-  const struct onk_token_t * ophead;
   assert(state->set_ctr < state->set_sz);
 
 
@@ -199,8 +213,7 @@ struct Group * new_grp(
   ghead->collapse = false;
 
   ghead->origin = from;
-
-  ghead->type = /*TODO*/ 0;
+  ghead->type = group_type_init(from->type);
 
   return ghead;
 }
@@ -268,7 +281,7 @@ void push_output(
 ){
   struct onk_token_t marker;
   const struct onk_token_t *ret;
-  assert(type != ONK_TOKEN_UNDEFINED);
+  assert(type != ONK_UNDEFINED_TOKEN);
 
   //TODO: double check sequence unwinding
   marker.seq = 0;
@@ -311,39 +324,6 @@ int8_t flush_ops(struct Parser *state)
   return 0;
 }
 
-/******************
- * Index operation *
- ******************
- * INDEX_ACCESS acts as a function in the postfix representation
- * that pops 4 arugments from the stack
- * `source`, `start`, `end`, `skip` in that order.
- *
- * INDEX_ACCESS every argument except `source`
- * may be substituted with ONK_NULL_TOKENS.
- *
- * ONK_NULL_TOKENS can inserted automatically by parser or operator.
- *
- * ONK_NULL_TOKENS used as substitution will assume
- * their default values as the following.
- *
- * `start` defaults to 0.
- * `end` defaults to length of the array.
- * `skip` defaults to 1.
- *
- * Examples:
- *   token output:
- *     ONK_WORD_TOKEN   ONK_INTEGER_TOKEN ONK_INTEGER_TOKEN ONK_INTEGER_TOKEN INDEX_ACCESS
- *     source start   end     skip    operator
- *
- *   text:
- *     foo[1::2]
- *
- *   postfix-IR: foo 1 NULL 2 INDEX_ACCESS
- *
- *
- * src: name[args:args:args]
- * dbg: <name> <args> ... IdxAccess
- */
 int8_t finish_idx_access(struct Parser *state)
 {
   struct Group *ghead = group_head(state);

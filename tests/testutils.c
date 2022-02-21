@@ -15,7 +15,7 @@ int8_t inner_balance(enum onk_lexicon_t tokens[], uint16_t *tokens_ctr, enum onk
     if (onk_is_tok_close_brace(current))
     {
         inverted = invert_brace_tok_ty(current);
-        if (inverted == ONK_TOKEN_UNDEFINED)
+        if (inverted == ONK_UNDEFINED_TOKEN)
           return -1;
 
        /*
