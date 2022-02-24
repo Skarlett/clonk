@@ -304,7 +304,7 @@ int8_t mk_if_cond(
   struct PostfixStageState *state
 ){
   struct Expr *cond = state->stack[state->stack_ctr - 1];
-  
+
   assert(state->stack_ctr > 0);  
   // state->stack_ctr -= 1;
   

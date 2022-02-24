@@ -13,11 +13,6 @@ enum onk_collection_no {
 };
 
 
-struct _onk_collection_norm_t {
-    const void * base;
-};
-
-
 /* lazily collect non-mutable arrays,
    and treat the totality of the collection
    as one sequential array.
@@ -40,53 +35,37 @@ struct onkstd_collection_t {
     enum onk_collection_no type;
     union {
         struct _onk_collection_shallow_t lazy;
-        struct _onk_collection_norm_t norm;
+        const void * norm;
     } alloc;
 
     uint16_t item_sz;
-    uint16_t nitems;
+    uint16_t total_items;
 };
 
-
-struct onk_iter_collection_t {
-    /* {void *, } */
-    const struct onkstd_collection_t *self;
-    uint16_t i;
-};
-
-
-struct onk_iter_collection_t onk_iter_collection
-(const struct onkstd_collection_t *ptr)
-{
-    struct onk_iter_collection_t iter;
-    iter.self = ptr;
-    iter.i = 0;
-    return iter;
-}
 
 /*
   for the collection to be normalized
   into a deep-copy.
 */
-int8_t onk_collection_deep_copy(struct onkstd_collection_t *col)
+int8_t onk_collection_deep_copy(struct onkstd_collection_t *col, void * buffer)
 {
-    void * heap;
     const void *slice;
     uint16_t nslices = 0, size, ncompleted = 0;
 
     if(col->type != onkstd_collection_shallow_t)
         return 0;
 
-    heap = calloc(col->nitems+1, col->item_sz);
+    //heap = calloc(col->nitems+1, col->item_sz);
     nslices = col->alloc.lazy.slices;
 
+    /* copy each slice */
     for (uint16_t i=0; nslices > i; i++)
     {
         size = col->alloc.lazy.sizes[i];
         slice = col->alloc.lazy.base[i];
 
         memcpy(
-            heap + (ncompleted * col->item_sz),
+            buffer + (ncompleted * col->item_sz),
             slice,
             size * col->item_sz
         );
@@ -94,26 +73,26 @@ int8_t onk_collection_deep_copy(struct onkstd_collection_t *col)
         ncompleted += size;
     }
 
+    col->type = onkstd_collection_norm_t;
+    col->alloc.norm = buffer;
+
+    return 0;
 }
 
-bool onk_step_iter(
-    struct onk_iter_collection *iter,
-    uint16_t i
-)
+
+void * onk_access_collection(struct onkstd_collection_t *iter, uint16_t i)
 {
-
-
+    if(iter->type == onkstd_collection_norm_t)
+    {
+        return (void *)iter->alloc.norm + (iter->item_sz * i);
+    }
 }
 
 
-void * onk_access_collection()
-{}
-
-
-// for (int i=0; onk_step_iter(&iter, i); i++)
+// for (int i=0; iter->total_items > i ; i++)
 // {
 //     item = onk_access_collection(&iter, i);
 // }
 
 
-int8_t step_lazy_collection(const struct )
+//int8_t step_lazy_collection(const struct )

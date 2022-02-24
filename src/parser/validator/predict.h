@@ -1,3 +1,7 @@
+
+#ifndef __ONK_PRIVATE_VALIDATOR__
+#define __ONK_PRIVATE_VALIDATOR__
+
 #include "clonk.h"
 #include "lexer.h"
 
@@ -42,7 +46,6 @@
   + _EX_UNARY_OPERATOR_LEN
 
 #define _EX_EXPR \
-  _EX_EXPR_LIMITED,                             \
   _EX_OPEN_BRACE,
 
 #define _EX_EXPR_LEN                            \
@@ -141,35 +144,53 @@ enum PrevisionerModeT {
   PV_Import
 };
 
+
+
+
+enum ValidatorMode {
+
+  /*
+   * Must follow sequence of tokens exactly
+  */
+  strict_mode_tight,
+
+  /* white list of tokens, but changes mode
+   * once terminator is found */
+  strict_mode_loose,
+
+
+  mode_default,
+};
+
+struct ValidatorFrame {
+  enum ValidatorMode mode;
+  bool allow_delim;
+  bool allow_open_brace;
+};
+
+struct ValidatorState {
+  enum onk_lexicon_t * buffer;
+  struct ValidatorFrame * stack;
+};
+
+
+bool kw_follows_open_param(enum onk_lexicon_t tok);
+
+bool follows_word(enum onk_lexicon_t tok);
+
+bool can_use_else(enum onk_lexicon_t output_head);
+
+/*
+ * Can use Keywords if operator stack is flushed
+ * and the top frame is a codeblock
+*/
+bool can_use_keywords(struct Parser *state);
+
+
 /* Predicts the next possible tokens
  * from the current token.
  * Used to check for unexpected tokens.
  * functionality is
 */
-
-#define PREVISION_SZ 64
-union PrevisionerData {
-  // default mode
-  struct {
-    enum onk_lexicon_t *ref;
-  } default_mode;
-
-  struct {
-    uint16_t ctr;
-  } fndef_mode;
-
-  struct {
-    bool has_word;
-    bool expecting_junction;
-  } import_mode;
-};
-
-
-//TODO if top of operator stack has 0 precedense, you can push ret/if/else/import
-struct Previsioner {
-  enum onk_lexicon_t buffer[PREVISION_SZ];
-  enum PrevisionerModeT mode;
-  union PrevisionerData data;
-};
-
 void init_expect_buffer(struct Previsioner *state);
+#endif

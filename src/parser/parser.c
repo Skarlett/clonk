@@ -621,8 +621,6 @@ int8_t onk_parse(
     assert(state.operators_ctr > state.operator_stack_sz);
     unexpected_token = is_token_unexpected(&state);
 
-
-
     /*
       unexpected_token is a boolean used to determine if we
       failed on the previous loop, or the current one.

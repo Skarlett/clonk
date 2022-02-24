@@ -8,7 +8,36 @@
 
 #include "lexer.h"
 #include "../private.h"
-#include "private_validator.h"
+#include "predict.h"
+
+bool is_expecting_data(enum onk_lexicon_t current)
+{
+  return onk_is_tok_operator(current)
+     || onk_is_tok_delimiter(current)
+     || current == ONK_IN_TOKEN;
+}
+
+/* */
+/* bool is_expecting_operator(enum onk_lexicon_t current) */
+/* { */
+/*   return onk_is_tok_unit(current); */
+/* } */
+
+/* `struct/def/impl` expects an explicit word/ident after its occurance */
+bool is_expecting_explicit_ident(enum onk_lexicon_t current)
+{
+  return current == ONK_STRUCT_TOKEN
+    || current == ONK_IMPL_TOKEN
+    || current == ONK_DEF_TOKEN;
+}
+
+/* `if/while` expects an explicit onk_open_param_token after its occurance */
+bool is_expecting_explicit_open_param(enum onk_lexicon_t current)
+{
+  return current == ONK_IF_TOKEN
+    || current == ONK_WHILE_TOKEN;
+}
+
 
 /* TODO: Rules for `ONK_FOR_TOKEN`, `ONK_WHILE_TOKEN`, `ONK_IF_TOKEN` must follow an `(` */
 /* TODO: `ONK_IF_TOKEN`, `ONK_WHILE_TOKEN` signatures cannot */
@@ -22,38 +51,11 @@
 /* TODO: limit delimiters in index access 3 >= */
 /* TODO: import paths only accept ONK_WORD_TOKEN/ONK_DOT_TOKEN until delim */
 /* TODO: figure out if you can declare a new variable */
-enum ValidatorMode {
-
-  /*
-   * Must follow sequence of tokens exactly
-  */
-  strict_mode_tight,
-
-  /* white list of tokens, but changes mode
-   * once terminator is found */
-  strict_mode_loose,
-
-
-  mode_default,
-};
-
-struct ValidatorFrame {
-  enum ValidatorMode mode;
-  bool allow_delim;
-  bool allow_open_brace;
-};
-
-struct ValidatorState {
-  enum onk_lexicon_t * buffer;
-  struct ValidatorFrame * stack;
-};
-
 int8_t fill_buffer(
   enum onk_lexicon_t current,
   enum onk_lexicon_t *buf,
   uint16_t buf_sz
 ){
-
   enum onk_lexicon_t *selected = 0;
   enum onk_lexicon_t small[8];
 
@@ -62,21 +64,19 @@ int8_t fill_buffer(
 
   enum PrevisionerModeT mode = default_mode_t;
 
-  if(onk_is_tok_operator(current)
-     || onk_is_tok_delimiter(current)
-     || current == ONK_IN_TOKEN)
+  if(is_expecting_data(current))
   {
      selected = (enum onk_lexicon_t *)PV_DEFAULT;
      nitems = _EX_EXPR_LEN;
   }
 
-  else if (kw_follows_open_param(current))
+  else if (is_expecting_explicit_open_param(current))
   {
     small[0] = ONK_PARAM_OPEN_TOKEN;
     nitems = 1;
   }
 
-  else if (follows_word(current))
+  else if (is_expecting_explicit_ident(current))
   {
     small[0] = ONK_WORD_TOKEN;
     nitems = 1;

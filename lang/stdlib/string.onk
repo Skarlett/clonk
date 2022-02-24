@@ -1,36 +1,34 @@
-const ascii_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const ascii_upper = "abcdefghijklmnopqrstuvwxyz"
-const digits = "0987654321"
+ascii_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+ascii_lower = "abcdefghijklmnopqrstuvwxyz";
+digits = "0987654321";
 
-#[builtin]
-extern struct String;
+struct String { data, len };
 
 impl String {
+  def __init__(self)
+  {
+    free = false;
+    len = 0;
+  }
 
-    #[builtin]
-    def len(self);
+  def free(self)
+  {
+    free = true;
+  }
 
-    #[builtin]
-    def append(self, other: Self);
+  def len(self)
+  {
+    return self.len;
+  }
 
-    #[builtin]
-    def __idx__(self, other: int);
+  def __property__(self)
+  {
+    return self.data;
+  }
 
-    #[builtin]
-    def __free__(self);
+}
 
-    //strncmp
-    #[builtin]
-    def __eq__(self, other: Self);
+def str(x="bad")
+{
 
-    #[builtin]
-    def contains(self, other: Self) -> boolean;
-
-    def is_integer(self) {
-        for x in self {
-            if (!digits.contain(x))
-                return false;
-        }
-        return true;
-    }
 }
