@@ -6,8 +6,7 @@
 #include <stdbool.h>
 
 #include "clonk.h"
-
-//#include "utils/vec.h"
+#include "onkstd/vec.h"
 
 enum onk_lexicon_t {
     /* end of file */
@@ -123,12 +122,12 @@ enum onk_lexicon_t {
     ONK_PARAM_CLOSE_TOKEN,
     __ONK_MARKER_CLOSE_BRACE_END,
 
-    __ONK_MARKER_OP_START,
 
     __ONK_MARKER_OPEN_BRACE_START,
 
     /* ${ */
     ONK_HASHMAP_LITERAL_START_TOKEN,
+
     /* [ */
     ONK_BRACKET_OPEN_TOKEN,
 
@@ -139,8 +138,7 @@ enum onk_lexicon_t {
     ONK_PARAM_OPEN_TOKEN,
     __ONK_MARKER_OPEN_BRACE_END,
 
-
-
+    __ONK_MARKER_OP_START,
     __ONK_MARKER_BIN_START,
     /* % */
     ONK_MOD_TOKEN,
@@ -277,6 +275,7 @@ enum onk_lexicon_t {
     //AS,
 
     __ONK_MARKER_KEYWORD_START,
+    __ONK_MARKER_KEYWORD_BLOCK_START,
     /* struct A {} */
     ONK_STRUCT_TOKEN,
 
@@ -307,6 +306,7 @@ enum onk_lexicon_t {
     ONK_FOR_TOKEN,
     ONK_WHILE_TOKEN,
 
+    __ONK_MARKER_KEYWORD_BLOCK_END,
     __ONK_MARKER_UNIT_START,
 
     ONK_TRUE_TOKEN,
@@ -572,6 +572,32 @@ bool onk_is_int_tok_negative(const char *src, struct onk_token_t *token);
  */
 bool onk_is_tok_operator(enum onk_lexicon_t token);
 
+/**
+ * Checks if token is a whitespace
+ *
+ * @param tok token to compare
+ *
+ * @return bool
+*/
+bool onk_is_tok_binop(enum onk_lexicon_t token);
+
+/**
+ * Checks if token is a whitespace
+ *
+ * @param tok token to compare
+ *
+ * @return bool
+*/
+bool onk_is_tok_asn_operator(enum onk_lexicon_t token);
+
+/**
+ * Checks if token is a whitespace
+ *
+ * @param tok token to compare
+ *
+ * @return bool
+*/
+bool onk_is_tok_unary_operator(enum onk_lexicon_t token);
 
 /**
  * Checks if token is a unitary expression
@@ -608,16 +634,6 @@ bool onk_is_tok_unit(enum onk_lexicon_t tok);
  * @return bool
 */
 bool onk_is_tok_whitespace(enum onk_lexicon_t tok);
-
-/**
- * Checks if token is a whitespace
- *
- * @param tok token to compare
- *
- * @return bool
-*/
-bool onk_is_tok_asn_operator(enum onk_lexicon_t token);
-
 /**
  * Checks if token is a grouping token
  * These tokens are suffixed with "Group"
@@ -627,6 +643,15 @@ bool onk_is_tok_asn_operator(enum onk_lexicon_t token);
  * @return bool
  */
 bool _onk_is_group(enum onk_lexicon_t tok);
+
+
+/*
+    Inverts brace characters into their counter parts.
+    example
+       input:"(" - outputs:")"
+       input:"]" - output:"["
+*/
+enum onk_lexicon_t onk_invert_brace(enum onk_lexicon_t token);
 
 #endif
 

@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <malloc.h>
+#include "onkstd/int.h"
 
 #define ONK_LAZY_REF_LIMIT 8
 #define ONK_LAZY_SZ_LIMIT 512
@@ -43,6 +44,14 @@ struct onkstd_collection_t {
 };
 
 
+struct onk_collection_shallow_iter_t
+{
+
+};
+
+
+
+
 /*
   for the collection to be normalized
   into a deep-copy.
@@ -82,9 +91,26 @@ int8_t onk_collection_deep_copy(struct onkstd_collection_t *col, void * buffer)
 
 void * onk_access_collection(struct onkstd_collection_t *iter, uint16_t i)
 {
+    uint16_t accumulator = 0;
+    struct _onk_collection_shallow_t *lazy;
+
+
     if(iter->type == onkstd_collection_norm_t)
     {
         return (void *)iter->alloc.norm + (iter->item_sz * i);
+    }
+    else if(iter->type == onkstd_collection_shallow_t)
+    {
+
+        lazy = &iter->alloc.lazy;
+
+        for (uint16_t i=0; lazy->slices > i; i++)
+        {
+            accumulator = onkstd_add_u16(accumulator, lazy->sizes[i]);
+
+        }
+
+        //return iter->alloc.base[];
     }
 }
 

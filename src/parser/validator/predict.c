@@ -1,7 +1,4 @@
-/*
-**
-**
-*/
+
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
@@ -9,6 +6,8 @@
 #include "lexer.h"
 #include "../private.h"
 #include "predict.h"
+
+
 
 bool is_expecting_data(enum onk_lexicon_t current)
 {
@@ -24,7 +23,7 @@ bool is_expecting_data(enum onk_lexicon_t current)
 /* } */
 
 /* `struct/def/impl` expects an explicit word/ident after its occurance */
-bool is_expecting_explicit_ident(enum onk_lexicon_t current)
+bool is_expecting_word(enum onk_lexicon_t current)
 {
   return current == ONK_STRUCT_TOKEN
     || current == ONK_IMPL_TOKEN
@@ -32,10 +31,105 @@ bool is_expecting_explicit_ident(enum onk_lexicon_t current)
 }
 
 /* `if/while` expects an explicit onk_open_param_token after its occurance */
-bool is_expecting_explicit_open_param(enum onk_lexicon_t current)
+uint8_t is_expecting_open_param(enum onk_lexicon_t current)
 {
   return current == ONK_IF_TOKEN
-    || current == ONK_WHILE_TOKEN;
+    || current == ONK_WHILE_TOKEN
+    || current == ONK_FOR_TOKEN;
+}
+
+enum onk_lexicon_t place_delimiter(struct Parser *state)
+{
+  struct Group *ghead = group_head(state);
+  const struct onk_token_t *gmod = group_modifier(state, ghead);
+
+  if (gmod->type == onk_while_cond_op_token
+     || gmod->type == onk_ifcond_op_token)
+     return ONK_UNDEFINED_TOKEN;
+
+  switch (ghead->type) {
+    case onk_idx_op_token:
+      if(ghead->delimiter_cnt > 2)
+        return ONK_UNDEFINED_TOKEN;
+      return ONK_COLON_TOKEN;
+
+    case onk_list_group_token:
+      return ONK_COMMA_TOKEN;
+    case onk_struct_group_token:
+      return ONK_COMMA_TOKEN;
+    case onk_tuple_group_token:
+      return ONK_COMMA_TOKEN;
+
+    case onk_map_group_token:
+      if(ghead->delimiter_cnt % 2 == 0)
+        return ONK_COLON_TOKEN;
+      return ONK_COMMA_TOKEN;
+
+    case onk_code_group_token:
+      return ONK_SEMICOLON_TOKEN;
+
+    default:
+      return -1;
+  }
+}
+
+enum onk_lexicon_t place_closing_brace(struct Parser *state)
+{
+  const struct onk_token_t *current = current_token(state);
+  struct Group *ghead = group_head(state);
+  const struct onk_token_t *gmod = group_modifier(state, ghead);
+
+  /* give nothing back if index access
+   * & currently an opening bracket  */
+  if(ghead->type == onk_idx_group_token
+     && current->type == ONK_BRACKET_OPEN_TOKEN)
+     return ONK_UNDEFINED_TOKEN;
+
+  else if(gmod->type == onk_ifcond_op_token
+     && current->type == ONK_PARAM_OPEN_TOKEN)
+    return ONK_UNDEFINED_TOKEN;
+
+  else if(gmod->type == onk_while_cond_op_token
+     && current->type == ONK_PARAM_OPEN_TOKEN)
+     return ONK_UNDEFINED_TOKEN;
+
+  return onk_invert_brace(ghead->origin->type);
+}
+
+
+bool place_bracket(struct Parser *state)
+{
+  const struct onk_token_t *current = current_token(state);
+
+  if(current->type == ONK_WORD_TOKEN)
+    return 1;
+
+  else if(current->type == ONK_STRING_LITERAL_TOKEN)
+    return 1;
+
+  else if(onk_is_tok_close_brace(current->type))
+    return 1;
+
+  return 0;
+}
+
+bool place_param(struct Parser *state)
+{
+  const struct onk_token_t *current = current_token(state);
+  if(current->type == ONK_WORD_TOKEN)
+    return 1;
+
+  else if(onk_is_tok_close_brace(current->type))
+    return 1;
+
+  return 0;
+}
+
+
+void terminator(struct Parser *state)
+{
+  place_closing_brace(state);
+  place_delimiter(state);
 }
 
 
@@ -51,61 +145,60 @@ bool is_expecting_explicit_open_param(enum onk_lexicon_t current)
 /* TODO: limit delimiters in index access 3 >= */
 /* TODO: import paths only accept ONK_WORD_TOKEN/ONK_DOT_TOKEN until delim */
 /* TODO: figure out if you can declare a new variable */
+
+
 int8_t fill_buffer(
+  struct validator_t *state,
   enum onk_lexicon_t current,
   enum onk_lexicon_t *buf,
   uint16_t buf_sz
 ){
-  enum onk_lexicon_t *selected = 0;
-  enum onk_lexicon_t small[8];
+
+  struct ValidatorFrame ctx = validator_frame_head(state);
+  enum onk_lexicon_t *selected[0];
+
+  enum onk_lexicon_t small[16];
 
   uint16_t nitems = 0;
   bool allow_delim = 0;
 
   enum PrevisionerModeT mode = default_mode_t;
 
-  if(is_expecting_data(current))
+  if(onk_is_tok_open_brace(current)
+     || onk_is_tok_delimiter(current)
+     || onk_is_tok_operator(current))
   {
-     selected = (enum onk_lexicon_t *)PV_DEFAULT;
-     nitems = _EX_EXPR_LEN;
+    if (onk_is_tok_open_brace(current))
+    {
+      if(ONK_STACK_SZ <= state->nstack)
+        return -1;
+      state->nstack += 1;
+    }
+
+    selected[0] = (enum onk_lexicon_t *)&EXPR;
+    return 0;
   }
 
-  else if (is_expecting_explicit_open_param(current))
+  else if(onk_is_tok_close_brace(current)
+    || onk_is_tok_unit(current))
   {
-    small[0] = ONK_PARAM_OPEN_TOKEN;
-    nitems = 1;
+    if(onk_is_tok_close_brace(current))
+    {
+      if(state->nstack == 0)
+        return -1;
+    }
+
+    state->ref_buffer[0] = (enum onk_lexicon_t *)_NEXT_CLOSE_BRACE;
+    state->nstack -= 1;
   }
 
-  else if (is_expecting_explicit_ident(current))
-  {
-    small[0] = ONK_WORD_TOKEN;
-    nitems = 1;
-  }
+  else if(current == ONK_DEF_TOKEN)
+  {}
 
   else if(current == ONK_FROM_TOKEN )
   {
     small[0] = ONK_FROM_LOCATION;
     nitems = 1;
-  }
-
-  else if (onk_is_tok_open_brace(current))
-  {
-
-    /* add opposite brace type to expectation */
-    selected = (enum onk_lexicon_t *)PV_DEFAULT;
-    nitems = _EX_EXPR_LEN;
-
-    //TODO:
-    //selected[nitems] = invert_brace_tok_ty(current);
-    //nitems += 1;
-  }
-
-  /* any open brace */
-  else if (onk_is_tok_close_brace(current))
-  {
-    allow_delim = 1;
-    selected = (enum onk_lexicon_t *)PV_CLOSE_BRACE;
-    nitems = PV_CLOSE_BRACE_LEN;
   }
 
   else switch (current)
@@ -179,52 +272,6 @@ int8_t fill_buffer(
   state->buffer
 }
 
-
-void place_delimiter(struct Parser *state)
-{
-  struct Group *ghead = group_head(state);
-  const struct onk_token_t *gmod = group_modifier(state, ghead);
-  struct Previsioner *previsioner = &state->expecting;
-  enum onk_lexicon_t *buf = previsioner->buffer;
-
-  /* bool single_check = buf_ctr+1 > PREVISION_SZ; */
-  /* bool dual_check = buf_ctr+2 > PREVISION_SZ; */
-
-  if (gmod->type == onk_while_cond_op_token || gmod->type == onk_ifcond_op_token)
-    return;
-
-  else if(ghead->type == onk_idx_op_token && ghead->delimiter_cnt > 2)
-     return; // give ] or expr
-
-  else if (ghead->type == onk_partial_brace_group_token)
-  {
-    previsioner->buffer[previsioner->buf_ctr] = ONK_SEMICOLON_TOKEN;
-    previsioner->buffer[previsioner->buf_ctr + 1] = ONK_COLON_TOKEN;
-    previsioner->buf_ctr += 2;
-    return;
-  }
-
-  if (ghead->type == onk_list_group_token
-      || ghead->type == onk_struct_group_token
-      || ghead->type == onk_tuple_group_token)
-      previsioner->buffer[previsioner->buf_ctr] = ONK_COMMA_TOKEN;
-
-  else if (ghead->type == onk_map_group_token)
-  {
-    if(ghead->delimiter_cnt % 2 == 0)
-       previsioner->buffer[previsioner->buf_ctr] = ONK_COLON_TOKEN;
-    else
-       previsioner->buffer[previsioner->buf_ctr] = ONK_COMMA_TOKEN;
-  }
-
-  else if (ghead->type == onk_code_group_token)
-    previsioner->buffer[previsioner->buf_ctr] = ONK_SEMICOLON_TOKEN;
-
-  else if(ghead->type == onk_idx_group_token)
-    previsioner->buffer[previsioner->buf_ctr] = ONK_COLON_TOKEN;
-
-  previsioner->buf_ctr += 1;
-}
 
 //TODO probably deserves its own mode
 /* static enum onk_lexicon_t _PV_if[] = { */

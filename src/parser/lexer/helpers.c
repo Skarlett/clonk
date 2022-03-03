@@ -26,7 +26,7 @@ bool onk_is_tok_asn_operator(enum onk_lexicon_t token) {
         && __ONK_MARKER_ASN_END > token;
 }
 
-bool onk_is_tok_bin_operator(enum onk_lexicon_t token) {
+bool onk_is_tok_binop(enum onk_lexicon_t token) {
     return token > __ONK_MARKER_BIN_START
         && __ONK_MARKER_BIN_END > token;
 }
@@ -41,15 +41,16 @@ bool onk_is_tok_operator(enum onk_lexicon_t token) {
         && __ONK_MARKER_OP_END > token;
 }
 
-bool onk_is_int_tok_negative(const char * source, struct onk_token_t *token) {
-    return token->type == ONK_INTEGER_TOKEN
-        && *(source + token->start) == '-';
-}
-
 bool onk_is_tok_keyword(enum onk_lexicon_t token) {
     return token > __ONK_MARKER_KEYWORD_START
         && __ONK_MARKER_KEYWORD_TOKEN_END > token;
 }
+
+/* keywords that can only be used in blocks */
+/* bool onk_is_tok_kword_block(enum onk_lexicon_t token) { */
+/*     return token > __ONK_MARKER_KEYWORD_BLOCK_START */
+/*         && __ONK_MARKER_KEYWORD_BLOCK_END > token; */
+/* } */
 
 bool _onk_is_group(enum onk_lexicon_t tok) {
     return tok > __ONK_MARKER_GROUP_START
@@ -64,6 +65,11 @@ bool onk_is_tok_group_modifier(enum onk_lexicon_t tok) {
 bool onk_is_tok_whitespace(enum onk_lexicon_t tok) {
     return tok > __ONK_MARKER_WHITESPACE_START
         && __ONK_MARKER_WHITESPACE_END > tok;
+}
+
+bool onk_is_int_tok_negative(const char * source, struct onk_token_t *token) {
+    return token->type == ONK_INTEGER_TOKEN
+        && *(source + token->start) == '-';
 }
 
 bool onk_is_utf_byte(char ch) {
@@ -90,7 +96,7 @@ uint8_t onk_eq_any_tok(enum onk_lexicon_t cmp, enum onk_lexicon_t buffer[]) {
        input:"(" - outputs:")"
        input:"]" - output:"["
 */
-enum onk_lexicon_t invert_brace_tok_ty(enum onk_lexicon_t token) {
+enum onk_lexicon_t onk_invert_brace(enum onk_lexicon_t token) {
     switch (token) {
         case ONK_PARAM_OPEN_TOKEN: return ONK_PARAM_CLOSE_TOKEN;
         case ONK_PARAM_CLOSE_TOKEN: return ONK_PARAM_OPEN_TOKEN;

@@ -70,7 +70,6 @@ struct Group {
     const struct onk_token_t *origin;
     const struct onk_token_t *last_delim;
 
-
     /*
     ** TODO: implement
     **       will cause UB -

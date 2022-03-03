@@ -141,7 +141,6 @@ const struct onk_token_t * group_modifier(
 
 enum onk_lexicon_t group_type_init(enum onk_lexicon_t brace)
 {
-
   switch (brace) {
     case ONK_PARAM_OPEN_TOKEN:
       return onk_tuple_group_token;
@@ -195,6 +194,8 @@ struct Group * new_grp(
 
   ghead->origin = from;
   ghead->type = group_type_init(from->type);
+
+  assert(ghead->type != ONK_UNDEFINED_TOKEN);
 
   return ghead;
 }

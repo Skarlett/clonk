@@ -1,4 +1,3 @@
-#include <stdio.h>
 
 #include "parser.h"
 #include "private.h"
@@ -13,14 +12,10 @@ enum Associativity
 
 enum Associativity get_assoc(enum onk_lexicon_t token)
 {
-    switch(token) {
-        case ONK_POW_TOKEN:
-            return RASSOC;
-        case ONK_NOT_TOKEN:
-            return RASSOC;
-        default:
-            return LASSOC;
-    }
+  if(onk_is_tok_unary_operator(token)
+    || token == ONK_POW_TOKEN)
+    return RASSOC;
+  return LASSOC;
 }
 
 /*
