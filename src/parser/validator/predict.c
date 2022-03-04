@@ -21,23 +21,6 @@ bool is_expecting_data(enum onk_lexicon_t current)
 /* { */
 /*   return onk_is_tok_unit(current); */
 /* } */
-
-/* `struct/def/impl` expects an explicit word/ident after its occurance */
-bool is_expecting_word(enum onk_lexicon_t current)
-{
-  return current == ONK_STRUCT_TOKEN
-    || current == ONK_IMPL_TOKEN
-    || current == ONK_DEF_TOKEN;
-}
-
-/* `if/while` expects an explicit onk_open_param_token after its occurance */
-uint8_t is_expecting_open_param(enum onk_lexicon_t current)
-{
-  return current == ONK_IF_TOKEN
-    || current == ONK_WHILE_TOKEN
-    || current == ONK_FOR_TOKEN;
-}
-
 enum onk_lexicon_t place_delimiter(struct Parser *state)
 {
   struct Group *ghead = group_head(state);
@@ -146,6 +129,111 @@ void terminator(struct Parser *state)
 /* TODO: import paths only accept ONK_WORD_TOKEN/ONK_DOT_TOKEN until delim */
 /* TODO: figure out if you can declare a new variable */
 
+int8_t expect_strict_seq(enum onk_lexicon_t current)
+{
+  current == ONK_FOR_TOKEN
+    || current == ONK_WHILE_TOKEN
+    || current == ONK_IF_TOKEN
+    || current == ONK_ELSE_TOKEN
+    || current ==;
+
+}
+
+
+/* `struct/def/impl` expects an explicit word/ident after its occurance */
+bool _explicit_expecting_word(enum onk_lexicon_t current)
+{
+  return current == ONK_STRUCT_TOKEN
+    || current == ONK_IMPL_TOKEN
+    || current == ONK_DEF_TOKEN;
+}
+
+/* `if/while` expects an explicit onk_open_param_token after its occurance */
+uint8_t _explicit_expecting_open_param(enum onk_lexicon_t current)
+{
+  return current == ONK_IF_TOKEN
+    || current == ONK_WHILE_TOKEN
+    || current == ONK_FOR_TOKEN;
+}
+
+uint8_t expect_strict()
+{
+
+}
+
+int8_t expect_operand(enum onk_lexicon_t current)
+{
+  return onk_is_tok_open_brace(current)
+     || onk_is_tok_delimiter(current)
+     || onk_is_tok_operator(current)
+     || current == ONK_RETURN_TOKEN;
+}
+
+int8_t expect_operator(enum onk_lexicon_t current)
+{
+  return onk_is_tok_close_brace(current)
+    || onk_is_tok_unit(current);
+}
+
+int8_t default_expression(
+  enum onk_lexicon_t current,
+  struct validator_t *state
+){
+  enum onk_lexicon_t *selected[12];
+  enum onk_lexicon_t small[16];
+
+  uint16_t nitems = 0;
+  bool allow_delim = 0;
+
+  /* is operator  */
+  if(expect_operand(current))
+  {
+    if (onk_is_tok_open_brace(current))
+    {
+      if(ONK_STACK_SZ <= state->nstack)
+        return -1;
+
+      state->nstack += 1;
+    }
+
+    if(current == ONK_DOT_TOKEN)
+      small[0] = ONK_WORD_TOKEN;
+    else
+      selected[0] = (enum onk_lexicon_t *)&EXPR;
+
+  }
+
+  /* is operand */
+  else if(expect_operator(current))
+  {
+    if(onk_is_tok_close_brace(current))
+    {
+      if(state->nstack == 0)
+        return -1;
+    }
+
+    switch(current)
+    {
+      case ONK_WORD_TOKEN:
+        small[0] = ONK_DOT_TOKEN;
+        break;
+
+      case ONK_STRING_LITERAL_TOKEN:
+        break;
+
+      default:
+        break;
+    }
+
+    state->ref_buffer[0] = (enum onk_lexicon_t *)_NEXT_CLOSE_BRACE;
+    state->nstack -= 1;
+  }
+
+  else return -1;
+
+  return 0;
+}
+
 
 int8_t fill_buffer(
   struct validator_t *state,
@@ -156,7 +244,6 @@ int8_t fill_buffer(
 
   struct ValidatorFrame ctx = validator_frame_head(state);
   enum onk_lexicon_t *selected[0];
-
   enum onk_lexicon_t small[16];
 
   uint16_t nitems = 0;
@@ -164,35 +251,9 @@ int8_t fill_buffer(
 
   enum PrevisionerModeT mode = default_mode_t;
 
-  if(onk_is_tok_open_brace(current)
-     || onk_is_tok_delimiter(current)
-     || onk_is_tok_operator(current))
-  {
-    if (onk_is_tok_open_brace(current))
-    {
-      if(ONK_STACK_SZ <= state->nstack)
-        return -1;
-      state->nstack += 1;
-    }
 
-    selected[0] = (enum onk_lexicon_t *)&EXPR;
-    return 0;
-  }
 
-  else if(onk_is_tok_close_brace(current)
-    || onk_is_tok_unit(current))
-  {
-    if(onk_is_tok_close_brace(current))
-    {
-      if(state->nstack == 0)
-        return -1;
-    }
-
-    state->ref_buffer[0] = (enum onk_lexicon_t *)_NEXT_CLOSE_BRACE;
-    state->nstack -= 1;
-  }
-
-  else if(current == ONK_DEF_TOKEN)
+  if(current == ONK_DEF_TOKEN)
   {}
 
   else if(current == ONK_FROM_TOKEN )

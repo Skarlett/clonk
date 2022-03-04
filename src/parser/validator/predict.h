@@ -90,17 +90,29 @@ const enum onk_lexicon_t NEXT_CLOSE_BRACE[] = {_NEXT_CLOSE_BRACE};
 
 
 enum validator_no {
+
+  expr_mode_t,
+
+  /*def foo(x=y + s, z=w)*/
+  /*struct Foo{x=y, z, d=a}*/
+  parameter_mode_t,
+
   /*
    * Must follow sequence of tokens exactly
   */
-  strict_mode_tight,
-
-  /* white list of tokens, but changes mode
-   * once terminator is found */
-  strict_mode_loose,
+  sequence_mode,
 
 
-  mode_default,
+  /* must follow a block*/
+  /* if(..) **{ }** */
+  /* def foo(..) **{ }** */
+  /* impl foo **{ }** */
+  /* while(..) **{ }** */
+  /* */
+  follow_block
+
+
+
 };
 
 struct validator_frame_t {
