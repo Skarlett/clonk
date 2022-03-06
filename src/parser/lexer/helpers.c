@@ -6,6 +6,11 @@ bool onk_is_tok_delimiter(enum onk_lexicon_t token) {
         && __ONK_MARKER_DELIM_END > token;
 }
 
+bool onk_is_tok_brace(enum onk_lexicon_t token) {
+    return token > __ONK_MARKER_BRACE_START
+        && __ONK_MARKER_BRACE_END > token;
+}
+
 bool onk_is_tok_close_brace(enum onk_lexicon_t token) {
     return token > __ONK_MARKER_CLOSE_BRACE_START
         && __ONK_MARKER_CLOSE_BRACE_END > token;
@@ -41,10 +46,31 @@ bool onk_is_tok_operator(enum onk_lexicon_t token) {
         && __ONK_MARKER_OP_END > token;
 }
 
-bool onk_is_tok_keyword(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_KEYWORD_START
-        && __ONK_MARKER_KEYWORD_TOKEN_END > token;
+bool onk_is_tok_block_keyword(enum onk_lexicon_t token) {
+    return token > __ONK_MARKER_KEYWORD_BLOCK_START
+        && __ONK_MARKER_KEYWORD_BLOCK_END > token;
 }
+
+bool onk_is_tok_data_keyword(enum onk_lexicon_t token){
+    return token > __ONK_MARKER_KEYWORD_DATA_START
+        && __ONK_MARKER_KEYWORD_DATA_END > token;
+}
+
+bool onk_is_tok_keyword(enum onk_lexicon_t token){
+    return onk_is_tok_block_keyword(token)
+        || onk_is_tok_data_keyword(token);
+}
+
+bool _onk_do_default_expectation(enum onk_lexicon_t token){
+    return token > __ONK_MARKER_KEYWORD_DATA_START
+        && __ONK_MARKER_KEYWORD_DATA_END > token;
+}
+
+bool onk_is_tok_illegal(enum onk_lexicon_t token){
+    return token > __ONK_MARKER_ILLEGAL_INPUT_START
+        && __ONK_MARKER_ILLEGAL_INPUT_END > token;
+}
+
 
 /* keywords that can only be used in blocks */
 /* bool onk_is_tok_kword_block(enum onk_lexicon_t token) { */

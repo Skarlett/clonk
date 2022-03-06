@@ -10,8 +10,8 @@
 
 enum onk_lexicon_t {
     /* end of file */
-    ONK_EOFT = 255,
-
+    ONK_EOFT,
+    __ONK_MARKER_ILLEGAL_INPUT_START,
     /********************/
     /* Transition token */
     /********************/
@@ -55,21 +55,8 @@ enum onk_lexicon_t {
 
     __ONK_MARKER_GROUP_END,
 
-    ONK_UNDEFINED_TOKEN = 1,
+    ONK_UNDEFINED_TOKEN,
 
-    ONK_NULL_TOKEN,
-
-    __ONK_MARKER_WHITESPACE_START,
-    ONK_WHITESPACE_TOKEN,
-    ONK_NEWLINE_TOKEN,
-    __ONK_MARKER_WHITESPACE_END,
-
-    ONK_COMMENT_TOKEN,
-
-    /*
-    ** braces start
-    **
-    */
     __ONK_MARKER_UPGRADE_DATA_START,
 
     /* " */
@@ -81,7 +68,10 @@ enum onk_lexicon_t {
     /* # */
     POUND,
 
-     /* _ */
+    /* $  */
+    ONK_DOLLAR_TOKEN,
+
+    /* _ */
     ONK_UNDERSCORE_TOKEN,
 
     /* a-zA-Z */
@@ -90,6 +80,47 @@ enum onk_lexicon_t {
     /* 0-9 single digit */
     ONK_DIGIT_TOKEN,
     __ONK_MARKER_UPGRADE_DATA_END,
+
+    /* \ */
+    ONK_BACKSLASH_TOKEN,
+
+    /* @ */
+    //ONK_ATSYM__TOKEN,
+
+    __ONK_MARKER_ILLEGAL_INPUT_END,
+    /*********************/
+    /* multi byte tokens */
+    /*********************/
+    __ONK_MARKER_WHITESPACE_START,
+    ONK_WHITESPACE_TOKEN,
+    ONK_NEWLINE_TOKEN,
+    __ONK_MARKER_WHITESPACE_END,
+
+    ONK_COMMENT_TOKEN,
+
+    __ONK_MARKER_DEFAULT_EXPECT_START,
+
+    __ONK_MARKER_UNIT_START,
+    __ONK_MARKER_KEYWORD_DATA_START,
+    ONK_TRUE_TOKEN,
+    ONK_FALSE_TOKEN,
+    ONK_NULL_TOKEN,
+    __ONK_MARKER_KEYWORD_DATA_END,
+
+    /* from location */
+    ONK_FROM_LOCATION,
+
+    /*  [NUM, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN    */
+    /* // 20_392  */
+    ONK_INTEGER_TOKEN,
+
+    /* [ONK_CHAR_TOKEN, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN */
+    ONK_WORD_TOKEN,
+
+    /* [QUOTE, ... QUOTE] */
+    ONK_STRING_LITERAL_TOKEN,
+    __ONK_MARKER_UNIT_END,
+
     __ONK_MARKER_DELIM_START,
     /* , */
     ONK_COMMA_TOKEN,
@@ -101,16 +132,7 @@ enum onk_lexicon_t {
     ONK_SEMICOLON_TOKEN,
     __ONK_MARKER_DELIM_END,
 
-    /* \ */
-    ONK_BACKSLASH_TOKEN,
-
-    /* @ */
-    ONK_ATSYM__TOKEN,
-
-    /*********************/
-    /* multi byte tokens */
-    /*********************/
-
+    __ONK_MARKER_BRACE_START,
     __ONK_MARKER_CLOSE_BRACE_START,
     /* ] */
     ONK_BRACKET_CLOSE_TOKEN,
@@ -137,6 +159,8 @@ enum onk_lexicon_t {
     /* ( */
     ONK_PARAM_OPEN_TOKEN,
     __ONK_MARKER_OPEN_BRACE_END,
+    __ONK_MARKER_BRACE_END,
+
 
     __ONK_MARKER_OP_START,
     __ONK_MARKER_BIN_START,
@@ -164,9 +188,6 @@ enum onk_lexicon_t {
     /* ! */
     ONK_NOT_TOKEN,
     __ONK_MARKER_UNARY_END,
-
-    /* $  */
-    ONK_DOLLAR_TOKEN,
 
     /* + */
     ONK_ADD_TOKEN,
@@ -262,6 +283,7 @@ enum onk_lexicon_t {
     onk_while_cond_op_token,
     onk_while_body_op_token,
 
+    __ONK_MARKER_GROUP_OP_END,
     /* static */
     /* STATIC, */
 
@@ -274,7 +296,6 @@ enum onk_lexicon_t {
     /* as */
     //AS,
 
-    __ONK_MARKER_KEYWORD_START,
     __ONK_MARKER_KEYWORD_BLOCK_START,
     /* struct A {} */
     ONK_STRUCT_TOKEN,
@@ -290,8 +311,6 @@ enum onk_lexicon_t {
 
     /* from */
     ONK_FROM_TOKEN,
-
-    __ONK_MARKER_GROUP_OP_END,
     __ONK_MARKER_OP_END,
 
     /* if */
@@ -307,29 +326,6 @@ enum onk_lexicon_t {
     ONK_WHILE_TOKEN,
 
     __ONK_MARKER_KEYWORD_BLOCK_END,
-    __ONK_MARKER_UNIT_START,
-
-    ONK_TRUE_TOKEN,
-    ONK_FALSE_TOKEN,
-
-    __ONK_MARKER_KEYWORD_TOKEN_END,
-
-    /*  [NUM, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN    */
-    /* // 20_392  */
-    ONK_INTEGER_TOKEN,
-
-    /* [ONK_CHAR_TOKENACTER, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN */
-    /* something */
-    ONK_WORD_TOKEN,
-
-    /* from location */
-    ONK_FROM_LOCATION,
-
-    /* [QUOTE, ... QUOTE] */
-    /* something */
-    ONK_STRING_LITERAL_TOKEN,
-    __ONK_MARKER_UNIT_END,
-
 
     /*
       GROUPING token are generated in the expression parser
@@ -518,6 +514,13 @@ bool onk_is_tok_operator(enum onk_lexicon_t compound_token);
  */
 bool onk_is_tok_unary_operator(enum onk_lexicon_t compound_token);
 
+/**
+ * Check if the parameter `token` is equal the token type
+ *   CLOSING_PARAM, CLOSING_BRACE, CLOSING_BRACKET
+ * @param token
+ * @return bool
+ */
+bool onk_is_tok_brace(enum onk_lexicon_t token);
 
 /**
  * Check if the parameter `token` is equal the token type 
