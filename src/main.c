@@ -5,6 +5,16 @@
 
 #include "clonk.h"
 
+#define BANNER \
+    "    {__    {__                   {__\r\n"      \
+    " {__   {__ {__                   {__\r\n"      \
+    "{__        {__   {__     {__ {__ {__  {__\r\n" \
+    "{__        {__ {__  {__  {__  {__{__ {__\r\n"  \
+    "{__        {__{__    {__ {__  {__{_{__\r\n"    \
+    " {__   {__ {__ {__  {__  {__  {__{__ {__\r\n"  \
+    "   {____  {___   {__    {___  {__{__  {__\r\n" \
+    "Copyright 2022 - version: "
+
 #define HELP_TEXT \
     "\t -h | brings up this help menu\n" \
     "\t -V | print version\n" \
@@ -12,7 +22,7 @@
 
 
 void print_help(char *name) {
-    printf("usage: %s [opts] [file]\nversion: %s\n\n", name, VERSION);
+    printf("usage: %s [opts] [file]\nversion: %s\n\n", name, ONK_VERSION);
     printf("%s\n", HELP_TEXT);
 }
 
@@ -20,6 +30,7 @@ struct Opts {
     uint8_t print_ast;
     uint8_t print_parser;
     uint8_t print_tokens;
+
 };
 
 void init_opts(struct Opts *opts) {
