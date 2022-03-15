@@ -144,7 +144,6 @@ enum onk_lexicon_t {
     ONK_PARAM_CLOSE_TOKEN,
     __ONK_MARKER_CLOSE_BRACE_END,
 
-
     __ONK_MARKER_OPEN_BRACE_START,
 
     /* ${ */
@@ -546,6 +545,18 @@ bool onk_is_tok_open_brace(enum onk_lexicon_t token);
  * @return bool
  */
 bool onk_is_utf_byte(char ch);
+
+
+bool onk_is_tok_block_keyword(enum onk_lexicon_t token);
+
+bool onk_is_tok_data_keyword(enum onk_lexicon_t token);
+
+bool onk_is_tok_keyword(enum onk_lexicon_t token);
+
+bool _onk_do_default_expectation(enum onk_lexicon_t token);
+
+bool onk_is_tok_illegal(enum onk_lexicon_t token);
+
 
 
 /**

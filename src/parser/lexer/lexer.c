@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include "clonk.h"
 #include "lexer.h"
+#include "onkstd/queue.h"
+#include "onkstd/vec.h"
 
 #define PREV_BUF_SZ 8
 #define ONK_BUF_SZ 65355
@@ -145,8 +147,8 @@ enum onk_lexicon_t onk_tokenize_char(char c) {
     return ONK_NOT_TOKEN;
   case '#':
     return POUND;
-  case '@':
-    return ONK_ATSYM__TOKEN;
+  /* case '@': */
+  /*   return ONK_ATSYM__TOKEN; */
   case '.':
     return ONK_DOT_TOKEN;
   case '~':
@@ -699,7 +701,7 @@ int8_t onk_tokenize(
         So that its turned into a compound token.
     */
     if (can_upgrade_token(state.current)) {
-      i--;
+      i -= 1;
       continue;
     }
 

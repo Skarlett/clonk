@@ -102,7 +102,7 @@ bool onk_is_utf_byte(char ch) {
     unsigned char copy = ch;
 
     return (copy >= 0x80
-        /* accept £ */
+        /* accept a cup of tea (£) */
         && copy != 0xa3);
 }
 
