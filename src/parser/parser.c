@@ -153,7 +153,7 @@ int8_t pop_group(struct Parser *state, bool do_checks)
 
 /*
 ** After a group is added to the output, there may be
-**
+** group operation
 */
 int8_t pop_block_operator(struct Parser *state)
 {
