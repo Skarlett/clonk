@@ -227,19 +227,12 @@ int8_t default_expression(
 
   else if(onk_is_tok_open_brace(current))
   {
-    if(ONK_STACK_SZ <= state->nstack)
-        return -1;
-
-    state->nstack += 1;
     selected[0] = (enum onk_lexicon_t *)&EXPR;
   }
 
   else if(onk_is_tok_close_brace(current))
   {
-    if(state->nstack == 0)
-      return -1;
-
-    state->nstack -= 1;
+    selected[0] = (enum onk_lexicon_t *)&NEXT_CLOSE_BRACE;
   }
 
   else if(current == ONK_DOT_TOKEN)
@@ -264,17 +257,22 @@ int8_t default_expression(
     selected[0] = (enum onk_lexicon_t *)&EXPR;
   }
 
+  else if(current == ONK_ELSE_TOKEN)
+  {
+    small[0] = ONK_IF_TOKEN;
+    small[1] = ONK_BRACE_OPEN_TOKEN;
+  }
+
   else return -1;
 
   return 0;
 }
 
-
-
 int8_t do_parameter_mode(struct Parser *state)
 {
 
 }
+
 int8_t ctx_for_arg_mode(enum onk_lexicon_t current)
 {
   if (current == ONK_WORD_TOKEN)
@@ -293,6 +291,23 @@ bool use_parameter_mode(enum onk_lexicon_t gmod)
     || gmod == onk_struct_init_op_token;
 }
 
+bool is_inside_for_args(
+  enum onk_lexicon_t ophead,
+  enum onk_lexicon_t gmod)
+{
+  return ophead == ONK_PARAM_OPEN_TOKEN
+    && gmod == onk_for_args_op_token;
+}
+
+bool is_inside_impl_body(
+  enum onk_lexicon_t ophead,
+  enum onk_lexicon_t gmod,
+  enum onk_lexicon_t current)
+{
+  return ophead == ONK_BRACE_OPEN_TOKEN && gmod == ONK_IMPL_TOKEN
+          && (current == ONK_BRACE_OPEN_TOKEN
+              || current == ONK_BRACE_CLOSE_TOKEN);
+}
 /* use `{` next */
 bool start_block(
   enum onk_lexicon_t current,
@@ -317,7 +332,7 @@ bool start_block(
 
     /* for x in expr { */
     /*             ^-^ */
-    || (ophead == onk_for_body_op_token && onk_is_tok_unit(current))
+    || (ophead == onk_for_body_op_token && onk_is_tok_unit(current));
 }
 
 int8_t ctx_paramter_mode(enum onk_lexicon_t current)
@@ -327,7 +342,6 @@ int8_t ctx_paramter_mode(enum onk_lexicon_t current)
   if (current == ONK_WORD_TOKEN)
   {
     small = ONK_EQUAL_TOKEN;
-    //small[1] = ONK_COMMA_TOKEN;
   }
   else if (current == ONK_COMMA_TOKEN)
     small = ONK_WORD_TOKEN;
@@ -358,15 +372,14 @@ int8_t expect_strict_ctx(struct Parser *state, enum onk_lexicon_t current)
   enum onk_lexicon_t small[16];
   enum onk_lexicon_t *selected[12];
 
-
   /*
    * def sig(word=?expr, ..),
    * struct definition {word=?expr, ..},
    *
-   * definition {word, ...}
-   * definition {word=?expr, ..}
+   * definition {word,  ...}
+   * definition {word= expr, ..}
    *                 ^
-   */
+  */
   if (use_parameter_mode(current))
       ctx_paramter_mode(current);
 
@@ -388,8 +401,6 @@ int8_t expect_strict_ctx(struct Parser *state, enum onk_lexicon_t current)
   *                   ^
   * This isn't an exhaustive list,
   * but those based on parsing context
-  *
-  *
   */
   else if(start_block(ophead, current))
     small[0] = ONK_BRACE_OPEN_TOKEN;
@@ -404,72 +415,16 @@ int8_t expect_strict_ctx(struct Parser *state, enum onk_lexicon_t current)
   /*         && current == ONK_BRACE_CLOSE_TOKEN) */
   /*   small[0] = ONK_ELSE_TOKEN; */
 
-  /* if( ){ */
-  /*      ^ */
-
-  else if(ophead == ONK_PARAM_OPEN_TOKEN)
-  {
-
-    switch (gmod)
-    {
-      /* case onk_ifcond_op_token: */
-      /*   break; */
-
-      case onk_for_args_op_token:
-        ctx_for_arg_mode(current);
-        break;
-
-      case ONK_IMPORT_TOKEN:
-        small[0] = ONK_WORD_TOKEN;
-        break;
-
-      default:
-        return -1;
-    }
-  }
+  /* special handling for certain groups & modifiers */
+  else if(is_inside_for_args(ophead, gmod))
+    ctx_for_arg_mode(current);
 
 
-  /* for x in set { } */
-  /*              ^   */
-  else if(ophead == onk_for_body_op_token)
-  {
-    if(current == ONK_PARAM_CLOSE_TOKEN)
-      small[0] = ONK_BRACE_OPEN_TOKEN;
-  }
+  /* impl word { def foo() {...} }*/
+  /*             ^                */
+  else if(is_inside_impl_body(ophead, gmod, current))
+    small[0] = ONK_DEF_TOKEN;
 
-   else if (ophead == ONK_BRACE_OPEN_TOKEN)
-  {
-    switch(gmod)
-    {
-      case ONK_IMPL_TOKEN:
-        if(current == ONK_BRACE_OPEN_TOKEN
-           || current == ONK_BRACE_CLOSE_TOKEN)
-
-          small[0] = ONK_DEF_TOKEN;
-
-        else return -1;
-        break;
-
-      case ONK_STRUCT_TOKEN:
-        break;
-
-      // todo
-      case onk_struct_data_op_token:
-        break;_
-
-      case
-
-
-    }
-
-
-  }
-
-  }
-
-  else if()
-
-  }
 
   // catch the tail end of the expression
   // and
@@ -479,7 +434,6 @@ int8_t expect_strict_ctx(struct Parser *state, enum onk_lexicon_t current)
   {
     small[0] = ONK_BRACE_OPEN_TOKEN;
   }
-
 
   else if(ophead->type == ONK_PARAM_OPEN_TOKEN
           && gmod == DefSign
