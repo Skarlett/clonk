@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <assert.h>
 
 #define ONK_VERSION "0.0.3"
 #define ONK_INCLUDE_TESTS 0 // -DINCLUDE_TESTS 1
