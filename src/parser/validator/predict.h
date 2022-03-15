@@ -90,8 +90,12 @@ const enum onk_lexicon_t NEXT_CLOSE_BRACE[] = {_NEXT_CLOSE_BRACE};
 
 
 enum validator_no {
+  validator_unknown_mode_no,
 
+  /* default */
   expr_mode_t,
+
+  conditional_mode_t,
 
   /*def foo(x=y + s, z=w)*/
   /*struct Foo{x=y, z, d=a}*/
@@ -135,8 +139,6 @@ struct validator_t {
   uint8_t ninsert;
   uint16_t nstack;
 };
-
-
 
 
 
