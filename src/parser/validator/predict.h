@@ -12,6 +12,7 @@
 #define _EX_UNIT ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, \
     ONK_NULL_TOKEN, ONK_TRUE_TOKEN, ONK_FALSE_TOKEN,  \
     ONK_STRING_LITERAL_TOKEN
+
 #define UNIT_LEN 6
 const enum onk_lexicon_t UNIT[UNIT_LEN] = {_EX_UNIT};
 
@@ -28,6 +29,7 @@ const enum onk_lexicon_t BINOP[BINOP_LEN] = {_EX_BIN_OPERATOR};
 #define _EX_ASN_OPERATOR                                    \
     ONK_EQUAL_TOKEN, ONK_PLUSEQ_TOKEN, ONK_MINUS_EQL_TOKEN, \
     ONK_BIT_AND_EQL, ONK_BIT_OR_EQL, ONK_BIT_NOT_EQL
+
 #define ASNOP_LEN 6
 const enum onk_lexicon_t ASNOP[ASNOP_LEN] = {_EX_ASN_OPERATOR};
 
@@ -61,12 +63,12 @@ const enum onk_lexicon_t BLOCK_KWORD[_EX_KWORD_BLOCK_LEN];
 
 #define _NEXT_WORD _NEXT_UNIT_GENERIC, ONK_DOT_TOKEN, ONK_BRACE_OPEN_TOKEN, \
     ONK_PARAM_OPEN_TOKEN, ONK_BRACKET_OPEN_TOKEN, _EX_ASN_OPERATOR
+
 #define NEXT_WORD_LEN _NEXT_UNIT_GENERIC_LEN + 4 + ASNOP_LEN
 const enum onk_lexicon_t NEXT_WORD[NEXT_WORD_LEN] = {_NEXT_WORD};
 
 #define NEXT_STRING _NEXT_UNIT_GENERIC, DOT, ONK_OPEN_BRACKET_TOKEN
 #define NEXT_STRING_LEN _NEXT_UNIT_GENERIC_LEN + 2
-
 
 #define NEXT_OPERATOR _EX_EXPR
 #define NEXT_OPERATOR_LEN EXPR_LEN
@@ -119,34 +121,22 @@ enum validator_no {
 
 };
 
-struct validator_frame_t {
-  enum validator_no mode;
-  bool allow_delim;
-  bool allow_open_brace;
-
-
-
-};
 
 #define _ONK_VALIDATOR_SZ 24
 #define _ONK_VALIDATOR_REF_SZ 8
 struct validator_t {
-  enum onk_lexicon_t * ref_buffer[_ONK_VALIDATOR_REF_SZ];
-  enum onk_lexicon_t insert[_ONK_VALIDATOR_SZ];
-  struct validator_frame_t stack[ONK_STACK_SZ];
+  enum onk_lexicon_t * slices[_ONK_VALIDATOR_REF_SZ];
+  enum onk_lexicon_t buffer[_ONK_VALIDATOR_SZ];
 
-  uint8_t nref;
-  uint8_t ninsert;
-  uint16_t nstack;
+  uint16_t islices[_ONK_VALIDATOR_REF_SZ];
+  uint16_t nslices;
+  uint16_t nbuffer;
 };
 
 
 
-bool kw_follows_open_param(enum onk_lexicon_t tok);
-
-bool follows_word(enum onk_lexicon_t tok);
-
 bool can_use_else(enum onk_lexicon_t output_head);
+
 
 /*
  * Can use Keywords if operator stack is flushed

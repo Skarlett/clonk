@@ -1,16 +1,21 @@
 /*
 ** predict.c
-** This file provides functionality for determining validity of parser input.
-** It works by looking at its current token and the parser's state,
-** then spits out what tokens are possible next.
-** If the next token in the input is not contained
-** in the what is predicted, then it is invalid input.
-** Syntax error or otherwise.
+**
+** This file is for determining the validity of the parser's input.
+** It works by looking at the current token,
+** and producing a collection of valid tokens that could occur
+** next in the sequence.
+**
+**  Words & meaning:
+**    predictor - A token that is apart of the collection of valid tokens
+**
+**
+** During the parsing process, sometimes certain tokens must occur.
+** This generally is in special conditions, these are referred to as
+** "rules".
 **
 */
 
-#include <assert.h>
-#include <stdint.h>
 #include <string.h>
 #include "clonk.h"
 #include "lexer.h"
@@ -64,7 +69,6 @@ enum onk_lexicon_t place_delimiter(struct Parser *state)
   }
 }
 
-
 enum onk_lexicon_t place_closing_brace(struct Parser *state)
 {
   const struct onk_token_t *current = current_token(state);
@@ -83,35 +87,6 @@ enum onk_lexicon_t place_closing_brace(struct Parser *state)
            return ONK_UNDEFINED_TOKEN;
 
   return onk_invert_brace(ghead->origin->type);
-}
-
-
-bool place_bracket(struct Parser *state)
-{
-  const struct onk_token_t *current = current_token(state);
-
-  if(current->type == ONK_WORD_TOKEN)
-    return 1;
-
-  else if(current->type == ONK_STRING_LITERAL_TOKEN)
-    return 1;
-
-  else if(onk_is_tok_close_brace(current->type))
-    return 1;
-
-  return 0;
-}
-
-bool place_param(struct Parser *state)
-{
-  const struct onk_token_t *current = current_token(state);
-  if(current->type == ONK_WORD_TOKEN)
-    return 1;
-
-  else if(onk_is_tok_close_brace(current->type))
-    return 1;
-
-  return 0;
 }
 
 
@@ -172,11 +147,10 @@ int8_t expect_operator(enum onk_lexicon_t current)
     || onk_is_tok_unit(current);
 }
 
-int8_t expect_default_expression(enum lexicon_t current)
+int8_t expect_default_expression(enum onk_lexicon_t current)
 {
   return onk_is_tok_unit(current) || onk_is_tok_brace(current);
 }
-
 
 enum onk_lexicon_t handle_keyword(enum onk_lexicon_t current)
 {
@@ -196,28 +170,28 @@ enum onk_lexicon_t handle_keyword(enum onk_lexicon_t current)
 }
 
 int8_t default_expression(
-  struct validator_t *state,
+  struct validator_t *validator,
   enum onk_lexicon_t current
 ){
 
-  enum onk_lexicon_t *selected[12];
-  enum onk_lexicon_t small[16];
-
   if(onk_is_tok_unit(current))
   {
-    selected[0] = (enum onk_lexicon_t *)&EXPR;
+    validator->slices[0] = (enum onk_lexicon_t *)&EXPR;
     switch(current)
     {
       case ONK_WORD_TOKEN:
-        small[0] = ONK_DOT_TOKEN;
-        small[1] = ONK_BRACKET_OPEN_TOKEN;
-        small[2] = ONK_PARAM_OPEN_TOKEN;
-        small[3] = ONK_BRACE_OPEN_TOKEN;
+        validator->buffer[0] = ONK_DOT_TOKEN;
+        validator->buffer[1] = ONK_BRACKET_OPEN_TOKEN;
+        validator->buffer[2] = ONK_PARAM_OPEN_TOKEN;
+        validator->buffer[3] = ONK_BRACE_OPEN_TOKEN;
+
+        validator->slices[0] = (enum onk_lexicon_t *)&ASNOP;
+
         break;
 
       case ONK_STRING_LITERAL_TOKEN:
-        small[0] = ONK_DOT_TOKEN;
-        small[1] = ONK_BRACKET_OPEN_TOKEN;
+        validator->buffer[0] = ONK_DOT_TOKEN;
+        validator->buffer[1] = ONK_BRACKET_OPEN_TOKEN;
         break;
 
       default:
@@ -226,61 +200,44 @@ int8_t default_expression(
   }
 
   else if(onk_is_tok_open_brace(current))
-  {
-    selected[0] = (enum onk_lexicon_t *)&EXPR;
-  }
+    validator->slices[0] = (enum onk_lexicon_t *)&EXPR;
 
   else if(onk_is_tok_close_brace(current))
-  {
-    selected[0] = (enum onk_lexicon_t *)&NEXT_CLOSE_BRACE;
-  }
+    validator->slices[0] = (enum onk_lexicon_t *)&NEXT_CLOSE_BRACE;
 
   else if(current == ONK_DOT_TOKEN)
-  {
-    small[0] = ONK_WORD_TOKEN;
-  }
+    validator->buffer[0] = ONK_WORD_TOKEN;
 
   else if (onk_is_tok_block_keyword(current))
-  {
-    small[0] = handle_keyword(current);
-  }
+    validator->buffer[0] = handle_keyword(current);
 
   /* catch all binops & unary ops */
   /* ASSUME: all keywords were not `current` token type  */
   else if(onk_is_tok_operator(current))
-  {
-    selected[0] = (enum onk_lexicon_t *)&NEXT_CLOSE_BRACE;
-  }
+    validator->slices[0] = (enum onk_lexicon_t *)&EXPR;
 
   else if (onk_is_tok_delimiter(current))
-  {
-    selected[0] = (enum onk_lexicon_t *)&EXPR;
-  }
+    validator->slices[0] = (enum onk_lexicon_t *)&EXPR;
 
   else if(current == ONK_ELSE_TOKEN)
   {
-    small[0] = ONK_IF_TOKEN;
-    small[1] = ONK_BRACE_OPEN_TOKEN;
+    validator->buffer[0] = ONK_IF_TOKEN;
+    validator->buffer[1] = ONK_BRACE_OPEN_TOKEN;
   }
 
-  else return -1;
+  else return 0;
 
-  return 0;
-}
-
-int8_t do_parameter_mode(struct Parser *state)
-{
-
+  return 1;
 }
 
 int8_t ctx_for_arg_mode(enum onk_lexicon_t current)
 {
   if (current == ONK_WORD_TOKEN)
-    //small[0] = ONK_COMMA_TOKEN;
+    //validator->buffer[0] = ONK_COMMA_TOKEN;
   {}
   else if(current == ONK_COMMA_TOKEN)
   {
-   small[0] = ONK_WORD_TOKEN;
+   validator->buffer[0] = ONK_WORD_TOKEN;
   }
 }
 
@@ -308,12 +265,12 @@ bool is_inside_impl_body(
           && (current == ONK_BRACE_OPEN_TOKEN
               || current == ONK_BRACE_CLOSE_TOKEN);
 }
+
 /* use `{` next */
 bool start_block(
   enum onk_lexicon_t current,
   enum onk_lexicon_t ophead
-)
-{
+){
   return
     /*   def sig(){ */
     /* while sig(){ */
@@ -335,42 +292,51 @@ bool start_block(
     || (ophead == onk_for_body_op_token && onk_is_tok_unit(current));
 }
 
-int8_t ctx_paramter_mode(enum onk_lexicon_t current)
+int8_t ctx_paramter_mode(struct validator_t *validator, enum onk_lexicon_t current)
 {
-  enum onk_lexicon_t small, *selected;
 
-  if (current == ONK_WORD_TOKEN)
-  {
-    small = ONK_EQUAL_TOKEN;
+  switch(current) {
+    case ONK_WORD_TOKEN:
+      validator->buffer[0] = ONK_EQUAL_TOKEN;
+      validator->nbuffer = 1;
+      break;
+
+    case ONK_COMMA_TOKEN:
+      validator->buffer[0] = ONK_WORD_TOKEN;
+      validator->nbuffer = 1;
+      break;
+
+    case ONK_EQUAL_TOKEN:
+      validator->slices[0] = (enum onk_lexicon_t *)&EXPR;
+      validator->islices[0] = EXPR_LEN;
+      validator->nslices = 1;
+      break;
+
+    default: return -1;
   }
-  else if (current == ONK_COMMA_TOKEN)
-    small = ONK_WORD_TOKEN;
 
-  else if(current == ONK_EQUAL_TOKEN)
-    selected = (enum onk_lexicon_t *)&EXPR;
-
-  else
-    return -1;
   return 0;
 }
 
 bool start_parameter_mode(enum onk_lexicon_t ophead, enum onk_lexicon_t current)
 {
-
   return (ophead == DefSign && current == ONK_PARAM_OPEN_TOKEN)
     || ((ophead == ONK_STRUCT_TOKEN
          || ophead == onk_struct_init_op_token)
          && current == ONK_BRACE_OPEN_TOKEN);
 }
 
-
-int8_t expect_strict_ctx(struct Parser *state, enum onk_lexicon_t current)
+/*
+** This function checks if certain tokens should be validator->slices
+** as valid
+**
+ */
+int8_t apply_group_rules(struct Parser *state, struct validator_t *validator)
 {
-  enum onk_lexicon_t ophead = op_head(state)->type;
   struct Group *ghead = group_head(state);
+  enum onk_lexicon_t current = current_token(state)->type;
+  enum onk_lexicon_t ophead = op_head(state)->type;
   enum onk_lexicon_t gmod = group_modifier(state, ghead)->type;
-  enum onk_lexicon_t small[16];
-  enum onk_lexicon_t *selected[12];
 
   /*
    * def sig(word=?expr, ..),
@@ -379,17 +345,21 @@ int8_t expect_strict_ctx(struct Parser *state, enum onk_lexicon_t current)
    * definition {word,  ...}
    * definition {word= expr, ..}
    *                 ^
-  */
-  if (use_parameter_mode(current))
-      ctx_paramter_mode(current);
-
-
+   */
+  if (use_parameter_mode(current)) {
+    assert(ctx_paramter_mode(validator, current) == 0);
+    return 1;
+  }
   /*     def func(word) { }*/
   /*  struct foo {word}    */
   /* init_struct {word}    */
   /*              ^        */
   else if(start_parameter_mode(ophead, current))
-    small[0] = ONK_WORD_TOKEN;
+  {
+    validator->buffer[0] = ONK_WORD_TOKEN;
+    validator->nbuffer = 1;
+    return 1;
+  }
 
   /*
   *         impl word {
@@ -403,46 +373,29 @@ int8_t expect_strict_ctx(struct Parser *state, enum onk_lexicon_t current)
   * but those based on parsing context
   */
   else if(start_block(ophead, current))
-    small[0] = ONK_BRACE_OPEN_TOKEN;
-
-
-  /* TODO: needs `ELSE` to **added** onto the buffer
-   * instead of shown as the only option */
-  /***************************************/
-  /* if (..) { } else */
-  /*             ^    */
-  /* else if(ophead == onk_ifbody_op_token */
-  /*         && current == ONK_BRACE_CLOSE_TOKEN) */
-  /*   small[0] = ONK_ELSE_TOKEN; */
+  {
+    validator->buffer[0] = ONK_BRACE_OPEN_TOKEN;
+    validator->nbuffer = 1;
+    return 1;
+  }
 
   /* special handling for certain groups & modifiers */
   else if(is_inside_for_args(ophead, gmod))
-    ctx_for_arg_mode(current);
+    return ctx_for_arg_mode(current);
 
 
   /* impl word { def foo() {...} }*/
   /*             ^                */
   else if(is_inside_impl_body(ophead, gmod, current))
-    small[0] = ONK_DEF_TOKEN;
-
-
-  // catch the tail end of the expression
-  // and
-  if((ophead == onk_ifbody_op_token
-     || ophead == onk_while_cond_op_token)
-     && current == ONK_PARAM_CLOSE_TOKEN)
   {
-    small[0] = ONK_BRACE_OPEN_TOKEN;
+    validator->buffer[0] = ONK_BRACE_OPEN_TOKEN;
+    validator->nbuffer = 1;
+    return 1;
   }
 
-  else if(ophead->type == ONK_PARAM_OPEN_TOKEN
-          && gmod == DefSign
-          && current == ONK_WORD_TOKEN){}
-
-  else if(ophead->)
-  {}
-  else if() {}
+  return 0;
 }
+
 
 int8_t fill_buffer(
   struct validator_t *state,
@@ -452,8 +405,8 @@ int8_t fill_buffer(
 ){
 
   struct ValidatorFrame ctx = validator_frame_head(state);
-  enum onk_lexicon_t *selected[0];
-  enum onk_lexicon_t small[16];
+  enum onk_lexicon_t *validator->slices[0];
+  enum onk_lexicon_t validator->buffer[16];
 
   uint16_t nitems = 0;
   bool allow_delim = 0;
@@ -466,15 +419,13 @@ int8_t fill_buffer(
    * any token not matched exactly fails.
   */
 
-
-
   /*
    * *strict*: must follow a sequence of token(s)
    *
    * when the context meets certain conditions,
    * we will expect a sequence of tokens to follow
   */
-  else if(expect_strict_ctx_seq(state))
+  if(expect_strict_ctx_seq(state))
   {
 
     return 0;
@@ -486,7 +437,7 @@ int8_t fill_buffer(
     default_expression(state, current);
 
     if(add_tokens_based_on_ctx(state))
-
+    {}
 
     return 0;
   }
@@ -502,7 +453,7 @@ int8_t fill_buffer(
 
   else if(current == ONK_FROM_TOKEN )
   {
-    small[0] = ONK_FROM_LOCATION;
+    validator->buffer[0] = ONK_FROM_LOCATION;
     nitems = 1;
   }
 
@@ -511,35 +462,35 @@ int8_t fill_buffer(
     case ONK_WORD_TOKEN:
       allow_delim = 1;
       nitems = PV_ONK_WORD_TOKEN_LEN;
-      selected =  (enum onk_lexicon_t *)PV_ONK_WORD_TOKEN;
+      validator->slices =  (enum onk_lexicon_t *)PV_ONK_WORD_TOKEN;
       break;
 
     case ONK_INTEGER_TOKEN:
       allow_delim = 1;
       nitems = PV_INT_LEN;
-      selected = (enum onk_lexicon_t *)PV_INT;
+      validator->slices = (enum onk_lexicon_t *)PV_INT;
       break;
 
     case ONK_STRING_LITERAL_TOKEN:
       allow_delim = 1;
       nitems = PV_STR_LEN;
-      selected = (enum onk_lexicon_t *)PV_STR;
+      validator->slices = (enum onk_lexicon_t *)PV_STR;
       break;
 
     case ONK_DOT_TOKEN:
       nitems = 1;
-      small[0] = ONK_WORD_TOKEN;
+      validator->buffer[0] = ONK_WORD_TOKEN;
       break;
 
     case ONK_DEF_TOKEN:
       nitems = 1;
-      small[0] = ONK_WORD_TOKEN;
+      validator->buffer[0] = ONK_WORD_TOKEN;
       break;
 
     case ONK_IMPORT_TOKEN:
         mode = 0;
       //nitems = PV_I_init_len  - 1;
-      //selected = _PV_import_init;
+      //validator->slices = _PV_import_init;
       //state->expecting.mode = PV_Import;
       break;
 
@@ -548,9 +499,9 @@ int8_t fill_buffer(
   }
 
   /* any open brace */
-  if (selected)
+  if (validator->slices)
     assert(memcpy(
-      buf, selected,
+      buf, validator->slices,
       sizeof(enum onk_lexicon_t) * nitems
     ));
 
@@ -597,14 +548,12 @@ void init_expect_buffer(struct Previsioner *state)
     memcpy(state->buffer, _PV_default, sizeof(enum onk_lexicon_t) * 8);
     state->buffer[9] = 0;
     /* cast removes cc warning */
-    state->data.default_mode.selected = (enum onk_lexicon_t *)&state->buffer;
+    state->data.default_mode.validator->slices = (enum onk_lexicon_t *)&state->buffer;
     state->mode = PV_Default; 
 }
 
-
-
 /* 
- * @param selected NULL terminated
+ * @param validator->slices NULL terminated
  */
 int8_t prevision_next(struct Parser *state)
 {
@@ -672,7 +621,7 @@ enum ModeResult mode_import(enum onk_lexicon_t current,  struct Previsioner *sta
 int8_t mode_default(enum onk_lexicon_t current, enum onk_lexicon_t grp_delim, struct Previsioner *expecting)
 {
   /* check previous expecting buffer */
-  if (!onk_eq_any_tok(current, expecting->data.default_mode.selected))
+  if (!onk_eq_any_tok(current, expecting->data.default_mode.validator->slices))
     return -1;
 
   /* if current is delimiter, is correct delimiter? */
@@ -711,9 +660,10 @@ int8_t is_token_unexpected(struct Parser *state)
     }
     else return -1;
   }
+
   /* expecting buffers contain all delimiters,
   * so we may check any */
-  //else if(!onk_eq_any_tok(ONK_SEMICOLON_TOKEN, state->expecting.exp_selected))
+  //else if(!onk_eq_any_tok(ONK_SEMICOLON_TOKEN, state->expecting.exp_validator->slices))
     /* incomplete expression, must get another token */
    // state->panic_flags |= STATE_INCOMPLETE;
   //else 
