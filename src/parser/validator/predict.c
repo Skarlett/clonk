@@ -177,6 +177,9 @@ int8_t default_expression(
   if(onk_is_tok_unit(current))
   {
     validator->slices[0] = (enum onk_lexicon_t *)&EXPR;
+    validator->islices[0] = EXPR_LEN;
+    validator->nslices = 1;
+
     switch(current)
     {
       case ONK_WORD_TOKEN:
@@ -286,15 +289,23 @@ bool is_inside_impl_body(
               || current == ONK_BRACE_CLOSE_TOKEN);
 }
 
+bool _start_block_after_param_grp(enum onk_lexicon_t ophead)
+{
+  return ophead == onk_defbody_op_token
+      || ophead == onk_while_body_op_token
+      || ophead == onk_ifbody_op_token;
+}
+
+
 /* use `{` next */
 bool start_block(
   enum onk_lexicon_t current,
   enum onk_lexicon_t ophead
 ){
   return
-    /*   def sig(){ */
-    /* while sig(){ */
-    /*  if(foobar){ */
+    /*   def sig() { */
+    /* while sig() { */
+    /*  if(foobar) { */
     /*           ^^ */
     ((ophead == onk_defbody_op_token
       || ophead == onk_while_body_op_token
@@ -418,43 +429,35 @@ int8_t apply_group_rules(struct validator_t *validator, struct Parser *state)
   return 0;
 }
 
-int8_t fill_buffer(
-  struct validator_t *validator,
+
+int8_t next_frame(
+ struct validator_t *validator,
   struct Parser *state
 ){
   enum onk_lexicon_t current = current_token(state)->type;
   enum onk_lexicon_t ophead = op_head(state)->type;
 
-  /*
-   * when the current token is labeled as "strict"
-   * it will then follow a sequence of tokens after it,
-   * any token not matched exactly fails.
-  */
+  if(apply_group_rules(validator, state) == 0)
+    default_expression(validator, current);
 
-  /*
-   * *strict*: must follow a sequence of token(s)
-   *
-   * when the context meets certain conditions,
-   * we will expect a sequence of tokens to follow
-  */
-
-  if(apply_group_rules(validator, current->type))
-    return 1;
-
-  default_expression(validator, current);
-  place_delimiter(current);
+  place_delimiter(validator, state);
 
   if (ophead == ONK_BRACKET_OPEN_TOKEN)
   {
-    add_keyword();
+    validator->slices[validator->nslices] = (enum onk_lexicon_t *)BLOCK_KWORD;
+    validator->islices[validator->nslices] = KWORD_BLOCK_LEN;
+    validator->nslices = 1;
   }
 
-
-  if(add_tokens_based_on_ctx(state))
-  {}
-
   return 0;
+}
 
+int8_t fill_buffer(
+  struct validator_t *validator,
+  struct Parser *state
+){
+
+  next_frame(validator, state);
 
   /* any open brace */
   if (validator->slices)

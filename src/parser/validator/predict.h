@@ -54,8 +54,8 @@ const enum onk_lexicon_t EXPR[EXPR_LEN] = {_EX_EXPR};
       ONK_IF_TOKEN, ONK_DEF_TOKEN, ONK_FROM_TOKEN,  \
       ONK_IMPORT_TOKEN, ONK_STRUCT_TOKEN,           \
       ONK_FOR_TOKEN, ONK_WHILE_TOKEN, ONK_RETURN_TOKEN
-#define _EX_KWORD_BLOCK_LEN 8
-const enum onk_lexicon_t BLOCK_KWORD[_EX_KWORD_BLOCK_LEN];
+#define KWORD_BLOCK_LEN 8
+const enum onk_lexicon_t BLOCK_KWORD[KWORD_BLOCK_LEN];
 
 
 #define _NEXT_UNIT_GENERIC _EX_BIN_OPERATOR /*terminator*/
@@ -78,6 +78,7 @@ const enum onk_lexicon_t NEXT_WORD[NEXT_WORD_LEN] = {_NEXT_WORD};
 
 #define NEXT_DELIM _EX_EXPR
 #define NEXT_DELIM_LEN EXPR_LEN
+
 
 #define _NEXT_CLOSE_BRACE ONK_DOT_TOKEN, _EX_BIN_OPERATOR, \
     ONK_BRACKET_OPEN_TOKEN, ONK_PARAM_OPEN_TOKEN /*delim*/
