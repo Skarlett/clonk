@@ -429,9 +429,8 @@ int8_t apply_group_rules(struct validator_t *validator, struct Parser *state)
   return 0;
 }
 
-
 int8_t next_frame(
- struct validator_t *validator,
+  struct validator_t *validator,
   struct Parser *state
 ){
   enum onk_lexicon_t current = current_token(state)->type;
@@ -442,11 +441,12 @@ int8_t next_frame(
 
   place_delimiter(validator, state);
 
+  /* add keywords */
   if (ophead == ONK_BRACKET_OPEN_TOKEN)
   {
     validator->slices[validator->nslices] = (enum onk_lexicon_t *)BLOCK_KWORD;
     validator->islices[validator->nslices] = KWORD_BLOCK_LEN;
-    validator->nslices = 1;
+    validator->nslices += 1;
   }
 
   return 0;
@@ -454,39 +454,34 @@ int8_t next_frame(
 
 int8_t fill_buffer(
   struct validator_t *validator,
-  struct Parser *state
+  enum onk_lexicon_t *arr,
+  uint16_t arr_sz
 ){
+  uint16_t total = 0;
+  uint8_t islices = 0;
+  uint16_t i;
 
-  next_frame(validator, state);
+  assert(validator->nbuffer > arr_sz)
 
-  /* any open brace */
-  if (validator->slices)
-    assert(memcpy(
-      buf, validator->slices,
-      sizeof(enum onk_lexicon_t) * nitems
-    ));
+  memcpy(arr, validator->buffer,
+    sizeof(enum onk_lexicon_t) * validator->nbuffer);
 
+  total += validator->nbuffer;
 
-  if(can_addon_keywords((op_head(state)->type == onk_ifcond_op_token)))
+  for (i=0; validator->nslices > i; i++)
   {
-    memcpy(state->expecting.buffer + sizeof(enum onk_lexicon_t) * nitems, _PV_kw, _PV_kw_len - 1);
-    nitems += _PV_kw_len - 1;
+    islices = validator->islices[i];
+
+    if(total + islices > arr_sz)
+      return -1;
+
+    total += islices;
+
+    memcpy(arr, validator->slices[i],
+      sizeof(enum onk_lexicon_t) * islices);
   }
-
-
-  // TODO: use operator stack head instead
-  if(state->operators_ctr > 0 && op_head(state)->type == onk_ifcond_op_token)
-  {
-    state->expecting.buffer[nitems + 1] = ONK_ELSE_TOKEN;
-    nitems += 1;
-  }
-
-  state->expecting.buffer[nitems + 1] = 0;
 
   return 0;
-
-
-  state->buffer
 }
 
 
@@ -512,86 +507,6 @@ void init_expect_buffer(struct Previsioner *state)
     state->data.default_mode.validator->slices = (enum onk_lexicon_t *)&state->buffer;
     state->mode = PV_Default; 
 }
-
-/* 
- * @param validator->slices NULL terminated
- */
-int8_t prevision_next(struct Parser *state)
-{
-  enum onk_lexicon_t current = state->src[*state->_i].type;
-
-}
-
-enum ModeResult {
-  _MRMatchFailure = 0,
-  _MRContinue = 1,
-  _MRComplete = 2,
-  _MRError = -1
-};
-
-enum ModeResult mode_func_def(enum onk_lexicon_t current, struct Previsioner *state)
-{
-  enum ModeResult ret = _MRMatchFailure;
-  uint16_t mod = 0;
-
-  switch(state->data.fndef_mode.ctr)
-  {
-    case 0:
-      return current == ONK_WORD_TOKEN;
-    case 1:
-      return current == ONK_PARAM_OPEN_TOKEN;
-    default:
-      mod = state->data.fndef_mode.ctr % 2;
-
-      if (current == ONK_PARAM_CLOSE_TOKEN)
-        return _MRComplete;
-      
-      return (current == ONK_WORD_TOKEN && mod) 
-        || (current == ONK_COMMA_TOKEN && !mod);
-  }
-
-  return ret;
-}
-
-enum ModeResult mode_import(enum onk_lexicon_t current,  struct Previsioner *state)
-{
-
-  if(!state->data.import_mode.has_word){
-    memcpy(state->buffer, _PV_import_init, _PV_import_word_len);
-    return 1;
-  }
-    
-  else if (current == ONK_WORD_TOKEN)
-  {
-    memcpy(state->buffer, _PV_import_word, _PV_import_word_len);
-    return 1;
-  }
-  
-  else if(current == ONK_DOT_TOKEN || current == ONK_COMMA_TOKEN) {
-    state->buffer[0] = ONK_WORD_TOKEN;
-    state->buffer[1] = 0;
-  }
-
-  else if(current == ONK_SEMICOLON_TOKEN)
-    return 2;
-
-  else return -1;
-  return -1;
-}
-
-int8_t mode_default(enum onk_lexicon_t current, enum onk_lexicon_t grp_delim, struct Previsioner *expecting)
-{
-  /* check previous expecting buffer */
-  if (!onk_eq_any_tok(current, expecting->data.default_mode.validator->slices))
-    return -1;
-
-  /* if current is delimiter, is correct delimiter? */
-  else if(onk_is_tok_delimiter(current) && grp_delim != current)
-    return -1;
-  
-  return 0;
-}
-
 
 int8_t is_token_unexpected(struct Parser *state)
 {

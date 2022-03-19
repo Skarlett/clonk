@@ -119,8 +119,6 @@ enum validator_no {
   /* */
   follow_block
 
-
-
 };
 
 
@@ -130,7 +128,7 @@ struct validator_t {
   enum onk_lexicon_t * slices[_ONK_VALIDATOR_REF_SZ];
   enum onk_lexicon_t buffer[_ONK_VALIDATOR_SZ];
 
-  uint16_t islices[_ONK_VALIDATOR_REF_SZ];
+ uint16_t islices[_ONK_VALIDATOR_REF_SZ];
   uint16_t nslices;
   uint16_t nbuffer;
 };
