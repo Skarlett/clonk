@@ -81,8 +81,9 @@ const enum onk_lexicon_t NEXT_WORD[NEXT_WORD_LEN] = {_NEXT_WORD};
 
 #define _NEXT_CLOSE_BRACE ONK_DOT_TOKEN, _EX_BIN_OPERATOR, \
     ONK_BRACKET_OPEN_TOKEN, ONK_PARAM_OPEN_TOKEN /*delim*/
+#define NEXT_CLOSE_BRACE_LEN BINOP_LEN + 3
+const enum onk_lexicon_t NEXT_CLOSE_BRACE[] = { _NEXT_CLOSE_BRACE};
 
-const enum onk_lexicon_t NEXT_CLOSE_BRACE[] = {_NEXT_CLOSE_BRACE};
 
 
 #define NEXT_DOT ONK_WORD_TOKEN
@@ -142,7 +143,7 @@ bool can_use_else(enum onk_lexicon_t output_head);
  * Can use Keywords if operator stack is flushed
  * and the top frame is a codeblock
 */
-bool can_use_keywords(struct Parser *state);
+/* bool can_use_keywords(struct Parser *state); */
 
 
 /* Predicts the next possible tokens
