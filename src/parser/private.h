@@ -165,7 +165,9 @@ struct Parser {
     /*Vec<struct ParseError>*/
     struct onk_vec_t errors;
 
-    struct Previsioner expecting;
+    enum onk_lexicon_t *expect;
+    uint16_t nexpect;
+    uint16_t expect_capacity;
 
     /*Vec<struct RestorationFrame>*/
     struct onk_vec_t restoration_stack;
@@ -200,7 +202,6 @@ int8_t handle_unwind(
     struct Parser *state,
     bool unexpected_token
 );
-
 
 /* used to construct an error */
 /* struct PartialError { */

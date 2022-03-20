@@ -48,6 +48,8 @@ const enum onk_lexicon_t CLOSE_BRACE[BRACE_CLOSE_LEN] = {_EX_CLOSE_BRACE};
 
 #define _EX_EXPR _EX_OPEN_BRACE, _EX_UNARY_OPERATOR, _EX_UNIT
 #define EXPR_LEN BRACE_OPEN_LEN + UNIOP_LEN + UNIT_LEN
+#define EXPR_SZ sizeof(enum onk_lexicon_t) * EXPR_LEN
+
 const enum onk_lexicon_t EXPR[EXPR_LEN] = {_EX_EXPR};
 
 #define _EX_KWORD_BLOCK                             \
@@ -55,7 +57,8 @@ const enum onk_lexicon_t EXPR[EXPR_LEN] = {_EX_EXPR};
       ONK_IMPORT_TOKEN, ONK_STRUCT_TOKEN,           \
       ONK_FOR_TOKEN, ONK_WHILE_TOKEN, ONK_RETURN_TOKEN
 #define KWORD_BLOCK_LEN 8
-const enum onk_lexicon_t BLOCK_KWORD[KWORD_BLOCK_LEN];
+#define KWORD_BLOCK_SZ sizeof(enum onk_lexicon_t) * KWORD_BLOCK_LEN
+const enum onk_lexicon_t KWORD_BLOCK[KWORD_BLOCK_LEN];
 
 
 #define _NEXT_UNIT_GENERIC _EX_BIN_OPERATOR /*terminator*/

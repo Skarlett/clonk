@@ -16,6 +16,14 @@
 **
 */
 
+/* TODO: ensure the following constrains on struct init */
+/*      ONK_WORD_TOKEN { ONK_WORD_TOKEN=[expr], } */
+/* TODO: allow for `{x;;}` but not `[x,,]` */
+/* TODO: limit delimiters in index access 3 >= */
+/* TODO: figure out if you can declare a new variable, if its valid */
+
+/* `struct/def/impl` expects an explicit word/ident after its occurance */
+
 #include <string.h>
 #include "clonk.h"
 #include "lexer.h"
@@ -29,11 +37,6 @@ bool is_expecting_data(enum onk_lexicon_t current)
      || current == ONK_IN_TOKEN;
 }
 
-/* */
-/* bool is_expecting_operator(enum onk_lexicon_t current) */
-/* { */
-/*   return onk_is_tok_unit(current); */
-/* } */
 enum onk_lexicon_t place_delimiter(struct Parser *state)
 {
   struct Group *ghead = group_head(state);
@@ -89,28 +92,6 @@ enum onk_lexicon_t place_closing_brace(struct Parser *state)
   return onk_invert_brace(ghead->origin->type);
 }
 
-
-void terminator(struct Parser *state)
-{
-  place_closing_brace(state);
-  place_delimiter(state);
-}
-
-
-/* TODO: Rules for `ONK_FOR_TOKEN`, `ONK_WHILE_TOKEN`, `ONK_IF_TOKEN` must follow an `(` */
-/* TODO: `ONK_IF_TOKEN`, `ONK_WHILE_TOKEN` signatures cannot */
-/*       contain delimiters, or keywords */
-/* TODO: ensure the following constrains on struct init */
-/*      ONK_WORD_TOKEN { ONK_WORD_TOKEN=[expr], } */
-/* TODO: ensure the correct delimiter */
-/*      is choosen for the current group */
-/* TODO: allow for `{x;;}` but not `[x,,]` */
-/* TODO: ensure when `ONK_ELSE_TOKEN` can be used */
-/* TODO: limit delimiters in index access 3 >= */
-/* TODO: import paths only accept ONK_WORD_TOKEN/ONK_DOT_TOKEN until delim */
-/* TODO: figure out if you can declare a new variable */
-
-/* `struct/def/impl` expects an explicit word/ident after its occurance */
 bool _explicit_expecting_word(enum onk_lexicon_t current)
 {
   return current == ONK_STRUCT_TOKEN
@@ -125,12 +106,6 @@ int8_t _explicit_expecting_open_param(enum onk_lexicon_t current)
   return current == ONK_IF_TOKEN
     || current == ONK_WHILE_TOKEN
     || current == ONK_FOR_TOKEN;
-}
-
-uint8_t expect_strict_seq(enum onk_lexicon_t current)
-{
-  return _explicit_expecting_word(current)
-    || _explicit_expecting_open_param(current);
 }
 
 int8_t expect_operand(enum onk_lexicon_t current)
@@ -296,7 +271,6 @@ bool _start_block_after_param_grp(enum onk_lexicon_t ophead)
       || ophead == onk_ifbody_op_token;
 }
 
-
 /* use `{` next */
 bool start_block(
   enum onk_lexicon_t current,
@@ -435,16 +409,23 @@ int8_t next_frame(
 ){
   enum onk_lexicon_t current = current_token(state)->type;
   enum onk_lexicon_t ophead = op_head(state)->type;
+  enum onk_lexicon_t delim;
 
   if(apply_group_rules(validator, state) == 0)
     default_expression(validator, current);
 
-  place_delimiter(validator, state);
+  delim = place_delimiter(state);
+
+  if(delim != ONK_UNDEFINED_TOKEN)
+  {
+    validator->buffer[validator->nbuffer] = delim;
+    validator->nbuffer += 1;
+  }
 
   /* add keywords */
   if (ophead == ONK_BRACKET_OPEN_TOKEN)
   {
-    validator->slices[validator->nslices] = (enum onk_lexicon_t *)BLOCK_KWORD;
+    validator->slices[validator->nslices] = (enum onk_lexicon_t *)KWORD_BLOCK;
     validator->islices[validator->nslices] = KWORD_BLOCK_LEN;
     validator->nslices += 1;
   }
@@ -452,19 +433,19 @@ int8_t next_frame(
   return 0;
 }
 
-int8_t fill_buffer(
-  struct validator_t *validator,
+uint16_t fill_buffer(
   enum onk_lexicon_t *arr,
-  uint16_t arr_sz
+  uint16_t arr_sz,
+  struct validator_t *validator
 ){
   uint16_t total = 0;
   uint8_t islices = 0;
   uint16_t i;
 
-  assert(validator->nbuffer > arr_sz)
+  assert(validator->nbuffer > arr_sz);
 
-  memcpy(arr, validator->buffer,
-    sizeof(enum onk_lexicon_t) * validator->nbuffer);
+  assert(memcpy(arr, validator->buffer,
+    sizeof(enum onk_lexicon_t) * validator->nbuffer) != 0);
 
   total += validator->nbuffer;
 
@@ -477,74 +458,51 @@ int8_t fill_buffer(
 
     total += islices;
 
-    memcpy(arr, validator->slices[i],
-      sizeof(enum onk_lexicon_t) * islices);
+    assert(memcpy(arr, validator->slices[i],
+      sizeof(enum onk_lexicon_t) * islices) != 0);
   }
 
-  return 0;
+  return total;
 }
-
-
-//TODO probably deserves its own mode
-/* static enum onk_lexicon_t _PV_if[] = { */
-/*   ONK_PARAM_OPEN_TOKEN, */
-/*   0 */
-/* } */;
-
-/* #define _PV_if_len 2 */
-
-//#define _PV_KEYONK_WORD_TOKEN _EX_KEYONK_WORD_TOKEN
-//#define _PV_KEYONK_WORD_TOKEN_LEN _EX_KEYONK_WORD_TOKEN_LEN
 
 /*
  * Write `_EX_EXPR` into state->expecting
- */
-void init_expect_buffer(struct Previsioner *state)
+*/
+void init_expect_buffer(enum onk_lexicon_t *arr)
 {
-    memcpy(state->buffer, _PV_default, sizeof(enum onk_lexicon_t) * 8);
-    state->buffer[9] = 0;
-    /* cast removes cc warning */
-    state->data.default_mode.validator->slices = (enum onk_lexicon_t *)&state->buffer;
-    state->mode = PV_Default; 
+  assert(memcpy(arr, &KWORD_BLOCK, KWORD_BLOCK_SZ) != 0);
+  assert(memcpy(arr, &EXPR, EXPR_SZ) != 0);
 }
 
-int8_t is_token_unexpected(struct Parser *state)
+
+bool is_token_unexpected(struct Parser *state)
 {
-  struct onk_token_t *current = &state->src[*state->_i];
-  struct Group *ghead = 0;
-  int8_t mode_ret = 0;
-  enum onk_lexicon_t delim = 0;
-  
-  if(state->expecting.mode == PV_Default
-     && mode_default(current->type, get_expected_delimiter(ghead), &state->expecting) == -1)
-     return -1;
-  
-  else if(state->expecting.mode == PV_DefSignature)
+  struct onk_token_t *current = current_token(state);
+  struct validator_t frame;
+
+  enum onk_lexicon_t *expecting = state->expect;
+  uint16_t ex_capacity = state->expect_capacity;
+  uint16_t ex_len = state->nexpect;
+
+  bool found = false;
+
+  assert(expect_len > 0);
+
+  for(uint16_t i = 0; expect_len > i; i++)
   {
-    mode_ret = mode_func_def(current->type, &state->expecting);
-    
-    if(mode_ret == 0)
-      return true;
-    
-    else if(mode_ret == 1)
-      return false;
-    
-    else if(mode_ret == 2)
+    if(expecting[i] == current->type)
     {
-      state->expecting.mode = PV_Default;
-      return false;
+      found = true;
+      break;
     }
-    else return -1;
   }
 
-  /* expecting buffers contain all delimiters,
-  * so we may check any */
-  //else if(!onk_eq_any_tok(ONK_SEMICOLON_TOKEN, state->expecting.exp_validator->slices))
-    /* incomplete expression, must get another token */
-   // state->panic_flags |= STATE_INCOMPLETE;
-  //else 
-  //  state->panic_flags &= (uint16_t)STATE_INCOMPLETE;
+  if (found == false)
+    return 1;
 
-  /* setup next token's expectation */
-  return prevision_next(state);
+  next_frame(&frame, state);
+
+  state->nexpect = fill_buffer(expecting, ex_capacity, &frame);
+
+  return 0;
 }
