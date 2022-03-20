@@ -3,10 +3,10 @@
 
 This documentation is intended for the use of extending clonk's parsing ability and refers to the contents of `src/parser`, excluding `src/parser/lexer`.
 
-## Fundamentals
+## 0x00 Fundamentals
 Clonk parses source documents by using an extended variation of (shunting yard)[https://wiki.com/p=shunting_yard].
 
-### Shunting-Yard review
+#### 0x10 Shunting-Yard review
 First, lets quickly review of how shunting yard works, and then start building up to how 
 clonk uses shunting yard as its primary parser.
 
@@ -18,8 +18,7 @@ easily parsable & computationally minimal.
 
 The way it accomplishes this task is two-fold. 
 
-
-#### Parsing
+#### 0x11 Parsing
 First, the parsing - uses a stack-datatype known in clonk as the `operator_stack`. When parsing, 
 if the current token isn't an operator, It will be added to the output array. If the current token is an operator
 then it will be added to the `operator_stack`. 
@@ -56,6 +55,20 @@ When the matching closing parenthesis is found (`)`), it will pop all the items 
 | 3 1 - 2   |                    | <u> * </u>       |
 | 3 1 - 2 * |                    |                  |
 
+
+#### 0x12 Postfix Evaluation
+
+Once the postfix expression is created, they're relatively easy to evaluate. This will use another stack. When the current token is an operator, take N operands from the stack, and compute their sum. Once completed, we'll take that new sum, and place it at the top of the stack.
+N will always be equal to `2` in our example, since all our operators take `2` arguments.
+
+| source    | stack |
+|-----------|-------|
+| 3 1 - 2 * |       |
+| 1 - 2 *   | 3     |
+|-----------|-------|
+| 2 *       | 2     |
+| *         | 2 2   |
+|           | 3     |
 
 
 | infix | postifx  |
