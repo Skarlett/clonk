@@ -27,7 +27,7 @@
 #include <string.h>
 #include "clonk.h"
 #include "lexer.h"
-#include "../private.h"
+#include "private.h"
 #include "predict.h"
 
 bool is_expecting_data(enum onk_lexicon_t current)
@@ -409,6 +409,7 @@ int8_t next_frame(
 
   if(apply_group_rules(validator, state) == 0)
     default_expression(validator, current);
+<<<<<<< Updated upstream:src/parser/predict.c
 
   delim = place_delimiter(state);
 
@@ -439,7 +440,6 @@ uint16_t fill_buffer(
   uint16_t total = 0;
   uint8_t islices = 0;
   uint16_t i;
-
   assert(validator->nbuffer > arr_sz);
 
   assert(memcpy(arr, validator->buffer,

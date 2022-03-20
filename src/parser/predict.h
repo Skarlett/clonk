@@ -60,9 +60,11 @@ const enum onk_lexicon_t EXPR[EXPR_LEN] = {_EX_EXPR};
       ONK_IMPORT_TOKEN, ONK_STRUCT_TOKEN,           \
       ONK_FOR_TOKEN, ONK_WHILE_TOKEN, ONK_RETURN_TOKEN
 
+
 #define KWORD_BLOCK_LEN 8
 #define KWORD_BLOCK_SZ sizeof(enum onk_lexicon_t) * KWORD_BLOCK_LEN
 const enum onk_lexicon_t KWORD_BLOCK[KWORD_BLOCK_LEN];
+
 
 
 #define _NEXT_CLOSE_BRACE ONK_DOT_TOKEN, _EX_BIN_OPERATOR, \
