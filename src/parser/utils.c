@@ -6,12 +6,12 @@
 #include "validator/predict.h"
 
 
-void assert_op_pop_n(const struct Parser *state, uint16_t n)
+void assert_op_pop_n(const struct onk_parser_state_t*state, uint16_t n)
 {
   assert(state->operators_ctr >= n);
 }
 
-void assert_op_push_n(const struct Parser *state, uint16_t n)
+void assert_op_push_n(const struct onk_parser_state_t*state, uint16_t n)
 {
   assert(UINT16_MAX - state->operators_ctr >= n);
 }
@@ -22,14 +22,14 @@ void assert_vec_len(const struct onk_vec_t *vec, uint16_t n)
 }
 
 /* push to output */
-void insert(struct Parser *state, const struct onk_token_t *tok)
+void insert(struct onk_parser_state_t*state, const struct onk_token_t *tok)
 {
   assert(onk_vec_push(&state->debug, &tok) != 0);
 }
 
 
 /* push token into pool */
-const struct onk_token_t * new_token(struct Parser *state, struct onk_token_t *tok) {
+const struct onk_token_t * new_token(struct onk_parser_state_t*state, struct onk_token_t *tok) {
   return onk_vec_push(&state->pool, tok);
 }
 
@@ -37,7 +37,7 @@ void insert_new(
   enum onk_lexicon_t type,
   uint16_t start,
   uint16_t end,
-  struct Parser *state
+  struct onk_parser_state_t*state
 ){
 
   struct onk_token_t tok;
@@ -71,7 +71,7 @@ bool can_ignore_token(enum onk_lexicon_t tok)
  * assuming the current token is not ignored-type
  * give the position of the next non-ignored typed token
  */
-uint16_t find_next(struct Parser *state) {
+uint16_t find_next(struct onk_parser_state_t*state) {
 
   for (uint16_t i = *state->_i; state->src_sz > i; i++)
   {
@@ -85,13 +85,13 @@ uint16_t find_next(struct Parser *state) {
 }
 
 
-const struct onk_token_t * prev_token(const struct Parser *state) {
+const struct onk_token_t * prev_token(const struct onk_parser_state_t*state) {
   if (*state->_i == 0)
     return 0;
   return &state->src[state->peek_prev];
 }
 
-const struct onk_token_t * next_token(const struct Parser *state) {
+const struct onk_token_t * next_token(const struct onk_parser_state_t*state) {
   if(state->peek_next == 0)
     return 0;
   return &state->src[state->peek_next];
@@ -100,30 +100,30 @@ const struct onk_token_t * next_token(const struct Parser *state) {
 /*
 **
  */
-const struct onk_token_t * current_token(const struct Parser *state){
+const struct onk_token_t * current_token(const struct onk_parser_state_t*state){
   return &state->src[*state->_i];
 }
 
 
-struct Group * group_head(struct Parser *state){
+struct onk_parse_group_t * group_head(struct onk_parser_state_t*state){
   if (state->set_sz > state->set_ctr && state->set_ctr > 0)
     return &state->set_stack[state->set_ctr - 1];
   return 0;
 }
 
-const struct onk_token_t * op_head(const struct Parser *state){
+const struct onk_token_t * op_head(const struct onk_parser_state_t*state){
   if(state->operators_ctr > 0)
     return state->operator_stack[state->operators_ctr - 1];
   return 0;
 }
 
-const struct onk_token_t * output_head(const struct Parser *state) {
+const struct onk_token_t * output_head(const struct onk_parser_state_t*state) {
   return onk_vec_head(&state->debug);
 }
 
 const struct onk_token_t * group_modifier(
-  const struct Parser *state,
-  const struct Group *group)
+  const struct onk_parser_state_t*state,
+  const struct onk_parse_group_t *group)
 {
   const struct onk_token_t *modifier;
 
@@ -162,7 +162,7 @@ enum onk_lexicon_t group_type_init(enum onk_lexicon_t brace)
 /*
 ** pushes group into output as a group token
 */
-int8_t push_group(struct Parser *state, const struct Group *grp) {
+int8_t push_group(struct onk_parser_state_t*state, const struct onk_parse_group_t *grp) {
 
   //if(!onk_is_tok_open_brace(brace->type))
   //  return -1;
@@ -170,11 +170,11 @@ int8_t push_group(struct Parser *state, const struct Group *grp) {
   //TODO: implement
 }
 
-struct Group * new_grp(
-  struct Parser * state,
+struct onk_parse_group_t * new_grp(
+  struct onk_parser_state_t* state,
   const struct onk_token_t * from
 ){
-  struct Group *ghead;
+  struct onk_parse_group_t *ghead;
   assert(state->set_ctr < state->set_sz);
 
 
@@ -211,7 +211,7 @@ bool is_fncall_pattern(enum onk_lexicon_t prev){
     || prev == ONK_WORD_TOKEN;
 }
 
-void idx_infer_value(struct Parser *state)
+void idx_infer_value(struct onk_parser_state_t*state)
 {
   const struct onk_token_t *prev = prev_token(state);
   if(prev) {
@@ -220,7 +220,7 @@ void idx_infer_value(struct Parser *state)
   }
 }
 
-const struct onk_token_t * op_push(enum onk_lexicon_t op, uint16_t start, uint16_t end, struct Parser *state)
+const struct onk_token_t * op_push(enum onk_lexicon_t op, uint16_t start, uint16_t end, struct onk_parser_state_t*state)
 {
   struct onk_token_t new, *heap = 0;
   assert_op_push_n(state, 1);
@@ -241,7 +241,7 @@ const struct onk_token_t * op_push(enum onk_lexicon_t op, uint16_t start, uint16
 int8_t push_many_ops(
   const enum onk_lexicon_t *ops,
   const struct onk_token_t *origin,
-  struct Parser *state,
+  struct onk_parser_state_t*state,
   uint16_t nitems
 ){
   struct onk_token_t tmp;
@@ -266,7 +266,7 @@ int8_t push_many_ops(
 }
 
 void push_output(
-  struct Parser *state,
+  struct onk_parser_state_t*state,
   enum onk_lexicon_t type,
   uint16_t argc
 ){
@@ -294,7 +294,7 @@ void push_output(
 ** Items with 0 precedense value:
 **   Opening-braces
 */
-int8_t flush_ops(struct Parser *state)
+int8_t flush_ops(struct onk_parser_state_t*state)
 {
   const struct onk_token_t *head;
 
@@ -315,9 +315,9 @@ int8_t flush_ops(struct Parser *state)
   return 0;
 }
 
-int8_t finish_idx_access(struct Parser *state)
+int8_t finish_idx_access(struct onk_parser_state_t*state)
 {
-  struct Group *ghead = group_head(state);
+  struct onk_parse_group_t *ghead = group_head(state);
   const struct onk_token_t *prev = prev_token(state);
   assert(ghead->type == onk_idx_group_token);
 
@@ -429,7 +429,7 @@ int8_t op_precedence(enum onk_lexicon_t token) {
 }
 
 int8_t init_parser(
-  struct Parser *state,
+  struct onk_parser_state_t*state,
   const struct ParserInput *in,
   uint16_t *i
 ){
@@ -461,7 +461,7 @@ int8_t init_parser(
   return 0;
 }
 
-int8_t parser_free(struct Parser *state) {
+int8_t parser_free(struct onk_parser_state_t*state) {
   if (
     onk_vec_free(&state->debug) == -1
     || onk_vec_free(&state->pool) == -1
@@ -472,7 +472,7 @@ int8_t parser_free(struct Parser *state) {
   return 0;
 }
 
-int8_t parser_reset(struct Parser *state)
+int8_t parser_reset(struct onk_parser_state_t*state)
 {
   memset(state->operator_stack, 0, sizeof(void *[ONK_STACK_SZ]));
   state->operators_ctr = 0;

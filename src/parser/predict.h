@@ -84,5 +84,5 @@ struct validator_t {
 };
 
 void init_expect_buffer(enum onk_lexicon_t *arr);
-bool is_token_unexpected(struct Parser *state);
+bool is_token_unexpected(struct onk_parser_state_t*state);
 #endif

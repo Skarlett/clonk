@@ -37,9 +37,9 @@ bool is_expecting_data(enum onk_lexicon_t current)
      || current == ONK_IN_TOKEN;
 }
 
-enum onk_lexicon_t place_delimiter(struct Parser *state)
+enum onk_lexicon_t place_delimiter(struct onk_parser_state_t*state)
 {
-  struct Group *ghead = group_head(state);
+  struct onk_parse_group_t *ghead = group_head(state);
   const struct onk_token_t *gmod = group_modifier(state, ghead);
 
   if (gmod->type == onk_while_cond_op_token
@@ -72,10 +72,10 @@ enum onk_lexicon_t place_delimiter(struct Parser *state)
   }
 }
 
-enum onk_lexicon_t place_closing_brace(struct Parser *state)
+enum onk_lexicon_t place_closing_brace(struct onk_parser_state_t*state)
 {
   const struct onk_token_t *current = current_token(state);
-  struct Group *ghead = group_head(state);
+  struct onk_parse_group_t *ghead = group_head(state);
   const struct onk_token_t *gmod = group_modifier(state, ghead);
 
   if(current->type == ONK_PARAM_OPEN_TOKEN)
@@ -331,9 +331,9 @@ bool start_parameter_mode(enum onk_lexicon_t ophead, enum onk_lexicon_t current)
 ** special conditions inside of groups
 **
 */
-int8_t apply_group_rules(struct validator_t *validator, struct Parser *state)
+int8_t apply_group_rules(struct validator_t *validator, struct onk_parser_state_t*state)
 {
-  struct Group *ghead = group_head(state);
+  struct onk_parse_group_t *ghead = group_head(state);
   enum onk_lexicon_t current = current_token(state)->type;
   enum onk_lexicon_t ophead = op_head(state)->type;
   enum onk_lexicon_t gmod = group_modifier(state, ghead)->type;
@@ -401,7 +401,7 @@ int8_t apply_group_rules(struct validator_t *validator, struct Parser *state)
 
 int8_t next_frame(
   struct validator_t *validator,
-  struct Parser *state
+  struct onk_parser_state_t*state
 ){
   enum onk_lexicon_t current = current_token(state)->type;
   enum onk_lexicon_t ophead = op_head(state)->type;
@@ -472,7 +472,7 @@ void init_expect_buffer(enum onk_lexicon_t *arr)
   assert(memcpy(arr, &EXPR, EXPR_SZ) != 0);
 }
 
-bool is_token_unexpected(struct Parser *state)
+bool is_token_unexpected(struct onk_parser_state_t*state)
 {
   enum onk_lexicon_t current = current_token(state)->type;
   struct validator_t frame;

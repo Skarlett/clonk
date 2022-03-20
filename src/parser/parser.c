@@ -44,7 +44,7 @@ enum Associativity get_assoc(enum onk_lexicon_t token)
 ** postfix: ... <expr> <expr> <OPERATOR> ...
 ********************************************
 */
-int8_t handle_operator(struct Parser *state)
+int8_t handle_operator(struct onk_parser_state_t*state)
 {
   int8_t precedense = 0, head_precedense = 0;
   const struct onk_token_t *current = current_token(state),
@@ -118,7 +118,7 @@ int8_t handle_operator(struct Parser *state)
 
 /*
  * Groups take N amount of arguments from the stack where
- * N is derived from `struct Group`'s delmiter_ctr + 1.
+ * N is derived from `struct onk_parse_group_t`'s delmiter_ctr + 1.
  *
  * Grouping represents sets of data like
  * lists, tuples, & codeblocks.
@@ -126,9 +126,9 @@ int8_t handle_operator(struct Parser *state)
  * src: [body_expr, ...]
  * dbg: <body-expr> ... Group_t
 */
-int8_t pop_group(struct Parser *state, bool do_checks)
+int8_t pop_group(struct onk_parser_state_t*state, bool do_checks)
 {
-  struct Group *ghead = group_head(state);
+  struct onk_parse_group_t *ghead = group_head(state);
 
   if(do_checks && !onk_is_tok_open_brace(op_head(state)->type))
      return -1;
@@ -154,7 +154,7 @@ int8_t pop_group(struct Parser *state, bool do_checks)
 ** After a group is added to the output, there may be
 ** group operation
 */
-int8_t pop_block_operator(struct Parser *state)
+int8_t pop_block_operator(struct onk_parser_state_t*state)
 {
   const struct onk_token_t *ophead;
 
@@ -173,10 +173,10 @@ int8_t pop_block_operator(struct Parser *state)
 }
 
 
-int8_t handle_close_brace(struct Parser *state)
+int8_t handle_close_brace(struct onk_parser_state_t*state)
 {
   const enum onk_lexicon_t expected[] = {ONK_COLON_TOKEN, ONK_DIGIT_TOKEN, 0};
-  struct Group *ghead = group_head(state);
+  struct onk_parse_group_t *ghead = group_head(state);
   const struct onk_token_t *prev = prev_token(state),
     *current = current_token(state);
   int8_t ret = 0;
@@ -297,7 +297,7 @@ enum onk_lexicon_t push_group_modifier(
 /*
   every opening brace starts a new group
 */
-int8_t handle_open_brace(struct Parser *state)
+int8_t handle_open_brace(struct onk_parser_state_t*state)
 {
   const struct onk_token_t *current = current_token(state);
   const struct onk_token_t *prev = prev_token(state);
@@ -329,11 +329,11 @@ int8_t is_dual_grp_keyword(enum onk_lexicon_t tok) {
   }
 }
 
-void handle_dual_group(struct Parser *state)
+void handle_dual_group(struct onk_parser_state_t*state)
 {
   const struct onk_token_t *current = current_token(state);
   const struct onk_token_t *next = next_token(state);
-  struct Group *ghead = group_head(state);
+  struct onk_parse_group_t *ghead = group_head(state);
   const enum onk_lexicon_t products[4][3] = {
     {onk_for_body_op_token, onk_for_args_op_token, 0},
     {onk_while_body_op_token, onk_while_cond_op_token, 0},
@@ -377,8 +377,8 @@ void handle_dual_group(struct Parser *state)
  * & inferred groups
  *
 */
-void pop_short_block(struct Parser *state) {
-  const struct Group *ghead;
+void pop_short_block(struct onk_parser_state_t*state) {
+  const struct onk_parse_group_t *ghead;
   const struct onk_token_t *ophead, *gmod;
   const struct onk_token_t *next;
 
@@ -420,9 +420,9 @@ void pop_short_block(struct Parser *state) {
 ** input: import word;
 ** output word g(1) import
 */
-int8_t handle_import(struct Parser *state)
+int8_t handle_import(struct onk_parser_state_t*state)
 {
-  struct Group *gtop;
+  struct onk_parse_group_t *gtop;
   const struct onk_token_t *current = current_token(state);
 
   gtop = new_grp(state, next_token(state));
@@ -445,11 +445,11 @@ int8_t handle_import(struct Parser *state)
 * flush the operator stack
 * pop short blocks
 */
-int8_t handle_delimiter(struct Parser *state)
+int8_t handle_delimiter(struct onk_parser_state_t*state)
 {
   const enum onk_lexicon_t delim[2] = {ONK_COLON_TOKEN, ONK_SEMICOLON_TOKEN};
 
-  struct Group *ghead = group_head(state);
+  struct onk_parse_group_t *ghead = group_head(state);
   const struct onk_token_t
     *current = current_token(state),
     *prev = prev_token(state);
@@ -474,12 +474,12 @@ int8_t handle_delimiter(struct Parser *state)
   return 0;
 }
 
-int8_t handle_return(struct Parser *state)
+int8_t handle_return(struct onk_parser_state_t*state)
 {
   const struct onk_token_t *current = current_token(state);
   const struct onk_token_t *next = next_token(state);
   const struct onk_token_t *brace;
-  struct Group *group;
+  struct onk_parse_group_t *group;
 
   /* push return onto operator stack */
   state->operator_stack[state->operators_ctr] = current;
@@ -602,7 +602,7 @@ int8_t onk_parse(
   struct ParserInput *input,
   struct ParserOutput *out
 ){
-  struct Parser state;
+  struct onk_parser_state_tstate;
   const struct onk_token_t *current;
   uint16_t i = 0;
   bool unexpected_token;

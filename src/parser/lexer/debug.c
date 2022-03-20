@@ -22,7 +22,7 @@ const char * onk_ptoken(enum onk_lexicon_t t) {
         case ONK_DIV_TOKEN: return "divide";
         case ONK_GT_TOKEN: return "greater than";
         case ONK_LT_TOKEN: return "less than";
-        case ONK_ISN_EQL: return "is not eq";
+        case ONK_NOT_EQL_TOKEN: return "is not eq";
         case ONK_ISEQL_TOKEN: return "is eq";
         case ONK_GT_EQL_TOKEN: return "greater than or eq";
         case ONK_LT_EQL_TOKEN: return "less than or eq";
@@ -40,7 +40,6 @@ const char * onk_ptoken(enum onk_lexicon_t t) {
         case ONK_OR_TOKEN: return "or";
         case ONK_SHR_TOKEN: return "shr";
         case ONK_SHL_TOKEN: return "shl";
-        //case PIPEOP: return "pipe op";
         case ONK_BIT_OR_EQL: return "bit or eql";
         case ONK_BIT_AND_EQL: return "bit and eql";
         case ONK_BIT_NOT_EQL: return "bit not eql";
@@ -49,17 +48,13 @@ const char * onk_ptoken(enum onk_lexicon_t t) {
         case ONK_UNDERSCORE_TOKEN: return "underscore";
         case ONK_NOT_TOKEN: return "not";
         case POUND: return "pound";
-//        case STATIC: return "'static'";
-//        case CONST: return "'const'";
         case ONK_IF_TOKEN: return "'if";
         case ONK_ELSE_TOKEN: return "'else'";
-//        case ONK_IMPL_TOKEN: return "'impl'";
+        case ONK_IMPL_TOKEN: return "'impl'";
         case ONK_DEF_TOKEN: return "'def'";
         case ONK_RETURN_TOKEN: return "'return'";
-//        case AS: return "'as'";
-        case ONK_ATSYM__TOKEN: return "@";
+        //case ONK_AS_TOKEN: return "'as'";
         case ONK_IMPORT_TOKEN: return "'import'";
-//        case EXTERN: return "'extern'";
         case ONK_COMMENT_TOKEN: return "comment";
         case ONK_UNDEFINED_TOKEN: return "undef";
         case ONK_DOT_TOKEN: return "dot";

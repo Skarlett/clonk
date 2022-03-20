@@ -22,7 +22,7 @@ int8_t is_continuable(enum onk_lexicon_t tok) {
 
 
 void throw_unexpected_token(
-  struct Parser *state,
+  struct onk_parser_state_t*state,
   const struct onk_token_t *start,
   const enum onk_lexicon_t expected[],
   uint16_t nexpected
@@ -45,7 +45,7 @@ void throw_unexpected_token(
 /*
 ** Grab the last inserted frame
 */
-const struct RestorationFrame * restoration_head(const struct Parser *state) {
+const struct RestorationFrame * restoration_head(const struct onk_parser_state_t*state) {
     return &((struct RestorationFrame *)state->restoration_stack.base)[(state->restoration_ctr || 1) - 1];
 }
 
@@ -60,7 +60,7 @@ bool run_hook(enum onk_lexicon_t current){
 }
 
 
-void restoration_hook(struct Parser *state)
+void restoration_hook(struct onk_parser_state_t*state)
 {
     struct RestorationFrame rframe;
     const struct onk_token_t *current = &state->src[*state->_i];
@@ -85,7 +85,7 @@ void restoration_hook(struct Parser *state)
 }
 
 uint16_t recover_cursor(
-    struct Parser *state,
+    struct onk_parser_state_t*state,
     bool preloop
 ) {
     uint16_t start = *state->_i;
@@ -106,11 +106,11 @@ uint16_t recover_cursor(
 
 //TODO: watch out for tokens with `0`
 //      marked as their sequence
-void unwind_stacks(struct Parser *state)
+void unwind_stacks(struct onk_parser_state_t*state)
 {
     const struct onk_token_t *token;
     const struct RestorationFrame *rframe;
-    struct Group *grp;
+    struct onk_parse_group_t *grp;
     uint16_t head = 0;
 
     /* clear everything */
@@ -173,7 +173,7 @@ void mk_window_scalar(
 
 int8_t mk_window(
     struct ParserError *err,
-    struct Parser *state,
+    struct onk_parser_state_t*state,
     const struct onk_token_t *start,
     uint16_t ctr)
 {
@@ -216,7 +216,7 @@ int8_t mk_window(
 
 */
 int8_t handle_unwind(
-    struct Parser *state,
+    struct onk_parser_state_t*state,
     bool preloop
 ){
     const struct onk_token_t *start;
@@ -249,7 +249,7 @@ int8_t handle_unwind(
 
 
 int8_t handle_error(
-    struct Parser *state,
+    struct onk_parser_state_t*state,
     struct ParseError *err,
 
     /* signifies if error

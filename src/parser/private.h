@@ -24,7 +24,7 @@
     used in the group-stack exclusively
 */
 
-struct Group {
+struct onk_parse_group_t {
     //TODO: Implement this
     uint16_t seq;
 
@@ -94,7 +94,7 @@ struct RestorationFrame {
     const struct onk_token_t * operator_stack_tok;
     const struct onk_token_t * output_tok;
     const struct onk_token_t * current;
-    const struct Group * grp;
+    const struct onk_parse_group_t * grp;
 };
 
 
@@ -107,18 +107,7 @@ struct PartialError {
     uint16_t nexpected;
 };
 
-
-struct PostfixStageState {
-
-    /* Vec<struct Expr> */
-    struct onk_vec_t pool;
-
-    struct Expr * stack[ONK_STACK_SZ];
-    uint16_t stack_ctr;
-    uint16_t *_i;
-};
-
-struct Parser {
+struct onk_parser_state_t {
     const struct onk_token_t *src;
     const char * src_code;
     uint16_t src_sz;
@@ -128,14 +117,14 @@ struct Parser {
     const struct onk_token_t *operator_stack[ONK_STACK_SZ];
 
     /* tracks opening braces in the operator stack */
-    struct Group set_stack[ONK_STACK_SZ];
+    struct onk_parse_group_t set_stack[ONK_STACK_SZ];
 
     /* Acts as a stack, except when new groups are added
      * this stack is popped, and it will
      * define rules on item pushed
      * onto the set stack
      */
-    //struct GroupQueue pending_group[STACK_SZ];
+    //struct onk_parse_group_tQueue pending_group[STACK_SZ];
 
     /* tracks the previous groups we popped, where the most
      * recent group is at the top of the LONK_IF_TOKENO stack*/
@@ -143,7 +132,7 @@ struct Parser {
 
 
     /* tracks opening braces in the operator stack */
-    // struct Group prev_set_stack[16];
+    // struct onk_parse_group_t prev_set_stack[16];
 
     uint16_t set_ctr;
     uint16_t operators_ctr;
@@ -190,75 +179,67 @@ struct Parser {
 };
 
 void throw_unexpected_token(
-  struct Parser *state,
+  struct onk_parser_state_t*state,
   const struct onk_token_t *start,
   const enum onk_lexicon_t expected[],
   uint16_t nexpected
 );
 
-void restoration_hook(struct Parser *state);
+void restoration_hook(struct onk_parser_state_t*state);
 
 int8_t handle_unwind(
-    struct Parser *state,
+    struct onk_parser_state_t*state,
     bool unexpected_token
 );
 
-/* used to construct an error */
-/* struct PartialError { */
-/*     enum ParserError_t type; */
-/*     struct onk_token_t start; */
 
-/*     enum onk_lexicon_t *expect; */
-/*     uint16_t nexpected; */
-/* }; */
+//int8_t parser_free(struct onk_parser_state_t*state);
+//int8_t parser_reset(struct onk_parser_state_t*state);
 
-//int8_t parser_free(struct Parser *state);
-//int8_t parser_reset(struct Parser *state);
-
-void insert(struct Parser *state, const struct onk_token_t *tok);
-const struct onk_token_t * new_token(struct Parser *state, struct onk_token_t *tok);
+void insert(struct onk_parser_state_t*state, const struct onk_token_t *tok);
+const struct onk_token_t * new_token(struct onk_parser_state_t*state, struct onk_token_t *tok);
 
 void insert_new(
   enum onk_lexicon_t type,
   uint16_t start,
   uint16_t end,
-  struct Parser *state
+  struct onk_parser_state_t*state
 );
 
-const struct onk_token_t * current_token(const struct Parser *state);
-const struct onk_token_t * prev_token(const struct Parser *state) ;
-const struct onk_token_t * next_token(const struct Parser *state);
-const struct onk_token_t * op_head(const struct Parser *state);
-const struct onk_token_t * op_push(enum onk_lexicon_t op, uint16_t start, uint16_t end, struct Parser *state);
-const struct onk_token_t * output_head(const struct Parser *state);
-struct Group * group_head(struct Parser *state);
-struct Group * new_grp(struct Parser *state, const struct onk_token_t * origin);
+const struct onk_token_t * current_token(const struct onk_parser_state_t*state);
+const struct onk_token_t * prev_token(const struct onk_parser_state_t*state) ;
+const struct onk_token_t * next_token(const struct onk_parser_state_t*state);
+const struct onk_token_t * op_head(const struct onk_parser_state_t*state);
+const struct onk_token_t * op_push(enum onk_lexicon_t op, uint16_t start, uint16_t end, struct onk_parser_state_t*state);
+const struct onk_token_t * output_head(const struct onk_parser_state_t*state);
+struct onk_parse_group_t * group_head(struct onk_parser_state_t*state);
+struct onk_parse_group_t * new_grp(struct onk_parser_state_t*state, const struct onk_token_t * origin);
 
 bool can_ignore_token(enum onk_lexicon_t tok);
 
-uint16_t find_next(struct Parser *state);
+uint16_t find_next(struct onk_parser_state_t*state);
 
 /*create token in pool, and push to output*/
 void push_output(
-  struct Parser *state,
+  struct onk_parser_state_t*state,
   enum onk_lexicon_t type,
   uint16_t argc
 );
 
 const struct onk_token_t * group_modifier(
-  const struct Parser *state,
-  const struct Group *group
+  const struct onk_parser_state_t*state,
+  const struct onk_parse_group_t *group
 );
 
-int8_t flush_ops(struct Parser *state);
+int8_t flush_ops(struct onk_parser_state_t*state);
 
-int8_t push_group(struct Parser *state, const struct Group *grp);
+int8_t push_group(struct onk_parser_state_t*state, const struct onk_parse_group_t *grp);
 
 bool is_op_keyword(enum onk_lexicon_t token);
 int8_t op_precedence(enum onk_lexicon_t token);
 
-int8_t finish_idx_access(struct Parser *state);
-void idx_infer_value(struct Parser *state);
+int8_t finish_idx_access(struct onk_parser_state_t*state);
+void idx_infer_value(struct onk_parser_state_t*state);
 
 
 // enum onk_lexicon_t grp_dbg_sym(enum Group_t type);
@@ -266,7 +247,7 @@ void idx_infer_value(struct Parser *state);
 int8_t push_many_ops(
   const enum onk_lexicon_t *ops,
   const struct onk_token_t *origin,
-  struct Parser *state,
+  struct onk_parser_state_t*state,
   uint16_t nitems
 );
 
@@ -275,19 +256,19 @@ int8_t is_short_blockable(enum onk_lexicon_t tok);
 bool onk_is_tok_unit(enum onk_lexicon_t tok);
 
 enum Operation operation_from_token(enum onk_lexicon_t t);
-//int8_t mk_error(struct Parser *state, enum ErrorT type, const char * msg);
+//int8_t mk_error(struct onk_parser_state_t*state, enum ErrorT type, const char * msg);
 
 
 bool is_fncall_pattern(enum onk_lexicon_t prev);
 bool is_index_pattern(enum onk_lexicon_t prev);
 
 int8_t init_parser(
-  struct Parser *state,
+  struct onk_parser_state_t*state,
   const struct ParserInput *in,
   uint16_t *i
 );
 
-int8_t parser_free(struct Parser *state);
-int8_t parser_reset(struct Parser *state);
+int8_t parser_free(struct onk_parser_state_t*state);
+int8_t parser_reset(struct onk_parser_state_t*state);
 
 #endif

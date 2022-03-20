@@ -1,7 +1,9 @@
+#include "lexer.h"
+#include ""
 
 void __test__simple_order_precedence(CuTest* tc) {
     struct onk_token_t tokens[32];
-    struct Parser state;
+    struct onk_parser_state_tstate;
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
@@ -26,9 +28,9 @@ void __test__simple_order_precedence(CuTest* tc) {
         "foo.bar.attr + 2",
         "2 + foo.bar.attr",
         "x = 2",
-        "x = (z = y)",
+        "x = y",
         "x = y = z",
-        "x = (y = 2 * x)",
+        "x = (2 * x)",
         "x = y * 2",
         "x.y.z = a.b * 2",
         0

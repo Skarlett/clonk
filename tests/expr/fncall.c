@@ -23,7 +23,7 @@
 
 void __test__fncall(CuTest* tc) {
     struct onk_token_t tokens[32];
-    struct Parser state;
+    struct onk_parser_state_tstate;
     struct Expr *ret;
 
     char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];

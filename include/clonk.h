@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define ONK_VERSION "0.0.3"
+#define ONK_VERSION "0.0.4"
 #define ONK_INCLUDE_TESTS 0 // -DINCLUDE_TESTS 1
 
 /* 64kb */
@@ -95,5 +95,6 @@ int onk_quit(int status);
 int onk_print(const char *fmt, ...);
 
 #define onk_unimplemented() fputs(stdout, "unimplemented") && onk_quit(1)
+
 
 #endif

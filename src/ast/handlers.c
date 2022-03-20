@@ -255,7 +255,7 @@ int8_t mk_idx_access(
 
 /* 
  * onk_apply_op_token operations pop N+1 arguments from the stack where 
- * N is derived from `struct Group`'s `delmiter_ctr` + 1.
+ * N is derived from `struct onk_parse_group_t`'s `delmiter_ctr` + 1.
  *
  * `delimiter_ctr + 1` representing the total number of arguments.
  * `N + 1` representing the total arguments and the function name
@@ -446,7 +446,7 @@ int init_postfix_stage(struct PostfixStageState *stage) {
 }
 
 int parse_postfix_stage(
-  struct Parser *expr_stage,
+  struct onk_parser_state_t*expr_stage,
   struct PostfixStageState *postfix_stage
 ){
   const char *src_code = expr_stage->src_code;

@@ -1,6 +1,17 @@
 #ifndef __HEADER_AST__
 #define __HEADER_AST__
 
+
+struct PostfixStageState {
+
+    /* Vec<struct Expr> */
+    struct onk_vec_t pool;
+
+    struct Expr * stack[ONK_STACK_SZ];
+    uint16_t stack_ctr;
+    uint16_t *_i;
+};
+
 /*
     when defining a group,
     it may not have more literal elements than
@@ -123,7 +134,7 @@ enum Group_t {
     onk_code_group_tokenT
 };
 
-struct GroupExpr {
+struct onk_parse_group_tExpr {
     enum Group_t type;
     uint16_t length;
     struct Expr **ptr;
@@ -236,7 +247,7 @@ struct Expr {
         struct IfExpr cond;
         struct ReturnExpr ret;
         struct FnDefExpr func;
-        struct GroupExpr grp;
+        struct onk_parse_group_tExpr grp;
     } inner;
 };
 
