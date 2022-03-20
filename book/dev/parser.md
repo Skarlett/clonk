@@ -42,17 +42,17 @@ From there, its operator-precedense will be set to `0`. This is so, as mentioned
 
 When the matching closing parenthesis is found (`)`), it will pop all the items out of the `operator_stack` into the output array until the matching opening parenthesis is found in the `operator-stack`. The matching opening brace (`(`) in the `operator-stack` is popped out of the stack, but not placed in the output array.
 
-| source | postifx | `operator_stack` |
+| postifx | source | `operator_stack` |
 |---|---|---|
-|`(3 - 1) * 2`|  | `(` |
-|`3 - 1) * 2`| `3` | `(` |
-|`- 1) * 2`| `3` | `( -` |
-|`1) * 2`| `3` | `( -` |
-|`) * 2`| `3 1` | `( -` |
-|`* 2`| `3 1 -` | |
-|`2` | `3 1 -` | `*` |
-| | `3 1 - 2` | `*`|
-| | ` 3 1 - 2 *` | |
+||(3 - 2) * 1|(|
+|3|(3 - 2) * 1|(|
+|3|- 1) * 2|(-|
+|3|1) * 2|(-|
+|3 1|) * 2|(-|
+|3 1 -|* 2||
+|3 1 - |2|*|
+|3 1 - 2||*|
+|3 1 - 2 *|||
 
 
 
