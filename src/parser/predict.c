@@ -108,18 +108,17 @@ int8_t _explicit_expecting_open_param(enum onk_lexicon_t current)
     || current == ONK_FOR_TOKEN;
 }
 
+int8_t expect_operator(enum onk_lexicon_t current)
+{
+  return onk_is_tok_close_brace(current)
+    || onk_is_tok_unit(current);
+}
 int8_t expect_operand(enum onk_lexicon_t current)
 {
   return onk_is_tok_open_brace(current)
      || onk_is_tok_delimiter(current)
      || onk_is_tok_operator(current)
      || current == ONK_RETURN_TOKEN;
-}
-
-int8_t expect_operator(enum onk_lexicon_t current)
-{
-  return onk_is_tok_close_brace(current)
-    || onk_is_tok_unit(current);
 }
 
 int8_t expect_default_expression(enum onk_lexicon_t current)
@@ -149,7 +148,7 @@ int8_t default_expression(
   enum onk_lexicon_t current
 ){
 
-  if(onk_is_tok_unit(current))
+  if(expect_default_expression(current))
   {
     validator->slices[0] = (enum onk_lexicon_t *)&EXPR;
     validator->islices[0] = EXPR_LEN;
@@ -180,9 +179,7 @@ int8_t default_expression(
     }
   }
 
-  else if(onk_is_tok_open_brace(current)
-    || onk_is_tok_delimiter(current)
-    || onk_is_tok_operator(current))
+  else if(expect_operand(current))
   {
     validator->slices[0] = (enum onk_lexicon_t *)&EXPR;
     validator->islices[0] = EXPR_LEN;
@@ -299,7 +296,6 @@ bool start_block(
 
 int8_t ctx_paramter_mode(struct validator_t *validator, enum onk_lexicon_t current)
 {
-
   switch(current) {
     case ONK_WORD_TOKEN:
       validator->buffer[0] = ONK_EQUAL_TOKEN;
@@ -421,6 +417,8 @@ int8_t next_frame(
     validator->buffer[validator->nbuffer] = delim;
     validator->nbuffer += 1;
   }
+
+  //bool can_use_else(enum onk_lexicon_t output_head);
 
   /* add keywords */
   if (ophead == ONK_BRACKET_OPEN_TOKEN)

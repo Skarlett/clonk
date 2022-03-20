@@ -2,6 +2,7 @@
 #include "parser.h"
 #include "private.h"
 #include "clonk.h"
+#include "predict.h"
 
 enum Associativity
 {
@@ -43,8 +44,6 @@ enum Associativity get_assoc(enum onk_lexicon_t token)
 ** postfix: ... <expr> <expr> <OPERATOR> ...
 ********************************************
 */
-
-
 int8_t handle_operator(struct Parser *state)
 {
   int8_t precedense = 0, head_precedense = 0;
@@ -711,7 +710,7 @@ int8_t onk_parse(
     if (state.peek_next != 0)
       *state._i = state.peek_next;
 
-}
+  }
 
   /* dump the remaining operators onto the output */
   flush_ops(&state);
