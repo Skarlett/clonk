@@ -65,10 +65,10 @@ N will always be equal to `2` in our example, since all our operators take `2` a
 |-----------|-------|
 | 3 1 - 2 * |       |
 | 1 - 2 *   | 3     |
-|-----------|-------|
+| - 2 *     | 3 1   |
 | 2 *       | 2     |
 | *         | 2 2   |
-|           | 3     |
+|           | 4     |
 
 
 | infix | postifx  |
