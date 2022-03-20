@@ -474,10 +474,9 @@ void init_expect_buffer(enum onk_lexicon_t *arr)
   assert(memcpy(arr, &EXPR, EXPR_SZ) != 0);
 }
 
-
 bool is_token_unexpected(struct Parser *state)
 {
-  struct onk_token_t *current = current_token(state);
+  enum onk_lexicon_t current = current_token(state)->type;
   struct validator_t frame;
 
   enum onk_lexicon_t *expecting = state->expect;
@@ -486,11 +485,11 @@ bool is_token_unexpected(struct Parser *state)
 
   bool found = false;
 
-  assert(expect_len > 0);
+  assert(ex_len > 0);
 
-  for(uint16_t i = 0; expect_len > i; i++)
+  for(uint16_t i = 0; ex_len > i; i++)
   {
-    if(expecting[i] == current->type)
+    if(expecting[i] == current)
     {
       found = true;
       break;
