@@ -46,7 +46,7 @@ When the matching closing parenthesis is found (`)`), it will pop all the items 
 |---|---|---|
 ||(3 - 2) * 1||
 ||(3 - 2) * 1|(|
-|3|(3 - 2) * 1|(|
+|3|3 - 2) * 1|(|
 |3|- 1) * 2|(-|
 |3|1) * 2|(-|
 |3 1|) * 2|(-|
