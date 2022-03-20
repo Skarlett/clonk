@@ -437,7 +437,7 @@ int8_t init_parser(
     onk_vec_init(&state->pool, 256, sizeof(struct onk_token_t)) == -1
     ||onk_vec_init(&state->debug, 2048, sizeof(void *)) == -1
     ||onk_vec_init(&state->errors, 64, sizeof(struct ParserError)) == -1
-    ||onk_vec_init(&state->restoration_stack, 2048, sizeof(struct RestorationFrame)) == -1
+    ||onk_vec_init(&state->restoration_stack, 2048, sizeof(struct onk_parser_snapshot_t)) == -1
   ) return -1;
 
   state->src_code = in->src_code;

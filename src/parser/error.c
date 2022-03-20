@@ -28,7 +28,7 @@ void throw_unexpected_token(
   uint16_t nexpected
 ){
 
-    struct PartialError *err = &state->partial_err;
+    struct onk_partial_err_t *err = &state->partial_err;
     enum onk_lexicon_t *expect_heap;
 
     expect_heap = calloc(nexpected, sizeof(enum onk_lexicon_t));
@@ -45,8 +45,8 @@ void throw_unexpected_token(
 /*
 ** Grab the last inserted frame
 */
-const struct RestorationFrame * restoration_head(const struct onk_parser_state_t*state) {
-    return &((struct RestorationFrame *)state->restoration_stack.base)[(state->restoration_ctr || 1) - 1];
+const struct onk_parser_snapshot_t * restoration_head(const struct onk_parser_state_t*state) {
+    return &((struct onk_parser_snapshot_t *)state->restoration_stack.base)[(state->restoration_ctr || 1) - 1];
 }
 
 /*
@@ -62,7 +62,7 @@ bool run_hook(enum onk_lexicon_t current){
 
 void restoration_hook(struct onk_parser_state_t*state)
 {
-    struct RestorationFrame rframe;
+    struct onk_parser_snapshot_t rframe;
     const struct onk_token_t *current = &state->src[*state->_i];
 
     if (run_hook(current->type))
@@ -109,7 +109,7 @@ uint16_t recover_cursor(
 void unwind_stacks(struct onk_parser_state_t*state)
 {
     const struct onk_token_t *token;
-    const struct RestorationFrame *rframe;
+    const struct onk_parser_snapshot_t *rframe;
     struct onk_parse_group_t *grp;
     uint16_t head = 0;
 
@@ -220,7 +220,7 @@ int8_t handle_unwind(
     bool preloop
 ){
     const struct onk_token_t *start;
-    struct PartialError *perr;
+    struct onk_partial_err_t *perr;
     struct ParserError err;
 
     struct UnexpectedTokError unexpected_tok;
