@@ -107,14 +107,4 @@ enum Operation operation_from_token(enum onk_lexicon_t t);
 
 bool is_fncall_pattern(enum onk_lexicon_t prev);
 bool is_index_pattern(enum onk_lexicon_t prev);
-
-int8_t init_parser(
-  struct onk_parser_state_t*state,
-  const struct ParserInput *in,
-  uint16_t *i
-);
-
-int8_t parser_free(struct onk_parser_state_t*state);
-int8_t parser_reset(struct onk_parser_state_t*state);
-
 #endif

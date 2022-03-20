@@ -250,4 +250,12 @@ struct onk_parser_state_t {
 };
 
 
+int8_t onk_parser_init(
+  struct onk_parser_state_t*state,
+  const struct ParserInput *in,
+  uint16_t *i
+);
+
+int8_t onk_parser_free(struct onk_parser_state_t*state);
+int8_t onk_parser_reset(struct onk_parser_state_t*state);
 #endif
