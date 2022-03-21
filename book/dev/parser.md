@@ -130,15 +130,13 @@ precendense table:
 | `{ [ ( ${`           | 0          | Non-assciotitve  |
 |                      |            |                  |
 
-https://github.com/Skarlett/clonk/blob/e933109445fdf7c879e87ac498d853555e09bc95/src/parser/utils.c#L342-L429
-
 One of the first ideas you'll notice, if you've never written a language before (like me.) Is that `.` is an operator.
 I have decided to call this operation `onk_ast_op_access` ("Access").
 
 
 During this stage, we only validate grammer rules, so you can imagine that something like `a = (b+c) = d` will easily pass, but make no reasonable sense. This is a problem for a later stage.
 
-## Parsing primitive group
+## 0x24 Parsing primitive group
 
 First, we define the **Grouping mechanism**, where we can represent a *collection* of units in postfix (RPN) notation.
 Take the following example.
@@ -184,7 +182,7 @@ with a little bit of deeper intutition, you also find that expressions can work 
 inside the parser, you will find that it flushes the `operator_stack` whenever a terminator is reached `,` and `}` in this case; 
 
 
-## Clonk Group Operator
+## 0x25 Clonk Group Operator
 
 The second adjustment to the shunting yard is the occurance of group operators. 
 
