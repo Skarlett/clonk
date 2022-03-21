@@ -8,7 +8,6 @@ Clonk parses source documents by using an extended variation of (shunting yard)[
 `onk_parse` will return the token stream, but in postfix notation.
 
 
-
 ### 0x10 Shunting-Yard review
 First, lets quickly review of how shunting yard works, and then start building up to how 
 clonk uses shunting yard as its primary parser.
@@ -19,8 +18,13 @@ while still preserving the correct order of operations.
 The goal of shunting yard is to make complex infix expressions 
 easily parsable & computationally minimal.
 
-The way it accomplishes this task is two-fold. 
+| infix | postifx  |
+|---|---|
+|`(3 - 1) * 2`| `3 1 - 2 *` |
+|`(a - b) * 2`| `a b - 2 *` |
 
+
+The way it accomplishes this task is two-fold. 
 
 
 #### 0x11 Parsing
@@ -42,7 +46,7 @@ Infix mathematical expressions are as follow
 |`(3 - 1) * 2`| `3 1 - 2 *` |
 
 When shunting yards current token is an opening parenthesis (`(`) , it will be placed into the `operator_stack`.
-From there, its operator-precedense will be set to `0`. This is so, as mentioned in the paragraph before; that when `operator_2` is checked for greater operator-precedence, it will always fail if the head of the `operator-stack` is `(`.
+From there, its operator-precedense will be set to `0`. negating the previously mentioned `operator_2` check from suceeding.
 
 
 When the matching closing parenthesis is found (`)`), it will pop all the items out of the `operator_stack` into the output array until the matching opening parenthesis is found in the `operator-stack`. The matching opening brace (`(`) in the `operator-stack` is popped out of the stack, but not placed in the output array.
@@ -79,16 +83,13 @@ N will always be equal to `2` in our example, since all our operators take `2` a
 |           | 4     |
 
 
-| infix | postifx  |
-|---|---|
-|`(3 - 1) * 2`| `3 1 - 2 *` |
-|`(a - b) * 2`| `a b - 2 *` |
-
-
 ## 0x20 Clonk Parsing
 
 Clonk defines two definitions inside the parser, which will be referred to later on.
 
+Clonk Extends the ability of shunting yard by bringing in the following ideas, and rules.
+
+### 0x21 Definitions 
 | Words      | Definitions                                                                                                                                                                                      |
 |------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | token      | a symbol/piece resembling a segment of the source code while denoting its type (word/int/operator symbol)                                                                                        |
@@ -101,17 +102,14 @@ Clonk defines two definitions inside the parser, which will be referred to later
 | codeblock  | a group but explicitly beginning with `{`                                                         |
 
 
-
-Clonk Extends the ability of shunting yard by bringing in the following ideas, and rules.
-
+### 0x22 parse-units
 **Where integers were added to the output array immediately, clonk does this to all parsed units.**
 
+### 0x23 operations
+We first start by introducing the operator-precedence table.
 
-We first start by introducing a new operation table, 
-which will tell us the operator-precedence.
-During this stage, we only validate grammer rules, so you can imagine that something like `a = (b+c) = d` will easily pass, but make no reasonable sense. This is a problem for a later stage.
-
-https://github.com/Skarlett/clonk/blob/e933109445fdf7c879e87ac498d853555e09bc95/src/parser/utils.c#L342-L429
+operations are treated the same as the shunting yard parsing algorithm.
+The opening braces are all labeled as `0` precedence, effectively creating a new scope for operators to occur in.
 
 precendense table:
 | token                | precedense | assciotation     |
@@ -129,23 +127,23 @@ precendense table:
 | `&&`                 | 4          | Left             |
 | `\|\|`               | 3          | Left             |
 | `== &= ~= += -= \|=` | 2          | Left             |
-| `{ [ (`              | 0          | Non-assciotitve  |
+| `{ [ ( ${`           | 0          | Non-assciotitve  |
 |                      |            |                  |
 
+https://github.com/Skarlett/clonk/blob/e933109445fdf7c879e87ac498d853555e09bc95/src/parser/utils.c#L342-L429
 
 One of the first ideas you'll notice, if you've never written a language before (like me.) Is that `.` is an operator.
 I have decided to call this operation `onk_ast_op_access` ("Access").
 
-By using shunting yard, we can ensure that our expressions will ordered corrected, 
-but there are two primitives we must address to make this parser as a language.
 
+During this stage, we only validate grammer rules, so you can imagine that something like `a = (b+c) = d` will easily pass, but make no reasonable sense. This is a problem for a later stage.
 
-
+## Parsing primitive group
 
 First, we define the **Grouping mechanism**, where we can represent a *collection* of units in postfix (RPN) notation.
 Take the following example.
 ```
-#Fig.1
+Fig.1
 
     |-- Group/Boundary beginning
     v
@@ -160,9 +158,10 @@ Each token is a different group with the number of entries attached as meta-data
 Taken the previous expression, it'd be represented as the following.
 
 ```
-# Fig.2
+Fig.2
 
-a 1 2 3 ListGroup(3) =
+a  1 2 3 ListGroup(3)  =
+a (1 2 3 ListGroup(3)) =
 ```
 
 When the postfix expression is evaluated, it will first place all *4* values onto the stack.
@@ -170,18 +169,47 @@ When the postfix expression is evaluated, it will first place all *4* values ont
 before wrapping them inside of its self, and placing `onk_expr_list_t` on the stack. Finally binding `a` 
 to the `onk_expr_list_t` value. (See Fig.3)
 
+
 ```
-a  1 2 3 ListGroup(3)  =
-^  ^---------------^   ^
-|                      |
-|--+---------------+---| 
+Fig.3
+
+a (1 2 3 ListGroup(3)) =
+^  ^----------------^  ^
+|  |                |  |
+|--+----------------+--| 
 a= [ 1     2      3 ]
+```
 
+with a little bit of deeper intutition, you also find that expressions can work inside of groups `[1 + 2, 3]`, 
+inside the parser, you will find that it flushes the `operator_stack` whenever a terminator is reached `,` and `}` in this case; 
+
+
+## Clonk Group Operator
+
+The second adjustment to the shunting yard is the occurance of group operators. 
+
+
+Group operators are inferred from patterns of expressions, such as `any_word(x, y)`.
+
+Various patterns exist and will be listed below.
+
+```
+foo(x, y)
+```
+
+
+```
+        
+foo x y TupleGroup(2) Apply
+~~~ ~~~               ~~~~~
+ |  ^ arg expr        ^ Group Operator
+ |
+ +-- function name 
 ```
 
 
 
-
+The second big outline to 
 
 While searching through the source of `include/lexer.h`, you will come across various `MARKER_*` group. 
 
