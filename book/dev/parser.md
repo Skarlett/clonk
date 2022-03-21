@@ -8,7 +8,7 @@ Clonk parses source documents by using an extended variation of (shunting yard)[
 `onk_parse` will return the token stream, but in postfix notation.
 
 
-### 0x10 Shunting-Yard review
+## 0x10 Shunting-Yard review
 First, lets quickly review of how shunting yard works, and then start building up to how 
 clonk uses shunting yard as its primary parser.
 
@@ -27,7 +27,7 @@ easily parsable & computationally minimal.
 The way it accomplishes this task is two-fold. 
 
 
-#### 0x11 Parsing
+## 0x11 Shunting-Yard Parsing
 First, the parsing - uses a stack-datatype known in clonk as the `operator_stack`. When parsing, 
 if the current token isn't an operator, It will be added to the output array. If the current token is an operator
 then it will be added to the `operator_stack`. 
@@ -67,7 +67,7 @@ When the matching closing parenthesis is found (`)`), it will pop all the items 
 | 3 1 - 2 * |                    |                  |
 
 
-#### 0x12 Postfix Evaluation
+## 0x12 Postfix Evaluation
 
 Once the postfix expression is created, they're relatively easy to evaluate. This will use another stack. When the current token is an operator, take N operands from the stack, and compute their sum. Once completed, we'll take that new sum, and place it at the top of the stack.
 N will always be equal to `2` in our example, since all our operators take `2` arguments.
@@ -89,7 +89,7 @@ Clonk defines two definitions inside the parser, which will be referred to later
 
 Clonk Extends the ability of shunting yard by bringing in the following ideas, and rules.
 
-### 0x21 Definitions 
+## 0x21 Definitions 
 | Words      | Definitions                                                                                                                                                                                      |
 |------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | token      | a symbol/piece resembling a segment of the source code while denoting its type (word/int/operator symbol)                                                                                        |
@@ -186,16 +186,19 @@ inside the parser, you will find that it flushes the `operator_stack` whenever a
 
 The second adjustment to the shunting yard is the occurance of group operators. 
 
+Group operators are placed into the operator stack, 
+and once the group has gotten its terminating brace, 
+the group-operator is then applied to the output array.
 
-Group operators are inferred from patterns of expressions, such as `any_word(x, y)`.
+group operators are used when certain patterns are used, such as function calls `any_word(x, y)` (`Apply`), group access `foo[idx]` (`Indexaccess`), and structure initalization `Type { x=[1, 2] }` (`StructInit`).
 
-Various patterns exist and will be listed below.
 
+### Example input
 ```
 foo(x, y)
 ```
 
-
+### Example output
 ```
         
 foo x y TupleGroup(2) Apply
