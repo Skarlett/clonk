@@ -200,7 +200,6 @@ foo(x, y)
 
 ### Example output
 ```
-        
 foo x y TupleGroup(2) Apply
 ~~~ ~~~               ~~~~~
  |  ^ arg expr        ^ Group Operator
@@ -208,7 +207,19 @@ foo x y TupleGroup(2) Apply
  +-- function name 
 ```
 
+### Example Layout
+```
 
+foo(x, y)
+   ^
+   |-- at this token push `Apply` to the `operator_stack`
+
+Operator-stack: Apply (
+                      ^-- when the closing brace is matched, 
+                  the group modifier (`Apply`) will be 
+                  popped off as well
+
+```
 
 The second big outline to 
 
