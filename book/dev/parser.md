@@ -204,11 +204,29 @@ Additionally, "parser-generated" tokens were added to describe logistic expressi
 
 The logical operators `Apply` (`foo(arg)`), `IndexAccess` (`foo[idx]`) and struct initalization `Type {x=y}` are determined when processing the opening brace if the previous token is `ONK_WORD_TOKEN`, or another closing brace. (`foo(x)(y)` or `foo[idx](arg)`)
 
+| Logical Operator tokens    | definitions                       |
+|----------------------------|-----------------------------------|
+| `Apply`                    | call functions                    |
+| `IndexAccess`              | get data from collection          |
+| `StructInit` \| `struct`   | initalize structure               |
+| `whileCond` \| `whileBody` | while loop keyword                |
+| `ifCond` \| `ifBody`       | if keyword                        |
+| `else`                     | else keyword                      |
+| `defSign` \| `defBody`     | function declaration & definition |
+| `forParam`\| `forBody`     | for loop keyword                  |
+| `import`                   | import namespace                  |
+| `return`                   | return keyword                    |
+| `impl`                     | impl keyword                      |
 
 
+### If/while/def logical-operator
 
-### If logical-operator
+*clonk's* grammar includes that the keywords `if`, `while` and `def` require two groups of proceedures. The solution to *clonk* uses is to break the keyword into 2 different logical operations, each one describing the group. 
 
+```
+if(x)   group-1
+{ .. }  group-2
+```
 
 | step | `operator_stack`      | source         | postfix                          |
 |------|-----------------------|----------------|----------------------------------|
