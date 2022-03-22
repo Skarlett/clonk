@@ -167,7 +167,11 @@ The items popped when evaluating will then be used to help construct the `ListGr
 
 Parser-generated tokens that represent groups are placed onto the output directly the matching closing brace is found. The "parser-generated" tokens for groups are **never** placed in the `operator_stack`. (Their respective logical operators are though. I hope this doesn't cause too much confusion).
 
-With the introduction of grouped expressions, a way is needed to determine the beginning and end of expressions. **Terminators** (based on the group start) flush the parser's `operator_stack` onto the output until the head of of the `operator_stack` is the group's opening brace. 
+With the introduction of grouped expressions, a way is needed to determine the beginning and end of expressions. 
+
+### Expression Termination
+**Terminators** (based on the group start) flush the parser's `operator_stack` onto the output until the head of of the `operator_stack` is the group's opening brace. 
+
 
 If a terminator is the matching closing brace, it will preceed as it normally would, mentioned previously.
 
@@ -180,11 +184,28 @@ If a terminator is the matching closing brace, it will preceed as it normally wo
 
 ## 0x25 Clonk Logical-Operators
 
-in addition to the previous operators, logical operators exist to express other notions in the language such as keywords, function calls, and index selection in the postfix notation.
+Additionally, "parser-generated" tokens were added to describe logistic expressions. Logical expressions include function calls, if/else, and others listed below. 
 
-logical operators inside of the `operator_stack` and in the output array. logical operators express keywords, and likewise other operations that are parser generated-tokens. They're placed into the output array to indicate a predefined behavior when evaluated to create the AST. 
+Logical operators are placed on the `operator_stack` before the group's opening brace. If a group's matching end-brace is found then the logical operator is popped from the operator stack, and placed into the output.
+
+| `operator_stack` | source          | postfix                           |
+|------------------|-----------------|-----------------------------------|
+|                  | `foo(a + 1, b)` |                                   |
+|                  | `(a + 1, b)`    | `foo`                             |
+| `Apply` `(`      | `a + 1, b)`     | `foo`                             |
+| `Apply` `(`      | `+ 1, b)`       | `foo` `a`                         |
+| `Apply` `(` `+`  | `1, b)`         | `foo` `a`                         |
+| `Apply` `(` `+`  | `, b)`          | `foo` `a` `1`                     |
+| `Apply` `(`      | `b)`            | `foo` `a` `1` `+`                 |
+|                  | `)`             | `foo` `a` `1` `+` `b`             |
+| `Apply`          |                 | `foo a 1 + b TupleGroup(2)`       |
+|                  |                 | `foo a 1 + b TupleGroup(2) Apply` |
 
 **Important:**Inside of `operator_stack`, if a group operator is placed before the opening brace, when the opening brace is popped off, the group operator popped aswell and is appended to the output. 
+
+
+
+logical operators inside of the `operator_stack` and in the output array. logical operators express keywords, and likewise other operations that are parser generated-tokens. They're placed into the output array to indicate a predefined behavior when evaluated to create the AST. 
 
 and once the group has gotten its terminating brace, 
 the group-operator is then applied to the output array.
