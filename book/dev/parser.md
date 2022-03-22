@@ -10,6 +10,18 @@ Clonk parses source documents by first tokenizing the source text into a stream 
 
 Clonk accomplishes this task by using a custom variation of shunting yard, where the derivation are documented below.
 
+## 0x21 Definitions 
+| Words      | Definitions                                                                                                                                                                                      |
+|------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| token      | a symbol/piece resembling a segment of the source code while denoting its type (word/int/operator symbol)                                                                                        |
+| keywords   | a reserved WORD token that expressions an operation in the language                                                                                                                              |
+| operator   | a symbol which manipulates the runtime-value of another symbol                                                                                                                                   |
+| parsed unit | a token where its type is denoted as the following `ONK_WORD_TOKEN`, `ONK_STRING_LITERAL_TOKEN`, `ONK_INTEGER_TOKEN`, `ONK_TRUE_TOKEN`, `ONK_FALSE_TOKEN`, `ONK_NULL_TOKEN`                      |
+| expression | a combination of units and operations as a collective segment                                                                                                                                    |
+| terminator | a token which represents the end of a expression or block                                                                                                                                        |
+| parse group | a group is the declaration of a literal collection-datatype (list/tuple/hashmap) where each item in the collection is followed by the appriotate terminator & begins with an opening brace (`{`/`(`/`[`/`${`) |
+| codeblock  | a group but explicitly beginning with `{`                                                         |
+
 ## 0x10 Shunting Yard Review
 First, lets quickly review of how shunting yard works, and then start building up to how 
 clonk uses shunting yard as its primary parser.
@@ -77,19 +89,6 @@ N will always be equal to `2` in our example, since all our operators take `2` a
 Clonk defines two definitions inside the parser, which will be referred to later on.
 
 Clonk Extends the ability of shunting yard by bringing in the following ideas, and rules.
-
-## 0x21 Definitions 
-| Words      | Definitions                                                                                                                                                                                      |
-|------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| token      | a symbol/piece resembling a segment of the source code while denoting its type (word/int/operator symbol)                                                                                        |
-| keywords   | a reserved WORD token that expressions an operation in the language                                                                                                                              |
-| operator   | a symbol which manipulates the runtime-value of another symbol                                                                                                                                   |
-| parsed unit | a token where its type is denoted as the following `ONK_WORD_TOKEN`, `ONK_STRING_LITERAL_TOKEN`, `ONK_INTEGER_TOKEN`, `ONK_TRUE_TOKEN`, `ONK_FALSE_TOKEN`, `ONK_NULL_TOKEN`                      |
-| expression | a combination of units and operations as a collective segment                                                                                                                                    |
-| terminator | a token which represents the end of a expression or block                                                                                                                                        |
-| parse group | a group is the declaration of a literal collection-datatype (list/tuple/hashmap) where each item in the collection is followed by the appriotate terminator & begins with an opening brace (`{`/`(`/`[`/`${`) |
-| codeblock  | a group but explicitly beginning with `{`                                                         |
-
 
 ### 0x22 parse-units
 **Where integers were added to the output array immediately, clonk does this to all parsed units.**
