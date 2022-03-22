@@ -8,7 +8,7 @@ Clonk parses source documents by first tokenizing the source text into a stream 
 
 `onk_parse` will then return the stream of input tokens, but sorted in postfix notation. The stream of tokens returned will include "parser-generated" tokens, which are cannot be found direcly in the source document. "Parser-generated" tokens are later referred to as "logical operators" inside of this documentation. When this new stream of tokens is evaluated, it constructs the AST of the source document. This stage only deals with the source code conversion to postfix. 
 
-Clonk accomplishes this task by using a custom variation of shunting yard, where the derivation are documented below.
+Clonk accomplishes this task by using a custom variation of shunting yard, where the derivations are documented below.
 
 ## 0x21 Definitions 
 | Words      | Definitions                                                                                                                                                                                      |
@@ -207,10 +207,18 @@ The logical operators `Apply` (`foo(arg)`), `IndexAccess` (`foo[idx]`) and struc
 
 
 
+### If logical-operator
 
 
-
-
-
+| step | `operator_stack`      | source         | postfix                          |
+|------|-----------------------|----------------|----------------------------------|
+| 1    |                       | `if(a) { .. }` |                                  |
+| 2    | `ifBody` `ifCond`     | `(a)`          |                                  |
+| 3    | `ifBody` `ifCond` `(` | `a) { .. }`    |                                  |
+| 4    | `ifBody` `ifCond` `(` | `) { .. }`     | `a`                              |
+| 5    | `ifBody`              | `{ .. }`       | `a` `ifCond`                     |
+| 6    | `ifBody` `{`          | ` .. }`        | `a` `ifCond`                     |
+| 7    | `ifBody` `{`          | `}`            | `a` `ifCond` `..`                |
+| 8    |                       |                | `a` `ifCond` `..` `CodeBlock(N)` |
 
 
