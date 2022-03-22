@@ -186,67 +186,23 @@ If a terminator is the matching closing brace, it will preceed as it normally wo
 
 Additionally, "parser-generated" tokens were added to describe logistic expressions. Logical expressions include function calls, if/else, and others listed below. 
 
-Logical operators are placed on the `operator_stack` before the group's opening brace. If a group's matching end-brace is found then the logical operator is popped from the operator stack, and placed into the output.
+**Logical operators are placed on the** `operator_stack` before the group's opening brace. If a group's matching end-brace is found the head of the `operator_stack` is checked to determine if a logical operator is present. If so, its popped from the operator stack, and placed into the output. This behavior can see in the table below on step 10.
 
-| `operator_stack` | source          | postfix                           |
-|------------------|-----------------|-----------------------------------|
-|                  | `foo(a + 1, b)` |                                   |
-|                  | `(a + 1, b)`    | `foo`                             |
-| `Apply` `(`      | `a + 1, b)`     | `foo`                             |
-| `Apply` `(`      | `+ 1, b)`       | `foo` `a`                         |
-| `Apply` `(` `+`  | `1, b)`         | `foo` `a`                         |
-| `Apply` `(` `+`  | `, b)`          | `foo` `a` `1`                     |
-| `Apply` `(`      | `b)`            | `foo` `a` `1` `+`                 |
-|                  | `)`             | `foo` `a` `1` `+` `b`             |
-| `Apply`          |                 | `foo a 1 + b TupleGroup(2)`       |
-|                  |                 | `foo a 1 + b TupleGroup(2) Apply` |
-
-**Important:**Inside of `operator_stack`, if a group operator is placed before the opening brace, when the opening brace is popped off, the group operator popped aswell and is appended to the output. 
+|step| `operator_stack` | source          | postfix                           |
+|----|------------------|-----------------|-----------------------------------|
+| 1  |                  | `foo(a + 1, b)` |                                   |
+| 2  |                  | `(a + 1, b)`    | `foo`                             |
+| 3  | `Apply` `(`      | `a + 1, b)`     | `foo`                             |
+| 4  | `Apply` `(`      | `+ 1, b)`       | `foo` `a`                         |
+| 5  | `Apply` `(` `+`  | `1, b)`         | `foo` `a`                         |
+| 6  | `Apply` `(` `+`  | `, b)`          | `foo` `a` `1`                     |
+| 7  | `Apply` `(`      | `b)`            | `foo` `a` `1` `+`                 |
+| 8  |                  | `)`             | `foo` `a` `1` `+` `b`             |
+| 9  | `Apply`          |                 | `foo` `a` `1` `+` `b` `TupleGroup(2)`|
+| 10 |                  |                 | `foo` `a` `1` `+` `b` `TupleGroup(2)` `Apply` |
 
 
-
-logical operators inside of the `operator_stack` and in the output array. logical operators express keywords, and likewise other operations that are parser generated-tokens. They're placed into the output array to indicate a predefined behavior when evaluated to create the AST. 
-
-and once the group has gotten its terminating brace, 
-the group-operator is then applied to the output array.
-
-group operators are used when certain patterns are used, such as function calls `any_word(x, y)` (`Apply`), group access `foo[idx]` (`Indexaccess`), and structure initalization `Type { x=[1, 2] }` (`StructInit`).
-
-### Apply Group Operator
-```
-foo(x, y)
-   ^
-
-```
-
-#### Apply output
-```
-foo x y TupleGroup(2) Apply
-~~~ ~~~               ~~~~~
- |  ^ arg expr        ^ Group Operator
- |
- +-- function name 
-```
-
-### Example Layout
-```
-
-foo(x, y)
-   ^
-   |-- at this token push `Apply` to the `operator_stack`
-
-Operator-stack: Apply (
-                      ^-- when the closing brace is matched, 
-                  the group modifier (`Apply`) will be 
-                  popped off as well
-
-```
-
-The second big outline to 
-
-While searching through the source of `include/lexer.h`, you will come across various `MARKER_*` group. 
-
-
+The logical operators `Apply` (`foo(arg)`), `IndexAccess` (`foo[idx]`) and struct initalization `Type {x=y}` are determined when processing the opening brace if the previous token is `ONK_WORD_TOKEN`, or another closing brace. (`foo(x)(y)` or `foo[idx](arg)`)
 
 
 
