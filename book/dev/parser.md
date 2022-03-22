@@ -1,12 +1,17 @@
 # Clonk Parsing
 ## Compiler Doc
 
-This documentation is intended for the use of extending clonk's parsing ability and refers to the contents of `src/parser`, excluding `src/parser/lexer`.
+This documentation is intended for the use of extending clonk's parsing ability and refers to the contents of `src/parser`, excluding `src/parser/lexer`. primarily describing `onk_parse`
 
 # 0x00 Introduction
 Clonk parses source documents by using an extended variation of (shunting yard)[https://wiki.com/p=shunting_yard].
-`onk_parse` will return the token stream, but in postfix notation.
 
+It returns an array of tokens in postfix notation, 
+this stage only concerns the parsing of the original token stream into the postfix notation
+
+when evaluated, will build the AST.
+
+`onk_parse` will return the token stream, but in postfix notation.
 
 ## 0x10 Shunting-Yard review
 First, lets quickly review of how shunting yard works, and then start building up to how 
@@ -179,26 +184,39 @@ a= [ 1     2      3 ]
 ```
 
 with a little bit of deeper intutition, you also find that expressions can work inside of groups `[1 + 2, 3]`, 
-inside the parser, you will find that it flushes the `operator_stack` whenever a terminator is reached `,` and `}` in this case; 
+
+inside the parser, you will find that it flushes the `operator_stack` whenever a terminator is reached, in this case `,` and `}`. 
 
 
-## 0x25 Clonk Group Operator
+| open brace | terminator | example             |
+|------------|------------|---------------------|
+| ${         | : , }      | ${x: y, z: d}       |
+| {          | ; }        | { foo(); }          |
+| [          | : , ]      | [1, 2, 3, 4][1:2:3] |
+| (          | , )        | (1, 2)              |
 
-The second adjustment to the shunting yard is the occurance of group operators. 
+## 0x25 Clonk Logical-Operators
 
-Group operators are placed into the operator stack, 
+in addition to the previous operators, logical operators exist to express other notions in the language such as keywords, function calls, and index selection in the postfix notation.
+
+logical operators inside of the `operator_stack` and in the output array. logical operators express keywords, and likewise other operations that are parser generated-tokens. They're placed into the output array to indicate a predefined behavior when evaluated to create the AST. 
+
 and once the group has gotten its terminating brace, 
 the group-operator is then applied to the output array.
 
 group operators are used when certain patterns are used, such as function calls `any_word(x, y)` (`Apply`), group access `foo[idx]` (`Indexaccess`), and structure initalization `Type { x=[1, 2] }` (`StructInit`).
 
+**Important:**Inside of `operator_stack`, if a group operator is placed before the opening brace, when the opening brace is popped off, the group operator popped aswell and is appended to the output. 
 
-### Example input
+
+### Apply Group Operator
 ```
 foo(x, y)
+   ^
+
 ```
 
-### Example output
+#### Apply output
 ```
 foo x y TupleGroup(2) Apply
 ~~~ ~~~               ~~~~~
