@@ -6,7 +6,7 @@ This documentation is intended for the use of extending clonk's parsing ability 
 # 0x00 Abstract
 Clonk parses source documents by first tokenizing the source text into a stream of tokens. This stream of tokens is placed into `onk_parse`, this documentation concerns this function and its related implementation.
 
-`onk_parse` will then return the stream of input tokens, but in postfix notation. When this new stream of tokens is evaluated, it constructs the AST of the source document. This stage only deals with the source code conversion to postfix. 
+`onk_parse` will then return the stream of input tokens, but sorted in postfix notation. The stream of tokens returned will include "parser-generated" tokens, which are cannot be found direcly in the source document. "Parser-generated" tokens are later referred to as "logical operators" inside of this documentation. When this new stream of tokens is evaluated, it constructs the AST of the source document. This stage only deals with the source code conversion to postfix. 
 
 Clonk accomplishes this task by using a custom variation of shunting yard, where the derivation are documented below.
 
@@ -125,7 +125,7 @@ I have decided to call this operation `onk_ast_op_access` ("Access").
 
 During this stage, we only validate grammer rules, so you can imagine that something like `a = (b+c) = d` will easily pass, but make no reasonable sense. This is a problem for a later stage.
 
-## 0x24 Parsing Groups
+## 0x24 Clonk Expressive grouping
 
 First, we define the **Grouping mechanism**, where we can represent a *collection* of units in postfix (RPN) notation.
 Take the following example.
@@ -140,36 +140,37 @@ a = [1, 2, 3];
 ```
 Infix notation represents grouping in a natural way we all understand, with easily identifiable boundaries, and termination.
 
-Clonk chooses to represent this idea in the postfix output as parser-generated tokens. 
-Each token is a different group with the number of entries attached as meta-data, based on the enclosing braces used.
-Taken the previous expression, it'd be represented as the following.
+*Clonk* chooses to represent this idea in the postfix output as parser-generated tokens. 
+
+*Clonk* adds a token to the output array describing the kind of collection, and the amount of elements it pops off of the stack for evaluation.
+
+Using the previous (`Fig.1`) expression, it'd be represented as the following in *Clonk's* postfix notation (`Fig.2`).
 
 ```
 Fig.2
 
 a  1 2 3 ListGroup(3)  =
 a (1 2 3 ListGroup(3)) =
-```
 
-When the postfix expression is evaluated, it will first place all *4* values onto the stack.
-**Every group** takes *N* items from the stack. `ListGroup(n=3)` Will pop `3 2 1`
-before wrapping them inside of its self, and placing `onk_expr_list_t` on the stack. Finally binding `a` 
-to the `onk_expr_list_t` value. (See Fig.3)
-
-```
-Fig.3
 
 a (1 2 3 ListGroup(3)) =
 ^  ^----------------^  ^
 |  |                |  |
 |--+----------------+--| 
 a= [ 1     2      3 ]
+
 ```
 
-with a little bit of deeper intutition, you also find that expressions can work inside of groups `[1 + 2, 3]`, 
+When the example postfix expression is evaluated, it will first place all *4* (`a`, `1`, `2`, `3`) values onto the stack.
+**Every group** takes *N* items from the stack. `ListGroup(n=3)` Will pop `3 2 1`
 
-inside the parser, you will find that it flushes the `operator_stack` whenever a terminator is reached, in this case `,` and `}`. 
+The items popped when evaluating will then be used to help construct the `ListGroup` type, which will then be placed on the stack, replacing the 3 items & `ListGroup` with its self. This process is handled in the next stage. 
 
+Parser-generated tokens that represent groups are placed onto the output directly the matching closing brace is found. The "parser-generated" tokens for groups are **never** placed in the `operator_stack`. (Their respective logical operators are though. I hope this doesn't cause too much confusion).
+
+With the introduction of grouped expressions, a way is needed to determine the beginning and end of expressions. **Terminators** (based on the group start) flush the parser's `operator_stack` onto the output until the head of of the `operator_stack` is the group's opening brace. 
+
+If a terminator is the matching closing brace, it will preceed as it normally would, mentioned previously.
 
 | group start | terminator  | example               |
 |-------------|-------------|-----------------------|
