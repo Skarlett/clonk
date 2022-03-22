@@ -1,47 +1,33 @@
-# Clonk Parsing
+# xA0 Clonk Parsing
 ## Compiler Doc
 
 This documentation is intended for the use of extending clonk's parsing ability and refers to the contents of `src/parser`, excluding `src/parser/lexer`. primarily describing `onk_parse`
 
-# 0x00 Introduction
-Clonk parses source documents by using an extended variation of (shunting yard)[https://wiki.com/p=shunting_yard].
+# 0x00 Abstract
+Clonk parses source documents by first tokenizing the source text into a stream of tokens. This stream of tokens is placed into `onk_parse`, this documentation concerns this function and its related implementation.
 
-It returns an array of tokens in postfix notation, 
-this stage only concerns the parsing of the original token stream into the postfix notation
+`onk_parse` will then return the stream of input tokens, but in postfix notation. When this new stream of tokens is evaluated, it constructs the AST of the source document. This stage only deals with the source code conversion to postfix. 
 
-when evaluated, will build the AST.
+Clonk accomplishes this task by using a custom variation of shunting yard, where the derivation are documented below.
 
-`onk_parse` will return the token stream, but in postfix notation.
-
-## 0x10 Shunting-Yard review
+## 0x10 Shunting Yard Review
 First, lets quickly review of how shunting yard works, and then start building up to how 
 clonk uses shunting yard as its primary parser.
 
 Shunting yard takes an "infix" notation, and covert it into postfix (RPN)[https://wiki.com/p=RPN].
-Shunting yard is normally used to remove parentheses from a mathematical expression, 
-while still preserving the correct order of operations. 
-The goal of shunting yard is to make complex infix expressions 
-easily parsable & computationally minimal.
+| infix         | postifx     |
+|---------------|-------------|
+| `(3 - 1) * 2` | `3 1 - 2 *` |
+| `(a - b) * 2` | `a b - 2 *` |
 
-| infix | postifx  |
-|---|---|
-|`(3 - 1) * 2`| `3 1 - 2 *` |
-|`(a - b) * 2`| `a b - 2 *` |
-
-
-The way it accomplishes this task is two-fold. 
+Shunting yard is normally used to remove parentheses from a mathematical expression and preserving the correct order of operations to occur in the expression. 
 
 
 ## 0x11 Shunting-Yard Parsing
-First, the parsing - uses a stack-datatype known in clonk as the `operator_stack`. When parsing, 
-if the current token isn't an operator, It will be added to the output array. If the current token is an operator
-then it will be added to the `operator_stack`. 
+shunting yard algorithm uses a stack-datatype known in *Clonk* as the `operator_stack`. When processing input, if the current token isn't an operator, It will be added to the output array. If the current token is an operator then it will be added to the `operator_stack`. 
 
-Before pushing the new operator (`operator_1`) onto the stack,
-if the head of the stack (`operator_2`) has greater operator-precedence than `operator_1` or they have the same precedence 
-and `operator_1` is left-associative, then pop `operator_2` out of the `operator_stack` and into the output array.
-
-Finally, push `operator_1` onto the `operator_stack`.
+Before pushing the new operator (`operator_1`) onto the stack, it must have a lower precedence than the head of the `operator_stack` (`operator_2`).
+Pop the head of the stack until the precedence of `operator_1` is less than `operator_2` or has the same precedence and is left assciotative. 
 
 Infix mathematical expressions are as follow
 | infix | postifx  |
@@ -50,9 +36,7 @@ Infix mathematical expressions are as follow
 |`a - foo`| `a foo -` |
 |`(3 - 1) * 2`| `3 1 - 2 *` |
 
-When shunting yards current token is an opening parenthesis (`(`) , it will be placed into the `operator_stack`.
-From there, its operator-precedense will be set to `0`. negating the previously mentioned `operator_2` check from suceeding.
-
+While processing the token stream, if the current token is an opening parenthesis (`(`) , it will be placed into the `operator_stack` with its precendence set to `0`. negating the previously mentioned "lower-precedence" check from suceeding.
 
 When the matching closing parenthesis is found (`)`), it will pop all the items out of the `operator_stack` into the output array until the matching opening parenthesis is found in the `operator-stack`. The matching opening brace (`(`) in the `operator-stack` is popped out of the stack, but not placed in the output array.
 
@@ -141,7 +125,7 @@ I have decided to call this operation `onk_ast_op_access` ("Access").
 
 During this stage, we only validate grammer rules, so you can imagine that something like `a = (b+c) = d` will easily pass, but make no reasonable sense. This is a problem for a later stage.
 
-## 0x24 Parsing primitive group
+## 0x24 Parsing Groups
 
 First, we define the **Grouping mechanism**, where we can represent a *collection* of units in postfix (RPN) notation.
 Take the following example.
@@ -172,7 +156,6 @@ When the postfix expression is evaluated, it will first place all *4* values ont
 before wrapping them inside of its self, and placing `onk_expr_list_t` on the stack. Finally binding `a` 
 to the `onk_expr_list_t` value. (See Fig.3)
 
-
 ```
 Fig.3
 
@@ -188,12 +171,12 @@ with a little bit of deeper intutition, you also find that expressions can work 
 inside the parser, you will find that it flushes the `operator_stack` whenever a terminator is reached, in this case `,` and `}`. 
 
 
-| open brace | terminator | example             |
-|------------|------------|---------------------|
-| ${         | : , }      | ${x: y, z: d}       |
-| {          | ; }        | { foo(); }          |
-| [          | : , ]      | [1, 2, 3, 4][1:2:3] |
-| (          | , )        | (1, 2)              |
+| group start | terminator  | example               |
+|-------------|-------------|-----------------------|
+| `${`        | `:` `,` `}` | `${x: y, z: d}`       |
+| `{`         | `;` `}`     | `{ foo(); }`          |
+| `[`         | `:` `,` `]` | `[1, 2, 3, 4][1:2:3]` |
+| `(`         | `,` `)`     | `(1, 2)`              |
 
 ## 0x25 Clonk Logical-Operators
 
@@ -201,13 +184,12 @@ in addition to the previous operators, logical operators exist to express other 
 
 logical operators inside of the `operator_stack` and in the output array. logical operators express keywords, and likewise other operations that are parser generated-tokens. They're placed into the output array to indicate a predefined behavior when evaluated to create the AST. 
 
+**Important:**Inside of `operator_stack`, if a group operator is placed before the opening brace, when the opening brace is popped off, the group operator popped aswell and is appended to the output. 
+
 and once the group has gotten its terminating brace, 
 the group-operator is then applied to the output array.
 
 group operators are used when certain patterns are used, such as function calls `any_word(x, y)` (`Apply`), group access `foo[idx]` (`Indexaccess`), and structure initalization `Type { x=[1, 2] }` (`StructInit`).
-
-**Important:**Inside of `operator_stack`, if a group operator is placed before the opening brace, when the opening brace is popped off, the group operator popped aswell and is appended to the output. 
-
 
 ### Apply Group Operator
 ```
