@@ -92,8 +92,10 @@ Clonk Extends the ability of shunting yard by bringing in the following ideas, a
 
 
 The following action is taken when the current token being processed is:
-- **units**
-  placed directly into the output.
+
+
+### unit
+placed directly into the output.
 
 | lexed type                 | example     |
 |----------------------------|-------------|
@@ -104,7 +106,7 @@ The following action is taken when the current token being processed is:
 | `ONK_FALSE_TOKEN`          | false       |
 | `ONK_TRUE_TOKEN`           | true        |
 
-- **operators**
+### operators
 placed into the `operator-stack` per vanilla shunting yard.
 
 | unary op          | symbol |
@@ -112,52 +114,57 @@ placed into the `operator-stack` per vanilla shunting yard.
 | `ONK_BIT_NOT_EQL` | ~=     |
 | `ONK_NOT_TOKEN`   | !      |
 
+### binop
+| binops              | symbol | precedence |
+|---------------------|--------|------------|
+| `ONK_MOD_TOKEN`     | %      | 11         |
+| `ONK_DOT_TOKEN`     | .      | 13         |
+| `ONK_MUL_TOKEN`     | *      | 11         |
+| `ONK_DIV_TOKEN`     | /      | 11         |
+| `ONK_POW_TOKEN`     | ^      | 12         |
+| `ONK_ADD_TOKEN`     | +      | 10         |
+| `ONK_SUB_TOKEN`     | -      | 10         |
+| `ONK_PIPE_TOKEN`    | \|     | 5          |
+| `ONK_AMPER_TOKEN`   | &      | 6          |
+| `ONK_GT_TOKEN`      | >      | 9          |
+| `ONK_LT_TOKEN`      | <      | 9          |
+| `ONK_OR_TOKEN`      | \|\|   | 5          |
+| `ONK_AND_TOKEN`     | &&     | 6          |
+| `ONK_ISEQL_TOKEN`   | ==     | 7          |
+| `ONK_NOT_EQL_TOKEN` | !=     | 7          |
+| `ONK_SHR_TOKEN`     | >>     | 9          |
+| `ONK_SHL_TOKEN`     | <<     | 9          |
+| `ONK_GT_EQL_TOKEN`  | >=     | 8          |
+| `ONK_LT_EQL_TOKEN`  | <=     | 8          |
+| `ONK_IN_TOKEN`      | in     | X          |
+|                     |        |            |
 
-| binops              | symbol |
-|---------------------|--------|
-| `ONK_MOD_TOKEN`     | %      |
-| `ONK_DOT_TOKEN`     | .      |
-| `ONK_MUL_TOKEN`     | *      |
-| `ONK_DIV_TOKEN`     | /      |
-| `ONK_POW_TOKEN`     | ^      |
-| `ONK_ADD_TOKEN`     | +      |
-| `ONK_SUB_TOKEN`     | -      |
-| `ONK_PIPE_TOKEN`    | \|     |
-| `ONK_AMPER_TOKEN`   | &      |
-| `ONK_GT_TOKEN`      | >      |
-| `ONK_LT_TOKEN`      | <      |
-| `ONK_OR_TOKEN`      | \|\|   |
-| `ONK_AND_TOKEN`     | &&     |
-| `ONK_ISEQL_TOKEN`   | ==     |
-| `ONK_NOT_EQL_TOKEN` | !=     |
-| `ONK_SHR_TOKEN`     | >>     |
-| `ONK_SHL_TOKEN`     | <<     |
-| `ONK_GT_EQL_TOKEN`  | >=     |
-| `ONK_LT_EQL_TOKEN`  | <=     |
-| `ONK_IN_TOKEN`      | in     |
- 
-| assignment ops        | symbol |
-|-----------------------|--------|
-| `ONK_EQUAL_TOKEN`     | =      |
-| `ONK_PLUSEQ_TOKEN`    | +=     |
-| `ONK_MINUS_EQL_TOKEN` | -=     |
-| `ONK_BIT_OR_EQL`      | \|=    |
-| `ONK_BIT_AND_EQL`     | &=     |
-| `ONK_BIT_NOT_EQL`     | ~=     |
+### Assignments
+| assignment ops        | symbol | precedence |
+|-----------------------|--------|------------|
+| `ONK_EQUAL_TOKEN`     | =      | 2          |
+| `ONK_PLUSEQ_TOKEN`    | +=     | 2          |
+| `ONK_MINUS_EQL_TOKEN` | -=     | 2          |
+| `ONK_BIT_OR_EQL`      | \|=    | 2          |
+| `ONK_BIT_AND_EQL`     | &=     | 2          |
+| `ONK_BIT_NOT_EQL`     | ~=     | 2          |
 
-
-| block-keywords     | symbol | grammar                              |
-|--------------------|--------|--------------------------------------|
-| `ONK_IF_TOKEN`     | if     | if(<expr>) { .. }                    |
-| `ONK_ELSE_TOKEN`   | else   | else <if(expr) \| { >                |
-| `ONK_RETURN_TOKEN` | return | return <?:expr>;                     |
-| `ONK_IMPORT_TOKEN` | import | import <word><?:.<word>>             |
-| `ONK_FROM_TOKEN`   | from   | from <?:..>word<. \| word> import .. |
-| `ONK_FOR_TOKEN`    | for    | for(word, <word> ..) in expr         |
-| `ONK_WHILE_TOKEN`  | while  | while(expr) {                        |
-| `ONK_STRUCT_TOKEN` | struct | struct WORD { word<?:=expr>, .. }    |
-| `ONK_IMPL_TOKEN`   | impl   | impl WORD { def ... }                |
-| `ONK_DEF_TOKEN`    | def    | def WORD(WORD<?:=expr>) {            |
+### Precedense table
+precendense table:
+| token               | precedense | assciotation     |
+|---------------------|------------|------------------|
+| `.`                 | 13         | Left             |
+| `^`                 | 12         | Right            |
+| `/ * %`             | 11         | Left             |
+| `+ -`               | 10         | Left             |
+| `<< >>`             | 9          | Left             |
+| `> < >= <=`         | 8          | Left             |
+| `== !=`             | 7          | Left             |
+| `&`                 | 6          | Left             |
+| `\|`                | 5          | Left             |
+| `&&`                | 4          | Left             |
+| `\|\|`              | 3          | Left             |
+| `= &= ~= += -= \|=` | 2          | Left             |
 
 - **Open braces**
   opening braces set to `0` precedence, effectively negating the precedence check when processing *operators*.
@@ -178,25 +185,18 @@ placed into the `operator-stack` per vanilla shunting yard.
 
 
 - **keywords**
-
-precendense table:
-| token                | precedense | assciotation     |
-|----------------------|------------|------------------|
-| `) } }`              | 126        | Non-assciotative |
-| `.`                  | 13         | Left             |
-| `^`                  | 12         | Right            |
-| `/ * %`              | 11         | Left             |
-| `+ -`                | 10         | Left             |
-| `<< >>`              | 9          | Left             |
-| `> < >= <=`          | 8          | Left             |
-| `== !=`              | 7          | Left             |
-| `&`                  | 6          | Left             |
-| `\|`                 | 5          | Left             |
-| `&&`                 | 4          | Left             |
-| `\|\|`               | 3          | Left             |
-| `== &= ~= += -= \|=` | 2          | Left             |
-| `{ [ ( ${`           | 0          | Non-assciotitve  |
-|                      |            |                  |
+| block-keywords     | symbol | grammar                              |
+|--------------------|--------|--------------------------------------|
+| `ONK_IF_TOKEN`     | if     | if(<expr>) { .. }                    |
+| `ONK_ELSE_TOKEN`   | else   | else <if(expr) \| { >                |
+| `ONK_RETURN_TOKEN` | return | return <?:expr>;                     |
+| `ONK_IMPORT_TOKEN` | import | import <word><?:.<word>>             |
+| `ONK_FROM_TOKEN`   | from   | from <?:..>word<. \| word> import .. |
+| `ONK_FOR_TOKEN`    | for    | for(word, <word> ..) in expr         |
+| `ONK_WHILE_TOKEN`  | while  | while(expr) {                        |
+| `ONK_STRUCT_TOKEN` | struct | struct WORD { word<?:=expr>, .. }    |
+| `ONK_IMPL_TOKEN`   | impl   | impl WORD { def ... }                |
+| `ONK_DEF_TOKEN`    | def    | def WORD(WORD<?:=expr>) {            |
 
 During this stage, we only validate grammer rules, so you can imagine that something like `a = (b+c) = d` will easily pass, but make no reasonable sense. This is a problem for a later stage.
 
