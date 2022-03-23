@@ -115,6 +115,7 @@ placed into the `operator-stack` per vanilla shunting yard.
 | `ONK_NOT_TOKEN`   | !      |
 
 ### binop
+
 | binops              | symbol | precedence |
 |---------------------|--------|------------|
 | `ONK_MOD_TOKEN`     | %      | 11         |
@@ -139,7 +140,9 @@ placed into the `operator-stack` per vanilla shunting yard.
 | `ONK_IN_TOKEN`      | in     | X          |
 |                     |        |            |
 
+
 ### Assignments
+
 | assignment ops        | symbol | precedence |
 |-----------------------|--------|------------|
 | `ONK_EQUAL_TOKEN`     | =      | 2          |
@@ -149,7 +152,9 @@ placed into the `operator-stack` per vanilla shunting yard.
 | `ONK_BIT_AND_EQL`     | &=     | 2          |
 | `ONK_BIT_NOT_EQL`     | ~=     | 2          |
 
+
 ### Precedense table
+
 precendense table:
 | token               | precedense | assciotation     |
 |---------------------|------------|------------------|
