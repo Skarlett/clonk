@@ -36,8 +36,10 @@ Shunting yard is normally used to remove parentheses from a mathematical express
 
 
 ## 0x11 Shunting-Yard Parsing
-shunting yard algorithm uses a stack-datatype known in *Clonk* as the `operator_stack`. When processing input, if the current token isn't an operator, It will be added to the output array. If the current token is an operator then it will be added to the `operator_stack`. 
+shunting yard algorithm uses a stack-datatype known in *Clonk* as the `operator_stack`. When processing input, if the current token isn't an operator, It will be added to the output array.
 
+
+If the current token is an operator then it will be added to the `operator_stack`. 
 Before pushing the new operator (`operator_1`) onto the stack, it must have a lower precedence than the head of the `operator_stack` (`operator_2`).
 Pop the head of the stack until the precedence of `operator_1` is less than `operator_2` or has the same precedence and is left assciotative. 
 
@@ -53,19 +55,19 @@ While processing the token stream, if the current token is an opening parenthesi
 When the matching closing parenthesis is found (`)`), it will pop all the items out of the `operator_stack` into the output array until the matching opening parenthesis is found in the `operator-stack`. The matching opening brace (`(`) in the `operator-stack` is popped out of the stack, but not placed in the output array.
 
 
-| postifx   | source             | `operator_stack` |
-|-----------|--------------------|------------------|
-|           |                    |                  |
-|           | (3 - 2) * 1        |                  |
-|           | <u>(</u>3 - 2) * 1 | (                |
-| 3         | <u>3</u> - 2) * 1  | (                |
-| 3         | <u>-</u> 1) * 2    | (-               |
-| 3         | <u>1</u>) * 2      | (-               |
-| 3 1       | <u>)</u> * 2       | <u>(-<u>         |
-| 3 1 -     | <u> * </u> 2       |                  |
-| 3 1 -     | <u>2</u>           | *                |
-| 3 1 - 2   |                    | <u> * </u>       |
-| 3 1 - 2 * |                    |                  |
+| `operator_stack` |  source             |postifx   |
+|------------------|---------------------|----------|
+|                  |                     |          |
+|                  |  (3 - 2) * 1        |          |
+| (                |  <u>(</u>3 - 2) * 1 |          |
+| (                |  <u>3</u> - 2) * 1  |3         |
+| (-               |  <u>-</u> 1) * 2    |3         |
+| (-               |  <u>1</u>) * 2      |3         |
+| <u>(-<u>         |  <u>)</u> * 2       |3 1       |
+|                  |  <u> * </u> 2       |3 1 -     |
+| *                |  <u>2</u>           |3 1 -     |
+| <u> * </u>       |                     |3 1 - 2   |
+|                  |                     |3 1 - 2 * |
 
 
 ## 0x12 Postfix Evaluation
@@ -84,20 +86,97 @@ N will always be equal to `2` in our example, since all our operators take `2` a
 |           | 4     |
 
 
-## 0x20 Clonk Parsing
-
-Clonk defines two definitions inside the parser, which will be referred to later on.
+## 0x20 Clonk Parsing the source
 
 Clonk Extends the ability of shunting yard by bringing in the following ideas, and rules.
 
-### 0x22 parse-units
-**Where integers were added to the output array immediately, clonk does this to all parsed units.**
 
-### 0x23 operations
-We first start by introducing the operator-precedence table.
+The following action is taken when the current token being processed is:
+- **units**
+  placed directly into the output.
 
-operations are treated the same as the shunting yard parsing algorithm.
-The opening braces are all labeled as `0` precedence, effectively creating a new scope for operators to occur in.
+| lexed type                 | example     |
+|----------------------------|-------------|
+| `ONK_WORD_TOKEN`           | `bare_word` |
+| `ONK_INTEGER_TOKEN`        | `1232`      |
+| `ONK_STRING_LITERAL_TOKEN` | `"string"`  |
+| `ONK_NULL_TOKEN`           | null        |
+| `ONK_FALSE_TOKEN`          | false       |
+| `ONK_TRUE_TOKEN`           | true        |
+
+- **operators**
+placed into the `operator-stack` per vanilla shunting yard.
+| unary op          | symbol |
+|-------------------|--------|
+| `ONK_BIT_NOT_EQL` | ~=     |
+| `ONK_NOT_TOKEN`   | !      |
+
+
+| binops              | symbol |
+|---------------------|--------|
+| `ONK_MOD_TOKEN`     | %      |
+| `ONK_DOT_TOKEN`     | .      |
+| `ONK_MUL_TOKEN`     | *      |
+| `ONK_DIV_TOKEN`     | /      |
+| `ONK_POW_TOKEN`     | ^      |
+| `ONK_ADD_TOKEN`     | +      |
+| `ONK_SUB_TOKEN`     | -      |
+| `ONK_PIPE_TOKEN`    | \|     |
+| `ONK_AMPER_TOKEN`   | &      |
+| `ONK_GT_TOKEN`      | >      |
+| `ONK_LT_TOKEN`      | <      |
+| `ONK_OR_TOKEN`      | \|\|   |
+| `ONK_AND_TOKEN`     | &&     |
+| `ONK_ISEQL_TOKEN`   | ==     |
+| `ONK_NOT_EQL_TOKEN` | !=     |
+| `ONK_SHR_TOKEN`     | >>     |
+| `ONK_SHL_TOKEN`     | <<     |
+| `ONK_GT_EQL_TOKEN`  | >=     |
+| `ONK_LT_EQL_TOKEN`  | <=     |
+| `ONK_IN_TOKEN`      | in     |
+ 
+| assignment ops        | symbol |
+|-----------------------|--------|
+| `ONK_EQUAL_TOKEN`     | =      |
+| `ONK_PLUSEQ_TOKEN`    | +=     |
+| `ONK_MINUS_EQL_TOKEN` | -=     |
+| `ONK_BIT_OR_EQL`      | \|=    |
+| `ONK_BIT_AND_EQL`     | &=     |
+| `ONK_BIT_NOT_EQL`     | ~=     |
+
+
+| block-keywords     | symbol | grammar                              |
+|--------------------|--------|--------------------------------------|
+| `ONK_IF_TOKEN`     | if     | if(<expr>) { .. }                    |
+| `ONK_ELSE_TOKEN`   | else   | else <if(expr) \| { >                |
+| `ONK_RETURN_TOKEN` | return | return <?:expr>;                     |
+| `ONK_IMPORT_TOKEN` | import | import <word><?:.<word>>             |
+| `ONK_FROM_TOKEN`   | from   | from <?:..>word<. \| word> import .. |
+| `ONK_FOR_TOKEN`    | for    | for(word, <word> ..) in expr         |
+| `ONK_WHILE_TOKEN`  | while  | while(expr) {                        |
+| `ONK_STRUCT_TOKEN` | struct | struct WORD { word<?:=expr>, .. }    |
+| `ONK_IMPL_TOKEN`   | impl   | impl WORD { def ... }                |
+| `ONK_DEF_TOKEN`    | def    | def WORD(WORD<?:=expr>) {            |
+
+- **Open braces**
+  opening braces set to `0` precedence, effectively negating the precedence check when processing *operators*.
+  Every open brace creates a *group* that will be added to the output when the matching end brace is found.
+
+- **Close braces**
+  closes the current group, places a *grouping* token onto the output as a logical operator.
+  
+- **Terminators**
+ flush the parser's `operator_stack` onto the output until the head of of the `operator_stack` is the group's opening brace. 
+
+| group start | terminator  | example               |
+|-------------|-------------|-----------------------|
+| `${`        | `:` `,` `}` | `${x: y, z: d}`       |
+| `{`         | `;` `}`     | `{ foo(); }`          |
+| `[`         | `:` `,` `]` | `[1, 2, 3, 4][1:2:3]` |
+| `(`         | `,` `)`     | `(1, 2)`              |
+
+
+- **keywords**
 
 precendense table:
 | token                | precedense | assciotation     |
@@ -117,10 +196,6 @@ precendense table:
 | `== &= ~= += -= \|=` | 2          | Left             |
 | `{ [ ( ${`           | 0          | Non-assciotitve  |
 |                      |            |                  |
-
-One of the first ideas you'll notice, if you've never written a language before (like me.) Is that `.` is an operator.
-I have decided to call this operation `onk_ast_op_access` ("Access").
-
 
 During this stage, we only validate grammer rules, so you can imagine that something like `a = (b+c) = d` will easily pass, but make no reasonable sense. This is a problem for a later stage.
 
