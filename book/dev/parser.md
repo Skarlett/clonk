@@ -188,8 +188,8 @@ precendense table:
 | `[`         | `:` `,` `]` | `[1, 2, 3, 4][1:2:3]` |
 | `(`         | `,` `)`     | `(1, 2)`              |
 
+# Keywords
 
-- **keywords**
 | block-keywords     | symbol | grammar                              |
 |--------------------|--------|--------------------------------------|
 | `ONK_IF_TOKEN`     | if     | if(<expr>) { .. }                    |
