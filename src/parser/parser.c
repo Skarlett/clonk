@@ -596,14 +596,11 @@ int8_t handle_return(struct onk_parser_state_t*state)
 */
 int8_t onk_parse(
   struct ParserInput *input,
-
-  struct ParserOutput *out
+  struct parser_output_t *out
 ){
   struct onk_parser_state_t state;
   const struct onk_token_t *current;
   enum onk_lexicon_t current_type;
-
-  
   uint16_t i = 0;
   bool unexpected_token;
 
@@ -711,7 +708,6 @@ int8_t onk_parse(
 
     if (state.peek_next != 0)
       *state._i = state.peek_next;
-
   }
 
   /* dump the remaining operators onto the output */

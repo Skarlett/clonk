@@ -11,15 +11,17 @@ struct ParserInput {
     bool add_glob_scope;
 };
 
-struct ParserOutput {
+struct parser_output_t {
     /* Vec<struct onk_token_t *> */
-    const struct onk_vec_t postfix;
+    struct onk_vec_t postfix;
 
     /* Vec<struct onk_token_t> */
     struct onk_vec_t token_pool;
 
     /* Vec<struct ParseError> */
     struct onk_vec_t errors;
+
+    bool stage_failed;
 };
 
 enum ParserError_t {
@@ -90,9 +92,8 @@ struct ParserError {
 
 int8_t onk_parse(
     struct ParserInput *input,
-    struct ParserOutput *out
+    struct parser_output_t *out
 );
-
 
 struct onk_parse_group_t {
     //TODO: Implement this
