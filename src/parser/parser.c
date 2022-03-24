@@ -126,7 +126,7 @@ int8_t handle_operator(struct onk_parser_state_t*state)
  * src: [body_expr, ...]
  * dbg: <body-expr> ... Group_t
 */
-int8_t pop_group(struct onk_parser_state_t*state, bool do_checks)
+int8_t pop_group(struct onk_parser_state_t *state, bool do_checks)
 {
   struct onk_parse_group_t *ghead = group_head(state);
 
@@ -225,8 +225,6 @@ int8_t handle_close_brace(struct onk_parser_state_t*state)
   return ret;
 }
 
-
-
 /*
 ** Handles group notation operations such as
 ** function call (`foo(x)`) & index access (`foo[x]`)
@@ -260,9 +258,6 @@ enum onk_lexicon_t push_group_modifier(
   const struct onk_token_t * current,
   const struct onk_token_t * prev
 ){
-  //const struct onk_token_t * current = current_token(state);
-  //const struct onk_token_t * prev = prev_token(state);
-
   if(!prev)
     return 0;
 
@@ -347,7 +342,7 @@ void handle_dual_group(struct onk_parser_state_t*state)
   assert(idx >= 0);
 
   ghead->expr_cnt += 1;
-  push_many_ops(products[idx], current, state);
+  push_many_ops(products[idx], current, state, 2);
 
   if(current->type == ONK_FOR_TOKEN)
   {
@@ -493,6 +488,7 @@ int8_t handle_return(struct onk_parser_state_t*state)
     group->is_short = true;
     group->collapse = true;
   }
+  return 0;
 }
 
 /*
@@ -600,17 +596,24 @@ int8_t handle_return(struct onk_parser_state_t*state)
 */
 int8_t onk_parse(
   struct ParserInput *input,
+
   struct ParserOutput *out
 ){
-  struct onk_parser_state_tstate;
+  struct onk_parser_state_t state;
   const struct onk_token_t *current;
+  enum onk_lexicon_t current_type;
+
+  
   uint16_t i = 0;
   bool unexpected_token;
 
-  assert(init_parser(&state, input, &i) == 0);
 
-  for (i = 0 ;state.src_sz > i; i++) {
+  assert(onk_parser_init(&state, input, &i) == 0);
+
+  for (i = 0; state.src_sz > i; i++)
+  {
     current = &state.src[i];
+    current_type = state.src[i].type;
 
     assert(state.operators_ctr > state.operator_stack_sz);
     unexpected_token = is_token_unexpected(&state);
@@ -629,7 +632,7 @@ int8_t onk_parse(
      * This should only be ran until
      * find_next is ran, afterwards,
     */
-    else if (can_ignore_token(current->type))
+    else if (can_ignore_token(current_type))
       continue;
 
     else
@@ -640,7 +643,7 @@ int8_t onk_parse(
      * that represent proceedures & data
      * ONK_WORD_TOKENS, INTS, ONK_STRING_LITERAL_TOKEN
     */
-    if(onk_is_tok_unit(current->type))
+    if(onk_is_tok_unit(current_type) || onk_is_tok_loopctlkw(current_type))
       insert(&state, current);
 
     /*
@@ -649,7 +652,7 @@ int8_t onk_parse(
      * precedense is pushed onto the stack, or whenever
      * the operator-stack is flushed.
     */
-    else if (onk_is_tok_operator(current->type))
+    else if (onk_is_tok_operator(current_type))
       handle_operator(&state);
 
     /*
@@ -657,48 +660,47 @@ int8_t onk_parse(
       popped when an open brace is
       placed onto the stack
     */
-    else if(is_dual_grp_keyword(current->type))
+    else if(is_dual_grp_keyword(current_type))
       handle_dual_group(&state);
 
     /* flush operators and
      * pop an operator (open brace) & grouping
     */
-    else if (onk_is_tok_close_brace(current->type))
+    else if (onk_is_tok_close_brace(current_type))
       handle_close_brace(&state);
 
     /* push group modifier & open brace
      * onto the operator stack.
      * push another grouping
     */
-    else if (onk_is_tok_open_brace(current->type))
+    else if (onk_is_tok_open_brace(current_type))
       handle_open_brace(&state);
 
     /* flush operators, check for short grouping & pop it */
-    else if (onk_is_tok_delimiter(current->type))
+    else if (onk_is_tok_delimiter(current_type))
       handle_delimiter(&state);
 
-
-    else if(current->type == ONK_IMPORT_TOKEN)
+    else if(current_type == ONK_IMPORT_TOKEN)
       handle_import(&state);
 
     /* pop from into output */
-    else if(current->type == ONK_FROM_LOCATION)
+    else if(current_type == ONK_FROM_LOCATION)
     {
       insert(&state, current);
       insert(&state, op_head(&state));
       state.operators_ctr -= 1;
     }
 
-    else if(current->type == ONK_RETURN_TOKEN)
+    else if(current_type == ONK_RETURN_TOKEN)
       handle_return(&state);
 
-    else if(current->type == ONK_EOFT)
+    else if(current_type == ONK_EOFT)
       break;
 
     else {
 #ifdef DEBUG
       printf("debug: token (%s) fell through precedence\n",
-             onk_ptoken(tokens[i].type));
+             onk_ptoken(current_type));
 #endif
     }
 
@@ -715,6 +717,11 @@ int8_t onk_parse(
   /* dump the remaining operators onto the output */
   flush_ops(&state);
   assert(state.operators_ctr == 1);
+
+  out->postfix = state.debug;
+  out->token_pool = state.pool;
+  out->errors = state.errors;
+  out->stage_failed = state.stage_failed;
 
   return 0;
 }

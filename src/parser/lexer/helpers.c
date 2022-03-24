@@ -88,6 +88,11 @@ bool onk_is_tok_group_modifier(enum onk_lexicon_t tok) {
         && __ONK_MARKER_GROUP_OP_END > tok;
 }
 
+bool onk_is_tok_loopctlkw(enum onk_lexicon_t tok) {
+    return tok > __ONK_MARKER_LOOP_CTL_START
+        && __ONK_MARKER_LOOP_CTL_END > tok;
+}
+
 bool onk_is_tok_whitespace(enum onk_lexicon_t tok) {
     return tok > __ONK_MARKER_WHITESPACE_START
         && __ONK_MARKER_WHITESPACE_END > tok;

@@ -11,6 +11,7 @@
 enum onk_lexicon_t {
     /* end of file */
     ONK_EOFT,
+
     __ONK_MARKER_ILLEGAL_INPUT_START,
     /********************/
     /* Transition token */
@@ -58,6 +59,14 @@ enum onk_lexicon_t {
     ONK_UNDEFINED_TOKEN,
 
     __ONK_MARKER_UPGRADE_DATA_START,
+
+    __ONK_MARKER_UNARY_START,
+    /* ~ */
+    ONK_TILDE_TOKEN,
+
+    /* ! */
+    ONK_NOT_TOKEN,
+    __ONK_MARKER_UNARY_END,
 
     /* " */
     ONK_DOUBLE_QUOTE_TOKEN,
@@ -160,7 +169,6 @@ enum onk_lexicon_t {
     __ONK_MARKER_OPEN_BRACE_END,
     __ONK_MARKER_BRACE_END,
 
-
     __ONK_MARKER_OP_START,
     __ONK_MARKER_BIN_START,
     /* % */
@@ -178,15 +186,30 @@ enum onk_lexicon_t {
     /* ^ */
     ONK_POW_TOKEN,
 
+    __ONK_MARKER_ASN_START,
+
+    __ONK_MARKER_COMPOUND_BIN_START,
+
+    /* |= */
+    ONK_BIT_OR_EQL,
+
+    /* &= */
+    ONK_BIT_AND_EQL,
+
+    /* ~= */
+    ONK_BIT_NOT_EQL,
+
+     /* += */
+    ONK_PLUSEQ_TOKEN,
+
+    /* -= */
+    ONK_MINUS_EQL_TOKEN,
+
     __ONK_MARKER_UPGRADE_OP_START,
 
-    __ONK_MARKER_UNARY_START,
-    /* ~ */
-    ONK_TILDE_TOKEN,
-
-    /* ! */
-    ONK_NOT_TOKEN,
-    __ONK_MARKER_UNARY_END,
+    /* = */
+    ONK_EQUAL_TOKEN,
+    __ONK_MARKER_ASN_END,
 
     /* + */
     ONK_ADD_TOKEN,
@@ -205,30 +228,6 @@ enum onk_lexicon_t {
 
     /* < */
     ONK_LT_TOKEN,
-
-    __ONK_MARKER_ASN_START,
-    /* = */
-    ONK_EQUAL_TOKEN,
-
-    __ONK_MARKER_UPGRADE_OP_END,
-
-    __ONK_MARKER_COMPOUND_BIN_START,
-
-    /* |= */
-    ONK_BIT_OR_EQL,
-
-    /* &= */
-    ONK_BIT_AND_EQL,
-
-    /* ~= */
-    ONK_BIT_NOT_EQL,
-
-     /* += */
-    ONK_PLUSEQ_TOKEN,
-
-    /* -= */
-    ONK_MINUS_EQL_TOKEN,
-    __ONK_MARKER_ASN_END,
 
     /* .. */
     /* ELLISPES */
@@ -308,8 +307,17 @@ enum onk_lexicon_t {
     /* import */
     ONK_IMPORT_TOKEN,
 
+    __ONK_MARKER_LOOP_CTL_START,
+    /* break */
+    ONK_BREAK_TOKEN,
+
+    /* continue */
+    ONK_CONTINUE_TOKEN,
+    __ONK_MARKER_LOOP_CTL_END,
+
     /* from */
     ONK_FROM_TOKEN,
+
     __ONK_MARKER_OP_END,
 
     /* if */
@@ -557,7 +565,7 @@ bool _onk_do_default_expectation(enum onk_lexicon_t token);
 
 bool onk_is_tok_illegal(enum onk_lexicon_t token);
 
-
+bool onk_is_tok_loopctlkw(enum onk_lexicon_t tok);
 
 /**
  * Check if the token given is a keyword

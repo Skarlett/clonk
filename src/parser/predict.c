@@ -409,7 +409,6 @@ int8_t next_frame(
 
   if(apply_group_rules(validator, state) == 0)
     default_expression(validator, current);
-<<<<<<< Updated upstream:src/parser/predict.c
 
   delim = place_delimiter(state);
 
@@ -431,7 +430,9 @@ int8_t next_frame(
 
   return 0;
 }
-
+/*
+ * deep clone data into *arr
+ * */
 uint16_t fill_buffer(
   enum onk_lexicon_t *arr,
   uint16_t arr_sz,

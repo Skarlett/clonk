@@ -396,6 +396,8 @@ int8_t derive_keyword(const char *src_code, struct onk_token_t *t) {
     ONK_RETURN_TOKEN,
     ONK_FOR_TOKEN, ONK_WHILE_TOKEN,
     // EXTERN, AS,
+    ONK_BREAK_TOKEN,
+    ONK_CONTINUE_TOKEN,
     ONK_TRUE_TOKEN, ONK_FALSE_TOKEN,
     ONK_IN_TOKEN, ONK_IF_TOKEN,
     ONK_ELSE_TOKEN, ONK_DEF_TOKEN,
@@ -409,7 +411,7 @@ int8_t derive_keyword(const char *src_code, struct onk_token_t *t) {
     "return", "for", "while",
     "true", "false",
     "in",
-    //"extern", "as",
+    "extern", "as",
     "if", "else",  "def",
     "import", "from",
     "struct", "impl",
@@ -554,7 +556,6 @@ int8_t push_tok(
   assert(onk_vec_push(state->tokens, tok) != 0);
   onk_queue8_push(&state->previous, &tok);
 
-
   if (type == ONK_FROM_TOKEN)
   {
     assert(UINT16_MAX > *state->i);
@@ -659,7 +660,6 @@ int8_t onk_tokenize(
     /* completed compound token */
     else if (state.compound != ONK_UNDEFINED_TOKEN || state.forcing_next_token) {
       // state._is_repeating = false;
-
       /* if (state.compound == ONK_COMMENT_TOKEN) */
       /* { */
       /*   state.compound = ONK_UNDEFINED_TOKEN; */
