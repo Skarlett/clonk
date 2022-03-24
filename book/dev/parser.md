@@ -10,6 +10,10 @@ Clonk parses source documents by first tokenizing the source text into a stream 
 
 Clonk accomplishes this task by using a custom variation of shunting yard, where the derivations are documented below.
 
+
+
+During this stage, we only validate grammer rules, so you can imagine that something like `a = (b+c) = d` will easily pass, but make no reasonable sense. This is a problem for a later stage.
+
 ## 0x21 Definitions 
 | Words      | Definitions                                                                                                                                                                                      |
 |------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -86,16 +90,12 @@ N will always be equal to `2` in our example, since all our operators take `2` a
 |           | 4     |
 
 
-## 0x20 Clonk Parsing the source
-
-Clonk Extends the ability of shunting yard by bringing in the following ideas, and rules.
-
+## 0x20 Clonk Parsing the source text
 
 The following action is taken when the current token being processed is:
 
-
-### unit
-placed directly into the output.
+### Unit
+Units are placed directly into the output.
 
 | lexed type                 | example     |
 |----------------------------|-------------|
@@ -106,15 +106,30 @@ placed directly into the output.
 | `ONK_FALSE_TOKEN`          | false       |
 | `ONK_TRUE_TOKEN`           | true        |
 
-### operators
+### Operator
+
 placed into the `operator-stack` per vanilla shunting yard.
+
+precendense table:
+| token               | precedense | assciotation     |
+|---------------------|------------|------------------|
+| `.`                 | 13         | Left             |
+| `^`                 | 12         | Right            |
+| `/ * %`             | 11         | Left             |
+| `+ -`               | 10         | Left             |
+| `<< >>`             | 9          | Left             |
+| `> < >= <=`         | 8          | Left             |
+| `== !=`             | 7          | Left             |
+| `&`                 | 6          | Left             |
+| `\|`                | 5          | Left             |
+| `&&`                | 4          | Left             |
+| `\|\|`              | 3          | Left             |
+| `= &= ~= += -= \|=` | 2          | Left             |
 
 | unary op          | symbol |
 |-------------------|--------|
 | `ONK_BIT_NOT_EQL` | ~=     |
 | `ONK_NOT_TOKEN`   | !      |
-
-### binop
 
 | binops              | symbol | precedence |
 |---------------------|--------|------------|
@@ -140,9 +155,6 @@ placed into the `operator-stack` per vanilla shunting yard.
 | `ONK_IN_TOKEN`      | in     | X          |
 |                     |        |            |
 
-
-### Assignments
-
 | assignment ops        | symbol | precedence |
 |-----------------------|--------|------------|
 | `ONK_EQUAL_TOKEN`     | =      | 2          |
@@ -153,32 +165,29 @@ placed into the `operator-stack` per vanilla shunting yard.
 | `ONK_BIT_NOT_EQL`     | ~=     | 2          |
 
 
-### Precedense table
-
-precendense table:
-| token               | precedense | assciotation     |
-|---------------------|------------|------------------|
-| `.`                 | 13         | Left             |
-| `^`                 | 12         | Right            |
-| `/ * %`             | 11         | Left             |
-| `+ -`               | 10         | Left             |
-| `<< >>`             | 9          | Left             |
-| `> < >= <=`         | 8          | Left             |
-| `== !=`             | 7          | Left             |
-| `&`                 | 6          | Left             |
-| `\|`                | 5          | Left             |
-| `&&`                | 4          | Left             |
-| `\|\|`              | 3          | Left             |
-| `= &= ~= += -= \|=` | 2          | Left             |
-
-- **Open braces**
+### Open braces
   opening braces set to `0` precedence, effectively negating the precedence check when processing *operators*.
   Every open brace creates a *group* that will be added to the output when the matching end brace is found.
 
-- **Close braces**
+| open brace                  | symbol | match end brace |
+|-----------------------------|--------|-----------------|
+| `ONK_BRACE_OPEN_TOKEN`      | {      |                 |
+| `ONK_BRACKET_OPEN_TOKEN`    | [      |                 |
+| `ONK_PARAM_OPEN_TOKEN`      | (      |                 |
+| `ONK_HASHMAP_LITERAL_START` | ${     |                 |
+
+### Close braces
   closes the current group, places a *grouping* token onto the output as a logical operator.
-  
-- **Terminators**
+
+| open brace                | symbol | match end brace |
+|---------------------------|--------|-----------------|
+| `ONK_BRACE_CLOSE_TOKEN`   | }      |                 |
+| `ONK_BRACKET_CLOSE_TOKEN` | ]      |                 |
+| `ONK_PARAM_CLOSE_TOKEN`   | )      |                 |
+| `ONK_HASHMAP_LITERAL_END` | }     |                 |
+
+
+### Terminators
  flush the parser's `operator_stack` onto the output until the head of of the `operator_stack` is the group's opening brace. 
 
 | group start | terminator  | example               |
@@ -188,7 +197,9 @@ precendense table:
 | `[`         | `:` `,` `]` | `[1, 2, 3, 4][1:2:3]` |
 | `(`         | `,` `)`     | `(1, 2)`              |
 
-# Keywords
+### Keywords
+Keywords are placed onto the `operator-stack`. **Note:** `if`/`while`/`def` produces **2**
+operations that are placed on `the operator-stack`
 
 | block-keywords     | symbol | grammar                              |
 |--------------------|--------|--------------------------------------|
@@ -202,8 +213,6 @@ precendense table:
 | `ONK_STRUCT_TOKEN` | struct | struct WORD { word<?:=expr>, .. }    |
 | `ONK_IMPL_TOKEN`   | impl   | impl WORD { def ... }                |
 | `ONK_DEF_TOKEN`    | def    | def WORD(WORD<?:=expr>) {            |
-
-During this stage, we only validate grammer rules, so you can imagine that something like `a = (b+c) = d` will easily pass, but make no reasonable sense. This is a problem for a later stage.
 
 ## 0x24 Clonk Expressive grouping
 
