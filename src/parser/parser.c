@@ -595,7 +595,7 @@ int8_t handle_return(struct onk_parser_state_t*state)
       `onk_apply_op_token` is used to call function
 */
 int8_t onk_parse(
-  struct ParserInput *input,
+  struct onk_parser_input_t *input,
   struct parser_output_t *out
 ){
   struct onk_parser_state_t state;

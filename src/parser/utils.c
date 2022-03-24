@@ -430,7 +430,7 @@ int8_t op_precedence(enum onk_lexicon_t token) {
 
 int8_t init_parser(
   struct onk_parser_state_t*state,
-  const struct ParserInput *in,
+  const struct onk_parser_input_t *in,
   uint16_t *i
 ){
   if (
@@ -493,7 +493,7 @@ int8_t parser_reset(struct onk_parser_state_t*state)
 
 void parser_input_from_lexer_output(
   const struct onk_lexer_output_t *lex,
-  struct ParserInput *parser_in,
+  struct onk_parser_input_t *parser_in,
   bool add_glob_scope)
 {
   parser_in->src_code = lex->src_code;

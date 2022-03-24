@@ -3,7 +3,7 @@
 
 #include "lexer.h"
 
-struct ParserInput {
+struct onk_parser_input_t {
     const char * src_code;
     uint16_t src_code_sz;
     struct onk_vec_t tokens;
@@ -24,10 +24,9 @@ struct parser_output_t {
     bool stage_failed;
 };
 
-enum ParserError_t {
+enum onk_parse_err_t {
     parse_err_unexpected_token
 };
-
 
 struct UnexpectedTokError {
     /* onk_lexicon_t[N] null-terminated malloc */
@@ -38,7 +37,7 @@ struct UnexpectedTokError {
 };
 
 struct ParserError {
-    enum ParserError_t type;
+    enum onk_parse_err_t type;
 
     /* window of tokens effected */
     struct onk_token_selection_t window;
@@ -91,7 +90,7 @@ struct ParserError {
 */
 
 int8_t onk_parse(
-    struct ParserInput *input,
+    struct onk_parser_input_t *input,
     struct parser_output_t *out
 );
 
@@ -172,7 +171,7 @@ struct onk_parser_snapshot_t {
 
 /* used to construct an error */
 struct onk_partial_err_t {
-    enum ParserError_t type;
+    enum onk_parse_err_t type;
     struct onk_token_t start;
 
     enum onk_lexicon_t *expect;
@@ -241,7 +240,6 @@ struct onk_parser_state_t {
     bool panic;
     struct onk_partial_err_t partial_err;
 
-
     uint16_t peek_next;
     uint16_t peek_prev;
 
@@ -253,7 +251,7 @@ struct onk_parser_state_t {
 
 int8_t onk_parser_init(
   struct onk_parser_state_t*state,
-  const struct ParserInput *in,
+  const struct onk_parser_input_t *in,
   uint16_t *i
 );
 
