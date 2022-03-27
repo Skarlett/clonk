@@ -72,6 +72,7 @@ void init_lexer_stage(
   stage->current = ONK_UNDEFINED_TOKEN;
   stage->compound = ONK_UNDEFINED_TOKEN;
   stage->forcing_next_token = ONK_UNDEFINED_TOKEN;
+
   stage->cmpd_span_size = 0;
   stage->cmpd_start_at = 0;
   stage->src_code_sz = 0;

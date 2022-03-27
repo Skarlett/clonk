@@ -596,7 +596,7 @@ int8_t handle_return(struct onk_parser_state_t*state)
 */
 int8_t onk_parse(
   struct onk_parser_input_t *input,
-  struct parser_output_t *out
+  struct onk_parser_output_t *out
 ){
   struct onk_parser_state_t state;
   const struct onk_token_t *current;

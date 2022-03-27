@@ -457,8 +457,9 @@ struct onk_lexer_error_t {
 
 struct onk_lexer_input_t {
     const char *src_code;
+
+    /* initalized or not ? */
     struct onk_vec_t tokens;
-    bool add_eoft;
 };
 
 int8_t onk_tokenize(

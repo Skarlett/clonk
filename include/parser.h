@@ -11,7 +11,8 @@ struct onk_parser_input_t {
     bool add_glob_scope;
 };
 
-struct parser_output_t {
+
+struct onk_parser_output_t {
     /* Vec<struct onk_token_t *> */
     struct onk_vec_t postfix;
 
@@ -91,7 +92,7 @@ struct ParserError {
 
 int8_t onk_parse(
     struct onk_parser_input_t *input,
-    struct parser_output_t *out
+    struct onk_parser_output_t *out
 );
 
 struct onk_parse_group_t {
@@ -250,11 +251,19 @@ struct onk_parser_state_t {
 
 
 int8_t onk_parser_init(
-  struct onk_parser_state_t*state,
+  struct onk_parser_state_t *state,
   const struct onk_parser_input_t *in,
   uint16_t *i
 );
 
 int8_t onk_parser_free(struct onk_parser_state_t*state);
 int8_t onk_parser_reset(struct onk_parser_state_t*state);
+
+
+void onk_parser_input_from_lexer_output(
+    const struct onk_lexer_output_t *lex,
+    struct onk_parser_input_t *parser_in,
+    bool add_glob_scope
+);
+
 #endif

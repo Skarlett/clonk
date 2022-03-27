@@ -1,9 +1,8 @@
 #ifndef _HEADER__COMMON_TESTS_HELPER__
 #define _HEADER__COMMON_TESTS_HELPER__
 
-#include "CuTest.h"
-#include "../src/prelude.h"
-#include "../src/parser/lexer/lexer.h"
+#include "libtest/CuTest.h"
+#include "lexer.h"
 
 void onk_assert_tokens(
     CuTest *tc,
@@ -22,7 +21,6 @@ void onk_assert_tokens_by_ref(
     const struct onk_token_t *tokens[],
     const enum onk_lexicon_t answer[]
 );
-
 
 /**
  *  Assert tokens match the type found in answer 

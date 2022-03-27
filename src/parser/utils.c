@@ -3,8 +3,7 @@
 #include <assert.h>
 #include "clonk.h"
 #include "private.h"
-#include "validator/predict.h"
-
+#include "predict.h"
 
 void assert_op_pop_n(const struct onk_parser_state_t*state, uint16_t n)
 {
@@ -26,7 +25,6 @@ void insert(struct onk_parser_state_t*state, const struct onk_token_t *tok)
 {
   assert(onk_vec_push(&state->debug, &tok) != 0);
 }
-
 
 /* push token into pool */
 const struct onk_token_t * new_token(struct onk_parser_state_t*state, struct onk_token_t *tok) {
@@ -486,12 +484,11 @@ int8_t parser_reset(struct onk_parser_state_t*state)
   state->src_code = 0;
 
   init_expect_buffer(&state->expecting);
-
   parser_free(state);
   return 0;
 }
 
-void parser_input_from_lexer_output(
+void onk_parser_input_from_lexer_output(
   const struct onk_lexer_output_t *lex,
   struct onk_parser_input_t *parser_in,
   bool add_glob_scope)
