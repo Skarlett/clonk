@@ -1,6 +1,5 @@
 
 #include <string.h>
-#include <assert.h>
 #include "clonk.h"
 #include "private.h"
 #include "predict.h"
@@ -155,17 +154,6 @@ enum onk_lexicon_t group_type_init(enum onk_lexicon_t brace)
     default:
       return ONK_UNDEFINED_TOKEN;
   }
-}
-
-/*
-** pushes group into output as a group token
-*/
-int8_t push_group(struct onk_parser_state_t*state, const struct onk_parse_group_t *grp) {
-
-  //if(!onk_is_tok_open_brace(brace->type))
-  //  return -1;
-
-  //TODO: implement
 }
 
 struct onk_parse_group_t * new_grp(
@@ -489,7 +477,7 @@ int8_t parser_reset(struct onk_parser_state_t*state)
 }
 
 void onk_parser_input_from_lexer_output(
-  const struct onk_lexer_output_t *lex,
+  struct onk_lexer_output_t *lex,
   struct onk_parser_input_t *parser_in,
   bool add_glob_scope)
 {
