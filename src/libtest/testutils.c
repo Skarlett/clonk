@@ -48,16 +48,21 @@ enum descriptor_ty
  *
  * */
 
-struct dyn_descriptor {
+struct descriptor_dyn {
     enum onk_lexicon_t *arr;
     uint16_t narr;
 };
 
-struct inspect_descriptor {
-    enum onk_lexicon_t group_type;
-    uint16_t start;
-    uint16_t end;
-    uint16_t seq;
+
+#define FINSP_START 1
+#define FINSP_END   1 << 2
+#define FINSP_SEQ   1 << 3
+#define FINSP_TYPE  1 << 4
+
+struct descriptor_inspect_t
+{
+    struct onk_token_t token;
+    uint8_t ignore_flags;
 };
 
 struct token_desc_t {
@@ -65,8 +70,8 @@ struct token_desc_t {
 
     union {
         enum onk_lexicon_t static_tok;
-        struct inspect_descriptor inspect;
-        struct dyn_descriptor dyn_tok;
+        struct descriptor_inspect_t inspect;
+        struct descriptor_dyn dyn_tok;
     } data;
 };
 
@@ -91,13 +96,6 @@ struct onk_tk_token_match_t
     /*size*/
     uint16_t sarr;
 
-    /* /\* array idx answer *\/ */
-    const enum onk_lexicon_t ** answers;
-
-    /* /\* [nslice, nslice]  *\/ */
-    uint16_t * ianswers;
-
-    uint16_t nanswers;
 };
 
 
@@ -115,6 +113,7 @@ struct onk_testkit_result_t {
     enum stage_failure result;
 
 };
+
 
 /*
  * copies (`enum onk_lexicon_t *tok`) each item into
@@ -145,16 +144,43 @@ int8_t tk_add_static(
     return 1;
 }
 
-int8_t tk_add_grp(
+int8_t tk_inspect_slot(
     struct onk_tk_token_match_t *kit,
-    enum onk_lexicon_t *tok,
-    uint16_t items
-)
+    struct descriptor_inspect_t *inspect
+){
+    struct token_desc_t descriptor;
+
+    if(kit->narr >= kit->sarr)
+      return -1;
+
+    descriptor.slot_type = onk_inspect_slot;
+    descriptor.data.inspect = *inspect;
+
+    kit->arr[kit->narr] = descriptor;
+    kit->narr += 1;
+    return 0;
+}
+
+int tk_add_dynamic(
+    struct onk_tk_token_match_t * kit,
+    enum onk_lexicon_t *answers,
+    uint16_t nanswers)
 {
+    struct token_desc_t *dtok;
+
+    if(kit->sarr > kit->narr)
+        return -1;
+
+    dtok = &kit->arr[kit->narr];
+
+    dtok->data.dyn_tok.arr = answers;
+    dtok->data.dyn_tok.narr = nanswers;
 
 
-    
-        _add_descriptor(mold, tok[i], onk_static_slot);
+    kit->answers[kit->nanswers] = answers;
+    kit->ianswers[kit->nanswers] = nanswers;
+    kit->nanswers += 1;
+    return 1;
 }
 
 int8_t tk_add_static_repeating(
@@ -183,20 +209,6 @@ int8_t tk_add_static_repeating(
     return 1;
 }
 
-int tk_add_dynamic(
-    struct onk_tk_token_match_t * kit,
-    const enum onk_lexicon_t *answers,
-    uint16_t nanswers)
-{
-    if(kit->sarr > kit->narr)
-        return -1;
-
-    kit->answers[kit->nanswers] = answers;
-    kit->ianswers[kit->nanswers] = nanswers;
-    kit->nanswers += 1;
-    return 1;
-}
-
 int kt_test(
     struct onk_tk_token_match_t *kit,
     struct onk_token_t *input,
@@ -211,20 +223,24 @@ int kt_test(
 
     for(uint16_t i=0; ninput > i; i++)
     {
-        switch(kit->arr[i].type) {
+        switch(kit->arr[i].slot_type) {
             case onk_static_slot:
-                if(kit->arr[i].tok != input[i].type)
+
+                if(kit->arr[i].data.static_tok != input[i].type)
                   return -1;
                 break;
 
             case onk_dynamic_slot:
-                if(kit->answers[fmt_i][seg_i] != input[i].type)
+
+                if (kit->arr[i].data.dyn_tok.arr[fmt_i] != input[i].type)
                     return -1;
 
                 fmt_i += 1;
                 break;
 
-            case onk_group_slot:
+            case onk_inspect_slot:
+                if(kit)
+                break;
 
 
             default:
@@ -239,7 +255,12 @@ int kt_test(
 
 void build_test_mold_kit(
     struct onk_tk_token_match_t *parser,
-    struct onk_tk_token_match_t *lexer)
+    struct onk_tk_token_match_t *lexer
+    struct onk_tk_token_match_t [12];
+    struct onk_tk_token_match_t pstage[12];
+
+
+)
 {
     const enum onk_lexicon_t static_answ[] = { ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, 0 };
     const enum onk_lexicon_t dyn_answ_s1[] = { ONK_MUL_TOKEN, ONK_DIV_TOKEN, 0 };
@@ -299,8 +320,41 @@ void kt_parse_test(
         i
     );
 
+
+
     // cuAssert(ret == 0)
 }
+int run_test(
+    struct onk_tk_token_match_t *lexer,
+    struct onk_tk_token_match_t *parser,
+    uint16_t fmt_i
+) {
+
+    struct onk_lexer_input_t lexer_input;
+    struct onk_lexer_output_t lexer_output;
+    struct onk_parser_input_t parser_input;
+    struct onk_parser_output_t parser_output;
+
+    kt_tokenize_test(
+        lexer,
+        &lexer_input,
+        &lexer_output,
+        fmt_i
+    );
+
+    onk_parser_input_from_lexer_output(
+        &lexer_output, &parser_input, false
+    );
+
+    kt_parse_test(
+        parser,
+        &parser_input,
+        &parser_output,
+        fmt_i
+    );
+
+}
+
 
 int test_mold()
 {
@@ -308,9 +362,6 @@ int test_mold()
     struct onk_vec_t tokens;
 
     struct onk_lexer_input_t lexer_input;
-    struct onk_lexer_output_t lexer_output;
-    struct onk_parser_input_t parser_input;
-    struct onk_parser_output_t parser_output;
 
     const char * fmt_segs[][2] =                \
         {{"+", "-"},{"*", "/"}};
@@ -319,10 +370,7 @@ int test_mold()
     const char * fmt = "word %s word %s word";
 
     char buf[256];
-    int kt_ret;
-    int ret;
-
-    build_test_kit_mold(&parser, &lexer);
+    build_test_mold_kit(&parser, &lexer);
 
     lexer_input.tokens = tokens;
     onk_vec_init(&tokens, 256, sizeof(struct onk_token_t));
@@ -332,40 +380,13 @@ int test_mold()
         snprintf(buf, 256, fmt, fmt_segs[i][0], fmt_segs[i][1]);
         lexer_input.src_code = buf;
 
-        ret = onk_tokenize(&lexer_input, &lexer_output);
-
-        kt_ret = kt_test(
-            &lexer,
-            tokens.base,
-            tokens.len,
-            i
-        );
-
-        if(kt_ret == -1)
-            return -1;
-
-        onk_parser_input_from_lexer_output(
-            &lexer_output, &parser_input, false
-        );
-
-        ret = onk_parse(&parser_input, &parser_output);
-
-        kt_ret = kt_test(
-            &parser,
-            tokens.base,
-            tokens.len,
-            i
-        );
-
-        if(kt_ret == -1)
-            return -1;
+        run_test(&lexer, &parser, i);
 
         onk_vec_clear(&tokens);
     }
 
 
     /* kt_run */
-
 }
 
 /**
