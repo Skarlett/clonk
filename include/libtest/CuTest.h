@@ -3,8 +3,10 @@
 
 #include <setjmp.h>
 #include <stdarg.h>
+#include "clonk.h"
+#include "lexer.h"
 
-#define CUTEST_VERSION  "CuTest 1.5"
+#define CUTEST_VERSION  "CuTest 1.5 - clonk derivation"
 
 /* CuString */
 
@@ -40,6 +42,24 @@ typedef struct CuTest CuTest;
 
 typedef void (*TestFunction)(CuTest *);
 
+struct _onk_test_buffers {
+	/* Initialized/heap Vec<Char> */
+	struct onk_vec_t src;
+
+	/* Initialized/heap Vec<struct Token> */
+	struct onk_vec_t src_tokens;
+
+	/* Initialized/heap Vec<struct Token> */
+	struct onk_vec_t postfix_token;
+
+	/* Initialized/heap Vec<struct onk_token_desc_t> */
+	struct onk_vec_t lexer_expect;
+
+	/* Initialized/heap Vec<struct onk_token_desc_t> */
+	struct onk_vec_t parser_expect;
+
+};
+
 struct CuTest
 {
 	char* name;
@@ -48,6 +68,7 @@ struct CuTest
 	int ran;
 	const char* message;
 	jmp_buf *jumpBuf;
+	struct _onk_test_buffers * buffers;
 };
 
 void CuTestInit(CuTest* t, const char* name, TestFunction function);
@@ -56,6 +77,20 @@ void CuTestRun(CuTest* tc);
 void CuTestDelete(CuTest *t);
 
 /* Internal versions of assert functions -- use the public versions */
+void CuFail_Line(CuTest* tc, const char* file, int line, const char* message2, const char* message);
+void CuAssert_Line(CuTest* tc, const char* file, int line, const char* message, int condition);
+void CuAssertStrEquals_LineMsg(CuTest* tc, 
+	const char* file, int line, const char* message, 
+	const char* expected, const char* actual);
+void CuAssertIntEquals_LineMsg(CuTest* tc, 
+	const char* file, int line, const char* message, 
+	int expected, int actual);
+void CuAssertDblEquals_LineMsg(CuTest* tc, 
+	const char* file, int line, const char* message, 
+	double expected, double actual, double delta);
+void CuAssertPtrEquals_LineMsg(CuTest* tc, 
+	const char* file, int line, const char* message, 
+	void* expected, void* actual);
 
 /* public assert functions */
 
@@ -95,7 +130,7 @@ CuSuite* CuSuiteNew(void);
 void CuSuiteDelete(CuSuite *testSuite);
 void CuSuiteAdd(CuSuite* testSuite, CuTest *testCase);
 void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2);
-void CuSuiteRun(CuSuite* testSuite);
+void CuSuiteRun(CuSuite* testSuite, struct _onk_test_buffers * onk_patch);
 void CuSuiteSummary(CuSuite* testSuite, CuString* summary);
 void CuSuiteDetails(CuSuite* testSuite, CuString* details);
 
