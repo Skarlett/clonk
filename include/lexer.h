@@ -414,6 +414,7 @@ enum onk_selection_t {
   Scalar,
   Union
 };
+
 /*
 ** onk_token_selection_t describes 1 or more tokens,
 ** either as a sequencial span
