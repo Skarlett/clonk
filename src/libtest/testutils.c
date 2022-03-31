@@ -1,119 +1,9 @@
-#include "libtest/CuTest.h"
+#include "onkstd/vec.h"
 #include "lexer.h"
 #include "parser.h"
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-
-#define FMT_STR "%s\nexpected: \n%s\ngot: \n%s\nsrc: \"%s\""
-
-
-/**
- * Checks if token stream is balanced.
- * To be balanced is every brace opening,
- * having a pairing brace closing token
- * following it eventually.
- * The follow are examples:
- *
- *    a + b + (2 + 5)  Is balanced
- *   (a + b            Is unbalanced.
- *
- * @param tokens array of tokens
- * @param ntokens amount of tokens to read
- *
- * @return bool
- */
-//bool is_balanced(struct onk_token_t tokens[], uint16_t ntokens);
-
-enum descriptor_ty
-{
-  onk_static_slot,
-  onk_dynamic_slot,
-  onk_inspect_slot
-};
-
-
-/*
- *
- *
- *                              a1
- * [ Dtoken<WORD>, Dtoken<INT>, Dtoken< ? >, 0 ]
- *                               001   Add
- *                               010   Sub
- *                               100   Mul
- *
- *
- *
- * */
-
-struct descriptor_dyn {
-    enum onk_lexicon_t *arr;
-    uint16_t narr;
-};
-
-
-#define FINSP_START 1
-#define FINSP_END   1 << 2
-#define FINSP_SEQ   1 << 3
-#define FINSP_TYPE  1 << 4
-
-struct descriptor_inspect_t
-{
-    struct onk_token_t token;
-    uint8_t ignore_flags;
-};
-
-struct token_desc_t {
-    enum descriptor_ty slot_type;
-
-    union {
-        enum onk_lexicon_t static_tok;
-        struct descriptor_inspect_t inspect;
-        struct descriptor_dyn dyn_tok;
-    } data;
-};
-
-/* struct token_desc_t */
-/* { */
-/*     enum descriptor_ty type; */
-/*     enum onk_lexicon_t tok; */
-/* }; */
-
-/*
- * formats string, tokenizes, parses,
- *
- * checks output against --
- * */
-struct onk_tk_token_match_t
-{
-    struct token_desc_t * arr;
-
-    /*number*/
-    uint16_t narr;
-
-    /*size*/
-    uint16_t sarr;
-
-};
-
-
-enum stage_failure
-{
-    onk_stage_OK,
-    onk_stage_ident_testfail,
-    onk_stage_ident_udef,
-    onk_stage_ident_lex,
-    onk_stage_ident_parse,
-    onk_stage_ident_validate,
-};
-
-struct onk_testkit_result_t {
-    enum stage_failure result;
-
-};
-
+#include "libtest/tokens.h"
+#include "libtest/CuTest.h"
 
 /*
  * copies (`enum onk_lexicon_t *tok`) each item into
@@ -124,7 +14,7 @@ int8_t tk_add_static(
     enum onk_lexicon_t *tok,
     uint16_t nitems)
 {
-    struct token_desc_t dtok;
+    struct onk_desc_token_t dtok;
 
     if(mold->sarr > mold->narr)
         return -1;
@@ -144,11 +34,21 @@ int8_t tk_add_static(
     return 1;
 }
 
+void tk_init(
+    struct onk_tk_token_match_t *kit,
+    struct onk_desc_token_t *buffer,
+    uint16_t buffer_sz
+)
+{
+    kit->arr = buffer;
+    kit->narr = buffer_sz;
+}
+
 int8_t tk_inspect_slot(
     struct onk_tk_token_match_t *kit,
-    struct descriptor_inspect_t *inspect
+    struct onk_desc_inspect_token_t *inspect
 ){
-    struct token_desc_t descriptor;
+    struct onk_desc_token_t descriptor;
 
     if(kit->narr >= kit->sarr)
       return -1;
@@ -166,7 +66,7 @@ int tk_add_dynamic(
     enum onk_lexicon_t *answers,
     uint16_t nanswers)
 {
-    struct token_desc_t *dtok;
+    struct onk_desc_token_t *dtok;
 
     if(kit->sarr > kit->narr)
         return -1;
@@ -176,10 +76,6 @@ int tk_add_dynamic(
     dtok->data.dyn_tok.arr = answers;
     dtok->data.dyn_tok.narr = nanswers;
 
-
-    kit->answers[kit->nanswers] = answers;
-    kit->ianswers[kit->nanswers] = nanswers;
-    kit->nanswers += 1;
     return 1;
 }
 
@@ -190,8 +86,8 @@ int8_t tk_add_static_repeating(
 )
 {
     bool overflow = false;
-    struct token_desc_t descriptor;
-    struct token_desc_t *ptr;
+    struct onk_desc_token_t descriptor;
+    struct onk_desc_token_t *ptr;
 
     if(onk_add_u16(kit->narr, ntimes, &overflow) >= kit->sarr
        && overflow == 0)
@@ -209,13 +105,30 @@ int8_t tk_add_static_repeating(
     return 1;
 }
 
+int8_t handle_inspect_slot(
+    struct onk_desc_inspect_token_t *insp,
+    struct onk_token_t *input)
+{
+    uint8_t flags = 0;
+    struct onk_token_t *tok;
+
+    flags = insp->ignore_flags;
+    tok = &insp->token;
+
+    if ((flags & FINSP_START && tok->start != input->start)
+        || (flags & FINSP_END && tok->end != input->end)
+        || (flags & FINSP_SEQ && tok->seq != input->seq)
+        || (flags & FINSP_TYPE && tok->type != input->type))
+        return -1;
+    return 0;
+}
+
 int kt_test(
     struct onk_tk_token_match_t *kit,
     struct onk_token_t *input,
     uint16_t ninput,
-    uint16_t seg_i
-){
-    uint16_t fmt_i = 0;
+    uint16_t iter)
+{
 
     //todo assert
     if(ninput != kit->narr)
@@ -225,59 +138,25 @@ int kt_test(
     {
         switch(kit->arr[i].slot_type) {
             case onk_static_slot:
-
                 if(kit->arr[i].data.static_tok != input[i].type)
                   return -1;
                 break;
 
             case onk_dynamic_slot:
-
-                if (kit->arr[i].data.dyn_tok.arr[fmt_i] != input[i].type)
+                if (kit->arr[i].data.dyn_tok.arr[iter] != input[i].type)
                     return -1;
-
-                fmt_i += 1;
                 break;
 
             case onk_inspect_slot:
-                if(kit)
+                if (handle_inspect_slot(kit->arr[i].data.inspect, &input[i]) != 0)
+                    return -1;
                 break;
-
 
             default:
                 return -1;
         }
     }
-
     return 0;
-
-}
-
-
-void build_test_mold_kit(
-    struct onk_tk_token_match_t *parser,
-    struct onk_tk_token_match_t *lexer
-    struct onk_tk_token_match_t [12];
-    struct onk_tk_token_match_t pstage[12];
-
-
-)
-{
-    const enum onk_lexicon_t static_answ[] = { ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, 0 };
-    const enum onk_lexicon_t dyn_answ_s1[] = { ONK_MUL_TOKEN, ONK_DIV_TOKEN, 0 };
-    const enum onk_lexicon_t dyn_answ_s2[] = { ONK_ADD_TOKEN, ONK_SUB_TOKEN, 0 };
-
-    enum onk_lexicon_t working_space = ONK_WORD_TOKEN;
-
-    // mold lexer output
-    tk_add_static(lexer, &working_space, 1);
-    tk_add_dynamic(lexer, (enum onk_lexicon_t *)dyn_answ_s2, 2);
-    tk_add_static(lexer, &working_space, 1);
-    tk_add_dynamic(lexer, (enum onk_lexicon_t *)dyn_answ_s1, 2);
-
-    // Mold Parser output
-    tk_add_static(parser,  (enum onk_lexicon_t *)static_answ, 3);
-    tk_add_dynamic(parser, (enum onk_lexicon_t *)dyn_answ_s1, 2);
-    tk_add_dynamic(parser, (enum onk_lexicon_t *)dyn_answ_s2, 2);
 }
 
 
@@ -320,11 +199,9 @@ void kt_parse_test(
         i
     );
 
-
-
     // cuAssert(ret == 0)
 }
-int run_test(
+void run_test(
     struct onk_tk_token_match_t *lexer,
     struct onk_tk_token_match_t *parser,
     uint16_t fmt_i
@@ -355,13 +232,37 @@ int run_test(
 
 }
 
+void build_test_mold_kit(
+    struct onk_tk_token_match_t *parser,
+    struct onk_tk_token_match_t *lexer)
+{
+    const enum onk_lexicon_t static_answ[] = { ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, 0 };
+    const enum onk_lexicon_t dyn_answ_s1[] = { ONK_MUL_TOKEN, ONK_DIV_TOKEN, 0 };
+    const enum onk_lexicon_t dyn_answ_s2[] = { ONK_ADD_TOKEN, ONK_SUB_TOKEN, 0 };
 
-int test_mold()
+    enum onk_lexicon_t working_space = ONK_WORD_TOKEN;
+
+    // mold lexer output
+    tk_add_static(lexer, &working_space, 1);
+    tk_add_dynamic(lexer, (enum onk_lexicon_t *)dyn_answ_s2, 2);
+    tk_add_static(lexer, &working_space, 1);
+    tk_add_dynamic(lexer, (enum onk_lexicon_t *)dyn_answ_s1, 2);
+
+    // Mold Parser output
+    tk_add_static(parser,  (enum onk_lexicon_t *)static_answ, 3);
+    tk_add_dynamic(parser, (enum onk_lexicon_t *)dyn_answ_s1, 2);
+    tk_add_dynamic(parser, (enum onk_lexicon_t *)dyn_answ_s2, 2);
+}
+
+
+void test_mold()
 {
     struct onk_tk_token_match_t parser, lexer;
     struct onk_vec_t tokens;
 
     struct onk_lexer_input_t lexer_input;
+    struct onk_desc_token_t lex_buf[12];
+    struct onk_desc_token_t parse_buf[12];
 
     const char * fmt_segs[][2] =                \
         {{"+", "-"},{"*", "/"}};
@@ -370,10 +271,14 @@ int test_mold()
     const char * fmt = "word %s word %s word";
 
     char buf[256];
+
+    tk_init(&lexer, (struct onk_desc_token_t *)lex_buf, 12);
+    tk_init(&parser, (struct onk_desc_token_t *)parse_buf, 12);
+    onk_vec_init(&tokens, 32, sizeof(struct onk_token_t));
+
     build_test_mold_kit(&parser, &lexer);
 
     lexer_input.tokens = tokens;
-    onk_vec_init(&tokens, 256, sizeof(struct onk_token_t));
 
     for(int i=0; 2 > i; i++)
     {
@@ -389,28 +294,6 @@ int test_mold()
     /* kt_run */
 }
 
-/**
- * Checks if token stream is balanced by reference. see (src/parser/lexer/helpers.h#is_balance)
- *
- * @param tokens array of referenced tokens
- * @param ntokens amount of tokens to read
- *
- * @return bool
- */
-//bool is_balanced_by_ref(struct onk_token_t *tokens[], uint16_t ntokens);
-
-void onk_assert_parse(
-    CuTest *tc,
-    const char ** source_code,
-    const char * file,
-    const char * failure_mesg,
-    const enum onk_lexicon_t *answers
-)
-{
-
-
-
-}
 
 /*
     function determines if an expression is unbalanced.
@@ -418,63 +301,63 @@ void onk_assert_parse(
     if there is a nonmatching `[` / `(` / `{` character
 */
 
-void onk_assert_tokens(
-    CuTest *tc,
-    const char *source_code,
-    const char *file,
-    const char *msg,
-    const struct onk_token_t tokens[],
-    const enum onk_lexicon_t answer[]
-){
-    char uneql_msg[2048];
-    char uneql_len_msg[2048];
-    
-    char got[512];
-    char expected[512];
-    
-    uint16_t len=0;
-    for (;; len++) {
-        if (answer[len] == 0){
-            break;
-        }
-    }
+/* void onk_assert_tokens( */
+/*     CuTest *tc, */
+/*     const char *source_code, */
+/*     const char *file, */
+/*     const char *msg, */
+/*     const struct onk_token_t tokens[], */
+/*     const enum onk_lexicon_t answer[] */
+/* ){ */
+/*     char uneql_msg[2048]; */
+/*     char uneql_len_msg[2048]; */
 
-    sprintf_token_slice(tokens, len, got, 512);
-    sprintf_lexicon_slice(answer, len, expected, 512);
-    sprintf(uneql_msg, FMT_STR, msg, expected, got, source_code);
-    sprintf(uneql_len_msg, "expected len: %ld <\n%s", len, uneql_msg);
+/*     char got[512]; */
+/*     char expected[512]; */
 
-}
+/*     uint16_t len=0; */
+/*     for (;; len++) { */
+/*         if (answer[len] == 0){ */
+/*             break; */
+/*         } */
+/*     } */
 
-void onk_assert_tokens_by_ref(
-    CuTest *tc,
-    const char *source_code,
-    const char *file,
-    const char *msg,
-    const struct onk_token_t *tokens[],
-    const enum onk_lexicon_t answer[]
-){
-    char uneql_msg[2048];
-    char uneql_len_msg[2048];
-    
-    char got[512];
-    char expected[512];
-    
-    memset(got, 0, sizeof(char[512]));
-    memset(expected, 0, sizeof(char[512]));
-    memset(uneql_len_msg, 0, sizeof(char[2048]));
-    memset(uneql_msg, 0, sizeof(char[2048]));
+/*     sprintf_token_slice(tokens, len, got, 512); */
+/*     sprintf_lexicon_slice(answer, len, expected, 512); */
+/*     sprintf(uneql_msg, FMT_STR, msg, expected, got, source_code); */
+/*     sprintf(uneql_len_msg, "expected len: %ld <\n%s", len, uneql_msg); */
 
-    usize len=0;
-    for (;; len++) {
-        if (answer[len] == 0)
-            break;
-    }
-    if (len == 0)
-        return;
+/* } */
 
-    sprintf_token_slice_by_ref(tokens, len, got, 512);
-    sprintf_lexicon_slice(answer, len, expected, 512);
-    sprintf(uneql_msg, FMT_STR, msg, expected, got, source_code);
-    sprintf(uneql_len_msg, "%s: expected len: %ld <\n%s", msg, len, uneql_msg);
-}
+/* void onk_assert_tokens_by_ref( */
+/*     CuTest *tc, */
+/*     const char *source_code, */
+/*     const char *file, */
+/*     const char *msg, */
+/*     const struct onk_token_t *tokens[], */
+/*     const enum onk_lexicon_t answer[] */
+/* ){ */
+/*     char uneql_msg[2048]; */
+/*     char uneql_len_msg[2048]; */
+
+/*     char got[512]; */
+/*     char expected[512]; */
+
+/*     memset(got, 0, sizeof(char[512])); */
+/*     memset(expected, 0, sizeof(char[512])); */
+/*     memset(uneql_len_msg, 0, sizeof(char[2048])); */
+/*     memset(uneql_msg, 0, sizeof(char[2048])); */
+
+/*     usize len=0; */
+/*     for (;; len++) { */
+/*         if (answer[len] == 0) */
+/*             break; */
+/*     } */
+/*     if (len == 0) */
+/*         return; */
+
+/*     sprintf_token_slice_by_ref(tokens, len, got, 512); */
+/*     sprintf_lexicon_slice(answer, len, expected, 512); */
+/*     sprintf(uneql_msg, FMT_STR, msg, expected, got, source_code); */
+/*     sprintf(uneql_len_msg, "%s: expected len: %ld <\n%s", msg, len, uneql_msg); */
+/* } */
