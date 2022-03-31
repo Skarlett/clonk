@@ -2,8 +2,64 @@
 #include "lexer.h"
 #include "parser.h"
 
+
 #include "libtest/tokens.h"
 #include "libtest/CuTest.h"
+
+
+#define STRING_OVERFLOW 16384
+
+int16_t print_token_from_char_arr(
+    char * buf,
+    uint16_t max,
+    const struct onk_token_t *token)
+{
+    const char *fmt = "Token { start: %ud; end: %ud; seq: %ud; type: %s (%ud) }";
+    const char *ptok;
+    int nbytes;
+
+    ptok = onk_ptoken(token->type);
+
+    nbytes = snprintf(
+         buf,
+         max,
+         fmt,
+         token->start,
+         token->end,
+         token->seq,
+         ptok,
+         token->type
+    );
+
+    return nbytes;
+}
+
+uint16_t print_token_from_vec(
+    struct onk_vec_t *msg_buf,
+    const struct onk_token_t *token
+){
+    int nbytes;
+
+    do {
+        nbytes = print_token_from_char_arr(
+            msg_buf->base,
+            msg_buf->capacity,
+            token
+        );
+
+        if(nbytes > 0)
+            return nbytes;
+
+        else
+        {
+            if (onk_vec_realloc(msg_buf) != 0)
+                return -1;
+        }
+
+    } while (STRING_OVERFLOW > msg_buf->len);
+
+    return nbytes;
+}
 
 /*
  * copies (`enum onk_lexicon_t *tok`) each item into
@@ -72,6 +128,7 @@ int tk_add_dynamic(
         return -1;
 
     dtok = &kit->arr[kit->narr];
+    kit->narr += 1;
 
     dtok->data.dyn_tok.arr = answers;
     dtok->data.dyn_tok.narr = nanswers;
@@ -123,12 +180,24 @@ int8_t handle_inspect_slot(
     return 0;
 }
 
+
 int kt_test(
+    CuTest *tc,
     struct onk_tk_token_match_t *kit,
     struct onk_token_t *input,
     uint16_t ninput,
-    uint16_t iter)
-{
+    uint16_t iter,
+    char * filepath,
+    uint16_t line,
+    char * msg
+){
+    char buf[512];
+    char token2[64];
+    const char *fmt_buf =                                   \
+        "Token did not match STATIC match.\n "              \
+        "got: %s \n"                                        \
+        "expected: %s \n";
+
 
     //todo assert
     if(ninput != kit->narr)
@@ -138,21 +207,55 @@ int kt_test(
     {
         switch(kit->arr[i].slot_type) {
             case onk_static_slot:
-                if(kit->arr[i].data.static_tok != input[i].type)
-                  return -1;
+                snprintf(
+                    buf, 512, fmt_buf,
+                    onk_ptoken(input[i].type),
+                    onk_ptoken(kit->arr[i].data.static_tok)
+                );
+
+                CuAssert_Line(
+                    tc,
+                    filepath,
+                    line,
+                    msg,
+                    kit->arr[i].data.static_tok != input[i].type
+                );
+
                 break;
 
             case onk_dynamic_slot:
                 if (kit->arr[i].data.dyn_tok.arr[iter] != input[i].type)
                     return -1;
+
+                fmt_buf = "Token did not match DYNAMIC match (idx: %ud)" \
+                "got: ";
+
+                CuAssert_Line(
+                    tc,
+                    filepath,
+                    line,
+                    msg,
+                    kit->arr[i].data.static_tok != input[i].type
+                );
+
                 break;
 
             case onk_inspect_slot:
                 if (handle_inspect_slot(kit->arr[i].data.inspect, &input[i]) != 0)
                     return -1;
+
+                print_token_from_char_arr(fmt_buf, 512, &input[i]);
+                print_token_from_char_arr(fmt_buf_2, 512,
+                    kit->arr[i].data.inspect.token);
+
+                "Token did not match INSPECT match (mask: %ud) "        \
+                "expected: token { start: %ud; end: %ud; seq: %ud; type: %s (%ud) }\n" \
+                "got: token { start: %ud; end: %ud; seq: %ud; type: %s (%ud) } ";
+
                 break;
 
             default:
+                "Undefined condition";
                 return -1;
         }
     }
