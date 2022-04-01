@@ -1,3 +1,4 @@
+#include <string.h>
 #include "onkstd/vec.h"
 #include "lexer.h"
 #include "parser.h"
@@ -188,86 +189,113 @@ int kt_test(
     uint16_t ninput,
     uint16_t iter,
     char * filepath,
-    uint16_t line,
-    char * msg
+    uint16_t line
 ){
     char buf[512];
-    char token2[64];
-    const char *fmt_buf =                                   \
-        "Token did not match STATIC match.\n "              \
-        "got: %s \n"                                        \
-        "expected: %s \n";
+
+    char token2[128];
+    char token1[128];
+
+    const char *_check_failed = "failed L%ud (%s)";
+    const char *fmt_buf;
 
 
+    fmt_buf = "failed size match. L%d (%s)";
+    snprintf(buf, 512, fmt_buf, line, filepath);
     //todo assert
-    if(ninput != kit->narr)
-      return -1;
+    CuAssert(tc, "failed size match. L%d (%s)", ninput != kit->narr);
+
+    memset(buf, 0, 512);
 
     for(uint16_t i=0; ninput > i; i++)
     {
-        switch(kit->arr[i].slot_type) {
+        switch(kit->arr[i].slot_type)
+        {
             case onk_static_slot:
+                fmt_buf =                                   \
+                    "Token did not match STATIC match.\n "  \
+                    "got: %s \n"                            \
+                    "expected: %s \n"                       \
+                    "failed L%d (%s)";
+
+
                 snprintf(
                     buf, 512, fmt_buf,
                     onk_ptoken(input[i].type),
-                    onk_ptoken(kit->arr[i].data.static_tok)
+                    onk_ptoken(kit->arr[i].data.static_tok),
+                    line, filepath
                 );
 
-                CuAssert_Line(
+                CuAssert(
                     tc,
-                    filepath,
-                    line,
-                    msg,
+                    buf,
                     kit->arr[i].data.static_tok != input[i].type
                 );
 
                 break;
 
             case onk_dynamic_slot:
-                if (kit->arr[i].data.dyn_tok.arr[iter] != input[i].type)
-                    return -1;
+                fmt_buf = "Token did not match DYNAMIC match (idx: %ud)\n" \
+                    "got: %s \n"                                        \
+                    "expect: %s \n"                                     \
+                    "failed L%d (%s)";
 
-                fmt_buf = "Token did not match DYNAMIC match (idx: %ud)" \
-                "got: ";
+                snprintf(
+                    buf, 512, fmt_buf,
+                    onk_ptoken(input[i].type),
+                    onk_ptoken(kit->arr[i].data.static_tok),
+                    line, filepath
+                );
 
-                CuAssert_Line(
+                CuAssert(
                     tc,
-                    filepath,
-                    line,
-                    msg,
-                    kit->arr[i].data.static_tok != input[i].type
+                    buf,
+                    kit->arr[i].data.dyn_tok.arr[iter] != input[i].type
                 );
 
                 break;
 
             case onk_inspect_slot:
-                if (handle_inspect_slot(kit->arr[i].data.inspect, &input[i]) != 0)
-                    return -1;
+                fmt_buf = "Token did not match INSPECT match (mask: %ud)\n" \
+                    "expected: %s\n"                                    \
+                    "got: %s \n"                                        \
+                    "failed L%d (%s)";
 
-                print_token_from_char_arr(fmt_buf, 512, &input[i]);
-                print_token_from_char_arr(fmt_buf_2, 512,
-                    kit->arr[i].data.inspect.token);
+                print_token_from_char_arr(token1, 128, &input[i]);
+                print_token_from_char_arr(token2, 128,
+                    &kit->arr[i].data.inspect.token);
 
-                "Token did not match INSPECT match (mask: %ud) "        \
-                "expected: token { start: %ud; end: %ud; seq: %ud; type: %s (%ud) }\n" \
-                "got: token { start: %ud; end: %ud; seq: %ud; type: %s (%ud) } ";
+                snprintf(buf, 512, fmt_buf, &kit->arr[i].data.inspect.flags, &token1, &token2, );
+
+                CuAssert(
+                    tc,
+                    buf,
+                    handle_inspect_slot(&kit->arr[i].data.inspect, &input[i]) == 0
+                );
 
                 break;
 
             default:
-                "Undefined condition";
+                fmt_buf = "Undefined Condition. Failed L%d (%s)";
+                snprintf(buf, 512, fmt_buf, line, filepath);
+                CuFail(tc, buf);
                 return -1;
         }
+
+        memset(buf, 0, 512);
     }
     return 0;
 }
 
 
 void kt_tokenize_test(
+    CuTest *tc,
     struct onk_tk_token_match_t *kit,
     struct onk_lexer_input_t *lexer_input,
     struct onk_lexer_output_t *lexer_output,
-    uint16_t i
+    uint16_t iter,
+    char * fp,
+    uint16_t line
 ){
     int ret;
     ret = onk_tokenize(lexer_input, lexer_output);
@@ -275,10 +303,13 @@ void kt_tokenize_test(
     // cuAssert(ret == 0)
 
     ret = kt_test(
+        tc,
         kit,
         lexer_output->tokens.base,
         lexer_input->tokens.len,
-        i
+        iter,
+        fp,
+        line
     );
 
     // cuAssert(ret == 0)
@@ -286,28 +317,37 @@ void kt_tokenize_test(
 
 
 void kt_parse_test(
+    CuTest *tc,
     struct onk_tk_token_match_t *kit,
     struct onk_parser_input_t *input,
     struct onk_parser_output_t *output,
-    uint16_t i
+    uint16_t i,
+    char * fp,
+    uint16_t line
 ){
     int ret;
 
     ret = onk_parse(input, output);
     // cuAssert(ret == 0)
     ret = kt_test(
+        tc,
         kit,
         output->postfix.base,
         input->tokens.len,
-        i
+        i,
+        fp,
+        line
     );
 
     // cuAssert(ret == 0)
 }
 void run_test(
+    CuTest *tc,
     struct onk_tk_token_match_t *lexer,
     struct onk_tk_token_match_t *parser,
-    uint16_t fmt_i
+    uint16_t fmt_i,
+    char *fp,
+    uint16_t line
 ) {
 
     struct onk_lexer_input_t lexer_input;
@@ -316,10 +356,13 @@ void run_test(
     struct onk_parser_output_t parser_output;
 
     kt_tokenize_test(
+        tc,
         lexer,
         &lexer_input,
         &lexer_output,
-        fmt_i
+        fmt_i,
+        fp,
+        line
     );
 
     onk_parser_input_from_lexer_output(
@@ -327,10 +370,13 @@ void run_test(
     );
 
     kt_parse_test(
+        tc,
         parser,
         &parser_input,
         &parser_output,
-        fmt_i
+        fmt_i,
+        fp,
+        line
     );
 
 }
@@ -358,7 +404,7 @@ void build_test_mold_kit(
 }
 
 
-void test_mold()
+void example(CuTest *tc)
 {
     struct onk_tk_token_match_t parser, lexer;
     struct onk_vec_t tokens;
@@ -388,7 +434,7 @@ void test_mold()
         snprintf(buf, 256, fmt, fmt_segs[i][0], fmt_segs[i][1]);
         lexer_input.src_code = buf;
 
-        run_test(&lexer, &parser, i);
+        run_test(tc, &lexer, &parser, i, __FILE__, __LINE__);
 
         onk_vec_clear(&tokens);
     }
