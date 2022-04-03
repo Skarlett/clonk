@@ -182,7 +182,7 @@ int8_t handle_inspect_slot(
 }
 
 
-int kt_test(
+int assert_match(
     CuTest *tc,
     struct onk_tk_token_match_t *kit,
     struct onk_token_t *input,
@@ -288,7 +288,7 @@ int kt_test(
 }
 
 
-void kt_tokenize_test(
+void onk_assert_tokenize(
     CuTest *tc,
     struct onk_tk_token_match_t *kit,
     struct onk_lexer_input_t *lexer_input,
@@ -302,7 +302,7 @@ void kt_tokenize_test(
 
     // cuAssert(ret == 0)
 
-    ret = kt_test(
+    ret = assert_match(
         tc,
         kit,
         lexer_output->tokens.base,
@@ -316,7 +316,7 @@ void kt_tokenize_test(
 }
 
 
-void kt_parse_test(
+void onk_assert_postfix(
     CuTest *tc,
     struct onk_tk_token_match_t *kit,
     struct onk_parser_input_t *input,
@@ -341,7 +341,7 @@ void kt_parse_test(
 
     // cuAssert(ret == 0)
 }
-void run_test(
+void onk_assert_parse_stage(
     CuTest *tc,
     struct onk_tk_token_match_t *lexer,
     struct onk_tk_token_match_t *parser,
@@ -349,7 +349,6 @@ void run_test(
     char *fp,
     uint16_t line
 ) {
-
     struct onk_lexer_input_t lexer_input;
     struct onk_lexer_output_t lexer_output;
     struct onk_parser_input_t parser_input;
@@ -369,7 +368,7 @@ void run_test(
         &lexer_output, &parser_input, false
     );
 
-    kt_parse_test(
+    onk_assert_postfix(
         tc,
         parser,
         &parser_input,
@@ -434,7 +433,7 @@ void example(CuTest *tc)
         snprintf(buf, 256, fmt, fmt_segs[i][0], fmt_segs[i][1]);
         lexer_input.src_code = buf;
 
-        run_test(tc, &lexer, &parser, i, __FILE__, __LINE__);
+        OnkAssertParseStage(tc, &lexer, &parser, i, __FILE__, __LINE__);
 
         onk_vec_clear(&tokens);
     }
