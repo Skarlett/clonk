@@ -692,5 +692,13 @@ int16_t onk_snprint_ref_tokens_as_lexicon_arr(
     char * buf, uint16_t nbuf,
     struct onk_token_t **arr, int16_t narr);
 
-#endif
+int16_t onk_snprint_token(
+    char * buf,
+    uint16_t max,
+    const struct onk_token_t *token);
 
+int16_t _onk_snprint_lexicon_arr(
+    char * buf, uint16_t nbuf,
+    enum onk_lexicon_t token);
+
+#endif
