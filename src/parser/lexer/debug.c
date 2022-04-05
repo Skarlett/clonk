@@ -62,167 +62,144 @@ const char * onk_ptoken(enum onk_lexicon_t t) {
     };
 }
 
-/* char brace_as_char(enum onk_lexicon_t tok) { */
-/*     switch(tok){ */
-/*         case ONK_BRACE_OPEN_TOKEN: return '{'; */
-/*         case ONK_BRACE_CLOSE_TOKEN: return '}'; */
-/*         case ONK_PARAM_OPEN_TOKEN: return '('; */
-/*         case ONK_PARAM_CLOSE_TOKEN: return ')'; */
-/*         case ONK_BRACKET_OPEN_TOKEN: return '['; */
-/*         case ONK_BRACKET_CLOSE_TOKEN: return ']'; */
-/*         default: */
-/*             return -1; */
-/*     } */
-/* } */
-
-/* not used */
-/* char invert_brace_char(char brace) { */
-/*     switch(brace){ */
-/*         case '{': return '}'; */
-/*         case '}': return '{'; */
-/*         case '(': return ')'; */
-/*         case ')': return '('; */
-/*         case '[': return ']'; */
-/*         case ']': return '['; */
-/*         default: */
-/*             return -1; */
-/*     } */
-/* } */
-
-
-char * __sprintf_token_ty_slice(char *output, uint16_t output_sz, enum onk_lexicon_t token, uint16_t *ctr) {
-    char token_buf[64];
+int16_t onk_snprint_token(
+    char * buf,
+    uint16_t max,
+    const struct onk_token_t *token)
+{
+    const char *fmt = "{ start: %ud; end: %ud; seq: %ud; type: %s (%ud) }";
     const char *ptok;
+    int nbytes;
 
-    if (!ctr || !output)
-        return 0;
-    
-    ptok = onk_ptoken(token);
-    sprintf(token_buf, "[%s], ", ptok);
-    
-    return strncat(output, token_buf, strlen(ptok)+4);
+    ptok = onk_ptoken(token->type);
+
+    nbytes = snprintf(
+         buf,
+         max,
+         fmt,
+         token->start,
+         token->end,
+         token->seq,
+         ptok,
+         token->type
+    );
+
+    return nbytes;
 }
 
-enum SPFMode {
-    BTypeNull,
-    spf_lex_arr,
-    spf_tok_arr,
-    spf_tok_arr_by_ref
-};
 
-union SPFData {
-    const enum onk_lexicon_t *lex_arr;
-    const struct onk_token_t *tok_arr;
-    const struct onk_token_t **tok_arr_by_ref;
-};
+#define _ONK_PRINT_BUF 64
+int16_t _onk_snprint_lexicon_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t token) {
 
-char * __sprintf_inner(
-    uint16_t ntokens,
-    char *output, uint16_t output_sz,
-    union SPFData *ptr, enum SPFMode spf_ty
-){
-    uint16_t ctr = 0;
-    enum onk_lexicon_t item = 0;
+    const char * ptoken;
+    char working_buf[_ONK_PRINT_BUF];
+    uint8_t ptoken_len;
 
-    if (!ptr || !output)
-        return 0;
-    
-    output[0] = '[';
+    ptoken = onk_ptoken(token);
+    ptoken_len = strlen(ptoken) + 3;
 
-    for (uint16_t i=0; ntokens > i; i++) {
+    if (ptoken_len >= nbuf)
+        return -1;
 
-        if (spf_ty == spf_lex_arr && ptr->lex_arr) 
-            item = ptr->lex_arr[i];
-        else if (spf_ty == spf_tok_arr && ptr->tok_arr)
-            item = ptr->tok_arr[i].type;
-        else if (spf_ty == spf_tok_arr_by_ref && ptr->tok_arr_by_ref)
-            item = ptr->tok_arr_by_ref[i]->type;
-        else return 0;
-        
-        if (__sprintf_token_ty_slice(
-          output,
-          output_sz,
-          item,
-          &ctr
-        ) == 0) return 0;
+    snprintf(working_buf, _ONK_PRINT_BUF, "[%s] ", ptoken);
 
+    strncat(
+        buf,
+        working_buf,
+        nbuf
+    );
+
+    return ptoken_len;
+}
+
+#define _ONK_PRINT_LEX_ARR_BUF 64
+
+int16_t onk_snprint_lexicon_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t *arr, int16_t narr)
+{
+    uint16_t remaining_bytes = nbuf;
+    int16_t ptok_len = 0;
+
+    assert(narr > 0);
+
+    for(int16_t i=0; narr > i; i++)
+    {
+
+        ptok_len = _onk_snprint_lexicon_arr(
+            buf, remaining_bytes,
+            arr[i]);
+
+        if(-1 >= ptok_len)
+            return -1;
+
+        remaining_bytes -= ptok_len;
     }
 
-    strncat(output, "]", 1);
-    
-    return 0;
+    return nbuf - remaining_bytes;
+}
+
+int16_t onk_snprint_ref_lexicon_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t **arr, int16_t narr)
+{
+    uint16_t remaining_bytes = nbuf;
+    int16_t ptok_len = 0;
+
+    assert(narr > 0);
+
+    for(int16_t i=0; narr > i; i++)
+    {
+        ptok_len = _onk_snprint_lexicon_arr(
+            buf, remaining_bytes,
+            *arr[i]);
+
+        if(-1 >= ptok_len)
+            return -1;
+
+        remaining_bytes -= ptok_len;
+    }
+    return nbuf - remaining_bytes;
+}
+
+int16_t onk_snprint_tokens_as_lexicon_arr(char * buf, uint16_t nbuf, struct onk_token_t *arr, int16_t narr)
+{
+    uint16_t remaining_bytes = nbuf;
+    int16_t ptok_len = 0;
+    assert(narr > 0);
+
+    for(int16_t i=0; narr > i; i++)
+    {
+
+        ptok_len = _onk_snprint_lexicon_arr(
+            buf, remaining_bytes,
+            arr[i].type);
+
+        if(-1 >= ptok_len)
+            return -1;
+
+        remaining_bytes -= ptok_len;
+    }
+
+    return nbuf - remaining_bytes;
 }
 
 
-int8_t sprintf_token_slice(
-    const struct onk_token_t tokens[],
-    uint16_t ntokens,
-    char * output,
-    uint16_t output_sz    
-){
-    uint16_t ctr=0;
-    union SPFData input;
-    enum SPFMode mode = spf_tok_arr;
-    input.tok_arr = tokens;
+int16_t onk_snprint_ref_tokens_as_lexicon_arr(char * buf, uint16_t nbuf, struct onk_token_t **arr, int16_t narr)
+{
+    uint16_t remaining_bytes = nbuf;
+    int16_t ptok_len = 0;
 
-    if (__sprintf_inner(ntokens, output, output_sz, &input, mode) == 0)
-        return -1;
+    assert(narr > 0);
 
-    return 0;
-}
+    for(int16_t i=0; narr > i; i++)
+    {
 
-int8_t sprintf_lexicon_slice(
-    const enum onk_lexicon_t tokens[],
-    uint16_t ntokens,
-    char * output,
-    uint16_t output_sz
-){
-    union SPFData input;
-    enum SPFMode mode = spf_lex_arr;
-    input.lex_arr = tokens;
+        ptok_len = _onk_snprint_lexicon_arr(
+            buf, remaining_bytes,
+            arr[i]->type);
 
-    if (__sprintf_inner(ntokens, output, output_sz, &input, mode) == 0)
-        return -1;
+        if(-1 >= ptok_len)
+            return -1;
 
-    return 0;
+        remaining_bytes -= ptok_len;
+    }
 
-}
-
-int8_t sprintf_token_slice_by_ref(
-    const struct onk_token_t *tokens[],
-    uint16_t ntokens,
-    char * output,
-    uint16_t output_sz    
-){
-    union SPFData input;
-    enum SPFMode mode = spf_tok_arr_by_ref;
-    input.tok_arr_by_ref = tokens;
-
-    if (__sprintf_inner(ntokens, output, output_sz, &input, mode) == 0)
-        return -1;
-
-    return 0;
-}
-
-int8_t sprint_src_code(
-    char * output,
-    uint16_t output_sz,
-    uint16_t *nbytes,
-    const char * source,
-    const struct onk_token_t *token
-
-){
-    if (!source || !output || !token 
-        || token->start > token->end
-        || token->end - token->start > output_sz)
-        return -1;
-    
-    memcpy(
-        output,
-        source+token->start,
-        token->end-token->start
-    );
-    
-    *nbytes = token->end - token->start;
-    return 0;
+    return nbuf - remaining_bytes;
 }
