@@ -3,23 +3,6 @@
 #include "parser.h"
 #include "libtest/CuTest.h"
 
-/**
- * Checks if token stream is balanced.
- * To be balanced is every brace opening,
- * having a pairing brace closing token
- * following it eventually.
- * The follow are examples:
- *
- *    a + b + (2 + 5)  Is balanced
- *   (a + b            Is unbalanced.
- *
- * @param tokens array of tokens
- * @param ntokens amount of tokens to read
- *
- * @return bool
- */
-//bool is_balanced(struct onk_token_t tokens[], uint16_t ntokens);
-
 enum onk_slot_ty
 {
   onk_static_slot,
@@ -29,16 +12,11 @@ enum onk_slot_ty
 
 
 /*
- *
- *
  *                              a1
  * [ Dtoken<WORD>, Dtoken<INT>, Dtoken< ? >, 0 ]
  *                               001   Add
  *                               010   Sub
  *                               100   Mul
- *
- *
- *
  * */
 
 struct onk_desc_dyn_token_t {
@@ -67,12 +45,6 @@ struct onk_desc_token_t {
         struct onk_desc_dyn_token_t dyn_tok;
     } data;
 };
-
-/* struct onk_desc_token_t */
-/* { */
-/*     enum descriptor_ty type; */
-/*     enum onk_lexicon_t tok; */
-/* }; */
 
 /*
  * formats string, tokenizes, parses,
