@@ -8,6 +8,8 @@
 #include "clonk.h"
 #include "onkstd/vec.h"
 
+#define ONK_TOK_CHAR_SIZE 64
+
 enum onk_lexicon_t {
     /* end of file */
     ONK_EOFT,
@@ -677,8 +679,10 @@ bool _onk_is_group(enum onk_lexicon_t tok);
 enum onk_lexicon_t onk_invert_brace(enum onk_lexicon_t token);
 
 int16_t onk_snprint_lexicon_arr(
-    char * buf, uint16_t nbuf,
-    enum onk_lexicon_t *arr, int16_t narr);
+    char * buf,
+    uint16_t nbuf,
+    enum onk_lexicon_t *arr,
+    int16_t narr);
 
 int16_t onk_snprint_ref_lexicon_arr(
     char * buf, uint16_t nbuf, enum onk_lexicon_t **arr,
@@ -699,6 +703,11 @@ int16_t onk_snprint_token(
 
 int16_t _onk_snprint_lexicon_arr(
     char * buf, uint16_t nbuf,
+    enum onk_lexicon_t token);
+
+int8_t onk_snprint_token_type(
+    char * buf,
+    uint16_t max,
     enum onk_lexicon_t token);
 
 #endif
