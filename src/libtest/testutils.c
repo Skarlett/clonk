@@ -133,7 +133,7 @@ void onk_match_token_init(
 }
 
 
-int16_t type_error_message(
+int16_t print_expect_line(
     char * buf,
     uint16_t nbuf,
     char * src_code,
@@ -141,44 +141,124 @@ int16_t type_error_message(
     enum onk_lexicon_t *expected,
     uint16_t mismatched_idx,
     char * fp,
-    uint16_t line)
-{
-    char lexicon_buf[256];
+    uint16_t line
+){
+    char lexed_token[ONK_TOK_CHAR_SIZE];
+    char expected_token[ONK_TOK_CHAR_SIZE];
 
     uint16_t spaces = 0;
     uint16_t underline = 0;
-    uint16_t remaining_bytes = nbuf;
+    uint16_t nwrote;
 
-    snprintf(buf, remaining_bytes, "[%s] failed at: L%d\n" \
-             "src: `%s`\n"                      \
-             "tokens: %s",
-             fp, line, src_code, lexicon_buf);
+    char * tail;
 
+    onk_snprint_token_type(
+        lexed_token, ONK_TOK_CHAR_SIZE,
+        lexed[mismatched_idx].type
+    );
 
-    strncat();
+    onk_snprint_token_type(
+        expected_token, ONK_TOK_CHAR_SIZE,
+        expected[mismatched_idx]
+    );
 
-    remaining_bytes = _onk_snprint_lexicon_arr(
-        buf, remaining_bytes, dtok->data.static_tok);
+    for(uint16_t i = 0; mismatched_idx > i; i++)
+        spaces += onk_token_len(&lexed[i]);
+
+    underline = onk_token_len(&lexed[mismatched_idx]);
+
+    nwrote = snprintf(
+        buf, nbuf,
+        "[%s] failed at: L%u (expected `%s` got `%s`)\n"                 \
+        "src: `%s`\n",
+        fp, line, expected_token, lexed_token, src_code
+    );
+
+    if(nwrote + spaces + underline + 1 > nbuf)
+        return -1;
+
+    tail = &buf[nwrote];
+    memset(tail, ' ', spaces);
+    nwrote += spaces;
+
+    tail = &tail[nwrote];
+    memset(tail, '~', underline);
+    nwrote += underline + 1;
+
+    tail[underline] = '\n';
+
+    return nwrote;
 }
 
-int16_t token_error_message(
+int16_t print_lex_type_mismatch(
     char * buf,
     uint16_t nbuf,
     char * src_code,
     struct onk_token_t *lexed,
+    uint16_t nlexed,
     enum onk_lexicon_t *expected,
+    uint16_t nexpected,
+    uint16_t mismatched_idx,
     char * fp,
-    uint16_t line)
-{
-    snprintf(buf, nbuf, "[%s] failed at: L%d\n" \
-             "src: `%s`\n"                      \
-             "tokens: %s\n"                       \
-             "expected: %s\n"                       \
-             "------------",
-             fp, line, src_code,
-             lexed, expected
+    uint16_t line
+){
+    uint16_t spaces = 0;
+    uint16_t underline = 0;
+    int16_t nwrote;
+
+    uint16_t lex_sz =                                               \
+        (onk_str_len_token_arr(lexed, nlexed) + 1) * sizeof(char);
+
+    uint16_t expect_sz =                                                \
+        (onk_str_len_lexicon_arr(expected, nexpected) + 1) * sizeof(char);
+
+    char * lexicon_buf = malloc(lex_sz);
+    char * expected_buf = malloc(expect_sz);
+    char * tail;
+
+    nwrote = print_expect_line(
+        buf,
+        nbuf,
+        src_code,
+        lexed,
+        expected,
+        mismatched_idx,
+        fp,
+        line
     );
 
+    if(nwrote == -1)
+        return -1;
+
+    for(uint16_t i = 0; mismatched_idx > i; i++)
+        spaces += (strlen(onk_ptoken(expected[i])) || 1);
+
+    underline = strlen(onk_ptoken(expected[mismatched_idx]));
+
+    nwrote += snprintf(
+        &buf[nwrote], nbuf - nwrote,
+        "  tokens: %s\n"                        \
+        "expected: %s\n",
+        lexicon_buf, expected_buf
+    );
+
+    tail = &buf[nwrote];
+
+    if(nwrote + spaces + underline + 1 > nbuf - nwrote)
+        return -1;
+
+    memset(tail, ' ', spaces);
+    nwrote += spaces;
+    tail = &buf[nwrote];
+
+    memset(tail, '~', underline);
+    nwrote += underline;
+    tail[nwrote] = '\n';
+
+    free(lexicon_buf);
+    free(expected_buf);
+
+    return nwrote + 1;
 }
 
 int8_t handle_inspect_slot(
@@ -403,15 +483,15 @@ void build_test_mold_kit(
     enum onk_lexicon_t working_space = ONK_WORD_TOKEN;
 
     // mold lexer output
-    tk_add_static(lexer, &working_space, 1);
-    tk_add_dynamic(lexer, (enum onk_lexicon_t *)dyn_answ_s2, 2);
-    tk_add_static(lexer, &working_space, 1);
-    tk_add_dynamic(lexer, (enum onk_lexicon_t *)dyn_answ_s1, 2);
+    onk_desc_add_static_slot(lexer, &working_space, 1);
+    onk_desc_add_dynamic_slot(lexer, (enum onk_lexicon_t *)dyn_answ_s2, 2);
+    onk_desc_add_static_slot(lexer, &working_space, 1);
+    onk_desc_add_dynamic_slot(lexer, (enum onk_lexicon_t *)dyn_answ_s1, 2);
 
     // Mold Parser output
-    tk_add_static(parser,  (enum onk_lexicon_t *)static_answ, 3);
-    tk_add_dynamic(parser, (enum onk_lexicon_t *)dyn_answ_s1, 2);
-    tk_add_dynamic(parser, (enum onk_lexicon_t *)dyn_answ_s2, 2);
+    onk_desc_add_static_slot(parser,  (enum onk_lexicon_t *)static_answ, 3);
+    onk_desc_add_dynamic_slot(parser, (enum onk_lexicon_t *)dyn_answ_s1, 2);
+    onk_desc_add_dynamic_slot(parser, (enum onk_lexicon_t *)dyn_answ_s2, 2);
 }
 
 
