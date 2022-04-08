@@ -100,9 +100,33 @@ int16_t onk_snprint_token(
     return nbytes;
 }
 
+int16_t onk_str_len_lexicon_arr(
+    enum onk_lexicon_t *arr,
+    uint16_t narr
+)
+{
+    uint16_t sum = 0;
+
+    for (uint16_t i=0; narr > i; i++)
+        sum += (3 + strlen(onk_ptoken(arr[i])));
+
+    return sum;
+}
+
+int16_t onk_str_len_token_arr(
+    struct onk_token_t *arr,
+    uint16_t narr
+)
+{
+    uint16_t sum = 0;
+
+    for (uint16_t i=0; narr > i; i++)
+        sum += (3 + strlen(onk_ptoken(arr[i].type)));
+
+    return sum;
+}
 
 int16_t _onk_snprint_lexicon_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t token) {
-
     const char * ptoken = 0;
     char working_buf[ONK_TOK_CHAR_SIZE];
     uint8_t ptoken_len;
@@ -123,8 +147,6 @@ int16_t _onk_snprint_lexicon_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t t
 
     return ptoken_len;
 }
-
-#define _ONK_PRINT_LEX_ARR_BUF 64
 
 int16_t onk_snprint_lexicon_arr(
     char * buf, uint16_t nbuf,
@@ -193,7 +215,6 @@ int16_t onk_snprint_tokens_as_lexicon_arr(char * buf, uint16_t nbuf, struct onk_
 
     return nbuf - remaining_bytes;
 }
-
 
 int16_t onk_snprint_ref_tokens_as_lexicon_arr(char * buf, uint16_t nbuf, struct onk_token_t **arr, int16_t narr)
 {
