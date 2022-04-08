@@ -134,6 +134,12 @@ void onk_assert_parse_stage(
     uint16_t line
 );
 
+void onk_match_token_init(
+    struct onk_tk_token_match_t *kit,
+    struct onk_desc_token_t *buffer,
+    uint16_t buffer_sz
+);
+
 #define OnkAssertMatch(tc, kit, toks, ntoks, i)     \
     onk_assert_match((tc), (kit), (toks), ntoks, i, __FILE__, __LINE__);
 
@@ -143,5 +149,5 @@ void onk_assert_parse_stage(
 #define OnkAssertPostFixStage(tc, kit, input, output, i)                \
     onk_assert_postfix((tc), (kit), (input), (output), (i), __FILE__, __LINE__))
 
-#define OnkAssertParseStage(tc, kit, input, output, i)  \
-    onk_assert_parse_stage((tc), (kit), (input), (output), (i), __FILE__, __LINE__)))
+#define OnkAssertParseStage(tc, kit, input, i)  \
+    onk_assert_parse_stage((tc), (kit), (input), (i), __FILE__, __LINE__)
