@@ -504,7 +504,7 @@ void example(CuTest *tc)
     struct onk_desc_token_t lex_buf[12];
     struct onk_desc_token_t parse_buf[12];
 
-    const char * fmt_segs[][2] =                \
+    const char * fmt_segs[][2] =            \
         {{"+", "-"},{"*", "/"}};
         /*s1p1  s1p2  s2p1 s2p2*/
 
@@ -512,8 +512,8 @@ void example(CuTest *tc)
 
     char buf[256];
 
-    tk_init(&lexer, (struct onk_desc_token_t *)lex_buf, 12);
-    tk_init(&parser, (struct onk_desc_token_t *)parse_buf, 12);
+    onk_match_token_init(&lexer, (struct onk_desc_token_t *)lex_buf, 12);
+    onk_match_token_init(&parser, (struct onk_desc_token_t *)parse_buf, 12);
     onk_vec_init(&tokens, 32, sizeof(struct onk_token_t));
 
     build_test_mold_kit(&parser, &lexer);
@@ -529,75 +529,4 @@ void example(CuTest *tc)
 
         onk_vec_clear(&tokens);
     }
-
-
-    /* kt_run */
 }
-
-
-/*
-    function determines if an expression is unbalanced.
-    an expression can be unbalanced
-    if there is a nonmatching `[` / `(` / `{` character
-*/
-
-/* void onk_assert_tokens( */
-/*     CuTest *tc, */
-/*     const char *source_code, */
-/*     const char *file, */
-/*     const char *msg, */
-/*     const struct onk_token_t tokens[], */
-/*     const enum onk_lexicon_t answer[] */
-/* ){ */
-/*     char uneql_msg[2048]; */
-/*     char uneql_len_msg[2048]; */
-
-/*     char got[512]; */
-/*     char expected[512]; */
-
-/*     uint16_t len=0; */
-/*     for (;; len++) { */
-/*         if (answer[len] == 0){ */
-/*             break; */
-/*         } */
-/*     } */
-
-/*     sprintf_token_slice(tokens, len, got, 512); */
-/*     sprintf_lexicon_slice(answer, len, expected, 512); */
-/*     sprintf(uneql_msg, FMT_STR, msg, expected, got, source_code); */
-/*     sprintf(uneql_len_msg, "expected len: %ld <\n%s", len, uneql_msg); */
-
-/* } */
-
-/* void onk_assert_tokens_by_ref( */
-/*     CuTest *tc, */
-/*     const char *source_code, */
-/*     const char *file, */
-/*     const char *msg, */
-/*     const struct onk_token_t *tokens[], */
-/*     const enum onk_lexicon_t answer[] */
-/* ){ */
-/*     char uneql_msg[2048]; */
-/*     char uneql_len_msg[2048]; */
-
-/*     char got[512]; */
-/*     char expected[512]; */
-
-/*     memset(got, 0, sizeof(char[512])); */
-/*     memset(expected, 0, sizeof(char[512])); */
-/*     memset(uneql_len_msg, 0, sizeof(char[2048])); */
-/*     memset(uneql_msg, 0, sizeof(char[2048])); */
-
-/*     usize len=0; */
-/*     for (;; len++) { */
-/*         if (answer[len] == 0) */
-/*             break; */
-/*     } */
-/*     if (len == 0) */
-/*         return; */
-
-/*     sprintf_token_slice_by_ref(tokens, len, got, 512); */
-/*     sprintf_lexicon_slice(answer, len, expected, 512); */
-/*     sprintf(uneql_msg, FMT_STR, msg, expected, got, source_code); */
-/*     sprintf(uneql_len_msg, "%s: expected len: %ld <\n%s", msg, len, uneql_msg); */
-/* } */
