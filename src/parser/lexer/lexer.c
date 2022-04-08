@@ -260,7 +260,7 @@ int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t
   return 0;
 }
 
-uint16_t token_len(struct onk_token_t *tok)
+uint16_t onk_token_len(struct onk_token_t *tok)
 {
   return 1 + tok->end - tok->start;
 }
@@ -528,7 +528,7 @@ int8_t finalize_compound_token(
   / check if its an operator, and that its lenth is 2
   / if not - down grade the operator from its complex version
   */
-  if (token_len(token) < 2 && is_compound_bin_op(token->type)) {
+  if (onk_token_len(token) < 2 && is_compound_bin_op(token->type)) {
     token->type = invert_operator_token(token->type);
 
     /* Error: UNDEFINED/null token when inverted*/
