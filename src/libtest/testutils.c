@@ -200,6 +200,7 @@ int16_t print_lex_type_mismatch(
     uint16_t nlexed,
     enum onk_lexicon_t *expected,
     uint16_t nexpected,
+    char * msg,
     uint16_t mismatched_idx,
     char * fp,
     uint16_t line
@@ -281,7 +282,6 @@ int8_t handle_inspect_slot(
     return 0;
 }
 
-
 int16_t kit_as_lex_arr(
     enum onk_lexicon_t *arr,
     uint16_t arr_sz,
@@ -319,7 +319,6 @@ int16_t kit_as_lex_arr(
             default:
                 return -1;
         }
-
     }
 
     return i + 1;
@@ -337,104 +336,72 @@ int onk_assert_match(
     uint16_t line
 ){
     char buf[512];
+    uint16_t iinspect[32];
+    uint16_t ninspect;
+    uint16_t nexpected;
 
+    const char * fmt_buf, *msg;
     char token2[ONK_TOK_CHAR_SIZE];
     char token1[ONK_TOK_CHAR_SIZE];
 
-    const char *fmt_buf;
+    enum onk_lexicon_t *expect_lex_arr;
+
+    expect_lex_arr = malloc((ninput+1) * sizeof(enum onk_lexicon_t));
 
     fmt_buf = "failed size match. L%d (%s)";
     snprintf(buf, 512, fmt_buf, line, filepath);
 
-    CuAssert(tc, buf, ninput != kit->narr);
+    CuAssert(tc, buf, ninput == kit->narr);
     memset(buf, 0, 512);
 
+    nexpected = kit_as_lex_arr(
+        expect_lex_arr,
+        ninput+1,
+        kit, iter,
+        iinspect,
+        32
+    );
 
-    kit_as_lex_arr()
-
-    memcmp();
+    CuAssert(tc, buf, nexpected == kit->narr);
 
     for(uint16_t i=0; ninput > i; i++)
     {
-        print_lex_type_mismatch(
-            buf, 512, src_code,
-            input, ninput, expected,
-            nexpected, i, fp, line
-        );
-
         switch(kit->arr[i].slot_type)
         {
             case onk_static_slot:
-
-                fmt_buf =                                   \
-                    "Token did not match STATIC match.\n "  \
-                    "got: %s \n"                            \
-                    "expected: %s \n"                       \
-                    "failed L%d (%s)";
-
-                snprintf(
-                    buf, 512, fmt_buf,
-                    onk_ptoken(input[i].type),
-                    onk_ptoken(kit->arr[i].data.static_tok),
-                    line, filepath
-                );
-
-                CuAssert(
-                    tc,
-                    buf,
-                    kit->arr[i].data.static_tok != input[i].type
-                );
-
+                msg = "Token did not match STATIC slot.";
                 break;
-
             case onk_dynamic_slot:
-                fmt_buf = "Token did not match DYNAMIC match (idx: %ud)\n" \
-                    "got: %s \n"                                        \
-                    "expect: %s \n"                                     \
-                    "failed L%d (%s)";
-
-                snprintf(
-                    buf, 512, fmt_buf,
-                    onk_ptoken(input[i].type),
-                    onk_ptoken(kit->arr[i].data.static_tok),
-                    line, filepath
-                );
-
-                CuAssert(
-                    tc,
-                    buf,
-                    kit->arr[i].data.dyn_tok.arr[iter] != input[i].type
-                );
-
+                msg = "Token did not match DYNAMIC slot.";
                 break;
-
             case onk_inspect_slot:
-                fmt_buf = "Token did not match INSPECT match (mask: %ud)\n" \
-                    "expected: %s\n"                                    \
-                    "got: %s \n"                                        \
-                    "failed L%d (%s)";
-
-                onk_snprint_token(token1, 128, &input[i]);
-                onk_snprint_token(token2, 128, &kit->arr[i].data.inspect.token);
-                snprintf(buf, 512, fmt_buf, &kit->arr[i].data.inspect.flags, &token1, &token2, );
-
-                CuAssert(
-                    tc,
-                    buf,
-                    handle_inspect_slot(&kit->arr[i].data.inspect, &input[i]) == 0
-                );
-
+                msg = "Token did not match INSPECT slot.";
                 break;
-
             default:
-                fmt_buf = "Undefined Condition. Failed L%d (%s)";
-                snprintf(buf, 512, fmt_buf, line, filepath);
-                CuFail(tc, buf);
+                CuFail(tc, "Unhandled condition");
                 return -1;
         }
 
+        print_lex_type_mismatch(
+            buf,
+            512,
+            src_code,
+            input,
+            ninput,
+            expect_lex_arr,
+            nexpected,
+            msg,
+            iter,
+            filepath,
+            line
+        );
+
+        CuAssert(tc, buf, expect_lex_arr[i] == input[i].type);
         memset(buf, 0, 512);
     }
+
+    for (i=0; ni)
+
     return 0;
 }
 
