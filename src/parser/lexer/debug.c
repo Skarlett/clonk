@@ -58,9 +58,22 @@ const char * onk_ptoken(enum onk_lexicon_t t) {
         case ONK_COMMENT_TOKEN: return "comment";
         case ONK_UNDEFINED_TOKEN: return "undef";
         case ONK_DOT_TOKEN: return "dot";
-        default: return "ONK_PTOKEN_ERROR_UNKNOWN_TOKEN";
+        default: return "ONK_PTOKEN_UNKNOWN_TOKEN";
     };
 }
+
+int8_t onk_snprint_token_type(
+    char * buf,
+    uint16_t max,
+    enum onk_lexicon_t token)
+{
+    const char *fmt = "[%s] ";
+    const char *ptok = onk_ptoken(token);
+
+    snprintf(buf, max, fmt, ptok);
+    return strlen(ptok) + 3;
+}
+
 
 int16_t onk_snprint_token(
     char * buf,
@@ -68,8 +81,8 @@ int16_t onk_snprint_token(
     const struct onk_token_t *token)
 {
     const char *fmt = "{ start: %ud; end: %ud; seq: %ud; type: %s (%ud) }";
-    const char *ptok;
-    int nbytes;
+    const char *ptok = 0;
+    int nbytes = 0;
 
     ptok = onk_ptoken(token->type);
 
@@ -88,11 +101,10 @@ int16_t onk_snprint_token(
 }
 
 
-#define _ONK_PRINT_BUF 64
 int16_t _onk_snprint_lexicon_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t token) {
 
-    const char * ptoken;
-    char working_buf[_ONK_PRINT_BUF];
+    const char * ptoken = 0;
+    char working_buf[ONK_TOK_CHAR_SIZE];
     uint8_t ptoken_len;
 
     ptoken = onk_ptoken(token);
@@ -101,7 +113,7 @@ int16_t _onk_snprint_lexicon_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t t
     if (ptoken_len >= nbuf)
         return -1;
 
-    snprintf(working_buf, _ONK_PRINT_BUF, "[%s] ", ptoken);
+    snprintf(working_buf, ONK_TOK_CHAR_SIZE, "[%s] ", ptoken);
 
     strncat(
         buf,
@@ -114,7 +126,10 @@ int16_t _onk_snprint_lexicon_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t t
 
 #define _ONK_PRINT_LEX_ARR_BUF 64
 
-int16_t onk_snprint_lexicon_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t *arr, int16_t narr)
+int16_t onk_snprint_lexicon_arr(
+    char * buf, uint16_t nbuf,
+    enum onk_lexicon_t *arr,
+    int16_t narr)
 {
     uint16_t remaining_bytes = nbuf;
     int16_t ptok_len = 0;
@@ -123,7 +138,6 @@ int16_t onk_snprint_lexicon_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t *a
 
     for(int16_t i=0; narr > i; i++)
     {
-
         ptok_len = _onk_snprint_lexicon_arr(
             buf, remaining_bytes,
             arr[i]);
