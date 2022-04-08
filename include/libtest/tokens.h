@@ -51,7 +51,7 @@ struct onk_desc_token_t {
  *
  * checks output against --
  * */
-struct onk_tk_token_match_t
+struct onk_test_mask_t
 {
     struct onk_desc_token_t * arr;
 
@@ -65,39 +65,39 @@ struct onk_tk_token_match_t
 
 /*
  * copies (`enum onk_lexicon_t *tok`) each item into
- * `onk_tk_token_match_t` as a static option.
+ * `onk_test_mask_t` as a static option.
 */
 int8_t onk_desc_add_static_slot(
-    struct onk_tk_token_match_t * mold,
+    struct onk_test_mask_t * mold,
     enum onk_lexicon_t *tok,
     uint16_t nitems
 );
 
 int8_t onk_desc_add_inspect_slot(
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_desc_inspect_token_t *inspect
 );
 
 int onk_desc_add_dynamic_slot(
-    struct onk_tk_token_match_t * kit,
+    struct onk_test_mask_t * kit,
     enum onk_lexicon_t *answers,
     uint16_t nanswers);
 
 int8_t onk_desc_add_static_repeating_slot(
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     enum onk_lexicon_t tok,
     uint16_t ntimes
 );
 
 int8_t onk_desc_add_repeating_slot(
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_desc_token_t *tok,
     uint16_t ntimes
 );
 
 int onk_assert_match(
     CuTest *tc,
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_token_t *input,
     uint16_t ninput,
     uint16_t iter,
@@ -107,7 +107,7 @@ int onk_assert_match(
 
 void onk_assert_tokenize(
     CuTest *tc,
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_lexer_input_t *lexer_input,
     struct onk_lexer_output_t *lexer_output,
     uint16_t iter,
@@ -117,7 +117,7 @@ void onk_assert_tokenize(
 
 void onk_assert_postfix(
     CuTest *tc,
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_parser_input_t *input,
     struct onk_parser_output_t *output,
     uint16_t i,
@@ -127,15 +127,15 @@ void onk_assert_postfix(
 
 void onk_assert_parse_stage(
     CuTest *tc,
-    struct onk_tk_token_match_t *lexer,
-    struct onk_tk_token_match_t *parser,
+    struct onk_test_mask_t *lexer,
+    struct onk_test_mask_t *parser,
     uint16_t fmt_i,
     char *fp,
     uint16_t line
 );
 
 void onk_match_token_init(
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_desc_token_t *buffer,
     uint16_t buffer_sz
 );

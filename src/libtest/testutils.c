@@ -8,10 +8,10 @@
 
 /*
  * copies (`enum onk_lexicon_t *tok`) each item into
- * `onk_tk_token_match_t` as a static option.
+ * `onk_test_mask_t` as a static option.
 */
 int8_t onk_desc_add_static_slot(
-    struct onk_tk_token_match_t * mold,
+    struct onk_test_mask_t * mold,
     enum onk_lexicon_t *tok,
     uint16_t nitems)
 {
@@ -36,7 +36,7 @@ int8_t onk_desc_add_static_slot(
 }
 
 int8_t onk_desc_add_inspect_slot(
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_desc_inspect_token_t *inspect
 ){
     struct onk_desc_token_t descriptor;
@@ -53,7 +53,7 @@ int8_t onk_desc_add_inspect_slot(
 }
 
 int onk_desc_add_dynamic_slot(
-    struct onk_tk_token_match_t * kit,
+    struct onk_test_mask_t * kit,
     enum onk_lexicon_t *answers,
     uint16_t nanswers)
 {
@@ -72,7 +72,7 @@ int onk_desc_add_dynamic_slot(
 }
 
 int8_t onk_desc_add_static_repeating_slot(
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     enum onk_lexicon_t tok,
     uint16_t ntimes
 )
@@ -98,7 +98,7 @@ int8_t onk_desc_add_static_repeating_slot(
 }
 
 int8_t onk_desc_add_repeating_slot(
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_desc_token_t *tok,
     uint16_t ntimes
 )
@@ -123,7 +123,7 @@ int8_t onk_desc_add_repeating_slot(
 }
 
 void onk_match_token_init(
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_desc_token_t *buffer,
     uint16_t buffer_sz
 )
@@ -139,6 +139,7 @@ int16_t print_expect_line(
     char * src_code,
     struct onk_token_t *lexed,
     enum onk_lexicon_t *expected,
+    char * msg,
     uint16_t mismatched_idx,
     char * fp,
     uint16_t line
@@ -169,9 +170,10 @@ int16_t print_expect_line(
 
     nwrote = snprintf(
         buf, nbuf,
-        "[%s] failed at: L%u (expected `%s` got `%s`)\n"                 \
+        "[%s] failed at: L%u (expected `%s` got `%s`)\n"    \
+        "%s\n"                                              \
         "src: `%s`\n",
-        fp, line, expected_token, lexed_token, src_code
+        fp, line, expected_token, lexed_token, msg, src_code
     );
 
     if(nwrote + spaces + underline + 1 > nbuf)
@@ -279,19 +281,65 @@ int8_t handle_inspect_slot(
     return 0;
 }
 
+
+int16_t kit_as_lex_arr(
+    enum onk_lexicon_t *arr,
+    uint16_t arr_sz,
+    struct onk_test_mask_t *kit,
+    uint16_t fmt_i,
+    uint16_t *inspect, // [idx, 4, ..]
+    uint16_t inspect_sz
+){
+    uint16_t i;
+
+    uint16_t ninspect;
+
+    for(i=0; kit->narr > i; i++) {
+        if(i >= arr_sz)
+            return -1;
+
+        switch(kit->arr[i].slot_type)
+        {
+            case onk_static_slot:
+                arr[i] = kit->arr[i].data.static_tok;
+                break;
+
+            case onk_dynamic_slot:
+                arr[i] = kit->arr[i].data.dyn_tok.arr[fmt_i];
+                break;
+
+            case onk_inspect_slot:
+                if(ninspect >= inspect_sz)
+                    return -1;
+
+                arr[i] = kit->arr[i].data.inspect.token.type;
+                inspect[ninspect] = i;
+                break;
+
+            default:
+                return -1;
+        }
+
+    }
+
+    return i + 1;
+}
+
+
 int onk_assert_match(
     CuTest *tc,
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_token_t *input,
     uint16_t ninput,
+    char * src_code,
     uint16_t iter,
     char * filepath,
     uint16_t line
 ){
     char buf[512];
 
-    char token2[128];
-    char token1[128];
+    char token2[ONK_TOK_CHAR_SIZE];
+    char token1[ONK_TOK_CHAR_SIZE];
 
     const char *fmt_buf;
 
@@ -301,11 +349,23 @@ int onk_assert_match(
     CuAssert(tc, buf, ninput != kit->narr);
     memset(buf, 0, 512);
 
+
+    kit_as_lex_arr()
+
+    memcmp();
+
     for(uint16_t i=0; ninput > i; i++)
     {
+        print_lex_type_mismatch(
+            buf, 512, src_code,
+            input, ninput, expected,
+            nexpected, i, fp, line
+        );
+
         switch(kit->arr[i].slot_type)
         {
             case onk_static_slot:
+
                 fmt_buf =                                   \
                     "Token did not match STATIC match.\n "  \
                     "got: %s \n"                            \
@@ -381,7 +441,7 @@ int onk_assert_match(
 
 void onk_assert_tokenize(
     CuTest *tc,
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_lexer_input_t *lexer_input,
     struct onk_lexer_output_t *lexer_output,
     uint16_t iter,
@@ -409,7 +469,7 @@ void onk_assert_tokenize(
 
 void onk_assert_postfix(
     CuTest *tc,
-    struct onk_tk_token_match_t *kit,
+    struct onk_test_mask_t *kit,
     struct onk_parser_input_t *input,
     struct onk_parser_output_t *output,
     uint16_t i,
@@ -435,8 +495,8 @@ void onk_assert_postfix(
 
 void onk_assert_parse_stage(
     CuTest *tc,
-    struct onk_tk_token_match_t *lexer,
-    struct onk_tk_token_match_t *parser,
+    struct onk_test_mask_t *lexer,
+    struct onk_test_mask_t *parser,
     uint16_t fmt_i,
     char *fp,
     uint16_t line
@@ -473,8 +533,8 @@ void onk_assert_parse_stage(
 }
 
 void build_test_mold_kit(
-    struct onk_tk_token_match_t *parser,
-    struct onk_tk_token_match_t *lexer)
+    struct onk_test_mask_t *parser,
+    struct onk_test_mask_t *lexer)
 {
     const enum onk_lexicon_t static_answ[] = { ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, 0 };
     const enum onk_lexicon_t dyn_answ_s1[] = { ONK_MUL_TOKEN, ONK_DIV_TOKEN, 0 };
@@ -497,7 +557,7 @@ void build_test_mold_kit(
 
 void example(CuTest *tc)
 {
-    struct onk_tk_token_match_t parser, lexer;
+    struct onk_test_mask_t parser, lexer;
     struct onk_vec_t tokens;
 
     struct onk_lexer_input_t lexer_input;
