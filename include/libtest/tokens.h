@@ -91,34 +91,39 @@ struct onk_tk_token_match_t
 };
 
 
-void onk_amatch_init(
-    struct onk_tk_token_match_t *kit,
-    struct onk_desc_token_t *buffer,
-    uint16_t buffer_sz
-);
-
 /*
  * copies (`enum onk_lexicon_t *tok`) each item into
  * `onk_tk_token_match_t` as a static option.
 */
-int8_t onk_amatch_add_static(
+int8_t onk_desc_add_static_slot(
     struct onk_tk_token_match_t * mold,
     enum onk_lexicon_t *tok,
     uint16_t nitems
 );
 
-int8_t tk_inspect_slot(
+int8_t onk_desc_add_inspect_slot(
     struct onk_tk_token_match_t *kit,
     struct onk_desc_inspect_token_t *inspect
 );
 
-int tk_add_dynamic(
+int onk_desc_add_dynamic_slot(
     struct onk_tk_token_match_t * kit,
     enum onk_lexicon_t *answers,
-    uint16_t nanswers
+    uint16_t nanswers);
+
+int8_t onk_desc_add_static_repeating_slot(
+    struct onk_tk_token_match_t *kit,
+    enum onk_lexicon_t tok,
+    uint16_t ntimes
 );
 
-int assert_match_group(
+int8_t onk_desc_add_repeating_slot(
+    struct onk_tk_token_match_t *kit,
+    struct onk_desc_token_t *tok,
+    uint16_t ntimes
+);
+
+int onk_assert_match(
     CuTest *tc,
     struct onk_tk_token_match_t *kit,
     struct onk_token_t *input,
@@ -157,9 +162,8 @@ void onk_assert_parse_stage(
     uint16_t line
 );
 
-
 #define OnkAssertMatch(tc, kit, toks, ntoks, i)     \
-    assert_match_group((tc), (kit), (toks), ntoks, i, __FILE__, __LINE__);
+    onk_assert_match((tc), (kit), (toks), ntoks, i, __FILE__, __LINE__);
 
 #define OnkAssertLexerStage(tc, kit, input, output, i)                  \
     onk_assert_tokenize((tc), (kit), (input), (output), (i), __FILE__, __LINE__)
