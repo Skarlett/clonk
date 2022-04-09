@@ -109,7 +109,8 @@ void CuStringInsert(CuString* str, const char* text, int pos)
  * CuTest
  *-------------------------------------------------------------------------*/
 
-void CuTestInit(CuTest* t, const char* name, TestFunction function)
+void CuTestInit(CuTest* t, const char* name, TestFunction function,
+				struct _onk_test_buffers *buf)
 {
 	t->name = CuStrCopy(name);
 	t->failed = 0;
@@ -117,12 +118,13 @@ void CuTestInit(CuTest* t, const char* name, TestFunction function)
 	t->message = NULL;
 	t->function = function;
 	t->jumpBuf = NULL;
+	t->buffers = buf;
 }
 
 CuTest* CuTestNew(const char* name, TestFunction function)
 {
 	CuTest* tc = CU_ALLOC(CuTest);
-	CuTestInit(tc, name, function);
+	CuTestInit(tc, name, function, &BUFFERS);
 	return tc;
 }
 
@@ -143,6 +145,8 @@ void CuTestRun(CuTest* tc)
 		tc->ran = 1;
 		(tc->function)(tc);
 	}
+
+	_onk_reset_glob_buffer(tc->buffers);
 	tc->jumpBuf = 0;
 }
 

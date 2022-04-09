@@ -44,7 +44,9 @@ typedef void (*TestFunction)(CuTest *);
 
 struct _onk_test_buffers {
 	/* Initialized/heap Vec<Char> */
-	struct onk_vec_t src;
+	char * msgbuf;
+	int16_t msg_sz;
+	int16_t msg_cursor;
 
 	/* Initialized/heap Vec<struct Token> */
 	struct onk_vec_t src_tokens;
@@ -60,6 +62,9 @@ struct _onk_test_buffers {
 
 };
 
+void _onk_reset_glob_buffer(struct _onk_test_buffers *buf);
+
+
 struct CuTest
 {
 	char* name;
@@ -71,8 +76,15 @@ struct CuTest
 	struct _onk_test_buffers * buffers;
 };
 
-void CuTestInit(CuTest* t, const char* name, TestFunction function);
+void CuTestInit(
+	CuTest* t,
+	const char* name,
+	TestFunction function,
+	struct _onk_test_buffers *buf
+);
+
 CuTest* CuTestNew(const char* name, TestFunction function);
+
 void CuTestRun(CuTest* tc);
 void CuTestDelete(CuTest *t);
 
@@ -114,6 +126,10 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc,
 
 #define MAX_TEST_CASES	1024
 
+
+/* Global buffers */
+struct _onk_test_buffers BUFFERS;
+
 #define SUITE_ADD_TEST(SUITE,TEST)	CuSuiteAdd(SUITE, CuTestNew(#TEST, TEST))
 
 typedef struct
@@ -130,7 +146,7 @@ CuSuite* CuSuiteNew(void);
 void CuSuiteDelete(CuSuite *testSuite);
 void CuSuiteAdd(CuSuite* testSuite, CuTest *testCase);
 void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2);
-void CuSuiteRun(CuSuite* testSuite, struct _onk_test_buffers * onk_patch);
+void CuSuiteRun(CuSuite* testSuite);
 void CuSuiteSummary(CuSuite* testSuite, CuString* summary);
 void CuSuiteDetails(CuSuite* testSuite, CuString* details);
 
