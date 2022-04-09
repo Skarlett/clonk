@@ -2,24 +2,34 @@
 
 INCL  =
 
-SRC   = src/utils/vec.c \
-		src/utils/queue.c \
+SRC   = src/onkstd/vec/vec.c \
+		src/onkstd/queue/queue.c \
+
 		src/parser/lexer/lexer.c \
 		src/parser/lexer/helpers.c \
 		src/parser/lexer/debug.c \
+
 		src/parser/parser.c \
 		src/parser/utils.c \
 		src/parser/predict.c \
 		src/parser/handlers.c \
 		src/parser/error.c
 
-TESTS = tests/CuTest.c \
-		tests/CuTestTest.c \
-		tests/testutils.c \
-		tests/vec.c \
-		tests/lexer/lexer_tests.c \
-		tests/lexer/lexer_helpers.c \
-		tests/expr/postfix.c 
+
+TESTLIB = src/libtest/CuTest.c 		\
+		src/libtest/build_mask.c	\
+		src/libtest/testutils.c
+
+
+
+TESTS = src/libtest/tests/CuTestTest.c \
+		src/libtests/tests/testutils_utils.c \
+
+		src/onkstd/vec/tests.c \
+		src/onkstd/queue/tests.c \
+
+		src/parser/lexer/tests/lexer_tests.c \
+		src/parser/lexer/tests/lexer_helpers.c
 
 OBJ	= $(SRC:.c=.o)
 LIBS =
