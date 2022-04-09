@@ -6,6 +6,29 @@
 #include "libtest/tokens.h"
 #include "libtest/CuTest.h"
 
+#define ONK_TEST_INSP_SZ 64
+struct onk_test {
+    const char * src_code;
+    const char * fp;
+
+    struct onk_token_t *source; // lexed||parsed
+    enum onk_lexicon_t *expected;
+
+    uint16_t inspect_arr[ONK_TEST_INSP_SZ];
+    uint8_t ninspect;
+
+    //uint16_t iter;
+    //uint16_t fmt_i;
+    uint16_t nsource;
+    uint16_t source_sz;
+
+    uint16_t nexpected;
+    uint16_t expected_sz;
+
+    uint16_t line;
+};
+
+
 /*
  * copies (`enum onk_lexicon_t *tok`) each item into
  * `onk_test_mask_t` as a static option.
@@ -136,13 +159,9 @@ void onk_match_token_init(
 int16_t print_expect_line(
     char * buf,
     uint16_t nbuf,
-    char * src_code,
-    struct onk_token_t *lexed,
-    enum onk_lexicon_t *expected,
+    struct onk_test *test,
     char * msg,
     uint16_t mismatched_idx,
-    char * fp,
-    uint16_t line
 ){
     char lexed_token[ONK_TOK_CHAR_SIZE];
     char expected_token[ONK_TOK_CHAR_SIZE];
@@ -153,27 +172,32 @@ int16_t print_expect_line(
 
     char * tail;
 
+    if(msg == 0)
+        msg = "N/A";
+
     onk_snprint_token_type(
         lexed_token, ONK_TOK_CHAR_SIZE,
-        lexed[mismatched_idx].type
+        test->source[mismatched_idx].type
     );
 
     onk_snprint_token_type(
         expected_token, ONK_TOK_CHAR_SIZE,
-        expected[mismatched_idx]
+        test->expected[mismatched_idx]
     );
 
     for(uint16_t i = 0; mismatched_idx > i; i++)
-        spaces += onk_token_len(&lexed[i]);
+        spaces += onk_token_len(&test->source[i]);
 
-    underline = onk_token_len(&lexed[mismatched_idx]);
+    underline = onk_token_len(&test->source[mismatched_idx]);
 
     nwrote = snprintf(
         buf, nbuf,
         "[%s] failed at: L%u (expected `%s` got `%s`)\n"    \
         "%s\n"                                              \
         "src: `%s`\n",
-        fp, line, expected_token, lexed_token, msg, src_code
+        test->fp, test->line,
+        expected_token, lexed_token, msg,
+        test->src_code
     );
 
     if(nwrote + spaces + underline + 1 > nbuf)
@@ -192,28 +216,22 @@ int16_t print_expect_line(
     return nwrote;
 }
 
-int16_t print_lex_type_mismatch(
+int16_t onk_snprint_lex_err(
     char * buf,
     uint16_t nbuf,
-    char * src_code,
-    struct onk_token_t *lexed,
-    uint16_t nlexed,
-    enum onk_lexicon_t *expected,
-    uint16_t nexpected,
     char * msg,
-    uint16_t mismatched_idx,
-    char * fp,
-    uint16_t line
+    struct onk_test *test,
+    uint16_t mismatched_idx
 ){
     uint16_t spaces = 0;
     uint16_t underline = 0;
     int16_t nwrote;
 
     uint16_t lex_sz =                                               \
-        (onk_str_len_token_arr(lexed, nlexed) + 1) * sizeof(char);
+        (onk_str_len_token_arr(test->source, test->nsource) + 1) * sizeof(char);
 
     uint16_t expect_sz =                                                \
-        (onk_str_len_lexicon_arr(expected, nexpected) + 1) * sizeof(char);
+        (onk_str_len_lexicon_arr(test->expected, test->nexpected) + 1) * sizeof(char);
 
     char * lexicon_buf = malloc(lex_sz);
     char * expected_buf = malloc(expect_sz);
@@ -222,21 +240,20 @@ int16_t print_lex_type_mismatch(
     nwrote = print_expect_line(
         buf,
         nbuf,
-        src_code,
-        lexed,
-        expected,
-        mismatched_idx,
-        fp,
-        line
+        test,
+        msg,
+        mismatched_idx
     );
 
     if(nwrote == -1)
         return -1;
 
     for(uint16_t i = 0; mismatched_idx > i; i++)
-        spaces += (strlen(onk_ptoken(expected[i])) || 1);
+        spaces += (strlen(onk_ptoken(test->expected[i])) || 1);
 
-    underline = strlen(onk_ptoken(expected[mismatched_idx]));
+    underline = strlen(onk_ptoken(
+        test->expected[mismatched_idx]
+    ));
 
     nwrote += snprintf(
         &buf[nwrote], nbuf - nwrote,
@@ -282,38 +299,37 @@ int8_t handle_inspect_slot(
     return 0;
 }
 
-int16_t kit_as_lex_arr(
-    enum onk_lexicon_t *arr,
-    uint16_t arr_sz,
+
+int16_t kit_to_test(
+    struct onk_test *test,
     struct onk_test_mask_t *kit,
-    uint16_t fmt_i,
-    uint16_t *inspect, // [idx, 4, ..]
-    uint16_t inspect_sz
+    uint16_t fmt_i
 ){
+
     uint16_t i;
 
-    uint16_t ninspect;
-
-    for(i=0; kit->narr > i; i++) {
-        if(i >= arr_sz)
+    for(i=0; kit->narr > i; i++)
+    {
+        if(i >= test->expected_sz)
             return -1;
 
         switch(kit->arr[i].slot_type)
         {
             case onk_static_slot:
-                arr[i] = kit->arr[i].data.static_tok;
+                test->expected[i] = kit->arr[i].data.static_tok;
                 break;
 
             case onk_dynamic_slot:
-                arr[i] = kit->arr[i].data.dyn_tok.arr[fmt_i];
+                test->expected[i] = kit->arr[i].data.dyn_tok.arr[fmt_i];
                 break;
 
             case onk_inspect_slot:
-                if(ninspect >= inspect_sz)
+                if(test->ninspect >= ONK_TEST_INSP_SZ)
                     return -1;
 
-                arr[i] = kit->arr[i].data.inspect.token.type;
-                inspect[ninspect] = i;
+                test->expected[i] = kit->arr[i].data.inspect.token.type;
+                test->inspect_arr[test->ninspect] = i;
+                test->ninspect += 1;
                 break;
 
             default:
@@ -324,47 +340,69 @@ int16_t kit_as_lex_arr(
     return i + 1;
 }
 
-
-int onk_assert_match(
-    CuTest *tc,
+int16_t onk_init_test(
+    struct onk_test *test,
     struct onk_test_mask_t *kit,
-    struct onk_token_t *input,
-    uint16_t ninput,
-    char * src_code,
+    const char * src_code,
+    struct onk_token_t *source_arr,
+    uint16_t nsource,
+    enum onk_lexicon_t *expected,
+    uint16_t expected_sz,
     uint16_t iter,
-    char * filepath,
+    const char * fp,
     uint16_t line
-){
-    char buf[512];
-    uint16_t iinspect[32];
-    uint16_t ninspect;
-    uint16_t nexpected;
 
-    const char * fmt_buf, *msg;
-    char token2[ONK_TOK_CHAR_SIZE];
-    char token1[ONK_TOK_CHAR_SIZE];
+) {
+    int16_t flag = 0;
+    test->source = source_arr;
+    test->src_code = src_code;
+    test->nsource = nsource;
+    test->expected = expected;
+    test->expected_sz = expected_sz;
+    test->nexpected = 0;
+    test->fp = fp;
+    test->line = line;
 
-    enum onk_lexicon_t *expect_lex_arr;
-
-    expect_lex_arr = malloc((ninput+1) * sizeof(enum onk_lexicon_t));
-
-    fmt_buf = "failed size match. L%d (%s)";
-    snprintf(buf, 512, fmt_buf, line, filepath);
-
-    CuAssert(tc, buf, ninput == kit->narr);
-    memset(buf, 0, 512);
-
-    nexpected = kit_as_lex_arr(
-        expect_lex_arr,
-        ninput+1,
-        kit, iter,
-        iinspect,
-        32
+    flag = kit_to_test(
+        test,
+        kit,
+        iter
     );
 
-    CuAssert(tc, buf, nexpected == kit->narr);
+    if(flag == -1)
+        return -1;
 
-    for(uint16_t i=0; ninput > i; i++)
+    test->nexpected = flag;
+}
+
+void test_kit_narr(
+    CuTest *tc,
+    char * buf,
+    struct onk_test_mask_t *kit,
+    struct onk_test *test
+){
+    const char *fmt_buf;
+
+    fmt_buf = "nsource doesn't match mask. %s:%u";
+    snprintf(buf, 512, fmt_buf, test->line, test->fp);
+    CuAssert(tc, buf, test->nsource == kit->narr);
+
+    fmt_buf = "nexpected doesn't match mask. %s:%u";
+    snprintf(buf, 512, fmt_buf, test->line, test->fp);
+    CuAssert(tc, buf, test->nexpected == kit->narr);
+}
+
+void match_type(
+    CuTest *tc,
+    char * buf,
+    uint16_t nbuf,
+    struct onk_test *test,
+    struct onk_test_mask_t *kit
+)
+{
+    const char *msg;
+
+    for(uint16_t i=0; test->nsource > i; i++)
     {
         switch(kit->arr[i].slot_type)
         {
@@ -378,33 +416,81 @@ int onk_assert_match(
                 msg = "Token did not match INSPECT slot.";
                 break;
             default:
-                CuFail(tc, "Unhandled condition");
-                return -1;
+                snprintf(buf, 512, "Unhandled condition (%s:%u)", test->fp, test->line);
+                CuFail(tc, buf);
+                return;
         }
 
-        print_lex_type_mismatch(
+        onk_snprint_lex_err(
             buf,
-            512,
-            src_code,
-            input,
-            ninput,
-            expect_lex_arr,
-            nexpected,
+            nbuf,
             msg,
-            iter,
-            filepath,
-            line
+            test,
+            i
         );
 
-        CuAssert(tc, buf, expect_lex_arr[i] == input[i].type);
+        CuAssert(tc, buf, test->expected[i] == test->source[i].type);
         memset(buf, 0, 512);
     }
-
-    for (i=0; ni)
-
-    return 0;
 }
 
+void match_inspection(
+    CuTest *tc,
+    struct onk_test *test,
+    struct onk_test_mask_t *kit
+)
+{
+    uint16_t idx = 0;
+    for (uint8_t i=0; test->ninspect > i; i++)
+    {
+
+        idx = test->inspect_arr[i];
+        handle_inspect_slot(
+            &kit->arr[idx].data.inspect,
+            &test->source[idx]
+        );
+
+    }
+}
+
+void onk_assert_match(
+    CuTest *tc,
+    struct onk_test_mask_t *kit,
+    struct onk_token_t *input,
+    uint16_t ninput,
+    uint16_t iter,
+
+    const char * src_code,
+    char * filepath,
+    uint16_t line
+){
+    enum onk_lexicon_t expected[64];
+    struct onk_test test;
+    char buf[512];
+
+    const char * fmt_buf = 0, *msg = 0;
+
+    onk_init_test(
+        &test, kit,
+        src_code,
+        input, ninput,
+        expected, 64,
+        iter,
+        filepath, line
+    );
+
+    test_kit_narr(tc, buf, kit, &test);
+    memset(buf, 0, 512);
+    match_type(
+        tc,
+        buf,
+        512,
+        &test,
+        kit
+    );
+
+    match_inspection(tc, &test, kit);
+}
 
 void onk_assert_tokenize(
     CuTest *tc,
@@ -418,7 +504,7 @@ void onk_assert_tokenize(
     int ret;
     ret = onk_tokenize(lexer_input, lexer_output);
 
-    // cuAssert(ret == 0)
+    CuAssert(tc, "tokenize failed to run", ret == 0);
 
     ret = onk_assert_match(
         tc,
@@ -426,11 +512,11 @@ void onk_assert_tokenize(
         lexer_output->tokens.base,
         lexer_input->tokens.len,
         iter,
+        lexer_input->src_code,
         fp,
         line
     );
 
-    // cuAssert(ret == 0)
 }
 
 
@@ -446,7 +532,8 @@ void onk_assert_postfix(
     int ret;
 
     ret = onk_parse(input, output);
-    // cuAssert(ret == 0)
+    CuAssert(tc, msg, ret == 0)
+
     ret = onk_assert_match(
         tc,
         kit,
@@ -459,6 +546,7 @@ void onk_assert_postfix(
 
     // cuAssert(ret == 0)
 }
+
 
 void onk_assert_parse_stage(
     CuTest *tc,
@@ -496,64 +584,5 @@ void onk_assert_parse_stage(
         fp,
         line
     );
-
 }
 
-void build_test_mold_kit(
-    struct onk_test_mask_t *parser,
-    struct onk_test_mask_t *lexer)
-{
-    const enum onk_lexicon_t static_answ[] = { ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, 0 };
-    const enum onk_lexicon_t dyn_answ_s1[] = { ONK_MUL_TOKEN, ONK_DIV_TOKEN, 0 };
-    const enum onk_lexicon_t dyn_answ_s2[] = { ONK_ADD_TOKEN, ONK_SUB_TOKEN, 0 };
-
-    enum onk_lexicon_t working_space = ONK_WORD_TOKEN;
-
-    // mold lexer output
-    onk_desc_add_static_slot(lexer, &working_space, 1);
-    onk_desc_add_dynamic_slot(lexer, (enum onk_lexicon_t *)dyn_answ_s2, 2);
-    onk_desc_add_static_slot(lexer, &working_space, 1);
-    onk_desc_add_dynamic_slot(lexer, (enum onk_lexicon_t *)dyn_answ_s1, 2);
-
-    // Mold Parser output
-    onk_desc_add_static_slot(parser,  (enum onk_lexicon_t *)static_answ, 3);
-    onk_desc_add_dynamic_slot(parser, (enum onk_lexicon_t *)dyn_answ_s1, 2);
-    onk_desc_add_dynamic_slot(parser, (enum onk_lexicon_t *)dyn_answ_s2, 2);
-}
-
-
-void example(CuTest *tc)
-{
-    struct onk_test_mask_t parser, lexer;
-    struct onk_vec_t tokens;
-
-    struct onk_lexer_input_t lexer_input;
-    struct onk_desc_token_t lex_buf[12];
-    struct onk_desc_token_t parse_buf[12];
-
-    const char * fmt_segs[][2] =            \
-        {{"+", "-"},{"*", "/"}};
-        /*s1p1  s1p2  s2p1 s2p2*/
-
-    const char * fmt = "word %s word %s word";
-
-    char buf[256];
-
-    onk_match_token_init(&lexer, (struct onk_desc_token_t *)lex_buf, 12);
-    onk_match_token_init(&parser, (struct onk_desc_token_t *)parse_buf, 12);
-    onk_vec_init(&tokens, 32, sizeof(struct onk_token_t));
-
-    build_test_mold_kit(&parser, &lexer);
-
-    lexer_input.tokens = tokens;
-
-    for(int i=0; 2 > i; i++)
-    {
-        snprintf(buf, 256, fmt, fmt_segs[i][0], fmt_segs[i][1]);
-        lexer_input.src_code = buf;
-
-        OnkAssertParseStage(tc, &lexer, &parser, i);
-
-        onk_vec_clear(&tokens);
-    }
-}

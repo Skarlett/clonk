@@ -95,12 +95,14 @@ int8_t onk_desc_add_repeating_slot(
     uint16_t ntimes
 );
 
-int onk_assert_match(
+void onk_assert_match(
     CuTest *tc,
     struct onk_test_mask_t *kit,
     struct onk_token_t *input,
     uint16_t ninput,
     uint16_t iter,
+
+    const char * src_code,
     char * filepath,
     uint16_t line
 );
