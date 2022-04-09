@@ -60,6 +60,9 @@ struct onk_test_mask_t
 
     /*size*/
     uint16_t sarr;
+
+    uint8_t ignore_whitespace;
+    uint8_t ignore_global_scope;
 };
 
 

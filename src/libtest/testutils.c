@@ -17,8 +17,6 @@ struct onk_test {
     uint16_t inspect_arr[ONK_TEST_INSP_SZ];
     uint8_t ninspect;
 
-    //uint16_t iter;
-    //uint16_t fmt_i;
     uint16_t nsource;
     uint16_t source_sz;
 
@@ -30,6 +28,7 @@ struct onk_test {
 
 
 int16_t print_expect_line(
+    CuTest *tc,
     char * buf,
     uint16_t nbuf,
     struct onk_test *test,
@@ -65,7 +64,7 @@ int16_t print_expect_line(
 
     nwrote = snprintf(
         buf, nbuf,
-        "[%s] failed at: L%u (expected `%s` got `%s`)\n"    \
+        "%s:%u (expected `%s` got `%s`)\n"    \
         "%s\n"                                              \
         "src: `%s`\n",
         test->fp, test->line,
@@ -74,7 +73,11 @@ int16_t print_expect_line(
     );
 
     if(nwrote + spaces + underline + 1 > nbuf)
+    {
+        snprintf(buf, nbuf, "[Bad test] MessageBuffer overflowed. %s:%u\n", test->fp, test->line);
+        CuFail(tc, buf);
         return -1;
+    }
 
     tail = &buf[nwrote];
     memset(tail, ' ', spaces);
@@ -90,6 +93,7 @@ int16_t print_expect_line(
 }
 
 int16_t onk_snprint_lex_err(
+    CuTest *tc,
     char * buf,
     uint16_t nbuf,
     char * msg,
@@ -110,7 +114,16 @@ int16_t onk_snprint_lex_err(
     char * expected_buf = malloc(expect_sz);
     char * tail;
 
+
+    if(expect_sz + lex_sz > nbuf)
+    {
+        snprintf(buf, nbuf, "[Bad test] MessageBuffer overflowed. %s:%u\n", test->fp, test->line);
+        CuFail(tc, buf);
+        return -1;
+    }
+
     nwrote = print_expect_line(
+        tc,
         buf,
         nbuf,
         test,
@@ -119,7 +132,11 @@ int16_t onk_snprint_lex_err(
     );
 
     if(nwrote == -1)
+    {
+        snprintf(buf, nbuf, "[Bad test] MessageBuffer overflowed. %s:%u\n", test->fp, test->line);
+        CuFail(tc, buf);
         return -1;
+    }
 
     for(uint16_t i = 0; mismatched_idx > i; i++)
         spaces += (strlen(onk_ptoken(test->expected[i])) || 1);
@@ -138,7 +155,11 @@ int16_t onk_snprint_lex_err(
     tail = &buf[nwrote];
 
     if(nwrote + spaces + underline + 1 > nbuf - nwrote)
+    {
+        snprintf(buf, nbuf, "[Bad test] MessageBuffer overflowed. %s:%u\n", test->fp, test->line);
+        CuFail(tc, buf);
         return -1;
+    }
 
     memset(tail, ' ', spaces);
     nwrote += spaces;
@@ -252,17 +273,19 @@ int8_t onk_init_test(
 void test_kit_narr(
     CuTest *tc,
     char * buf,
+    uint16_t nbuf,
     struct onk_test_mask_t *kit,
     struct onk_test *test
 ){
     const char *fmt_buf;
 
+
     fmt_buf = "nsource doesn't match mask. %s:%u";
-    snprintf(buf, 512, fmt_buf, test->line, test->fp);
+    snprintf(buf, nbuf, fmt_buf, test->line, test->fp);
     CuAssert(tc, buf, test->nsource == kit->narr);
 
     fmt_buf = "nexpected doesn't match mask. %s:%u";
-    snprintf(buf, 512, fmt_buf, test->line, test->fp);
+    snprintf(buf, nbuf, fmt_buf, test->line, test->fp);
     CuAssert(tc, buf, test->nexpected == kit->narr);
 }
 
@@ -278,6 +301,9 @@ void match_type(
 
     for(uint16_t i=0; test->nsource > i; i++)
     {
+        if(kit->ignore_whitespace && onk_is_tok_whitespace(test->source[i].type))
+            continue;
+
         switch(kit->arr[i].slot_type)
         {
             case onk_static_slot:
@@ -296,6 +322,7 @@ void match_type(
         }
 
         onk_snprint_lex_err(
+            tc,
             buf,
             nbuf,
             msg,
@@ -317,7 +344,6 @@ void match_inspection(
     uint16_t idx = 0;
     for (uint8_t i=0; test->ninspect > i; i++)
     {
-
         idx = test->inspect_arr[i];
         handle_inspect_slot(
             &kit->arr[idx].data.inspect,
@@ -341,8 +367,6 @@ void onk_assert_match(
     enum onk_lexicon_t expected[64];
     struct onk_test test;
     char buf[512];
-
-    const char * fmt_buf = 0, *msg = 0;
 
     onk_init_test(
         &test, kit,
