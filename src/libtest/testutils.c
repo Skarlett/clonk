@@ -29,139 +29,12 @@ struct onk_test {
 };
 
 
-/*
- * copies (`enum onk_lexicon_t *tok`) each item into
- * `onk_test_mask_t` as a static option.
-*/
-int8_t onk_desc_add_static_slot(
-    struct onk_test_mask_t * mold,
-    enum onk_lexicon_t *tok,
-    uint16_t nitems)
-{
-    struct onk_desc_token_t dtok;
-
-    if(mold->sarr > mold->narr)
-        return -1;
-
-    for(uint16_t i=0; nitems > i; i++)
-    {
-        if(tok[i] == 0)
-            break;
-
-        dtok.slot_type = onk_static_slot;
-        dtok.data.static_tok = tok[i];
-
-        mold->arr[mold->narr] = dtok;
-        mold->narr += 1;
-    }
-
-    return 1;
-}
-
-int8_t onk_desc_add_inspect_slot(
-    struct onk_test_mask_t *kit,
-    struct onk_desc_inspect_token_t *inspect
-){
-    struct onk_desc_token_t descriptor;
-
-    if(kit->narr >= kit->sarr)
-      return -1;
-
-    descriptor.slot_type = onk_inspect_slot;
-    descriptor.data.inspect = *inspect;
-
-    kit->arr[kit->narr] = descriptor;
-    kit->narr += 1;
-    return 0;
-}
-
-int onk_desc_add_dynamic_slot(
-    struct onk_test_mask_t * kit,
-    enum onk_lexicon_t *answers,
-    uint16_t nanswers)
-{
-    struct onk_desc_token_t *dtok;
-
-    if(kit->sarr > kit->narr)
-        return -1;
-
-    dtok = &kit->arr[kit->narr];
-    kit->narr += 1;
-
-    dtok->data.dyn_tok.arr = answers;
-    dtok->data.dyn_tok.narr = nanswers;
-
-    return 1;
-}
-
-int8_t onk_desc_add_static_repeating_slot(
-    struct onk_test_mask_t *kit,
-    enum onk_lexicon_t tok,
-    uint16_t ntimes
-)
-{
-    bool overflow = false;
-    struct onk_desc_token_t descriptor;
-    struct onk_desc_token_t *ptr;
-
-    if(onk_add_u16(kit->narr, ntimes, &overflow) >= kit->sarr
-       && overflow == 0)
-        return -1;
-
-    descriptor.slot_type = onk_static_slot;
-    descriptor.data.static_tok = tok;
-
-    ptr = &kit->arr[kit->narr];
-    kit->narr += ntimes;
-
-    for(uint16_t i=0; ntimes > i; i++)
-        ptr[i] = descriptor;
-
-    return 1;
-}
-
-int8_t onk_desc_add_repeating_slot(
-    struct onk_test_mask_t *kit,
-    struct onk_desc_token_t *tok,
-    uint16_t ntimes
-)
-{
-    bool overflow = false;
-    struct onk_desc_token_t *ptr;
-
-    if(onk_add_u16(kit->narr, ntimes, &overflow) >= kit->sarr
-       && overflow == 0)
-        return -1;
-
-    ptr = &kit->arr[kit->narr];
-    kit->narr += ntimes;
-
-    memcpy(
-        &kit->arr[kit->narr],
-        tok,
-        sizeof(struct onk_desc_token_t) * ntimes
-    );
-
-    return 1;
-}
-
-void onk_match_token_init(
-    struct onk_test_mask_t *kit,
-    struct onk_desc_token_t *buffer,
-    uint16_t buffer_sz
-)
-{
-    kit->arr = buffer;
-    kit->narr = buffer_sz;
-}
-
-
 int16_t print_expect_line(
     char * buf,
     uint16_t nbuf,
     struct onk_test *test,
     char * msg,
-    uint16_t mismatched_idx,
+    uint16_t mismatched_idx
 ){
     char lexed_token[ONK_TOK_CHAR_SIZE];
     char expected_token[ONK_TOK_CHAR_SIZE];
@@ -340,7 +213,7 @@ int16_t kit_to_test(
     return i + 1;
 }
 
-int16_t onk_init_test(
+int8_t onk_init_test(
     struct onk_test *test,
     struct onk_test_mask_t *kit,
     const char * src_code,
@@ -373,6 +246,7 @@ int16_t onk_init_test(
         return -1;
 
     test->nexpected = flag;
+    return 0;
 }
 
 void test_kit_narr(
@@ -502,11 +376,13 @@ void onk_assert_tokenize(
     uint16_t line
 ){
     int ret;
+    char buf[512];
+
+    snprintf(buf, 512, "tokenize failed %s:%u", fp, line);
     ret = onk_tokenize(lexer_input, lexer_output);
+    CuAssert(tc, buf, ret == 0);
 
-    CuAssert(tc, "tokenize failed to run", ret == 0);
-
-    ret = onk_assert_match(
+    onk_assert_match(
         tc,
         kit,
         lexer_output->tokens.base,
@@ -519,7 +395,6 @@ void onk_assert_tokenize(
 
 }
 
-
 void onk_assert_postfix(
     CuTest *tc,
     struct onk_test_mask_t *kit,
@@ -530,21 +405,22 @@ void onk_assert_postfix(
     uint16_t line
 ){
     int ret;
+    char buf[512];
 
+    snprintf(buf, 512, "Failed parsing stage %s:%u", fp, line);
     ret = onk_parse(input, output);
-    CuAssert(tc, msg, ret == 0)
+    CuAssert(tc, buf, ret == 0);
 
-    ret = onk_assert_match(
+    onk_assert_match(
         tc,
         kit,
         output->postfix.base,
         input->tokens.len,
         i,
+        input->src_code,
         fp,
         line
     );
-
-    // cuAssert(ret == 0)
 }
 
 
