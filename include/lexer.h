@@ -430,6 +430,14 @@ struct onk_token_selection_t {
     } token;
 };
 
+struct onk_lexer_input_t {
+    const char *src_code;
+
+    /* initalized or not ? */
+    struct onk_vec_t tokens;
+};
+
+
 /* Output of lexer function */
 struct onk_lexer_output_t {
     const char * src_code;
@@ -455,13 +463,6 @@ struct onk_lexer_error_t {
         struct onk_token_t non_ascii_token;
         //struct UnexpectedErrT unexpected_tok;
     } type_data;
-};
-
-struct onk_lexer_input_t {
-    const char *src_code;
-
-    /* initalized or not ? */
-    struct onk_vec_t tokens;
 };
 
 int8_t onk_tokenize(
