@@ -13,7 +13,8 @@
     "{__        {__{__    {__ {__  {__{_{__\r\n"    \
     " {__   {__ {__ {__  {__  {__  {__{__ {__\r\n"  \
     "   {____  {___   {__    {___  {__{__  {__\r\n" \
-    "Copyright 2022 - version: "
+    "License: clonk-license.txt"                    \
+    "Copyright 2021-2022 - version: "
 
 #define HELP_TEXT \
     "\t -h | brings up this help menu\n" \

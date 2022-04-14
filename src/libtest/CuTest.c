@@ -285,13 +285,12 @@ void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2)
 	}
 }
 
-void CuSuiteRun(CuSuite* testSuite, struct _onk_test_buffers * onk_patch)
+void CuSuiteRun(CuSuite* testSuite)
 {
 	int i;
 	for (i = 0 ; i < testSuite->count ; ++i)
 	{
 		CuTest* testCase = testSuite->list[i];
-		testCase->buffers = onk_patch;
 		CuTestRun(testCase);
 		if (testCase->failed) { testSuite->failCount += 1; }
 	}

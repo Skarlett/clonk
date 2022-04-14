@@ -98,7 +98,7 @@ int8_t onk_desc_add_repeating_slot(
     uint16_t ntimes
 );
 
-void onk_assert_match(
+int onk_assert_match(
     CuTest *tc,
     struct onk_test_mask_t *kit,
     struct onk_token_t *input,

@@ -3,6 +3,29 @@
 #include "libtest/CuTest.h"
 #include "libtest/tokens.h"
 
+void create_mock_tokens(struct onk_token_t * tokens, uint16_t n, enum onk_lexicon_t *tok)
+{
+    for(uint16_t i=0; n > i; i++)
+    {
+        tokens[i].start = 0;
+        tokens[i].end = 0;
+        tokens[i].seq = 0;
+        tokens[i].type = tok[i];
+    }
+}
+
+void test_mock_tokens(CuTest *tc)
+{
+    struct onk_token_t tokens[2];
+    enum onk_lexicon_t arr[2] = {ONK_WORD_TOKEN, ONK_ADD_TOKEN};
+
+    create_mock_tokens(tokens, 2, arr);
+    for (uint8_t i=0; 2>i; i++)
+        CuAssertTrue(tc, tokens[i].type == arr[i]);
+}
+
+
+
 void build_test_mold_kit(
     struct onk_test_mask_t *parser,
     struct onk_test_mask_t *lexer)
@@ -25,6 +48,83 @@ void build_test_mold_kit(
     onk_desc_add_dynamic_slot(parser, (enum onk_lexicon_t *)dyn_answ_s2, 2);
 }
 
+void test_static_slot(CuTest *tc)
+{
+
+    struct onk_test_mask_t test;
+    enum onk_lexicon_t tok[] = {
+      ONK_WORD_TOKEN,
+      ONK_WHITESPACE_TOKEN,
+      ONK_WORD_TOKEN
+    };
+    struct onk_token_t tokens[3];
+    const char *src = "word word";
+
+    create_mock_tokens(tokens, 3, tok);
+    onk_desc_add_static_slot(&test, tok, 3);
+
+
+    onk_assert_match(tc, &test, tokens, 3, 0, src, "NA", 0);
+}
+
+void test_whitespace_filter(CuTest *tc)
+{
+    struct onk_test_mask_t test;
+    enum onk_lexicon_t tok[] = {
+      ONK_WORD_TOKEN,
+      ONK_WORD_TOKEN
+    };
+
+    const char * src = "word word";
+
+    onk_desc_add_static_slot(&test, &tok, 2);
+    onk_assert_match(tc, &test, 2);
+}
+
+void test_dynamic_slot()
+{
+
+}
+
+void test_inspect_slot()
+{
+
+}
+
+#define _OVERFLOW_SZ 255
+void fail_on_msg_overflow(CuTest *tc)
+{
+    struct onk_test_mask_t test;
+    uint16_t msg_sz, msg_cursor;
+
+    enum onk_lexicon_t tok[] = {
+      ONK_WORD_TOKEN,
+      ONK_WHITESPACE_TOKEN,
+      ONK_WORD_TOKEN
+    };
+
+    struct onk_token_t tokens[3];
+    CuTest inner;
+
+    CuTestInit(&inner, "overflow_test", 0, tc->buffers);
+
+    msg_sz = tc->buffers->msg_sz;
+    msg_cursor = tc->buffers->msg_cursor;
+
+    tc->buffers->msg_sz = _OVERFLOW_SZ;
+    tc->buffers->msg_cursor = _OVERFLOW_SZ;
+
+    onk_desc_add_static_slot(&test, tok, 3);
+    onk_assert_match(&inner, &test, tokens, 3, 0, "word word", "Test", 0);
+
+    CuAssertTrue(tc, inner.failed == 1);
+}
+
+
+void fail_on_empty_mask(CuTest *tc)
+{
+
+}
 
 void example(CuTest *tc)
 {

@@ -45,8 +45,8 @@ typedef void (*TestFunction)(CuTest *);
 struct _onk_test_buffers {
 	/* Initialized/heap Vec<Char> */
 	char * msgbuf;
-	int16_t msg_sz;
-	int16_t msg_cursor;
+	uint16_t msg_sz;
+	uint16_t msg_cursor;
 
 	/* Initialized/heap Vec<struct Token> */
 	struct onk_vec_t src_tokens;
@@ -59,7 +59,6 @@ struct _onk_test_buffers {
 
 	/* Initialized/heap Vec<struct onk_token_desc_t> */
 	struct onk_vec_t parser_expect;
-
 };
 
 void _onk_reset_glob_buffer(struct _onk_test_buffers *buf);

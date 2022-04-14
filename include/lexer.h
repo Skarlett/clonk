@@ -679,41 +679,40 @@ bool _onk_is_group(enum onk_lexicon_t tok);
 */
 enum onk_lexicon_t onk_invert_brace(enum onk_lexicon_t token);
 
-
-int16_t onk_str_len_lexicon_arr(
-    enum onk_lexicon_t *arr,
-    uint16_t narr
-);
-
-int16_t onk_str_len_token_arr(
-    struct onk_token_t *arr,
-    uint16_t narr
-);
-
-int16_t onk_snprint_lexicon_arr(
-    char * buf,
-    uint16_t nbuf,
-    enum onk_lexicon_t *arr,
-    int16_t narr);
-
-int16_t onk_snprint_ref_lexicon_arr(
-    char * buf, uint16_t nbuf, enum onk_lexicon_t **arr,
-    int16_t narr);
-
-int16_t onk_snprint_tokens_as_lexicon_arr(
-    char * buf, uint16_t nbuf,
-    struct onk_token_t *arr, int16_t narr);
-
-int16_t onk_snprint_ref_tokens_as_lexicon_arr(
-    char * buf, uint16_t nbuf,
-    struct onk_token_t **arr, int16_t narr);
-
 int16_t onk_snprint_token(
     char * buf,
     uint16_t max,
     const struct onk_token_t *token);
 
-int16_t _onk_snprint_lexicon_arr(
+int16_t onk_strlen_lex_arr(
+    enum onk_lexicon_t *arr,
+    uint16_t narr
+);
+
+int16_t onk_strlen_tok_arr(
+    struct onk_token_t *arr,
+    uint16_t narr
+);
+
+int16_t onk_snprint_lex_arr(
+    char * buf,
+    uint16_t nbuf,
+    enum onk_lexicon_t *arr,
+    int16_t narr);
+
+int16_t onk_snprint_rlex_arr(
+    char * buf, uint16_t nbuf, enum onk_lexicon_t **arr,
+    int16_t narr);
+
+int16_t onk_snprint_tokarr_as_lexarr(
+    char * buf, uint16_t nbuf,
+    struct onk_token_t *arr, int16_t narr);
+
+int16_t onk_snprint_rtokarr_as_lexarr(
+    char * buf, uint16_t nbuf,
+    struct onk_token_t **arr, int16_t narr);
+
+int16_t _onk_snprint_lex_arr(
     char * buf, uint16_t nbuf,
     enum onk_lexicon_t token);
 

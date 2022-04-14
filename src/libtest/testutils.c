@@ -105,15 +105,14 @@ int16_t onk_snprint_lex_err(
     int16_t nwrote;
 
     uint16_t lex_sz =                                               \
-        (onk_str_len_token_arr(test->source, test->nsource) + 1) * sizeof(char);
+        (onk_strlen_tok_arr(test->source, test->nsource) + 1) * sizeof(char);
 
     uint16_t expect_sz =                                                \
-        (onk_str_len_lexicon_arr(test->expected, test->nexpected) + 1) * sizeof(char);
+        (onk_strlen_lex_arr(test->expected, test->nexpected) + 1) * sizeof(char);
 
     char * lexicon_buf = malloc(lex_sz);
     char * expected_buf = malloc(expect_sz);
     char * tail;
-
 
     if(expect_sz + lex_sz > nbuf)
     {
@@ -174,25 +173,6 @@ int16_t onk_snprint_lex_err(
 
     return nwrote + 1;
 }
-
-int8_t handle_inspect_slot(
-    struct onk_desc_inspect_token_t *insp,
-    struct onk_token_t *input)
-{
-    uint8_t flags = 0;
-    struct onk_token_t *tok;
-
-    flags = insp->ignore_flags;
-    tok = &insp->token;
-
-    if((flags & FINSP_START && tok->start != input->start)
-      || (flags & FINSP_END && tok->end != input->end)
-      || (flags & FINSP_SEQ && tok->seq != input->seq)
-      || (flags & FINSP_TYPE && tok->type != input->type))
-      return -1;
-    return 0;
-}
-
 
 int16_t kit_to_test(
     struct onk_test *test,
@@ -270,7 +250,51 @@ int8_t onk_init_test(
     return 0;
 }
 
-void test_kit_narr(
+void handle_overflow_msg(
+    CuTest *tc,
+    const char * msg,
+    uint16_t nwrote,
+    uint16_t line,
+    const char *fp)
+{
+    char buf[512];
+    const char *fmt_buf = "%s\nmsg overflowed (wrote: %u). %s:%u";
+    snprintf(buf, 512, fmt_buf, msg, nwrote, line, fp);
+    CuFail(tc, buf);
+}
+
+#define HandleOverflow(tc, msg, nmsg, source)   \
+    handle_overflow_msg((tc), (msg), nmsg, __LINE__, __FILE__, #source)
+
+
+int onk_assert_eq(
+    CuTest *tc,
+    char * buf,
+    uint16_t nbuf,
+    const char *fmt_str,
+    uint16_t line,
+    const char *fp,
+    void *a, void *b,
+    char *a_ident, char *b_ident,
+    uint16_t size)
+{
+    char ident[128];
+    snprintf(ident, 128, "%s == %s", a_ident, b_ident);
+
+    if(snprintf(buf, nbuf, fmt_str, line, fp) > nbuf)
+    {
+        handle_overflow_msg(tc, ident, nbuf, line, fp);
+        return -1;
+    }
+    CuAssert(tc, buf, memcmp(a, b, size) == 0);
+    return 0;
+}
+
+
+
+
+
+int8_t test_kit_narr(
     CuTest *tc,
     char * buf,
     uint16_t nbuf,
@@ -279,17 +303,24 @@ void test_kit_narr(
 ){
     const char *fmt_buf;
 
-
     fmt_buf = "nsource doesn't match mask. %s:%u";
-    snprintf(buf, nbuf, fmt_buf, test->line, test->fp);
-    CuAssert(tc, buf, test->nsource == kit->narr);
+    if (snprintf(buf, nbuf, fmt_buf, test->line, test->fp) > nbuf)
+    {
+        handle_overflow_msg(tc, buf, nbuf, test->line, test->fp);
+        return -1;
+    }
 
     fmt_buf = "nexpected doesn't match mask. %s:%u";
-    snprintf(buf, nbuf, fmt_buf, test->line, test->fp);
+    if(snprintf(buf, nbuf, fmt_buf, test->line, test->fp) > nbuf)
+    {
+        handle_overflow_msg(tc, buf, nbuf, test->line, test->fp);
+        return -1;
+    }
     CuAssert(tc, buf, test->nexpected == kit->narr);
+    return 0;
 }
 
-void match_type(
+int16_t match_type(
     CuTest *tc,
     char * buf,
     uint16_t nbuf,
@@ -298,6 +329,7 @@ void match_type(
 )
 {
     const char *msg;
+    int16_t wrote;
 
     for(uint16_t i=0; test->nsource > i; i++)
     {
@@ -318,10 +350,10 @@ void match_type(
             default:
                 snprintf(buf, 512, "Unhandled condition (%s:%u)", test->fp, test->line);
                 CuFail(tc, buf);
-                return;
+                return -1;
         }
 
-        onk_snprint_lex_err(
+        wrote = onk_snprint_lex_err(
             tc,
             buf,
             nbuf,
@@ -331,8 +363,33 @@ void match_type(
         );
 
         CuAssert(tc, buf, test->expected[i] == test->source[i].type);
+        CuAssert(tc, buf, wrote != -1);
+
+        if (wrote == -1)
+            return -1;
+
         memset(buf, 0, 512);
     }
+
+    return 0;
+}
+
+int8_t handle_inspect_slot(
+    struct onk_desc_inspect_token_t *insp,
+    struct onk_token_t *input)
+{
+    uint8_t flags = 0;
+    struct onk_token_t *tok;
+
+    flags = insp->ignore_flags;
+    tok = &insp->token;
+
+    if((flags & FINSP_START && tok->start != input->start)
+      || (flags & FINSP_END && tok->end != input->end)
+      || (flags & FINSP_SEQ && tok->seq != input->seq)
+      || (flags & FINSP_TYPE && tok->type != input->type))
+      return -1;
+    return 0;
 }
 
 void match_inspection(
@@ -341,19 +398,37 @@ void match_inspection(
     struct onk_test_mask_t *kit
 )
 {
+    char msg[512];
+
+    const char *fmt = "%s:%u failed inspection."\
+        "\nExpected: %s"                        \
+        "\nGot: %s";
+
+    struct onk_desc_inspect_token_t *insp;
     uint16_t idx = 0;
+
     for (uint8_t i=0; test->ninspect > i; i++)
     {
         idx = test->inspect_arr[i];
-        handle_inspect_slot(
-            &kit->arr[idx].data.inspect,
-            &test->source[idx]
-        );
+        insp = &kit->arr[idx].data.inspect;
 
+        if(handle_inspect_slot(insp, &test->source[idx]) == 0)
+        {
+
+
+            snprintf(
+                msg, 512,
+                "%s:%u failed inspection."       \
+                "\nExpected: %s"                 \
+                "\nGot: %s",
+                test->fp, test->line, on
+            );
+            CuFail(tc, msg);
+        }
     }
 }
 
-void onk_assert_match(
+int onk_assert_match(
     CuTest *tc,
     struct onk_test_mask_t *kit,
     struct onk_token_t *input,
@@ -364,9 +439,9 @@ void onk_assert_match(
     char * filepath,
     uint16_t line
 ){
+    char buf[512];
     enum onk_lexicon_t expected[64];
     struct onk_test test;
-    char buf[512];
 
     onk_init_test(
         &test, kit,
@@ -377,17 +452,10 @@ void onk_assert_match(
         filepath, line
     );
 
-    test_kit_narr(tc, buf, kit, &test);
-    memset(buf, 0, 512);
-    match_type(
-        tc,
-        buf,
-        512,
-        &test,
-        kit
-    );
-
+    test_kit_narr(tc, buf, 512, kit, &test);
+    CuAssert(tc, buf, match_type(tc, buf, 512, &test, kit) == 0);
     match_inspection(tc, &test, kit);
+    return 0;
 }
 
 void onk_assert_tokenize(
