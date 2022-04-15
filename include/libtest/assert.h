@@ -4,7 +4,6 @@
 #include "libtest/CuTest.h"
 #include "lexer.h"
 
-
 void create_mock_tokens(
     struct onk_token_t * tokens,
     uint16_t n,
@@ -19,15 +18,21 @@ void create_mock_tokens(
  * @param tokens: tokens to check against answers
  * @param answer: list of answers
 */
-void onk_assert_tokens(
+int8_t onk_assert_tokens(
     CuTest *tc,
     const struct onk_token_t tokens[],
     const enum onk_lexicon_t answer[],
     const char *msg,
-    const char *src_code,
     const char *file,
     uint16_t line
 );
+
+#define OnkAssertTokens(tc, tokens, answer)                         \
+    onk_assert_tokens((tc), (tokens), (answer), "", __FILE__, __LINE__)
+
+#define OnkAssertTokensMsg(tc, msg, tokens, answer)                     \
+    onk_assert_tokens((tc), (tokens), (answer), (msg), __FILE__, __LINE__)
+
 
 /**
  *  Assert tokens match the type found in answer
@@ -37,20 +42,17 @@ void onk_assert_tokens(
  * @param tokens: list of token pointers to check against answers
  * @param answer: list of answers
 */
-void onk_assert_tokens_by_ref(
+int8_t onk_assert_tokens_by_ref(
     CuTest *tc,
     const struct onk_token_t *tokens[],
     const enum onk_lexicon_t answer[],
-    const char *msg,
-    const char *src_code,
     const char *file,
     uint16_t line
 );
+#define OnkAssertRefTokens(tc, tokens, answer)           \
+    onk_assert_tokens_by_ref((tc), (tokens) (answer), "", __FILE__, __LINE__)
 
-#define OnkAssertTokens(tc, tokens, answer, msg, src_code)                 \
-    onk_assert_tokens((tc), (tokens) (answer), (msg), (src_code), __FILE__, __LINE__)
-
-#define OnkAssertRefTokens(tc, tokens, answer, msg, src_code)              \
-    onk_assert_tokens_by_ref((tc), (tokens) (answer), (msg), (src_code), __FILE__, __LINE__)
+#define OnkAssertRefTokensMsg(tc, msg, tokens, answer)                          \
+    onk_assert_tokens_by_ref((tc), (tokens) (answer), msg, __FILE__, __LINE__)
 
 #endif
