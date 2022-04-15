@@ -1,28 +1,9 @@
 #include "clonk.h"
 #include "lexer.h"
 #include "libtest/CuTest.h"
-#include "libtest/tokens.h"
+#include "libtest/masking.h"
 
-void create_mock_tokens(struct onk_token_t * tokens, uint16_t n, enum onk_lexicon_t *tok)
-{
-    for(uint16_t i=0; n > i; i++)
-    {
-        tokens[i].start = 0;
-        tokens[i].end = 0;
-        tokens[i].seq = 0;
-        tokens[i].type = tok[i];
-    }
-}
 
-void test_mock_tokens(CuTest *tc)
-{
-    struct onk_token_t tokens[2];
-    enum onk_lexicon_t arr[2] = {ONK_WORD_TOKEN, ONK_ADD_TOKEN};
-
-    create_mock_tokens(tokens, 2, arr);
-    for (uint8_t i=0; 2 > i; i++)
-        CuAssertTrue(tc, tokens[i].type == arr[i]);
-}
 
 void build_test_mold_kit(
     struct onk_test_mask_t *parser,

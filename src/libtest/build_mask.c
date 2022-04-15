@@ -3,7 +3,7 @@
 */
 
 #include "clonk.h"
-#include "libtest/tokens.h"
+#include "libtest/masking.h"
 
 /*
  * copies (`enum onk_lexicon_t *tok`) each item into

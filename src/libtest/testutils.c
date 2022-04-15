@@ -3,7 +3,7 @@
 #include "lexer.h"
 #include "parser.h"
 
-#include "libtest/tokens.h"
+#include "libtest/masking.h"
 #include "libtest/CuTest.h"
 
 

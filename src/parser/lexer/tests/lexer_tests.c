@@ -2,12 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../CuTest.h"
-#include "../../src/prelude.h"
-#include "../../src/parser/lexer/lexer.h"
-#include "../../src/parser/lexer/debug.h"
-#include "../../src/parser/error.h"
-#include "../testutils.h"
+#include "libtest/CuTest.h"
+#include "libtest/masking.h"
+#include "lexer.h"
 
 
 void __test__basic_perthensis(CuTest* tc)
@@ -200,8 +197,8 @@ void __test__collapse_operator(CuTest* tc)
         ONK_NOT_EQL_TOKEN,
         ONK_PLUSEQ_TOKEN,
         ONK_MINUS_EQL_TOKEN,
-        AND,
-        OR,
+        ONK_AND_TOKEN,
+        ONK_OR_TOKEN,
         ONK_SHR_TOKEN,
         ONK_SHL_TOKEN,
         ONK_BIT_OR_EQL,
@@ -271,6 +268,16 @@ void __test__fails_on_utf(CuTest* tc)
     uint16_t i=0; 
     CuAssertTrue(tc, onk_tokenize(buf, tokens, &i, 2, false, NULL) == -1);
 }
+
+/* test if the british pound symbol is accepted by the lexer */
+void __test__accepts_tea(CuTest* tc)
+{
+    struct onk_token_t tokens[2];
+    char buf[2] = {0xC3, 0xff};
+    //uint16_t i=0;
+    //CuAssertTrue(tc, onk_tokenize(buf, tokens, &i, 2, false, NULL) == -1);
+}
+
 
 void __test__oversized_bin_ops(CuTest* tc)
 {
