@@ -6,32 +6,23 @@
 #include "libtest/tokens.h"
 #include "libtest/CuTest.h"
 
-#define ONK_TEST_INSP_SZ 64
-struct onk_test {
-    const char * src_code;
-    const char * fp;
 
-    struct onk_token_t *source; // lexed||parsed
-    enum onk_lexicon_t *expected;
-
-    uint16_t inspect_arr[ONK_TEST_INSP_SZ];
-    uint8_t ninspect;
-
-    uint16_t nsource;
-    uint16_t source_sz;
-
-    uint16_t nexpected;
-    uint16_t expected_sz;
-
-    uint16_t line;
-};
-
+void create_mock_tokens(struct onk_token_t * tokens, uint16_t n, enum onk_lexicon_t *tok)
+{
+    for(uint16_t i=0; n > i; i++)
+    {
+        tokens[i].start = 0;
+        tokens[i].end = 0;
+        tokens[i].seq = 0;
+        tokens[i].type = tok[i];
+    }
+}
 
 int16_t print_expect_line(
     CuTest *tc,
     char * buf,
     uint16_t nbuf,
-    struct onk_test *test,
+    struct onk_stage_test *test,
     char * msg,
     uint16_t mismatched_idx
 ){
@@ -97,7 +88,7 @@ int16_t onk_snprint_lex_err(
     char * buf,
     uint16_t nbuf,
     char * msg,
-    struct onk_test *test,
+    struct onk_stage_test *test,
     uint16_t mismatched_idx
 ){
     uint16_t spaces = 0;
@@ -175,7 +166,7 @@ int16_t onk_snprint_lex_err(
 }
 
 int16_t kit_to_test(
-    struct onk_test *test,
+    struct onk_stage_test *test,
     struct onk_test_mask_t *kit,
     uint16_t fmt_i
 ){
@@ -215,7 +206,7 @@ int16_t kit_to_test(
 }
 
 int8_t onk_init_test(
-    struct onk_test *test,
+    struct onk_stage_test *test,
     struct onk_test_mask_t *kit,
     const char * src_code,
     struct onk_token_t *source_arr,
@@ -290,16 +281,13 @@ int onk_assert_eq(
     return 0;
 }
 
-
-
-
-
-int8_t test_kit_narr(
+int8_t _assert_narr_eql(
     CuTest *tc,
     char * buf,
     uint16_t nbuf,
+
     struct onk_test_mask_t *kit,
-    struct onk_test *test
+    struct onk_stage_test *test
 ){
     const char *fmt_buf;
 
@@ -316,6 +304,7 @@ int8_t test_kit_narr(
         handle_overflow_msg(tc, buf, nbuf, test->line, test->fp);
         return -1;
     }
+
     CuAssert(tc, buf, test->nexpected == kit->narr);
     return 0;
 }
@@ -324,7 +313,7 @@ int16_t match_type(
     CuTest *tc,
     char * buf,
     uint16_t nbuf,
-    struct onk_test *test,
+    struct onk_stage_test *test,
     struct onk_test_mask_t *kit
 )
 {
@@ -362,13 +351,11 @@ int16_t match_type(
             i
         );
 
-        CuAssert(tc, buf, test->expected[i] == test->source[i].type);
-        CuAssert(tc, buf, wrote != -1);
-
-        if (wrote == -1)
+        if(wrote == -1 || test->expected[i] != test->source[i].type)
+        {
+            CuFail(tc, buf);
             return -1;
-
-        memset(buf, 0, 512);
+        }
     }
 
     return 0;
@@ -386,23 +373,20 @@ int8_t handle_inspect_slot(
 
     if((flags & FINSP_START && tok->start != input->start)
       || (flags & FINSP_END && tok->end != input->end)
-      || (flags & FINSP_SEQ && tok->seq != input->seq)
-      || (flags & FINSP_TYPE && tok->type != input->type))
+      || (flags & FINSP_SEQ && tok->seq != input->seq))
       return -1;
     return 0;
 }
 
-void match_inspection(
+int8_t match_inspection(
     CuTest *tc,
-    struct onk_test *test,
+    struct onk_stage_test *test,
     struct onk_test_mask_t *kit
 )
 {
     char msg[512];
-
-    const char *fmt = "%s:%u failed inspection."\
-        "\nExpected: %s"                        \
-        "\nGot: %s";
+    char got[128];
+    char expected[128];
 
     struct onk_desc_inspect_token_t *insp;
     uint16_t idx = 0;
@@ -414,21 +398,27 @@ void match_inspection(
 
         if(handle_inspect_slot(insp, &test->source[idx]) == 0)
         {
-
-
+            onk_snprint_token(got, 128, &test->source[idx]);
+            onk_snprint_token(expected, 128, &insp->token);
             snprintf(
                 msg, 512,
                 "%s:%u failed inspection."       \
                 "\nExpected: %s"                 \
-                "\nGot: %s",
-                test->fp, test->line, on
+                "\nGot: %s"                      \
+                "\nmask: %u"                     \
+                "\nindex: %u",
+                test->fp, test->line, expected, got, insp->ignore_flags, idx
             );
+
             CuFail(tc, msg);
+            return -1;
         }
     }
+
+    return 0;
 }
 
-int onk_assert_match(
+int8_t onk_assert_match(
     CuTest *tc,
     struct onk_test_mask_t *kit,
     struct onk_token_t *input,
@@ -441,7 +431,7 @@ int onk_assert_match(
 ){
     char buf[512];
     enum onk_lexicon_t expected[64];
-    struct onk_test test;
+    struct onk_stage_test test;
 
     onk_init_test(
         &test, kit,
@@ -452,13 +442,23 @@ int onk_assert_match(
         filepath, line
     );
 
-    test_kit_narr(tc, buf, 512, kit, &test);
-    CuAssert(tc, buf, match_type(tc, buf, 512, &test, kit) == 0);
-    match_inspection(tc, &test, kit);
-    return 0;
+    if(_assert_narr_eql(tc, buf, 512, kit, &test) == -1)
+    {
+        CuFail(tc, buf);
+        return -1;
+    }
+
+    else if(match_type(tc, buf, 512, &test, kit) != 0)
+    {
+        CuFail(tc, buf);
+        return -1;
+    }
+
+
+    return match_inspection(tc, &test, kit);
 }
 
-void onk_assert_tokenize(
+int8_t onk_assert_tokenize(
     CuTest *tc,
     struct onk_test_mask_t *kit,
     struct onk_lexer_input_t *lexer_input,
@@ -470,11 +470,16 @@ void onk_assert_tokenize(
     int ret;
     char buf[512];
 
-    snprintf(buf, 512, "tokenize failed %s:%u", fp, line);
     ret = onk_tokenize(lexer_input, lexer_output);
-    CuAssert(tc, buf, ret == 0);
 
-    onk_assert_match(
+    if(ret != 0)
+    {
+        snprintf(buf, 512, "tokenize failed %s:%u", fp, line);
+        CuFail(tc, buf);
+        return -1;
+    }
+
+    return onk_assert_match(
         tc,
         kit,
         lexer_output->tokens.base,
@@ -484,10 +489,9 @@ void onk_assert_tokenize(
         fp,
         line
     );
-
 }
 
-void onk_assert_postfix(
+int8_t onk_assert_postfix(
     CuTest *tc,
     struct onk_test_mask_t *kit,
     struct onk_parser_input_t *input,
@@ -501,9 +505,15 @@ void onk_assert_postfix(
 
     snprintf(buf, 512, "Failed parsing stage %s:%u", fp, line);
     ret = onk_parse(input, output);
-    CuAssert(tc, buf, ret == 0);
 
-    onk_assert_match(
+    if(ret != 0)
+    {
+        snprintf(buf, 512, "tokenize failed %s:%u", fp, line);
+        CuFail(tc, buf);
+        return -1;
+    }
+
+    return onk_assert_match(
         tc,
         kit,
         output->postfix.base,
@@ -529,7 +539,9 @@ void onk_assert_parse_stage(
     struct onk_parser_input_t parser_input;
     struct onk_parser_output_t parser_output;
 
-    onk_assert_tokenize(
+    int8_t ret;
+
+    ret = onk_assert_tokenize(
         tc,
         lexer,
         &lexer_input,
@@ -538,6 +550,9 @@ void onk_assert_parse_stage(
         fp,
         line
     );
+
+    if (ret == -1)
+        return;
 
     onk_parser_input_from_lexer_output(
         &lexer_output, &parser_input, false

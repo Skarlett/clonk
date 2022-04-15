@@ -20,11 +20,9 @@ void test_mock_tokens(CuTest *tc)
     enum onk_lexicon_t arr[2] = {ONK_WORD_TOKEN, ONK_ADD_TOKEN};
 
     create_mock_tokens(tokens, 2, arr);
-    for (uint8_t i=0; 2>i; i++)
+    for (uint8_t i=0; 2 > i; i++)
         CuAssertTrue(tc, tokens[i].type == arr[i]);
 }
-
-
 
 void build_test_mold_kit(
     struct onk_test_mask_t *parser,
@@ -33,7 +31,6 @@ void build_test_mold_kit(
     const enum onk_lexicon_t static_answ[] = { ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, 0 };
     const enum onk_lexicon_t dyn_answ_s1[] = { ONK_MUL_TOKEN, ONK_DIV_TOKEN, 0 };
     const enum onk_lexicon_t dyn_answ_s2[] = { ONK_ADD_TOKEN, ONK_SUB_TOKEN, 0 };
-
     enum onk_lexicon_t working_space = ONK_WORD_TOKEN;
 
     // mold lexer output
@@ -50,7 +47,6 @@ void build_test_mold_kit(
 
 void test_static_slot(CuTest *tc)
 {
-
     struct onk_test_mask_t test;
     enum onk_lexicon_t tok[] = {
       ONK_WORD_TOKEN,
@@ -62,23 +58,21 @@ void test_static_slot(CuTest *tc)
 
     create_mock_tokens(tokens, 3, tok);
     onk_desc_add_static_slot(&test, tok, 3);
-
-
     onk_assert_match(tc, &test, tokens, 3, 0, src, "NA", 0);
 }
 
 void test_whitespace_filter(CuTest *tc)
 {
     struct onk_test_mask_t test;
+    struct onk_token_t tokens[2];
     enum onk_lexicon_t tok[] = {
       ONK_WORD_TOKEN,
       ONK_WORD_TOKEN
     };
-
     const char * src = "word word";
 
-    onk_desc_add_static_slot(&test, &tok, 2);
-    onk_assert_match(tc, &test, 2);
+    onk_desc_add_static_slot(&test, tok, 2);
+    onk_assert_match(tc, &test, tokens, 2, 0, src, "NA", 0);
 }
 
 void test_dynamic_slot()
@@ -98,9 +92,9 @@ void fail_on_msg_overflow(CuTest *tc)
     uint16_t msg_sz, msg_cursor;
 
     enum onk_lexicon_t tok[] = {
-      ONK_WORD_TOKEN,
-      ONK_WHITESPACE_TOKEN,
-      ONK_WORD_TOKEN
+       ONK_WORD_TOKEN,
+       ONK_WHITESPACE_TOKEN,
+       ONK_WORD_TOKEN
     };
 
     struct onk_token_t tokens[3];
@@ -120,11 +114,11 @@ void fail_on_msg_overflow(CuTest *tc)
     CuAssertTrue(tc, inner.failed == 1);
 }
 
-
 void fail_on_empty_mask(CuTest *tc)
 {
 
 }
+
 
 void example(CuTest *tc)
 {
@@ -137,7 +131,7 @@ void example(CuTest *tc)
 
     const char * fmt_segs[][2] =            \
         {{"+", "-"},{"*", "/"}};
-        /*s1p1  s1p2  s2p1 s2p2*/
+       /*s1p1 s1p2 s2p1 s2p2*/
 
     const char * fmt = "word %s word %s word";
 
@@ -148,7 +142,6 @@ void example(CuTest *tc)
     onk_vec_init(&tokens, 32, sizeof(struct onk_token_t));
 
     build_test_mold_kit(&parser, &lexer);
-
     lexer_input.tokens = tokens;
 
     for(int i=0; 2 > i; i++)
@@ -157,7 +150,6 @@ void example(CuTest *tc)
         lexer_input.src_code = buf;
 
         OnkAssertParseStage(tc, &lexer, &parser, i);
-
         onk_vec_clear(&tokens);
     }
 }
