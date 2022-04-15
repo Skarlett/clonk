@@ -10,7 +10,6 @@ enum onk_slot_ty
   onk_inspect_slot
 };
 
-
 /*
  *                              a1
  * [ Dtoken<WORD>, Dtoken<INT>, Dtoken< ? >, 0 ]
@@ -28,7 +27,6 @@ struct onk_desc_dyn_token_t {
 #define FINSP_START 1
 #define FINSP_END   1 << 2
 #define FINSP_SEQ   1 << 3
-#define FINSP_TYPE  1 << 4
 
 struct onk_desc_inspect_token_t
 {
@@ -45,6 +43,28 @@ struct onk_desc_token_t {
         struct onk_desc_dyn_token_t dyn_tok;
     } data;
 };
+
+#define ONK_TEST_INSP_SZ 64
+
+struct onk_stage_test {
+    const char * src_code;
+    const char * fp;
+
+    struct onk_token_t *source; // lexed||parsed
+    enum onk_lexicon_t *expected;
+
+    uint16_t inspect_arr[ONK_TEST_INSP_SZ];
+    uint8_t ninspect;
+
+    uint16_t nsource;
+    uint16_t source_sz;
+
+    uint16_t nexpected;
+    uint16_t expected_sz;
+
+    uint16_t line;
+};
+
 
 /*
  * formats string, tokenizes, parses,
@@ -72,7 +92,7 @@ struct onk_test_mask_t
 */
 int8_t onk_desc_add_static_slot(
     struct onk_test_mask_t * mold,
-    enum onk_lexicon_t *tok,
+    enum onk_lexicon_t tok[],
     uint16_t nitems
 );
 
@@ -98,10 +118,10 @@ int8_t onk_desc_add_repeating_slot(
     uint16_t ntimes
 );
 
-int onk_assert_match(
+int8_t onk_assert_match(
     CuTest *tc,
     struct onk_test_mask_t *kit,
-    struct onk_token_t *input,
+    struct onk_token_t input[],
     uint16_t ninput,
     uint16_t iter,
 
@@ -110,7 +130,7 @@ int onk_assert_match(
     uint16_t line
 );
 
-void onk_assert_tokenize(
+int8_t onk_assert_tokenize(
     CuTest *tc,
     struct onk_test_mask_t *kit,
     struct onk_lexer_input_t *lexer_input,
@@ -120,7 +140,7 @@ void onk_assert_tokenize(
     uint16_t line
 );
 
-void onk_assert_postfix(
+int8_t onk_assert_postfix(
     CuTest *tc,
     struct onk_test_mask_t *kit,
     struct onk_parser_input_t *input,
@@ -130,7 +150,7 @@ void onk_assert_postfix(
     uint16_t line
 );
 
-void onk_assert_parse_stage(
+int8_t onk_assert_parse_stage(
     CuTest *tc,
     struct onk_test_mask_t *lexer,
     struct onk_test_mask_t *parser,
@@ -145,7 +165,7 @@ void onk_match_token_init(
     uint16_t buffer_sz
 );
 
-#define OnkAssertMatch(tc, kit, toks, ntoks, i)     \
+#define OnkAssertTokenMask(tc, kit, toks, ntoks, i)     \
     onk_assert_match((tc), (kit), (toks), ntoks, i, __FILE__, __LINE__);
 
 #define OnkAssertLexerStage(tc, kit, input, output, i)                  \
