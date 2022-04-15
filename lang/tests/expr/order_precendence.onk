@@ -1,5 +1,0 @@
-# does not follow order of operations
-(2 + 3) * 8 + (3 / 2);
-
-# breaks our parser
-(1) + 2;

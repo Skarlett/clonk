@@ -1,9 +1,0 @@
-
-# coment
-first = 100;
-if (expr_var == 200) {
-    if (a == 200) {
-        inside_block == 300;
-    }
-}
-last = 400;

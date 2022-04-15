@@ -1,5 +1,0 @@
-
-# define a fonk (Function)
-def foo() {
-    return "clonk";
-}

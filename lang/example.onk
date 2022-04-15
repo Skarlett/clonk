@@ -1,0 +1,87 @@
+#!/bin/clonk
+###############
+# Example
+# comments are delimted by `#`
+#########
+# Data - Structures
+#########
+
+# Hello world!
+string_var = "hello word!";
+
+num_var = 1_000;
+
+# list of numbers
+list_var = [1, 2, 3];
+
+# immutable list of numbers
+immut_var = (1, 2, 3);
+
+# list of different types
+list_var_diff = [1, "word", 2.0];
+
+# hash-map
+map_var = ${
+  "Hello": "world!",
+  1: "2"
+};
+
+struct FooBar {
+  field: int
+};
+
+#########
+# Function call
+#########
+
+def foobar(strong_var: FooBar, weak_var) {
+  if(strong_var.field == 2)
+    { print("strong_var.field == 2"); }
+  else if(strong.field > 0)
+    { print(weak_var); }
+  else
+    { print("i dunno"); }
+}
+
+impl FooBar {
+  def yak(self)
+  {
+     # one day we'll infer "self"
+     self.field = 2;
+  }
+}
+
+struct_var = FooBar { field = 1 };
+struct_var.yak();
+foobar(struct_var, "place_holder");
+
+############
+# loops
+############
+
+for(i) in range(10)
+{ print(i); }
+
+while(true)
+{ print("a"); }
+
+#############
+# mafs
+#############
+x = 1 + 2; # add
+x = 3 - 6; # sub
+x = 3 * 3; # mul
+y = x / 3; # divide
+z = y % 1; # modulo
+x = x ^ x; # expo
+
+z = x << 1; # bit-shift
+y = x >> 1; 
+
+x = 1 | 2 # bit or
+x = 1 & 2 # bit and
+
+x = 0 || 1 # logical or
+x = 1 && 1 # logical and
+
+
