@@ -6,7 +6,6 @@
 #include "libtest/masking.h"
 #include "libtest/CuTest.h"
 
-
 void create_mock_tokens(struct onk_token_t * tokens, uint16_t n, enum onk_lexicon_t *tok)
 {
     for(uint16_t i=0; n > i; i++)
@@ -526,7 +525,7 @@ int8_t onk_assert_postfix(
 }
 
 
-void onk_assert_parse_stage(
+int8_t onk_assert_parse_stage(
     CuTest *tc,
     struct onk_test_mask_t *lexer,
     struct onk_test_mask_t *parser,
@@ -552,13 +551,13 @@ void onk_assert_parse_stage(
     );
 
     if (ret == -1)
-        return;
+        return -1;
 
     onk_parser_input_from_lexer_output(
         &lexer_output, &parser_input, false
     );
 
-    onk_assert_postfix(
+    return onk_assert_postfix(
         tc,
         parser,
         &parser_input,
