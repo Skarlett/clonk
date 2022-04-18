@@ -13,12 +13,6 @@ uint16_t onk_add_u16(uint16_t a, uint16_t b, bool * err)
   return UINT16_MAX;
 }
 
-
-int8_t onk_gt_u16(){
-
-}
-
-
 uint16_t onk_sub_u16(uint16_t a, uint16_t b, bool * err)
 {
   if (b > a) {
@@ -34,38 +28,14 @@ uint16_t onk_sum_u16(const uint16_t * num, uint16_t num_sz, bool * err_max)
 {
   uint16_t sum = 0;
 
-
-
   for (uint16_t i = 0; num_sz > i; i++)
   {
-    sum = onkstd_add_u16(sum, num[i], err_max);
+    sum = onk_add_u16(sum, num[i], err_max);
 
-    if(sum == UINT16_MAX || err_max)
-      sum = UNINT16_MAX;
+    if(sum == UINT16_MAX || err_max) {
+      sum = UINT16_MAX;
       break;
+    }
   }
-
   return sum;
-}
-
-uint16_t onkstd_mul_u16(uint16_t a, uint16_t b)
-{
-  uint16_t sum = 0;
-
-
-  if((a & 1 << 15) | (b & 1 << 15))
-  {
-
-  }
-
-  if(((1 << 15) & a) ^ ((1 << 14) & a))
-  {
-
-  }
-
-  (1 << 14) & b;
-
-
-  if()
-
 }
