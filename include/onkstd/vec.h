@@ -33,6 +33,10 @@ void * onk_vec_push(
     struct onk_vec_t *vec,
     const void *src);
 
+//TODO: Add vector clamping
+//TODO: add vector expanding
+//TODO: add vector slicing concat
+int8_t onk_vec_clamp(struct onk_vec_t *vec, uint16_t max);
 
 void onk_vec_reset(struct onk_vec_t *vec);
 int8_t onk_vec_pop(struct onk_vec_t *vec, void * dest);

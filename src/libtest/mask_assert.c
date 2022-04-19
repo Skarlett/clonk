@@ -6,17 +6,6 @@
 #include "libtest/masking.h"
 #include "libtest/CuTest.h"
 
-void create_mock_tokens(struct onk_token_t * tokens, uint16_t n, enum onk_lexicon_t *tok)
-{
-    for(uint16_t i=0; n > i; i++)
-    {
-        tokens[i].start = 0;
-        tokens[i].end = 0;
-        tokens[i].seq = 0;
-        tokens[i].type = tok[i];
-    }
-}
-
 int16_t print_expect_line(
     CuTest *tc,
     char * buf,
@@ -41,7 +30,6 @@ int16_t print_expect_line(
         lexed_token, ONK_TOK_CHAR_SIZE,
         test->source[mismatched_idx].type
     );
-
     onk_snprint_token_type(
         expected_token, ONK_TOK_CHAR_SIZE,
         test->expected[mismatched_idx]

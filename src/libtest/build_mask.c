@@ -2,6 +2,7 @@
 ** API functions for building test suites with tokens.
 */
 
+#include "onkstd/int.h"
 #include "clonk.h"
 #include "libtest/masking.h"
 
@@ -121,7 +122,7 @@ int8_t onk_desc_add_repeating_slot(
     return 1;
 }
 
-void onk_match_token_init(
+void onk_desc_init(
     struct onk_test_mask_t *kit,
     struct onk_desc_token_t *buffer,
     uint16_t buffer_sz
@@ -129,4 +130,6 @@ void onk_match_token_init(
 {
     kit->arr = buffer;
     kit->narr = buffer_sz;
+    kit->ignore_whitespace = 1;
+    kit->ignore_global_scope = 1;
 }

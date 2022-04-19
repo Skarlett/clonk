@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "libtest/CuTest.h"
-#include "libtest/masking.h"
+#include "libtest/assert.h"
 #include "lexer.h"
 
 
@@ -49,12 +49,13 @@ void __test__basic_perthensis(CuTest* tc)
         if (check_list[i][0] == 0 || src_code[i] == 0)
             break;
         ntokens = 0;
-        CuAssertTrue(tc, onk_tokenize(src_code[i], tokens, &ntokens, 16, false, NULL) == 0);
+
+
+        /* CuAssertTrue(tc, onk_tokenize(src_code[i], 0) == 0); */
         CuAssertTrue(tc, ntokens == tokens_sz[i]);
 
-
         sprintf(msg, "failed on idx [%d] ", i);
-        onk_assert_tokens(tc, src_code[i], msg, tokens, check_list[i]);
+        OnkAssertTokens(tc, tokens, check_list[i]);
     }
 }
 
@@ -123,7 +124,6 @@ void __test__collapse_string(CuTest* tc)
 
 void __test__fails_on_partial_string(CuTest* tc)
 {
-    struct CompileTimeError error;
     struct onk_token_t tokens[16];
     uint16_t i=0;
     CuAssertTrue(tc, onk_tokenize("\"1234", tokens, &i, 16, false, &error) == -1);

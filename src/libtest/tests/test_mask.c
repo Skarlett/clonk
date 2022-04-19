@@ -2,8 +2,7 @@
 #include "lexer.h"
 #include "libtest/CuTest.h"
 #include "libtest/masking.h"
-
-
+#include "libtest/assert.h"
 
 void build_test_mold_kit(
     struct onk_test_mask_t *parser,
@@ -45,6 +44,7 @@ void test_static_slot(CuTest *tc)
 void test_whitespace_filter(CuTest *tc)
 {
     struct onk_test_mask_t test;
+
     struct onk_token_t tokens[2];
     enum onk_lexicon_t tok[] = {
       ONK_WORD_TOKEN,
@@ -97,15 +97,19 @@ void fail_on_msg_overflow(CuTest *tc)
 
 void fail_on_empty_mask(CuTest *tc)
 {
+    CuTest dummy;
+    struct onk_test_mask_t mask;
+
+    onk_desc_init(&mask, );
+
 
 }
 
 
 void example(CuTest *tc)
 {
-    struct onk_test_mask_t parser, lexer;
     struct onk_vec_t tokens;
-
+    struct onk_test_mask_t parser, lexer;
     struct onk_lexer_input_t lexer_input;
     struct onk_desc_token_t lex_buf[12];
     struct onk_desc_token_t parse_buf[12];
@@ -118,8 +122,8 @@ void example(CuTest *tc)
 
     char buf[256];
 
-    onk_match_token_init(&lexer, (struct onk_desc_token_t *)lex_buf, 12);
-    onk_match_token_init(&parser, (struct onk_desc_token_t *)parse_buf, 12);
+    onk_desc_init(&lexer, (struct onk_desc_token_t *)lex_buf, 12);
+    onk_desc_init(&parser, (struct onk_desc_token_t *)parse_buf, 12);
     onk_vec_init(&tokens, 32, sizeof(struct onk_token_t));
 
     build_test_mold_kit(&parser, &lexer);

@@ -11,7 +11,6 @@ struct onk_parser_input_t {
     bool add_glob_scope;
 };
 
-
 struct onk_parser_output_t {
     /* Vec<struct onk_token_t *> */
     struct onk_vec_t postfix;
