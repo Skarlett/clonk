@@ -1,5 +1,10 @@
 #include <stdint.h>
 #include <stdbool.h>
+
+
+bool onk_can_add_u16(uint16_t a, uint16_t b)
+{ return UINT16_MAX - a > b; }
+
 /*
   Add 2 unsigned 16bit integers within bounds
   of its MAX & MIN values.
@@ -12,6 +17,7 @@ uint16_t onk_add_u16(uint16_t a, uint16_t b, bool * err)
   *err = true;
   return UINT16_MAX;
 }
+
 
 uint16_t onk_sub_u16(uint16_t a, uint16_t b, bool * err)
 {
