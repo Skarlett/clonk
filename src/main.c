@@ -1,19 +1,18 @@
 // CLONK interpreter
 // my very own 1990s retro built interpreter
-#include <stdio.h>
-#include <unistd.h>
-
 #include "clonk.h"
+#include <stdint.h>
 
 #define BANNER \
-    "    {__    {__                   {__\r\n"      \
-    " {__   {__ {__                   {__\r\n"      \
-    "{__        {__   {__     {__ {__ {__  {__\r\n" \
-    "{__        {__ {__  {__  {__  {__{__ {__\r\n"  \
-    "{__        {__{__    {__ {__  {__{_{__\r\n"    \
-    " {__   {__ {__ {__  {__  {__  {__{__ {__\r\n"  \
-    "   {____  {___   {__    {___  {__{__  {__\r\n" \
-    "License: clonk-license.txt"                    \
+    "    {__    {__                   {__\r\n"                  \
+    " {__   {__ {__                   {__\r\n"                  \
+    "{__        {__   {__     {__ {__ {__  {__\r\n"             \
+    "{__        {__ {__  {__  {__  {__{__ {__\r\n"              \
+    "{__        {__{__    {__ {__  {__{_{__\r\n"                \
+    " {__   {__ {__ {__  {__  {__  {__{__ {__\r\n"              \
+    "   {____  {___   {__    {___  {__{__  {__\r\n"             \
+    "License: clonk-license.txt \n"                             \
+    "bugs report: https://github.com/skarlett/clonk/issues\n"   \
     "Copyright 2021-2022 - version: "
 
 #define HELP_TEXT \
