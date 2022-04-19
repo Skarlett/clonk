@@ -4,7 +4,7 @@
 
 #define VEC_INC_NORM 256
 #define VEC_INC_HUGE 8192
-#define VEC_MAX 1 << 15
+#define VEC_MAX 1 << 14
 
 static inline int8_t can_access(struct onk_vec_t *vec)
 { return vec->state == ONK_VEC_READY;}
@@ -18,8 +18,8 @@ int8_t onk_vec_init(
     vec->base = calloc(capacity, type_sz);
     vec->capacity = capacity;
     vec->len = 0;
-    vec->max = 0;
     vec->inc = 0;
+    vec->clamp = VEC_MAX;
     vec->state = ONK_VEC_READY;
     
     if (vec->base == 0)
@@ -27,7 +27,6 @@ int8_t onk_vec_init(
 
     return 0;
 }
-
 
 /*
 **
@@ -37,7 +36,7 @@ int8_t onk_vec_init(
 **          0 if realloc returned null-ptr or `errno==ENOMEM`
 **          1 if successful
 **
- */
+*/
 int8_t onk_vec_realloc(struct onk_vec_t *vec, uint16_t inc)
 {
     void *ret = 0;
@@ -54,12 +53,8 @@ int8_t onk_vec_realloc(struct onk_vec_t *vec, uint16_t inc)
         return -2;
 
     /* limited by clamp */
-    else if(vec->max > 0 && new_capacity > vec->max)
-    {
-        new_capacity = new_capacity - vec->max;
-        if(new_capacity == 0)
-          return -1;
-    }
+    else if(vec->clamp > 0 && new_capacity >= vec->clamp)
+        return -1;
 
     ret = realloc(
         vec->base,
@@ -70,7 +65,8 @@ int8_t onk_vec_realloc(struct onk_vec_t *vec, uint16_t inc)
         return 0;
 
     /* moved out of place */
-    if(ret != vec->base) {
+    if(ret != vec->base)
+    {
         memcpy(ret, vec->base, vec->capacity * vec->type_sz);
         vec->base = ret;
     }
@@ -102,7 +98,6 @@ void * _push(struct onk_vec_t *dest, const void *src)
 
     assert(memcpy(head, src, dest->type_sz) != 0);
     dest->len += 1;
-    dest->head += dest->type_sz;
 
     return head;
 }
@@ -199,8 +194,7 @@ void onk_vec_clear(struct onk_vec_t *vec)
 void onk_vec_reset(struct onk_vec_t *vec) {
     vec->len = 0;
     vec->type_sz = 0;
-    vec->max = 0;
-    vec->head = vec->base;
+    vec->clamp = 0;
 }
 
 
@@ -211,7 +205,6 @@ int8_t onk_vec_free(struct onk_vec_t *vec) {
     free(vec->base);
     onk_vec_reset(vec);
     vec->state = ONK_VEC_UNINIT;
-    vec->head = 0;
     vec->base = 0;
     vec->capacity = 0;
     return 0;
