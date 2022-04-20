@@ -750,7 +750,7 @@ int8_t onk_tokenize(
     //assert(onk_vec_push(state.tokens, &token) > 0);
   }
   
-  token.type = ONK_EOFT;
+  token.type = ONK_EOF_TOKEN;
   token.start = i;
   token.end = i;
   token.seq = state.tokens->len;

@@ -691,7 +691,7 @@ int8_t onk_parse(
     else if(current_type == ONK_RETURN_TOKEN)
       handle_return(&state);
 
-    else if(current_type == ONK_EOFT)
+    else if(current_type == ONK_EOF_TOKEN)
       break;
 
     else {

@@ -12,7 +12,7 @@
 
 enum onk_lexicon_t {
     /* end of file */
-    ONK_EOFT,
+    ONK_EOF_TOKEN,
 
     __ONK_MARKER_ILLEGAL_INPUT_START,
     /********************/
