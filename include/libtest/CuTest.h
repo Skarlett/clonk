@@ -40,29 +40,25 @@ void CuStringDelete(CuString* str);
 
 typedef struct CuTest CuTest;
 
-typedef void (*TestFunction)(CuTest *);
-
-struct _onk_test_buffers {
+struct onk_test_buffers {
 	/* Initialized/heap Vec<Char> */
 	char * msgbuf;
-	uint16_t msg_sz;
-	uint16_t msg_cursor;
+	uint16_t msg_capacity;
 
 	/* Initialized/heap Vec<struct Token> */
 	struct onk_vec_t src_tokens;
 
 	/* Initialized/heap Vec<struct Token> */
 	struct onk_vec_t postfix_token;
+	/* Initialized/heap Vec<struct onk_token_desc_t> */
+	struct onk_vec_t parser_expect;
 
 	/* Initialized/heap Vec<struct onk_token_desc_t> */
 	struct onk_vec_t lexer_expect;
-
-	/* Initialized/heap Vec<struct onk_token_desc_t> */
-	struct onk_vec_t parser_expect;
 };
 
-void _onk_reset_glob_buffer(struct _onk_test_buffers *buf);
-
+typedef void (*TestFunction) \
+  (CuTest *tc, struct onk_test_buffers *ptr);
 
 struct CuTest
 {
@@ -72,19 +68,17 @@ struct CuTest
 	int ran;
 	const char* message;
 	jmp_buf *jumpBuf;
-	struct _onk_test_buffers * buffers;
 };
 
 void CuTestInit(
 	CuTest* t,
 	const char* name,
-	TestFunction function,
-	struct _onk_test_buffers *buf
+	TestFunction function
 );
 
 CuTest* CuTestNew(const char* name, TestFunction function);
 
-void CuTestRun(CuTest* tc);
+void CuTestRun(CuTest* tc, struct onk_test_buffers *ptr);
 void CuTestDelete(CuTest *t);
 
 /* Internal versions of assert functions -- use the public versions */
@@ -125,10 +119,6 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc,
 
 #define MAX_TEST_CASES	1024
 
-
-/* Global buffers */
-struct _onk_test_buffers BUFFERS;
-
 #define SUITE_ADD_TEST(SUITE,TEST)	CuSuiteAdd(SUITE, CuTestNew(#TEST, TEST))
 
 typedef struct
@@ -145,7 +135,7 @@ CuSuite* CuSuiteNew(void);
 void CuSuiteDelete(CuSuite *testSuite);
 void CuSuiteAdd(CuSuite* testSuite, CuTest *testCase);
 void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2);
-void CuSuiteRun(CuSuite* testSuite);
+void CuSuiteRun(CuSuite* testSuite, struct onk_test_buffers *ptr);
 void CuSuiteSummary(CuSuite* testSuite, CuString* summary);
 void CuSuiteDetails(CuSuite* testSuite, CuString* details);
 

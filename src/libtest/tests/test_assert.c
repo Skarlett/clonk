@@ -98,11 +98,11 @@ void test_assert_postfix_stage(CuTest *tc)
 
     pin.src_code = MOCK_SRC;
     pin.src_code_sz = MOCK_SRC_LEN;
+
     pin.tokens = tc->buffers->src_tokens;
     pin.add_glob_scope = false;
 
     ret = onk_assert_postfix(&dummy, &kit, &pin, &pout, 0, "NA", 0);
-
     CuAssert(tc, "failed parsing stage", ret == 0);
 }
 
@@ -110,9 +110,19 @@ void test_assert_postfix_stage(CuTest *tc)
 void test_assert_parse_stage(CuTest *tc)
 {
     CuTest dummy;
+    const char * src = "word + word";
+    static const enum onk_lexicon_t lexed[] = {ONK_WORD_TOKEN, ONK_ADD_TOKEN, ONK_WORD_TOKEN};
+    static const enum onk_lexicon_t parsed[] = {ONK_WORD_TOKEN,  ONK_WORD_TOKEN, ONK_ADD_TOKEN};
     struct onk_test_mask_t lexer, parser;
+    int ret;
 
-    onk_assert_parse_stage(&dummy, &lexer, &parser, 0, "NA", 0);
+    onk_desc_add_static_slot(&lexer, lexed, 3);
+    onk_desc_add_static_slot(&parser, parsed, 3);
 
+    ret = onk_assert_parse_stage(&dummy, &lexer, &parser, 0, "NA", 0);
     CuAssert(tc, "failed parsing stage", ret == 0);
+
+    ret = onk_assert_parse_stage(&dummy, &parser, &lexer, 0, "NA", 0);
+    CuAssert(tc, "failed parsing stage", ret == -1);
+
 }

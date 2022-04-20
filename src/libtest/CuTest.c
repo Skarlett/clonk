@@ -7,6 +7,9 @@
 
 #include "libtest/CuTest.h"
 
+
+void _onk_reset_buffer_hook(struct onk_test_buffers *ptr);
+
 /*-------------------------------------------------------------------------*
  * CuStr
  *-------------------------------------------------------------------------*/
@@ -109,8 +112,7 @@ void CuStringInsert(CuString* str, const char* text, int pos)
  * CuTest
  *-------------------------------------------------------------------------*/
 
-void CuTestInit(CuTest* t, const char* name, TestFunction function,
-				struct _onk_test_buffers *buf)
+void CuTestInit(CuTest* t, const char* name, TestFunction function)
 {
 	t->name = CuStrCopy(name);
 	t->failed = 0;
@@ -118,13 +120,12 @@ void CuTestInit(CuTest* t, const char* name, TestFunction function,
 	t->message = NULL;
 	t->function = function;
 	t->jumpBuf = NULL;
-	t->buffers = buf;
 }
 
 CuTest* CuTestNew(const char* name, TestFunction function)
 {
 	CuTest* tc = CU_ALLOC(CuTest);
-	CuTestInit(tc, name, function, &BUFFERS);
+	CuTestInit(tc, name, function);
 	return tc;
 }
 
@@ -135,7 +136,7 @@ void CuTestDelete(CuTest *t)
         free(t);
 }
 
-void CuTestRun(CuTest* tc)
+void CuTestRun(CuTest* tc, struct onk_test_buffers *ptr)
 {
 	jmp_buf buf;
 	tc->jumpBuf = &buf;
@@ -143,10 +144,10 @@ void CuTestRun(CuTest* tc)
 	if (setjmp(buf) == 0)
 	{
 		tc->ran = 1;
-		(tc->function)(tc);
+		(tc->function)(tc, ptr);
 	}
 
-	_onk_reset_glob_buffer(tc->buffers);
+	// _onk_reset_glob_buffer(tc->buffers);
 	tc->jumpBuf = 0;
 }
 
@@ -285,13 +286,14 @@ void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2)
 	}
 }
 
-void CuSuiteRun(CuSuite* testSuite)
+void CuSuiteRun(CuSuite* testSuite, struct onk_test_buffers *ptr)
 {
 	int i;
 	for (i = 0 ; i < testSuite->count ; ++i)
 	{
 		CuTest* testCase = testSuite->list[i];
-		CuTestRun(testCase);
+		_onk_reset_buffer_hook(ptr);
+		CuTestRun(testCase, ptr);
 		if (testCase->failed) { testSuite->failCount += 1; }
 	}
 }
@@ -338,7 +340,6 @@ void CuSuiteDetails(CuSuite* testSuite, CuString* details)
 		CuStringAppend(details, "\n!!!FAILURES!!!\n");
 
 		CuStringAppendFormat(details, "Runs: %d ",   testSuite->count);
-		CuStringAppendFormat(details, "Passes: %d ", testSuite->count - testSuite->failCount);
 		CuStringAppendFormat(details, "Fails: %d\n",  testSuite->failCount);
 	}
 }

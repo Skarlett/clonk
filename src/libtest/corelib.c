@@ -10,8 +10,9 @@
  * @param tokens: tokens to check against answers
  * @param answer: list of answers
 */
-#define MAX_CHECK 2048
-static const char * fmt_str = "%s:%u %sn\equality check failed on %u";
+#define MAX_CHECK 512
+static const char * fmt_str = "%s:%u %sn\equality check failed on %u. " \
+    "Expected <%s> got <%s>";
 
 int8_t onk_assert_tokens(
     CuTest *tc,
@@ -25,18 +26,18 @@ int8_t onk_assert_tokens(
     uint16_t i;
     char buf[512];
 
-
     for(i=0; MAX_CHECK > i; i++)
     {
         if(tokens[i].type == answer[i])
         {
-            snprintf(buf, 512, fmt_str, file, line, msg, i);
+            snprintf(buf, 512, fmt_str, file, line, msg, i,
+                     onk_ptoken(answer[i]), onk_ptoken(tokens[i].type));
             CuFail(tc, buf);
             return -1;
         }
     }
 
-    return MAX_CHECK > i ? -1 : 0;
+    return 0;
 }
 
 

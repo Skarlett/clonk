@@ -85,6 +85,11 @@ struct onk_test_mask_t
     uint8_t ignore_global_scope;
 };
 
+void onk_desc_init(
+    struct onk_test_mask_t *kit,
+    struct onk_desc_token_t *buffer,
+    uint16_t buffer_sz
+);
 
 /*
  * copies (`enum onk_lexicon_t *tok`) each item into
@@ -157,12 +162,6 @@ int8_t onk_assert_parse_stage(
     uint16_t fmt_i,
     char *fp,
     uint16_t line
-);
-
-void onk_match_token_init(
-    struct onk_test_mask_t *kit,
-    struct onk_desc_token_t *buffer,
-    uint16_t buffer_sz
 );
 
 #define OnkAssertTokenMask(tc, kit, toks, ntoks, i)     \
