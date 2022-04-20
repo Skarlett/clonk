@@ -186,11 +186,14 @@ int8_t onk_vec_pop(struct onk_vec_t *vec, void * dest) {
 void onk_vec_clear(struct onk_vec_t *vec)
 { vec->len = 0; }
 
+void onk_vec_clamp(struct onk_vec_t *vec, uint16_t max)
+{ vec->clamp = max; }
+
 /*
 ** clears expandable buffer.
 **
 ** returns -1 if vector not initalized
- */
+*/
 void onk_vec_reset(struct onk_vec_t *vec) {
     vec->len = 0;
     vec->type_sz = 0;
