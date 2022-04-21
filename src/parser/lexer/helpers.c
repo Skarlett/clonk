@@ -111,13 +111,26 @@ bool onk_is_utf_byte(char ch) {
         && copy != 0xa3);
 }
 
-/* null delimitated */
-uint8_t onk_eq_any_tok(enum onk_lexicon_t cmp, enum onk_lexicon_t buffer[]) {
-  for (uint16_t i=0 ;; i++)
-    if(buffer[i] == 0) break;
-    else if (buffer[i] == cmp)
+uint16_t onk_lexarr_contains(
+    enum onk_lexicon_t cmp,
+    enum onk_lexicon_t *arr,
+    uint16_t narr)
+{
+  for (uint16_t i=0; narr > i; i++)
+    if(arr[i] == 0) break;
+    else if (arr[i] == cmp)
       return i;
-  
+  return 0;
+}
+
+uint16_t onk_tokarr_contains(
+    enum onk_lexicon_t cmp,
+    struct onk_token_t *arr,
+    uint16_t narr)
+{
+  for (uint16_t i=0; narr > i; i++)
+    if (arr[i].type == cmp)
+      return i;
   return 0;
 }
 

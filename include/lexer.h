@@ -11,8 +11,11 @@
 #define ONK_TOK_CHAR_SIZE 64
 
 enum onk_lexicon_t {
+    __ONK_TOKEN_START,
     /* end of file */
     ONK_EOF_TOKEN,
+
+    ONK_UNDEFINED_TOKEN,
 
     __ONK_MARKER_ILLEGAL_INPUT_START,
     /********************/
@@ -46,7 +49,7 @@ enum onk_lexicon_t {
     onk_list_group_token,  // [x,x]
 
     // TODO: produce this
-    onk_idx_group_token, // [x:x]
+    onk_idx_group_token, // [s:e:sk]
 
     onk_map_group_token,   // {a:x, b:x}
     onk_code_group_token,  // {x; x;} or {x; x}
@@ -57,8 +60,6 @@ enum onk_lexicon_t {
     onk_struct_group_token,// Name {a=b, y=z};
 
     __ONK_MARKER_GROUP_END,
-
-    ONK_UNDEFINED_TOKEN,
 
     __ONK_MARKER_UPGRADE_DATA_START,
 
@@ -374,7 +375,7 @@ enum onk_lexicon_t {
 
     // struct Foo {f: v}
     // Foo (f v mapG(2)) structDeclare
-
+    __ONK_TOKEN_END
 };
 
 
@@ -507,7 +508,7 @@ enum onk_lexicon_t invert_brace_tok_ty(enum onk_lexicon_t token);
  * @param buffer collection to be searched
  * @return bool
  */
-uint8_t onk_eq_any_tok(enum onk_lexicon_t cmp, enum onk_lexicon_t *buffer);
+//uint8_t onk_eq_any_tok(enum onk_lexicon_t cmp, enum onk_lexicon_t *buffer);
 
 
 /**
@@ -558,6 +559,9 @@ bool onk_is_tok_open_brace(enum onk_lexicon_t token);
  */
 bool onk_is_utf_byte(char ch);
 
+
+uint16_t onk_lexarr_contains(enum onk_lexicon_t type, enum onk_lexicon_t *arr, uint16_t narr);
+uint16_t onk_tokarr_contains(enum onk_lexicon_t type, struct onk_token_t *arr, uint16_t narr);
 
 bool onk_is_tok_block_keyword(enum onk_lexicon_t token);
 

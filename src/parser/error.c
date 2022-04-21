@@ -1,9 +1,8 @@
-#include "expr.h"
+#include "clonk.h"
+#include "lexer.h"
+#include "parser.h"
 #include "utils.h"
-#include <string.h>
-#include "../../error.h"
-#include <assert.h>
-#include <stdint.h>
+#include "predict.h"
 
 /**
  * @param tok: comparsion token
@@ -14,10 +13,14 @@ int8_t is_continuable(enum onk_lexicon_t tok) {
         _EX_ASN_OPERATOR,
         _EX_CLOSE_BRACE,
         _EX_OPEN_BRACE,
-        _EX_DELIM,  
+
+        // TODO: Investigate this
+        //_EX_DELIM,
         0
     };
-    return onk_eq_any_tok(tok, __BREAK_POINTS_START);    
+    static const uint16_t len = BINOP_LEN + ASNOP_LEN \
+        + BRACE_CLOSE_LEN + BRACE_OPEN_LEN; // + _EX_DELIM_LEN;
+    return onk_lexarr_contains(tok, __BREAK_POINTS_START, len);
 }
 
 
