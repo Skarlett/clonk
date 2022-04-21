@@ -4,6 +4,7 @@
 
 #include "clonk.h"
 #include "lexer.h"
+#include "parser.h"
 
 /* because it can't be applied to integers */
 /* unlike the other operators which can be applied */
@@ -86,5 +87,5 @@ struct validator_t {
 };
 
 void init_expect_buffer(enum onk_lexicon_t *arr);
-bool is_token_unexpected(struct onk_parser_state_t*state);
+bool is_token_unexpected(struct onk_parser_state_t *state);
 #endif
