@@ -1,33 +1,20 @@
 #ifndef __CLONK__
 #define __CLONK__
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
 #include <string.h>
 #include <assert.h>
-
+#include <errno.h>
+#include <sys/types.h>
 
 #define ONK_VERSION "0.0.4"
-#define ONK_INCLUDE_TESTS 0 // -DINCLUDE_TESTS 1
-
-/* 64kb */
-#define ONK_MAX_INPUT_FILE_SZ 65535
-
-#define ONK_STACK_SZ 2048
-
-/* error buffer size */
-#define ONK_ERR_BUF_SZ 512
-
-/* operator stack size */
-#define ONK_PARSER_OP_BUF_SZ 2048
-
-#define ONK_ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
-#define ONK_DIGIT_STR "0987654321"
-
-#define ONK_EOF 0
-
-#define onk_nop
-typedef uint16_t onk_buf_int_t;
+// -DINCLUDE_TESTS 1
+#define ONK_INCLUDE_TESTS 0
 
 // Macro for checking bitness (safer macros borrowed from
 // https://www.fluentcpp.com/2019/05/28/better-macros-better-flags/)
@@ -90,13 +77,64 @@ typedef int16_t onk_isize;
 /* WASM */
 #endif
 
+#if defined(__AGNES__)
+/* experimental OS */
+#endif
 
-int8_t ONK_HALT = 0;
+/* 64kb */
+#define ONK_MAX_INPUT_FILE_SZ 65535
+#define ONK_STACK_SZ 2048
 
-int onk_quit(int status);
-int onk_print(const char *fmt, ...);
+/* error buffer size */
+#define ONK_ERR_BUF_SZ 512
 
-#define onk_unimplemented() fputs(stdout, "unimplemented") && onk_quit(1)
+/* operator stack size */
+#define ONK_PARSER_OP_BUF_SZ 2048
+
+#define ONK_ALPHABET "asdfghjkklqwertyuiopzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
+#define ONK_DIGIT_STR "0987654321"
+
+#define ONK_EOF 0
+#define onk_nop
+
+
+#define ONK_VEC_INC 256
+#define ONK_VEC_MAX 1 << 14
+
+int8_t onkerr = 0;
+
+#define ONK_ALLOC(TYPE)  ((TYPE *) malloc(sizeof(TYPE)))
+#define ONK_CALLOC(TYPE, N) ((TYPE *) calloc(sizeof(TYPE), (N)))
+
+#define unimplemented() fputs(stdout, "unimplemented") && exit(1)
+
+/* enum onk_datatype { ONK_DATA_STR }; */
+
+/* struct onk_rt_gc {}; */
+/* struct onk_runtime_t { */
+
+/* }; */
+/* struct onk_datatype_t { */
+/*     enum onk_datatype type; */
+/*     union {} inner; */
+/* }; */
+
+/* typedef void (ClonkFFI)( */
+/*     struct onk_runtime_t *rt, */
+/*     struct onk_datatype_t *args, */
+/*     uint16_t nargs); */
+
+/* void _onk_register_func( */
+/*     struct onk_runtime_t *rt, */
+/*     ClonkFFI *func, */
+/*     char *name); */
+
+/* void onk_register_const( */
+/*     struct onk_runtime_t *rt, */
+/*     struct onk_datatype_t *const_data, */
+/*     char *name); */
+
+/* #define onk_register_func(rt, func) _onk_register_func((rt), (func), #func) */
 
 
 #endif
