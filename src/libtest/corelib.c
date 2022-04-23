@@ -28,7 +28,7 @@ int8_t onk_assert_tokens(
 
     for(i=0; MAX_CHECK > i; i++)
     {
-        if(tokens[i].type == answer[i])
+        if(tokens[i].type != answer[i])
         {
             snprintf(buf, 512, fmt_str, file, line, msg, i,
                      onk_ptoken(answer[i]), onk_ptoken(tokens[i].type));
@@ -55,7 +55,7 @@ int8_t onk_assert_tokens_by_ref(
 
     for(i=0; MAX_CHECK > i; i++)
     {
-        if(tokens[i]->type == answer[i])
+        if(tokens[i]->type != answer[i])
         {
             snprintf(buf, 512, fmt_str, file, line, msg, i);
             CuFail(tc, buf);
