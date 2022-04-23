@@ -7,27 +7,33 @@
 
 #include "libtest/CuTest.h"
 
-
 void _onk_reset_buffer_hook(struct onk_test_buffers *ptr);
 
 /*-------------------------------------------------------------------------*
  * CuTest
  *-------------------------------------------------------------------------*/
 
-void CuTestInit(CuTest* t, const char* name, TestFunction function)
+void CuTestInit(
+	CuTest* t,
+	const char* name,
+	enum CuTestType type,
+	union TestFn function)
 {
 	t->name = CuStrCopy(name);
 	t->failed = 0;
 	t->ran = 0;
 	t->message = NULL;
-	t->function = function;
+	t->fntype = type;
+	t->func = function;
 	t->jumpBuf = NULL;
 }
-
-CuTest* CuTestNew(const char* name, TestFunction function)
+CuTest* CuTestNew(
+	const char* name,
+	enum CuTestType type,
+	union TestFn fn)
 {
 	CuTest* tc = CU_ALLOC(CuTest);
-	CuTestInit(tc, name, function);
+	CuTestInit(tc, name, type, fn);
 	return tc;
 }
 
@@ -46,7 +52,18 @@ void CuTestRun(CuTest* tc, struct onk_test_buffers *ptr)
 	if (setjmp(buf) == 0)
 	{
 		tc->ran = 1;
-		(tc->function)(tc, ptr);
+		switch (tc->fntype)
+		{
+			case ClonkTestType:
+				(tc->func.buffered)(tc, ptr);
+				break;
+			case CuTestType:
+				(tc->func.norm)(tc);
+				break;
+			default:
+				CuFail(tc, "Misconfigured Test");
+				break;
+		}
 	}
 
 	tc->jumpBuf = 0;

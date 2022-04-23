@@ -57,13 +57,25 @@ struct onk_test_buffers {
 	struct onk_vec_t lexer_expect;
 };
 
-typedef void (*TestFunction) \
-  (CuTest *tc, struct onk_test_buffers *ptr);
+typedef void (*CuTestFn)(CuTest *tc);
+typedef void (*ClonkTestFn)(CuTest *tc, struct onk_test_buffers *ptr);
+
+union TestFn {
+	CuTestFn norm;
+	ClonkTestFn buffered;
+};
+
+enum CuTestType {
+  ClonkTestType,
+  CuTestType
+};
 
 struct CuTest
 {
+	enum CuTestType fntype;
+	union TestFn func;
+
 	char* name;
-	TestFunction function;
 	int failed;
 	int ran;
 	const char* message;
@@ -73,10 +85,12 @@ struct CuTest
 void CuTestInit(
 	CuTest* t,
 	const char* name,
-	TestFunction function
+	enum CuTestType type,
+	union TestFn function
 );
 
-CuTest* CuTestNew(const char* name, TestFunction function);
+CuTest* CuTestNew(const char* name, enum CuTestType type,
+	union TestFn test);
 
 void CuTestRun(CuTest* tc, struct onk_test_buffers *ptr);
 void CuTestDelete(CuTest *t);
@@ -119,7 +133,9 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc,
 
 #define MAX_TEST_CASES	1024
 
-#define SUITE_ADD_TEST(SUITE,TEST)	CuSuiteAdd(SUITE, CuTestNew(#TEST, TEST))
+#define SUITE_ADD_TEST(SUITE,TEST) CuSuiteAdd(SUITE, CuTestNew(#TEST, CuTestType, TEST))
+#define SUITE_ADD_CLONK_TEST(SUITE,TEST) CuSuiteAdd(SUITE, CuTestNew(#TEST, ClonkTestType, TEST))
+
 
 typedef struct
 {
