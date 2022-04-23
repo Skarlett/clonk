@@ -147,7 +147,6 @@ void CuTestRun(CuTest* tc, struct onk_test_buffers *ptr)
 		(tc->function)(tc, ptr);
 	}
 
-	// _onk_reset_glob_buffer(tc->buffers);
 	tc->jumpBuf = 0;
 }
 
