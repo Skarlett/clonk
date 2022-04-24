@@ -665,6 +665,27 @@ void TestAssertDblEquals(CuTest* tc)
 }
 
 /*-------------------------------------------------------------------------*
+ * clonk extensions
+ *-------------------------------------------------------------------------*/
+
+
+void TestClonkCuTestRun(CuTest* tc, struct onk_test_buffers *ptr)
+{
+	CuTest tc2;
+	CuTestInit(&tc2, "ClonkTest", zTestFails);
+
+	ptr.msgbuf[0] = 1;
+	CuTestRun(&tc2);
+
+	CuAssertIntEquals(tc, ptr.msgbuf[0], 0);
+	CuAssertStrEquals(tc, "ClonkTest", tc2.name);
+	CuAssertTrue(tc, tc2.failed);
+	CuAssertTrue(tc, tc2.ran);
+	CompareAsserts(tc, "ClonkCuTestRun failed", "test should fail", tc2.message);
+}
+
+
+/*-------------------------------------------------------------------------*
  * main
  *-------------------------------------------------------------------------*/
 
@@ -702,5 +723,9 @@ CuSuite* CuGetSuite(void)
 	SUITE_ADD_TEST(suite, TestCuSuiteDetails_MultiplePasses);
 	SUITE_ADD_TEST(suite, TestCuSuiteDetails_MultipleFails);
 
+	SUITE_ADD_TEST(suite, TestCuSuiteDetails_MultipleFails);
+
+	/* Clonk extensions*/
+	SUITE_ADD_CLONK_TEST(suite, TestClonkCuTestRun);
 	return suite;
 }
