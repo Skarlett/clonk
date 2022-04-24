@@ -1,15 +1,5 @@
 #include <stdio.h>
 #include "libtest/CuTest.h"
-
-/***************************/
-/*  Test the test harness  */
-/***************************/
-CuSuite* CuGetSuite();
-//CuSuite* TestUtilTestSuite();
-
-CuSuite* OnkAssertSuite();
-CuSuite* OnkTokenMaskAssertSuite();
-
 /****************/
 /*  Test utils  */
 /****************/
@@ -20,9 +10,26 @@ CuSuite* VecTestSuite();
 /*****************/
 
 CuSuite* CuLexerHarnessInput();
+
 CuSuite* LexerUnitTestSuite();
 CuSuite* LexerHelpersUnitTestSuite();
 CuSuite* PostFixUnitTestSuite();
+
+
+/***************************/
+/*  Test the test harness  */
+/***************************/
+CuSuite* CuGetSuite();
+CuSuite* OnkAssertSuite();
+CuSuite* OnkTokenMaskAssertSuite();
+
+void TestTestUtils(CuSuite* suite)
+{
+
+	CuSuiteAddSuite(suite, CuGetSuite());
+	CuSuiteAddSuite(suite, OnkAssertSuite());
+	CuSuiteAddSuite(suite, OnkTokenMaskAssertSuite());
+}
 
 
 /* FORWARD DECLARED in CuTest.c*/
