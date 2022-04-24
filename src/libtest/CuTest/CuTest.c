@@ -27,13 +27,32 @@ void CuTestInit(
 	t->func = function;
 	t->jumpBuf = NULL;
 }
+
+int8_t NewTestFn(union TestFn *dest, enum CuTestType type, void * fn)
+{
+	switch(type)
+	{
+		case CuTestType:
+			dest->norm = fn;
+			break;
+		case ClonkTestType:
+			dest->buffered = fn;
+			break;
+
+		default: return -1;
+	}
+	return 0;
+}
 CuTest* CuTestNew(
 	const char* name,
 	enum CuTestType type,
-	union TestFn fn)
+	void * fn)
 {
+	union TestFn func;
+	NewTestFn(&func, type, fn);
+
 	CuTest* tc = CU_ALLOC(CuTest);
-	CuTestInit(tc, name, type, fn);
+	CuTestInit(tc, name, type, func);
 	return tc;
 }
 
@@ -139,7 +158,7 @@ void CuAssertDblEquals_LineMsg(CuTest* tc, const char* file, int line, const cha
 	double expected, double actual, double delta)
 {
 	char buf[STRING_MAX];
-	if (fabs(expected - actual) <= delta) return;
+ 	if (fabs(expected - actual) <= delta) return;
 	sprintf(buf, "expected <%f> but was <%f>", expected, actual); 
 
 	CuFail_Line(tc, file, line, message, buf);

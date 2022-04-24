@@ -90,7 +90,7 @@ void CuTestInit(
 );
 
 CuTest* CuTestNew(const char* name, enum CuTestType type,
-	union TestFn test);
+	void * fn);
 
 void CuTestRun(CuTest* tc, struct onk_test_buffers *ptr);
 void CuTestDelete(CuTest *t);
