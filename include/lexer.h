@@ -683,6 +683,9 @@ bool _onk_is_group(enum onk_lexicon_t tok);
 */
 enum onk_lexicon_t onk_invert_brace(enum onk_lexicon_t token);
 
+uint16_t onk_tokarr_len(struct onk_token_t *arr);
+uint16_t onk_lexarr_len(struct onk_token_t *arr);
+
 int16_t onk_snprint_token(
     char * buf,
     uint16_t max,
