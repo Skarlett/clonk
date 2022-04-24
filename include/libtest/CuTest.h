@@ -89,6 +89,9 @@ void CuTestInit(
 	union TestFn function
 );
 
+
+int8_t NewTestFn(union TestFn *dest, enum CuTestType type, void * fn);
+
 CuTest* CuTestNew(const char* name, enum CuTestType type,
 	void * fn);
 

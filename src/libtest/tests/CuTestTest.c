@@ -3,14 +3,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
-#include "CuTest.h"
+#include "libtest/CuTest.h"
 
 /*-------------------------------------------------------------------------*
  * Helper functions
  *-------------------------------------------------------------------------*/
 
+#define CompareAsserts(tc, message, expected, actual)  X_CompareAsserts((tc), __FILE__, __LINE__, (message), (expected), (actual))
 
+static void X_CompareAsserts(CuTest* tc, const char *file, int line, const char* message, const char* expected, const char* actual)
 {
 	int mismatch;
 	if (expected == NULL || actual == NULL) {
@@ -33,6 +36,7 @@
 		}
 	}
 
+	CuAssert_Line(tc, file, line, message, !mismatch);
 }
 
 /*-------------------------------------------------------------------------*
@@ -142,24 +146,29 @@ void zTestFails(CuTest* tc)
 
 void TestCuTestNew(CuTest* tc)
 {
-	CuTest* tc2 = CuTestNew("MyTest", TestPasses);
+	CuTest* tc2 = CuTestNew("MyTest", CuTestType, TestPasses);
+
 	CuAssertStrEquals(tc, "MyTest", tc2->name);
 	CuAssertTrue(tc, !tc2->failed);
 	CuAssertTrue(tc, tc2->message == NULL);
-	CuAssertTrue(tc, tc2->function == TestPasses);
+	CuAssertTrue(tc, tc2->func.norm == TestPasses);
+	CuAssertTrue(tc, tc2->fntype == CuTestType);
 	CuAssertTrue(tc, tc2->ran == 0);
 	CuAssertTrue(tc, tc2->jumpBuf == NULL);
 }
 
-
 void TestCuTestInit(CuTest *tc)
 {
 	CuTest tc2;
-	CuTestInit(&tc2, "MyTest", TestPasses);
+	union TestFn func;
+	NewTestFn(&func, CuTestType, TestPasses);
+	CuTestInit(&tc2, "MyTest", CuTestType, func);
+
 	CuAssertStrEquals(tc, "MyTest", tc2.name);
 	CuAssertTrue(tc, !tc2.failed);
 	CuAssertTrue(tc, tc2.message == NULL);
-	CuAssertTrue(tc, tc2.function == TestPasses);
+	CuAssertTrue(tc, tc2.func.norm == TestPasses);
+	CuAssertTrue(tc, tc2.fntype == CuTestType);
 	CuAssertTrue(tc, tc2.ran == 0);
 	CuAssertTrue(tc, tc2.jumpBuf == NULL);
 }
@@ -167,14 +176,19 @@ void TestCuTestInit(CuTest *tc)
 void TestCuAssert(CuTest* tc)
 {
 	CuTest tc2;
-	CuTestInit(&tc2, "MyTest", TestPasses);
+	union TestFn func;
+
+	NewTestFn(&func, CuTestType, TestPasses);
+	CuTestInit(&tc2, "MyTest", CuTestType, func);
 
 	CuAssert(&tc2, "test 1", 5 == 4 + 1);
 	CuAssertTrue(tc, !tc2.failed);
 	CuAssertTrue(tc, tc2.message == NULL);
+	CuAssertTrue(tc, tc2.fntype == CuTestType);
 
 	CuAssert(&tc2, "test 2", 0);
 	CuAssertTrue(tc, tc2.failed);
+
 	CompareAsserts(tc, "CuAssert didn't fail", "test 2", tc2.message);
 
 	CuAssert(&tc2, "test 3", 1);
@@ -184,18 +198,20 @@ void TestCuAssert(CuTest* tc)
 	CuAssert(&tc2, "test 4", 0);
 	CuAssertTrue(tc, tc2.failed);
 	CompareAsserts(tc, "CuAssert didn't fail", "test 4", tc2.message);
-
 }
 
 void TestCuAssertPtrEquals_Success(CuTest* tc)
 {
 	CuTest tc2;
 	int x;
+	union TestFn func;
 
-	CuTestInit(&tc2, "MyTest", TestPasses);
+	NewTestFn(&func, CuTestType, TestPasses);
+	CuTestInit(&tc2, "MyTest", CuTestType, func);
 
 	/* test success case */
 	CuAssertPtrEquals(&tc2, &x, &x);
+	CuAssertTrue(tc, tc2.fntype == CuTestType);
 	CuAssertTrue(tc, ! tc2.failed);
 	CuAssertTrue(tc, NULL == tc2.message);
 }
@@ -207,13 +223,17 @@ void TestCuAssertPtrEquals_Failure(CuTest* tc)
 	int* nullPtr = NULL;
 	char expected_message[STRING_MAX];
 
-	CuTestInit(&tc2, "MyTest", TestPasses);
+	union TestFn func;
+	NewTestFn(&func, CuTestType, TestPasses);
+	CuTestInit(&tc2, "MyTest", CuTestType, func);
 
 	/* test failing case */
 	sprintf(expected_message, "expected pointer <0x%p> but was <0x%p>", nullPtr, &x);
 	CuAssertPtrEquals(&tc2, NULL, &x);
 	CuAssertTrue(tc, tc2.failed);
+	CuAssertTrue(tc, tc2.fntype == CuTestType);
 	CompareAsserts(tc, "CuAssertPtrEquals failed", expected_message, tc2.message);
+
 }
 
 void TestCuAssertPtrNotNull_Success(CuTest* tc)
@@ -221,10 +241,13 @@ void TestCuAssertPtrNotNull_Success(CuTest* tc)
 	CuTest tc2;
 	int x;
 
-	CuTestInit(&tc2, "MyTest", TestPasses);
+	union TestFn func;
+	NewTestFn(&func, CuTestType, TestPasses);
+	CuTestInit(&tc2, "MyTest", CuTestType, func);
 
 	/* test success case */
 	CuAssertPtrNotNull(&tc2, &x);
+	CuAssertTrue(tc, tc2.fntype == CuTestType);
 	CuAssertTrue(tc, ! tc2.failed);
 	CuAssertTrue(tc, NULL == tc2.message);
 }
@@ -233,23 +256,32 @@ void TestCuAssertPtrNotNull_Failure(CuTest* tc)
 {
 	CuTest tc2;
 
-	CuTestInit(&tc2, "MyTest", TestPasses);
+	union TestFn func;
+	NewTestFn(&func, CuTestType, TestPasses);
+	CuTestInit(&tc2, "MyTest", CuTestType, func);
 
 	/* test failing case */
 	CuAssertPtrNotNull(&tc2, NULL);
 	CuAssertTrue(tc, tc2.failed);
+	CuAssertTrue(tc, tc2.fntype == CuTestType);
 	CompareAsserts(tc, "CuAssertPtrNotNull failed", "null pointer unexpected", tc2.message);
 }
 
 void TestCuTestRun(CuTest* tc)
 {
 	CuTest tc2;
-	CuTestInit(&tc2, "MyTest", zTestFails);
-	CuTestRun(&tc2);
+	union TestFn func;
+	struct onk_test_buffers buf;
+
+	NewTestFn(&func, CuTestType, zTestFails);
+	CuTestInit(&tc2, "MyTest", CuTestType, func);
+
+	CuTestRun(&tc2, &buf);
 
 	CuAssertStrEquals(tc, "MyTest", tc2.name);
 	CuAssertTrue(tc, tc2.failed);
 	CuAssertTrue(tc, tc2.ran);
+	CuAssertTrue(tc, tc2.fntype == CuTestType);
 	CompareAsserts(tc, "TestRun failed", "test should fail", tc2.message);
 }
 
@@ -277,8 +309,12 @@ void TestCuSuiteAddTest(CuTest* tc)
 	CuSuite ts;
 	CuTest tc2;
 
+	union TestFn fail_func;
+
+	NewTestFn(&fail_func, CuTestType, zTestFails);
+
 	CuSuiteInit(&ts);
-	CuTestInit(&tc2, "MyTest", zTestFails);
+	CuTestInit(&tc2, "MyTest", CuTestType, fail_func);
 
 	CuSuiteAdd(&ts, &tc2);
 	CuAssertTrue(tc, ts.count == 1);
@@ -291,11 +327,11 @@ void TestCuSuiteAddSuite(CuTest* tc)
 	CuSuite* ts1 = CuSuiteNew();
 	CuSuite* ts2 = CuSuiteNew();
 
-	CuSuiteAdd(ts1, CuTestNew("TestFails1", zTestFails));
-	CuSuiteAdd(ts1, CuTestNew("TestFails2", zTestFails));
+	CuSuiteAdd(ts1, CuTestNew("TestFails1", CuTestType, zTestFails));
+	CuSuiteAdd(ts1, CuTestNew("TestFails2", CuTestType, zTestFails));
 
-	CuSuiteAdd(ts2, CuTestNew("TestFails3", zTestFails));
-	CuSuiteAdd(ts2, CuTestNew("TestFails4", zTestFails));
+	CuSuiteAdd(ts2, CuTestNew("TestFails3", CuTestType, zTestFails));
+	CuSuiteAdd(ts2, CuTestNew("TestFails4", CuTestType, zTestFails));
 
 	CuSuiteAddSuite(ts1, ts2);
 	CuAssertIntEquals(tc, 4, ts1->count);
@@ -310,12 +346,17 @@ void TestCuSuiteRun(CuTest* tc)
 {
 	CuSuite ts;
 	CuTest tc1, tc2, tc3, tc4;
+	union TestFn fail_func, pass_func;
+	struct onk_test_buffers buf;
+
+	NewTestFn(&fail_func, CuTestType, zTestFails);
+	NewTestFn(&pass_func, CuTestType, TestPasses);
 
 	CuSuiteInit(&ts);
-	CuTestInit(&tc1, "TestPasses", TestPasses);
-	CuTestInit(&tc2, "TestPasses", TestPasses);
-	CuTestInit(&tc3, "TestFails",  zTestFails);
-	CuTestInit(&tc4, "TestFails",  zTestFails);
+	CuTestInit(&tc1, "TestPasses", CuTestType, pass_func);
+	CuTestInit(&tc2, "TestPasses", CuTestType, pass_func);
+	CuTestInit(&tc3, "TestFails", CuTestType, fail_func);
+	CuTestInit(&tc4, "TestFails", CuTestType, fail_func);
 
 	CuSuiteAdd(&ts, &tc1);
 	CuSuiteAdd(&ts, &tc2);
@@ -323,7 +364,7 @@ void TestCuSuiteRun(CuTest* tc)
 	CuSuiteAdd(&ts, &tc4);
 	CuAssertTrue(tc, ts.count == 4);
 
-	CuSuiteRun(&ts);
+	CuSuiteRun(&ts, &buf);
 	CuAssertTrue(tc, ts.count - ts.failCount == 2);
 	CuAssertTrue(tc, ts.failCount == 2);
 }
@@ -334,14 +375,20 @@ void TestCuSuiteSummary(CuTest* tc)
 	CuTest tc1, tc2;
 	CuString summary;
 
+	struct onk_test_buffers buf;
+	union TestFn fail_func, pass_func;
+
+	NewTestFn(&fail_func, CuTestType, zTestFails);
+	NewTestFn(&pass_func, CuTestType, TestPasses);
+
 	CuSuiteInit(&ts);
-	CuTestInit(&tc1, "TestPasses", TestPasses);
-	CuTestInit(&tc2, "TestFails",  zTestFails);
+	CuTestInit(&tc1, "TestPasses", CuTestType, pass_func);
+	CuTestInit(&tc2, "TestFails",  CuTestType, fail_func);
 	CuStringInit(&summary);
 
 	CuSuiteAdd(&ts, &tc1);
 	CuSuiteAdd(&ts, &tc2);
-	CuSuiteRun(&ts);
+	CuSuiteRun(&ts, &buf);
 
 	CuSuiteSummary(&ts, &summary);
 
@@ -359,14 +406,21 @@ void TestCuSuiteDetails_SingleFail(CuTest* tc)
 	const char* front;
 	const char* back;
 
+	struct onk_test_buffers buf;
+	union TestFn fail_func, pass_func;
+
+	NewTestFn(&fail_func, CuTestType, zTestFails);
+	NewTestFn(&pass_func, CuTestType, TestPasses);
+
 	CuSuiteInit(&ts);
-	CuTestInit(&tc1, "TestPasses", TestPasses);
-	CuTestInit(&tc2, "TestFails",  zTestFails);
+	CuTestInit(&tc1, "TestPasses", CuTestType, pass_func);
+	CuTestInit(&tc2, "TestFails",  CuTestType, fail_func);
+
 	CuStringInit(&details);
 
 	CuSuiteAdd(&ts, &tc1);
 	CuSuiteAdd(&ts, &tc2);
-	CuSuiteRun(&ts);
+	CuSuiteRun(&ts, &buf);
 
 	CuSuiteDetails(&ts, &details);
 
@@ -392,12 +446,17 @@ void TestCuSuiteDetails_SinglePass(CuTest* tc)
 	CuString details;
 	const char* expected;
 
+	struct onk_test_buffers buf;
+	union TestFn pass_func;
+
+	NewTestFn(&pass_func, CuTestType, TestPasses);
+
 	CuSuiteInit(&ts);
-	CuTestInit(&tc1, "TestPasses", TestPasses);
+	CuTestInit(&tc1, "TestPasses", CuTestType, pass_func);
 	CuStringInit(&details);
 
 	CuSuiteAdd(&ts, &tc1);
-	CuSuiteRun(&ts);
+	CuSuiteRun(&ts, &buf);
 
 	CuSuiteDetails(&ts, &details);
 
@@ -417,14 +476,19 @@ void TestCuSuiteDetails_MultiplePasses(CuTest* tc)
 	CuString details;
 	const char* expected;
 
+	struct onk_test_buffers buf;
+	union TestFn pass_func;
+
+	NewTestFn(&pass_func, CuTestType, TestPasses);
+
 	CuSuiteInit(&ts);
-	CuTestInit(&tc1, "TestPasses", TestPasses);
-	CuTestInit(&tc2, "TestPasses", TestPasses);
+	CuTestInit(&tc1, "TestPasses", CuTestType, pass_func);
+	CuTestInit(&tc2, "TestPasses", CuTestType, pass_func);
 	CuStringInit(&details);
 
 	CuSuiteAdd(&ts, &tc1);
 	CuSuiteAdd(&ts, &tc2);
-	CuSuiteRun(&ts);
+	CuSuiteRun(&ts, &buf);
 
 	CuSuiteDetails(&ts, &details);
 
@@ -446,14 +510,19 @@ void TestCuSuiteDetails_MultipleFails(CuTest* tc)
 	const char* mid;
 	const char* back;
 
+	struct onk_test_buffers buf;
+	union TestFn fail_func;
+
+	NewTestFn(&fail_func, CuTestType, TestPasses);
+
 	CuSuiteInit(&ts);
-	CuTestInit(&tc1, "TestFails1", zTestFails);
-	CuTestInit(&tc2, "TestFails2", zTestFails);
+	CuTestInit(&tc1, "TestFails1", CuTestType, fail_func);
+	CuTestInit(&tc2, "TestFails2", CuTestType, fail_func);
 	CuStringInit(&details);
 
 	CuSuiteAdd(&ts, &tc1);
 	CuSuiteAdd(&ts, &tc2);
-	CuSuiteRun(&ts);
+	CuSuiteRun(&ts, &buf);
 
 	CuSuiteDetails(&ts, &details);
 
@@ -507,7 +576,8 @@ void TestFail(CuTest* tc)
 {
 	jmp_buf buf;
 	int pointReached = 0;
-	CuTest* tc2 = CuTestNew("TestFails", zTestFails);
+
+	CuTest* tc2 = CuTestNew("TestFails", CuTestType, zTestFails);
 	tc2->jumpBuf = &buf;
 	if (setjmp(buf) == 0)
 	{
@@ -520,7 +590,7 @@ void TestFail(CuTest* tc)
 void TestAssertStrEquals(CuTest* tc)
 {
 	jmp_buf buf;
-	CuTest *tc2 = CuTestNew("TestAssertStrEquals", zTestFails);
+	CuTest *tc2 = CuTestNew("TestAssertStrEquals", CuTestType, zTestFails);
 
 	const char* expected = "expected <hello> but was <world>";
 	const char *expectedMsg = "some text: expected <hello> but was <world>";
@@ -543,7 +613,7 @@ void TestAssertStrEquals(CuTest* tc)
 void TestAssertStrEquals_NULL(CuTest* tc)
 {
 	jmp_buf buf;
-	CuTest *tc2 = CuTestNew("TestAssertStrEquals_NULL", zTestFails);
+	CuTest *tc2 = CuTestNew("TestAssertStrEquals_NULL", CuTestType, zTestFails);
 
 	tc2->jumpBuf = &buf;
 	if (setjmp(buf) == 0)
@@ -563,7 +633,7 @@ void TestAssertStrEquals_NULL(CuTest* tc)
 void TestAssertStrEquals_FailNULLStr(CuTest* tc)
 {
 	jmp_buf buf;
-	CuTest *tc2 = CuTestNew("TestAssertStrEquals_FailNULLStr", zTestFails);
+	CuTest *tc2 = CuTestNew("TestAssertStrEquals_FailNULLStr", CuTestType, zTestFails);
 
 	const char* expected = "expected <hello> but was <NULL>";
 	const char *expectedMsg = "some text: expected <hello> but was <NULL>";
@@ -586,7 +656,7 @@ void TestAssertStrEquals_FailNULLStr(CuTest* tc)
 void TestAssertStrEquals_FailStrNULL(CuTest* tc)
 {
 	jmp_buf buf;
-	CuTest *tc2 = CuTestNew("TestAssertStrEquals_FailStrNULL", zTestFails);
+	CuTest *tc2 = CuTestNew("TestAssertStrEquals_FailStrNULL", CuTestType, zTestFails);
 
 	const char* expected = "expected <NULL> but was <hello>";
 	const char *expectedMsg = "some text: expected <NULL> but was <hello>";
@@ -609,7 +679,7 @@ void TestAssertStrEquals_FailStrNULL(CuTest* tc)
 void TestAssertIntEquals(CuTest* tc)
 {
 	jmp_buf buf;
-	CuTest *tc2 = CuTestNew("TestAssertIntEquals", zTestFails);
+	CuTest *tc2 = CuTestNew("TestAssertIntEquals", CuTestType, zTestFails);
 	const char* expected = "expected <42> but was <32>";
 	const char* expectedMsg = "some text: expected <42> but was <32>";
 	tc2->jumpBuf = &buf;
@@ -630,13 +700,20 @@ void TestAssertIntEquals(CuTest* tc)
 void TestAssertDblEquals(CuTest* tc)
 {
 	jmp_buf buf;
+	union TestFn func;
 	double x = 3.33;
 	double y = 10.0 / 3.0;
-	CuTest *tc2 = CuTestNew("TestAssertDblEquals", zTestFails);
+	CuTest *tc2 = CuTestNew("TestAssertDblEquals", CuTestType, zTestFails);
+
 	char expected[STRING_MAX];
 	char expectedMsg[STRING_MAX];
 	sprintf(expected, "expected <%lf> but was <%lf>", x, y);
 	sprintf(expectedMsg, "some text: expected <%lf> but was <%lf>", x, y);
+
+
+	NewTestFn(&func, CuTestType, TestPasses);
+	CuTestInit(&tc2, "TestPasses", CuTestType, func);
+
 
 	CuTestInit(tc2, "TestAssertDblEquals", TestPasses);
 
@@ -672,15 +749,22 @@ void TestAssertDblEquals(CuTest* tc)
 void TestClonkCuTestRun(CuTest* tc, struct onk_test_buffers *ptr)
 {
 	CuTest tc2;
-	CuTestInit(&tc2, "ClonkTest", zTestFails);
+	struct onk_test_buffers buf;
 
-	ptr.msgbuf[0] = 1;
-	CuTestRun(&tc2);
+	union TestFn pass_func;
 
-	CuAssertIntEquals(tc, ptr.msgbuf[0], 0);
+	NewTestFn(&pass_func, CuTestType, TestPasses);
+
+	CuTestInit(&tc2, "ClonkTest", CuTestType, pass_func);
+
+	ptr->msgbuf[0] = 1;
+	CuTestRun(&tc2, &buf);
+
+	CuAssertIntEquals(tc, ptr->msgbuf[0], 0);
 	CuAssertStrEquals(tc, "ClonkTest", tc2.name);
 	CuAssertTrue(tc, tc2.failed);
 	CuAssertTrue(tc, tc2.ran);
+	CuAssertTrue(tc, tc2.fntype == CuTestType);
 	CompareAsserts(tc, "ClonkCuTestRun failed", "test should fail", tc2.message);
 }
 
@@ -727,5 +811,6 @@ CuSuite* CuGetSuite(void)
 
 	/* Clonk extensions*/
 	SUITE_ADD_CLONK_TEST(suite, TestClonkCuTestRun);
+
 	return suite;
 }
