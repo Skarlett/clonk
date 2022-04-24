@@ -134,6 +134,26 @@ uint16_t onk_tokarr_contains(
   return 0;
 }
 
+uint16_t onk_tokarr_len(struct onk_token_t *arr)
+{
+  for (uint16_t i=0; UINT16_MAX > i; i++)
+    if (arr[i].type == 0)
+      return i;
+  return 0;
+}
+
+
+
+uint16_t onk_lexarr_len(enum onk_lexicon_t *arr)
+{
+  for (uint16_t i=0; UINT16_MAX > i; i++)
+    if (arr[i] == 0)
+      return i + 1;
+  return 0;
+}
+
+
+
 /*
     Inverts brace characters into their counter parts.
     example
