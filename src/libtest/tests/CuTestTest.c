@@ -7,6 +7,9 @@
 
 #include "libtest/CuTest.h"
 
+void _onk_init_test_buffer_hook(struct onk_test_buffers *buf);
+void _onk_free_test_buffer_hook(struct onk_test_buffers *buf);
+
 /*-------------------------------------------------------------------------*
  * Helper functions
  *-------------------------------------------------------------------------*/
@@ -712,10 +715,7 @@ void TestAssertDblEquals(CuTest* tc)
 
 
 	NewTestFn(&func, CuTestType, TestPasses);
-	CuTestInit(&tc2, "TestPasses", CuTestType, func);
-
-
-	CuTestInit(tc2, "TestAssertDblEquals", TestPasses);
+	CuTestInit(tc2, "TestAssertDblEquals", CuTestType, func);
 
 	CuAssertDblEquals(tc2, x, x, 0.0);
 	CuAssertTrue(tc, ! tc2->failed);
@@ -753,8 +753,9 @@ void TestClonkCuTestRun(CuTest* tc, struct onk_test_buffers *ptr)
 
 	union TestFn pass_func;
 
-	NewTestFn(&pass_func, CuTestType, TestPasses);
+	_onk_init_test_buffer_hook(&buf);
 
+	NewTestFn(&pass_func, CuTestType, TestPasses);
 	CuTestInit(&tc2, "ClonkTest", CuTestType, pass_func);
 
 	ptr->msgbuf[0] = 1;
@@ -766,8 +767,9 @@ void TestClonkCuTestRun(CuTest* tc, struct onk_test_buffers *ptr)
 	CuAssertTrue(tc, tc2.ran);
 	CuAssertTrue(tc, tc2.fntype == CuTestType);
 	CompareAsserts(tc, "ClonkCuTestRun failed", "test should fail", tc2.message);
-}
 
+	_onk_free_test_buffer_hook(&buf);
+}
 
 /*-------------------------------------------------------------------------*
  * main
@@ -807,10 +809,13 @@ CuSuite* CuGetSuite(void)
 	SUITE_ADD_TEST(suite, TestCuSuiteDetails_MultiplePasses);
 	SUITE_ADD_TEST(suite, TestCuSuiteDetails_MultipleFails);
 
-	SUITE_ADD_TEST(suite, TestCuSuiteDetails_MultipleFails);
+	return suite;
+}
 
-	/* Clonk extensions*/
+CuSuite* ClonkTestFnSuite(void)
+{
+	CuSuite* suite = CuSuiteNew();
+
 	SUITE_ADD_CLONK_TEST(suite, TestClonkCuTestRun);
-
 	return suite;
 }
