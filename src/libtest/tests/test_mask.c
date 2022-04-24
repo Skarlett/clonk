@@ -67,7 +67,7 @@ void test_inspect_slot()
 }
 
 #define _OVERFLOW_SZ 255
-void fail_on_msg_overflow(CuTest *tc)
+void fail_on_msg_overflow(CuTest *tc, struct onk_test_buffers buffers)
 {
     struct onk_test_mask_t test;
     uint16_t msg_sz, msg_cursor;
@@ -81,13 +81,9 @@ void fail_on_msg_overflow(CuTest *tc)
     struct onk_token_t tokens[3];
     CuTest inner;
 
-    CuTestInit(&inner, "overflow_test", 0, tc->buffers);
+    CuTestInit(&inner, "overflow_test", 0, buffers);
 
-    msg_sz = tc->buffers->msg_sz;
-    msg_cursor = tc->buffers->msg_cursor;
-
-    tc->buffers->msg_sz = _OVERFLOW_SZ;
-    tc->buffers->msg_cursor = _OVERFLOW_SZ;
+    buffers->msg_capacity = _OVERFLOW_SZ;
 
     onk_desc_add_static_slot(&test, tok, 3);
     onk_assert_match(&inner, &test, tokens, 3, 0, "word word", "Test", 0);
@@ -137,4 +133,16 @@ void example(CuTest *tc)
         OnkAssertParseStage(tc, &lexer, &parser, i);
         onk_vec_clear(&tokens);
     }
+}
+
+CuSuite* OnkTokenMaskAssertSuite(void)
+{
+    CuSuite* suite = CuSuiteNew();
+
+    SUITE_ADD_TEST(suite, test_static_slot);
+    SUITE_ADD_TEST(suite, test_whitespace_filter);
+    SUITE_ADD_TEST(suite, fail_on_empty_mask);
+
+    SUITE_ADD_CLONK_TEST(suite, fail_on_msg_overflow);
+
 }

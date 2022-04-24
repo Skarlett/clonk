@@ -1,19 +1,39 @@
 #include <stdio.h>
 #include "libtest/CuTest.h"
 
+/***************************/
+/*  Test the test harness  */
+/***************************/
 CuSuite* CuGetSuite();
-CuSuite* TestUtilTestSuite();
+//CuSuite* TestUtilTestSuite();
+
+CuSuite* OnkAssertSuite();
+CuSuite* OnkTokenMaskAssertSuite();
+
+/****************/
+/*  Test utils  */
+/****************/
 CuSuite* VecTestSuite();
+
+/*****************/
+/*  Test parser  */
+/*****************/
+
+CuSuite* CuLexerHarnessInput();
 CuSuite* LexerUnitTestSuite();
 CuSuite* LexerHelpersUnitTestSuite();
 CuSuite* PostFixUnitTestSuite();
 
+
+/* FORWARD DECLARED in CuTest.c*/
+/* Ran on every test finishing */
 void _onk_reset_buffer_hook(struct onk_test_buffers *ptr)
 {
 	onk_vec_clear(&ptr->src_tokens);
 	onk_vec_clear(&ptr->postfix_token);
-	ptr->msgbuf[0] = 0;
+	ptr->msgbuf[0] = '\0';
 }
+
 
 void RunAllTests(void)
 {
@@ -22,12 +42,14 @@ void RunAllTests(void)
 	struct onk_test_buffers buf;
 
 	buf.msgbuf = malloc(8192);
+	buf.msg_capacity = 8192;
+
 	onk_vec_init(&buf.src_tokens, 256, sizeof(struct onk_token_t));
 	onk_vec_init(&buf.postfix_token, 256, sizeof(struct onk_token_t));
 
 	CuSuiteAddSuite(suite, CuGetSuite());
 	CuSuiteAddSuite(suite, VecTestSuite());
-	CuSuiteAddSuite(suite, TestUtilTestSuite());
+	//CuSuiteAddSuite(suite, TestUtilTestSuite());
 
 	CuSuiteAddSuite(suite, LexerUnitTestSuite());
 	CuSuiteAddSuite(suite, LexerHelpersUnitTestSuite());
@@ -45,4 +67,6 @@ void RunAllTests(void)
 }
 
 int main(void)
-{ RunAllTests(); }
+{
+	RunAllTests();
+}

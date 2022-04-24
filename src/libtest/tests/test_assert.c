@@ -30,6 +30,7 @@ void test_assert_tokens(CuTest *tc)
     int8_t ret;
 
     create_mock_tokens(tokens, 2, SUCCEED_MOCK);
+
     ret = onk_assert_tokens(
         tc, tokens, SUCCEED_MOCK, "N/A", "failed", "NA", 0);
 
@@ -51,6 +52,7 @@ void test_assert_match_tokens(CuTest *tc)
     int8_t ret;
 
     create_mock_tokens(tokens, 2, SUCCEED_MOCK);
+
     onk_desc_add_static_slot(&kit, SUCCEED_MOCK, 2);
 
     ret = onk_assert_match(
@@ -67,7 +69,7 @@ void test_assert_match_tokens(CuTest *tc)
 }
 
 
-void test_assert_tokenize_stage(CuTest *tc)
+void test_assert_tokenize_stage(CuTest *tc, struct onk_test_buffers *buffers)
 {
     struct CuTest dummy;
     struct onk_test_mask_t kit;
@@ -78,7 +80,7 @@ void test_assert_tokenize_stage(CuTest *tc)
     onk_desc_add_static_slot(&kit, SUCCEED_MOCK, 2);
 
     lin.src_code = MOCK_SRC;
-    lin.tokens = tc->buffers->src_tokens;
+    lin.tokens = buffers->src_tokens;
 
     ret = onk_assert_tokenize(&dummy, &kit, &lin, &lout, 0, "NA", 0);
 
@@ -86,7 +88,7 @@ void test_assert_tokenize_stage(CuTest *tc)
     CuAssertTrue(tc, lout.tokens.len == 2); // eof?
 }
 
-void test_assert_postfix_stage(CuTest *tc)
+void test_assert_postfix_stage(CuTest *tc, struct onk_test_buffers *buffers)
 {
     struct CuTest dummy;
     struct onk_test_mask_t kit;
@@ -99,7 +101,7 @@ void test_assert_postfix_stage(CuTest *tc)
     pin.src_code = MOCK_SRC;
     pin.src_code_sz = MOCK_SRC_LEN;
 
-    pin.tokens = tc->buffers->src_tokens;
+    pin.tokens = buffers->src_tokens;
     pin.add_glob_scope = false;
 
     ret = onk_assert_postfix(&dummy, &kit, &pin, &pout, 0, "NA", 0);
@@ -107,7 +109,7 @@ void test_assert_postfix_stage(CuTest *tc)
 }
 
 
-void test_assert_parse_stage(CuTest *tc)
+void test_assert_parse_stage(CuTest *tc, struct onk_test_buffers *buffers)
 {
     CuTest dummy;
     const char * src = "word + word";
@@ -125,4 +127,18 @@ void test_assert_parse_stage(CuTest *tc)
     ret = onk_assert_parse_stage(&dummy, &parser, &lexer, 0, "NA", 0);
     CuAssert(tc, "failed parsing stage", ret == -1);
 
+}
+
+
+CuSuite* OnkAssertSuite(void)
+{
+    CuSuite* suite = CuSuiteNew();
+    SUITE_ADD_TEST(suite, test_mock_tokens);
+    SUITE_ADD_TEST(suite, test_assert_match_tokens);
+
+    SUITE_ADD_CLONK_TEST(suite, test_assert_tokenize_stage);
+    SUITE_ADD_CLONK_TEST(suite, test_assert_postfix_stage);
+    SUITE_ADD_CLONK_TEST(suite, test_assert_parse_stage);
+
+    return suite;
 }
