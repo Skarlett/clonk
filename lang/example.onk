@@ -3,57 +3,141 @@
 # Example
 # comments are delimted by `#`
 #########
-# Data - Structures
-#########
 
-# Hello world!
+#################
+#    Strings    #
+#################
 string_var = "hello word!";
+string_var += " strings with \"escaped quotes\"";
+string_var += ' and single quotes';
 
+# integers but, underscores are not interpreted.
+# underscores must be between 2 digits.
+# _10 is interpreted as a variable.
+# 100_ is technically correct syntax...
 num_var = 1_000;
 
-# list of numbers
+# evaluates as number (base 16)
+num_var = 0xffff;
+
+# floating point
+num_var = 0.2;
+
+#################
+#     Lists     #
+#################
+# Lists are mutable collections of data types.
+# The datatypes may differ with eachother.
+
 list_var = [1, 2, 3];
 
-# immutable list of numbers
-immut_var = (1, 2, 3);
+# lists of different types
+list_var = ["hello", 2, 3.0];
 
-# list of different types
-list_var_diff = [1, "word", 2.0];
+#################
+#    Tuples     #
+#################
+# tuples are collections of datatypes that
+# cannot be mutated or resized after created.
+# The datatypes may differ with eachother.
 
-# hash-map
-map_var = ${
-  "Hello": "world!",
-  1: "2"
+tuple_var = ("hello", 2, 3.0);
+
+
+#################
+#    HashMaps   #
+#################
+# HashMaps are a key & value pairs.
+# The key is used to query the value,
+# The datatypes may differ with eachother.
+
+map_var = {
+    'white': 0xffffff,
+    'red': 0xff0000
 };
 
+print('Color: ', map_var['white']);
+
+################
+#  Structures  #
+################
 struct FooBar {
   field: int
 };
 
-#########
-# Function call
-#########
+foobar = FooBar { field = 2 };
 
-def foobar(strong_var: FooBar, weak_var) {
-  if(strong_var.field == 2)
-    { print("strong_var.field == 2"); }
-  else if(strong.field > 0)
-    { print(weak_var); }
-  else
-    { print("i dunno"); }
+#############################
+# collection comphresension #
+############################
+# aka, indexing & more indexing.
+
+# Index Tuple/List
+a = tuple_var[0];
+b = list_var[0];
+
+
+# Slice the first 2 items from the collection
+tuple_var[0:1];
+list_var[0:1];
+
+# infer the starting position
+tuple_var[:1];
+list_var[:1];
+
+# select everything in the collection
+# This is same as `a = tuple_var`
+a_copy = tuple_var[::];
+b_copy = list_var[::];
+
+# skip every N elements
+tuple_var[::N];
+list_var[::N];
+
+# reverse element order
+tuple_var[::-1];
+list_var[::-1];
+
+# skip every other element,
+# starting from the tail
+tuple_var[::-2];
+list_var[::-2];
+
+
+#############
+# Functions #
+#############
+
+####
+# forward declaration
+def foo(x, y, z);
+
+def yak(strong_var: FooBar) {
+  print(strong_var.field);
 }
 
+# remember that structure from earlier?
 impl FooBar {
-  def yak(self)
+  def foo(self)
   {
-     # one day we'll infer "self"
      self.field = 2;
   }
 }
 
-struct_var = FooBar { field = 1 };
-struct_var.yak();
-foobar(struct_var, "place_holder");
+
+# init structure into an instance
+foo_instance = FooBar { field = 1 };
+
+# Static dispatch.
+# Secretly a `foobar_foo()` in the byte code.
+foo_instance.foo();
+
+yak();
+
+# expressions
+my_funcs = [foo_instance.bar];
+my_funcs[0]();
+
 
 ############
 # loops
@@ -74,6 +158,8 @@ x = 3 * 3; # mul
 y = x / 3; # divide
 z = y % 1; # modulo
 x = x ^ x; # expo
+
+# there's no xor at the moment. I forgot about it.
 
 z = x << 1; # bit-shift
 y = x >> 1; 
