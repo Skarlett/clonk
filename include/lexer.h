@@ -24,8 +24,13 @@ enum onk_lexicon_t {
     __ONK_MARKER_TRANSITION_START,
 
     _ONK_GT_TRANSMISSION_TOKEN,
+
+    _ONK_LT_TRANSMISSION_TOKEN,
+
     /* -123 or -= */
     _ONK_SUB_TRANSMISSION_TOKEN,
+
+    /* is there no add transition token?! */
 
     _ONK_PIPE_TRANSMISSION_TOKEN,
     /* may turn into ONK_BIT_OR_EQL or PIPEOP or OR */
@@ -35,7 +40,6 @@ enum onk_lexicon_t {
     _ONK_DOLLAR_TRANSMISSION_TOKEN,
 
     /*  */
-    _ONK_LT_TRANSMISSION_TOKEN,
 
     __ONK_MARKER_TRANSITION_END,
 
@@ -190,7 +194,6 @@ enum onk_lexicon_t {
     ONK_POW_TOKEN,
 
     __ONK_MARKER_ASN_START,
-
     __ONK_MARKER_COMPOUND_BIN_START,
 
     /* |= */
@@ -234,6 +237,8 @@ enum onk_lexicon_t {
 
     /* .. */
     /* ELLISPES */
+
+    __ONK_MARKER_UPGRADE_OP_END,
 
     /* >> */
     ONK_SHR_TOKEN,
@@ -378,7 +383,78 @@ enum onk_lexicon_t {
     __ONK_TOKEN_END
 };
 
+static const enum onk_lexicon_t ILLEGAL_TOKENS[] = {
+    /* transitions */
+    __ONK_MARKER_ILLEGAL_INPUT_START,
+    __ONK_MARKER_TRANSITION_START,
+    __ONK_MARKER_TRANSITION_END,
+    _ONK_GT_TRANSMISSION_TOKEN,
+    _ONK_LT_TRANSMISSION_TOKEN,
+    _ONK_SUB_TRANSMISSION_TOKEN,
+    _ONK_PIPE_TRANSMISSION_TOKEN,
+    _ONK_AMPER_TRANSMISSION_TOKEN,
+    _ONK_DOLLAR_TRANSMISSION_TOKEN,
 
+    __ONK_MARKER_ILLEGAL_INPUT_START,
+    __ONK_MARKER_ILLEGAL_INPUT_END,
+
+    __ONK_TOKEN_END,
+    __ONK_TOKEN_START,
+
+    __ONK_MARKER_GROUP_START,
+    __ONK_MARKER_GROUP_END,
+
+    __ONK_MARKER_BRACE_START,
+    __ONK_MARKER_BRACE_END,
+
+    __ONK_MARKER_OPEN_BRACE_START,
+    __ONK_MARKER_OPEN_BRACE_END,
+
+    __ONK_MARKER_CLOSE_BRACE_START,
+    __ONK_MARKER_CLOSE_BRACE_END,
+
+    __ONK_MARKER_ASN_START,
+    __ONK_MARKER_ASN_END,
+
+    __ONK_MARKER_OP_START,
+    __ONK_MARKER_OP_END,
+
+    __ONK_MARKER_BIN_START,
+    __ONK_MARKER_BIN_END,
+
+    __ONK_MARKER_UNARY_START,
+    __ONK_MARKER_UNARY_END,
+
+    __ONK_MARKER_COMPOUND_BIN_START,
+    __ONK_MARKER_COMPOUND_BIN_END,
+
+    __ONK_MARKER_UPGRADE_OP_START,
+    __ONK_MARKER_UPGRADE_OP_END,
+
+    __ONK_MARKER_UPGRADE_DATA_START,
+    __ONK_MARKER_UPGRADE_DATA_END,
+
+    __ONK_MARKER_DEFAULT_EXPECT_START,
+
+    __ONK_MARKER_DELIM_START,
+    __ONK_MARKER_DELIM_END,
+
+    __ONK_MARKER_UNIT_START,
+    __ONK_MARKER_UNIT_END,
+
+    __ONK_MARKER_GROUP_OP_START,
+    __ONK_MARKER_GROUP_OP_END,
+
+    __ONK_MARKER_KEYWORD_BLOCK_START,
+    __ONK_MARKER_KEYWORD_BLOCK_END,
+
+    __ONK_MARKER_LOOP_CTL_START,
+    __ONK_MARKER_LOOP_CTL_END,
+
+    __ONK_MARKER_KEYWORD_DATA_START,
+    __ONK_MARKER_KEYWORD_DATA_END,
+    0
+};
 /*
     onk_token_ts reference symbols derived from the 
     source code given to the interpreter.
@@ -567,12 +643,9 @@ bool onk_is_tok_block_keyword(enum onk_lexicon_t token);
 
 bool onk_is_tok_data_keyword(enum onk_lexicon_t token);
 
-bool onk_is_tok_keyword(enum onk_lexicon_t token);
-
 bool _onk_do_default_expectation(enum onk_lexicon_t token);
 
 bool onk_is_tok_illegal(enum onk_lexicon_t token);
-
 bool onk_is_tok_loopctlkw(enum onk_lexicon_t tok);
 
 /**
@@ -683,6 +756,8 @@ bool _onk_is_group(enum onk_lexicon_t tok);
 */
 enum onk_lexicon_t onk_invert_brace(enum onk_lexicon_t token);
 
+uint16_t onk_token_len(struct onk_token_t *tok);
+
 uint16_t onk_tokarr_len(struct onk_token_t *arr);
 uint16_t onk_lexarr_len(struct onk_token_t *arr);
 
@@ -727,8 +802,5 @@ int8_t onk_snprint_token_type(
     char * buf,
     uint16_t max,
     enum onk_lexicon_t token);
-
-
-uint16_t onk_token_len(struct onk_token_t *tok);
 
 #endif
