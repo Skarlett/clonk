@@ -165,11 +165,33 @@ void onk_range_harness(
 }
 
 
+/******************
+* test foundation *
+******************/
+
+void __test__illegal_tokens_length(CuTest *tc) {
+    static const char *msg = "the amount of illegal tokens "  \
+            "does not match ILLEGAL_TOKEN_LEN";
+
+    for(uint8_t i=0; UINT8_MAX > i; i++)
+    {
+        if(ILLEGAL_TOKENS[i] == 0)
+        {
+          if(ILLEGAL_TOKENS_LEN == i)
+              return;
+
+          else CuFail(tc, msg);
+        }
+    }
+
+    CuFail(tc, msg);
+}
+
 /****************
 * test overflow *
 ****************/
 
-bool test_handle_overflow(enum onk_lexicon_t _)
+inline bool test_handle_overflow(enum onk_lexicon_t _)
 { return true; }
 
 void __test__lex_harness_overflow(CuTest *tc)
@@ -228,7 +250,9 @@ void __test__lex_harness_bad_hook(CuTest *tc)
     int8_t ret;
 
     enum onk_lexicon_t generated[2];
-    enum onk_lexicon_t wrong[] = {ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, 0};
+    enum onk_lexicon_t wrong[] = {
+      ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, 0
+    };
 
     ret = _onk_range_harness(wrong, bad_hook, &failed_on,
                        generated, &ngenerated, 2);
@@ -285,8 +309,13 @@ void __test__lex_harness_fail(CuTest *tc)
 
 void __test__is_tok_unary_operator(CuTest *tc)
 {
-    enum onk_lexicon_t answers[] = {ONK_NOT_TOKEN, ONK_TILDE_TOKEN, 0};
-    LexRangeHarness(tc, "", answers, onk_is_tok_unary_operator);
+    enum onk_lexicon_t answers[] = {
+      ONK_NOT_TOKEN, ONK_TILDE_TOKEN, 0
+    };
+
+    LexRangeHarness(
+        tc, "", answers,
+        onk_is_tok_unary_operator);
 }
 
 
@@ -297,7 +326,9 @@ void __test__is_tok_delimiter(CuTest *tc)
       0
     };
 
-    LexRangeHarness(tc, "", answers, onk_is_tok_unary_operator);
+    LexRangeHarness(
+        tc, "", answers,
+        onk_is_tok_unary_operator);
 }
 
 void __test__is_tok_brace(CuTest *tc)
@@ -312,7 +343,9 @@ void __test__is_tok_brace(CuTest *tc)
       ONK_HASHMAP_LITERAL_START_TOKEN, 0
     };
 
-    LexRangeHarness(tc, "", answers, onk_is_tok_unary_operator);
+    LexRangeHarness(
+        tc, "", answers,
+        onk_is_tok_unary_operator);
 }
 
 
@@ -325,7 +358,9 @@ void __test__is_tok_open_brace(CuTest *tc)
       ONK_HASHMAP_LITERAL_START_TOKEN, 0
     };
 
-    LexRangeHarness(tc, "", answers, onk_is_tok_unary_operator);
+    LexRangeHarness(
+        tc, "", answers,
+        onk_is_tok_unary_operator);
 }
 
 
@@ -338,7 +373,9 @@ void __test__is_tok_close_brace(CuTest *tc)
       ONK_HASHMAP_LITERAL_START_TOKEN, 0
     };
 
-    LexRangeHarness(tc, "", answers, onk_is_tok_unary_operator);
+    LexRangeHarness(
+        tc, "", answers,
+        onk_is_tok_unary_operator);
 }
 
 void __test__is_tok_whitespace(CuTest *tc)
@@ -349,16 +386,18 @@ void __test__is_tok_whitespace(CuTest *tc)
       0
     };
 
-    LexRangeHarness(tc, "", answers, onk_is_tok_unary_operator);
+    LexRangeHarness(
+        tc, "", answers,
+        onk_is_tok_unary_operator);
 }
 
 void __test__is_tok_operator(CuTest *tc)
 {
-    enum onk_lexicon_t answers[] = {
-      0
-    };
+    enum onk_lexicon_t *answers = ILLEGAL_TOKENS;
 
-    LexRangeHarness(tc, "", answers, onk_is_tok_operator);
+    LexRangeHarness(
+        tc, "", answers,
+        onk_is_tok_illegal);
 }
 
 void __test__is_tok_binop(CuTest *tc)
@@ -373,6 +412,10 @@ void __test__is_tok_binop(CuTest *tc)
 void __test__is_tok_block_keyword(CuTest *tc)
 {
     enum onk_lexicon_t answers[] = {
+      ONK_IF_TOKEN, ONK_ELSE_TOKEN, ONK_DEF_TOKEN,
+      ONK_FOR_TOKEN, ONK_WHILE_TOKEN, ONK_FROM_TOKEN,
+      ONK_BREAK_TOKEN, ONK_CONTINUE_TOKEN, ONK_IMPL_TOKEN,
+      ONK_IMPORT_TOKEN, ONK_RETURN_TOKEN, ONK_STRUCT_TOKEN,
       0
     };
 
@@ -381,11 +424,11 @@ void __test__is_tok_block_keyword(CuTest *tc)
 
 void __test__is_tok_keyword(CuTest *tc)
 {
-    enum onk_lexicon_t answers[] = {
-      0
-    };
+    /* enum onk_lexicon_t answers[] = { */
+    /*   0 */
+    /* }; */
 
-    LexRangeHarness(tc, "", answers, onk_is_tok_keyword);
+    //LexRangeHarness(tc, "", answers, onk_is_tok_keyword);
 }
 
 void __test__is_tok_loopctl(CuTest *tc)
@@ -399,18 +442,15 @@ void __test__is_tok_loopctl(CuTest *tc)
     LexRangeHarness(tc, "", answers, onk_is_tok_loopctlkw);
 }
 
-void __test__is_tok_illegal(CuTest *tc)
-{
-    enum onk_lexicon_t answers[] = {
-      0
-    };
-
-    LexRangeHarness(tc, "", answers, onk_is_tok_illegal);
-}
-
 void __test__is_tok_asn_op(CuTest *tc)
 {
     enum onk_lexicon_t answers[] = {
+      ONK_BIT_OR_EQL,
+      ONK_BIT_AND_EQL,
+      ONK_BIT_NOT_EQL,
+      ONK_MINUS_EQL_TOKEN,
+      ONK_PLUSEQ_TOKEN,
+      ONK_EQUAL_TOKEN,
       0
     };
 
@@ -429,6 +469,7 @@ void __test__is_tok_group_modifier(CuTest *tc)
 void __test__is_tok_unit(CuTest *tc)
 {
     enum onk_lexicon_t answers[] = {
+    ONK_BIT_OR_EQL
       0
     };
 
@@ -478,6 +519,7 @@ CuSuite* TestLexGenHarness(void)
 CuSuite* TestLexHelpers(void)
 {
     CuSuite* suite = CuSuiteNew();
+    SUITE_ADD_TEST(suite, __test__print_tokens);
 
     SUITE_ADD_TEST(suite, __test__is_tok_close_brace);
     SUITE_ADD_TEST(suite, __test__is_tok_open_brace);
@@ -494,6 +536,5 @@ CuSuite* TestLexHelpers(void)
     SUITE_ADD_TEST(suite, __test__is_tok_illegal);
     SUITE_ADD_TEST(suite, __test__is_tok_delimiter);
     SUITE_ADD_TEST(suite, __test__is_tok_group_ident);
-    SUITE_ADD_TEST(suite, __test__print_tokens);
     return suite;
 }
