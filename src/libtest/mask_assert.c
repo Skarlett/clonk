@@ -1,4 +1,5 @@
 #include <string.h>
+#include "clonk.h"
 #include "onkstd/vec.h"
 #include "lexer.h"
 #include "parser.h"
@@ -244,7 +245,6 @@ void handle_overflow_msg(
 #define HandleOverflow(tc, msg, nmsg, source)   \
     handle_overflow_msg((tc), (msg), nmsg, __LINE__, __FILE__, #source)
 
-
 int onk_assert_eq(
     CuTest *tc,
     char * buf,
@@ -333,7 +333,7 @@ int16_t match_type(
             tc,
             buf,
             nbuf,
-            msg,
+            (char *)msg,
             test,
             i
         );
@@ -512,7 +512,6 @@ int8_t onk_assert_postfix(
     );
 }
 
-
 int8_t onk_assert_parse_stage(
     CuTest *tc,
     struct onk_test_mask_t *lexer,
@@ -523,6 +522,7 @@ int8_t onk_assert_parse_stage(
 ) {
     struct onk_lexer_input_t lexer_input;
     struct onk_lexer_output_t lexer_output;
+
     struct onk_parser_input_t parser_input;
     struct onk_parser_output_t parser_output;
 
@@ -541,9 +541,7 @@ int8_t onk_assert_parse_stage(
     if (ret == -1)
         return -1;
 
-    onk_parser_input_from_lexer_output(
-        &lexer_output, &parser_input, false
-    );
+    onk_parser_input_from_lexer_output(&lexer_output, &parser_input, false);
 
     return onk_assert_postfix(
         tc,

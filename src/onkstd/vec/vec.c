@@ -6,8 +6,8 @@
 #define VEC_INC_HUGE 8192
 #define VEC_MAX 1 << 14
 
-static inline int8_t can_access(struct onk_vec_t *vec)
-{ return vec->state == ONK_VEC_READY;}
+int8_t can_access(struct onk_vec_t *vec)
+{ return vec->state == ONK_VEC_READY; }
 
 int8_t onk_vec_init(
     struct onk_vec_t *vec,

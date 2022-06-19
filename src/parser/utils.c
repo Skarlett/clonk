@@ -414,7 +414,7 @@ int8_t op_precedence(enum onk_lexicon_t token) {
     return -1;
 }
 
-int8_t init_parser(
+int8_t onk_parser_init(
   struct onk_parser_state_t*state,
   const struct onk_parser_input_t *in,
   uint16_t *i
@@ -441,13 +441,13 @@ int8_t init_parser(
   state->peek_next = 0;
   state->peek_prev = 0;
 
-  init_expect_buffer(&state->expecting);
+  init_expect_buffer(state->expect);
 
   assert(op_push(ONK_BRACE_OPEN_TOKEN, 0, 0, state) != 0);
   return 0;
 }
 
-int8_t parser_free(struct onk_parser_state_t*state) {
+int8_t parser_free(struct onk_parser_state_t *state) {
   if (
     onk_vec_free(&state->debug) == -1
     || onk_vec_free(&state->pool) == -1
@@ -458,7 +458,7 @@ int8_t parser_free(struct onk_parser_state_t*state) {
   return 0;
 }
 
-int8_t parser_reset(struct onk_parser_state_t*state)
+int8_t parser_reset(struct onk_parser_state_t *state)
 {
   memset(state->operator_stack, 0, sizeof(void *[ONK_STACK_SZ]));
   state->operators_ctr = 0;
@@ -471,18 +471,19 @@ int8_t parser_reset(struct onk_parser_state_t*state)
   state->_i = 0;
   state->src_code = 0;
 
-  init_expect_buffer(&state->expecting);
+  init_expect_buffer(state->expect);
   parser_free(state);
   return 0;
 }
 
 void onk_parser_input_from_lexer_output(
-  struct onk_lexer_output_t *lex,
+  const struct onk_lexer_output_t *lex,
   struct onk_parser_input_t *parser_in,
   bool add_glob_scope)
 {
   parser_in->src_code = lex->src_code;
   parser_in->src_code_sz = lex->src_code_sz;
+
   memcpy(&parser_in->tokens, &lex->tokens, sizeof(struct onk_vec_t));
   parser_in->add_glob_scope = add_glob_scope;
 }

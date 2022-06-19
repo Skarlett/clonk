@@ -2,7 +2,7 @@
 #define __HEADER_AST_PRIV__
 
 #include <stdint.h>
-#include <stdbool.h>
+#include "clonk.h"
 
 #include "lexer.h"
 #include "parser.h"

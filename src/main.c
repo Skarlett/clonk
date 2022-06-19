@@ -1,7 +1,9 @@
 // CLONK interpreter
 // my very own 1990s retro built interpreter
 #include "clonk.h"
-#include <stdint.h>
+#include "lexer.h"
+#include "parser.h"
+
 
 #define BANNER \
     "    {__    {__                   {__\r\n"                  \
@@ -35,7 +37,6 @@ struct Opts {
 
 void init_opts(struct Opts *opts) {
     opts->print_ast=0;
-    opts->print_expr_tree=0;
     opts->print_tokens=0;
 }
 
@@ -49,7 +50,7 @@ void setup_opts(int argc, char *argv[], struct Opts *opts) {
         }
 
         else if (strcmp(argv[i], "-V") == 0) {
-            printf("%s\n", VERSION);
+            printf("%s\n", ONK_VERSION);
             exit(0);
         }
 
@@ -67,10 +68,6 @@ void setup_opts(int argc, char *argv[], struct Opts *opts) {
             opts->print_ast=1;
         }
 
-        else if (strcmp(argv[i], "--extree") == 0) {
-            opts->print_expr_tree=1;
-        }
-        
     }
 }
 
@@ -86,7 +83,6 @@ int main(int argc, char* argv[]) {
 
     init_opts(&opts);
     setup_opts(argc, argv, &opts);
-
 
 
     /* if(access(argv[argc-1], F_OK) == 0) */

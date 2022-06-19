@@ -1,11 +1,10 @@
-#ifndef __CLONK__
-#define __CLONK__
+#ifndef __CLONK_HEADER
+#define __CLONK_HEADER
 
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 #include <string.h>
 #include <assert.h>
@@ -15,6 +14,11 @@
 #define ONK_VERSION "0.0.4"
 // -DINCLUDE_TESTS 1
 #define ONK_INCLUDE_TESTS 0
+
+typedef uint8_t bool;
+
+#define true 1
+#define false 0
 
 // Macro for checking bitness (safer macros borrowed from
 // https://www.fluentcpp.com/2019/05/28/better-macros-better-flags/)
@@ -101,7 +105,6 @@ typedef int16_t onk_isize;
 #define ONK_VEC_INC 256
 #define ONK_VEC_MAX 1 << 14
 
-int8_t onkerr = 0;
 
 #define ONK_ALLOC(TYPE)  ((TYPE *) malloc(sizeof(TYPE)))
 #define ONK_CALLOC(TYPE, N) ((TYPE *) calloc(sizeof(TYPE), (N)))

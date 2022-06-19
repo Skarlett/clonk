@@ -1,7 +1,7 @@
-
+#include "clonk.h"
+#include "lexer.h"
 #include "parser.h"
 #include "private.h"
-#include "clonk.h"
 #include "predict.h"
 
 enum Associativity
@@ -79,9 +79,9 @@ int8_t handle_operator(struct onk_parser_state_t*state)
   assert(precedense != -1 || head_precedense != -1);
 
   /*
-    while `head` has higher precedence
-    than our current token pop operators from
-    the operator-stack into the output
+   * while `head` has higher precedence
+   * than our current token pop operators from
+   * the operator-stack into the output
   */
   while (head_precedense > 0
          && head_precedense >= precedense
@@ -95,8 +95,8 @@ int8_t handle_operator(struct onk_parser_state_t*state)
       insert(state, head);
     
     /*
-        If left associated, push equal
-        precedence operators onto the output
+     *  If left associated, push equal
+     *  precedence operators onto the output
     */
     else if (precedense == head_precedense && get_assoc(current->type) == LASSOC) 
       insert(state, head);
@@ -173,7 +173,7 @@ int8_t pop_block_operator(struct onk_parser_state_t*state)
 }
 
 
-int8_t handle_close_brace(struct onk_parser_state_t*state)
+int8_t handle_close_brace(struct onk_parser_state_t *state)
 {
   const enum onk_lexicon_t expected[] = {ONK_COLON_TOKEN, ONK_DIGIT_TOKEN, 0};
   struct onk_parse_group_t *ghead = group_head(state);
@@ -190,7 +190,7 @@ int8_t handle_close_brace(struct onk_parser_state_t*state)
   if (!onk_is_tok_delimiter(prev->type))
     ghead->expr_cnt += 1;
 
-  if (prev->type == invert_brace_tok_ty(current->type))
+  if (prev->type == onk_invert_brace(current->type))
     ghead->is_empty = true;
 
   /*
@@ -370,7 +370,7 @@ void handle_dual_group(struct onk_parser_state_t*state)
  *
  * short blocks are isolated
  * & inferred groups
- *
+ * if(x) return y;
 */
 void pop_short_block(struct onk_parser_state_t*state) {
   const struct onk_parse_group_t *ghead;
@@ -383,7 +383,7 @@ void pop_short_block(struct onk_parser_state_t*state) {
 
   /*
    TODO: check for ONK_ELSE_TOKEN before collapsing
-
+   NOTE: WIP
    // const struct onk_token_t *next = next_token(state);
   */
   do {

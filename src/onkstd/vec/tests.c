@@ -1,23 +1,23 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-#include "testutils.h"
-#include "CuTest.h"
-#include "../src/prelude.h"
-#include "../src/utils/vec.h"
+#include "libtest/CuTest.h"
+#include "onkstd/vec.h"
 
-void __test__vec_init(CuTest* tc) {
+void __test__vec_init(CuTest* tc)
+{
     struct onk_vec_t vec;
     CuAssertTrue(tc, onk_vec_init(&vec, 4, 10) == 0);
 
     CuAssertTrue(tc, vec.base != 0);
-    CuAssertTrue(tc, vec.type_sz == 10);
     CuAssertTrue(tc, vec.capacity == 4);
-    CuAssertTrue(tc, vec.head == vec.base);
+    CuAssertTrue(tc, vec.type_sz == 10);
+    /* CuAssertTrue(tc, vec.head == vec.base); */
     free(vec.base);
 }
 
-void __test__onk_vec_push(CuTest* tc) {
+void __test__vec_push(CuTest* tc)
+{
     struct onk_vec_t vec;
     uint8_t num = 1;
     char msg[64];
@@ -33,7 +33,10 @@ void __test__onk_vec_push(CuTest* tc) {
     free(vec.base);
 }
 
-CuSuite* VecTestSuite(void) {
-	CuSuite* suite = CuSuiteNew();
+CuSuite* OnkVecTests(void)
+{
+    CuSuite* suite = CuSuiteNew();
+    SUITE_ADD_TEST(suite, __test__vec_init);
+    SUITE_ADD_TEST(suite, __test__vec_push);
     return suite;
 }

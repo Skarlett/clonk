@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdbool.h>
+#include "clonk.h"
 
 /*
  * FONK_IF_TOKENO data

@@ -1,32 +1,36 @@
-#include <stdio.h>
+#include "clonk.h"
 #include "libtest/CuTest.h"
-
 /********************************/
 /*  Test the function harness   */
 /********************************/
 CuSuite* CuGetSuite();
-CuSuite* ClonkTestFnSuite();
+CuSuite* CuGetCtxSuite();
 
 /******************/
 /*  Test libtest  */
 /******************/
-CuSuite* OnkAssertSuite();
-CuSuite* OnkTokenMaskAssertSuite();
+CuSuite* OnkMaskAssertSuite();
+CuSuite* OnkAssertTests();
 
 /****************/
 /*  Test utils  */
 /****************/
-CuSuite* VecTestSuite();
+CuSuite* OnkVecTests();
+CuSuite* OnkQueueTest();
+CuSuite* OnkMergeSortTests();
+
+/*****************/
+/*   Test lexer  */
+/*****************/
+CuSuite* LexerUnitTests();
+
+CuSuite* LexerHarnessUBTests();
+CuSuite* LexerHarnessLogicTests();
 
 /*****************/
 /*  Test parser  */
 /*****************/
-CuSuite* CuLexerHarnessInput();
-CuSuite* LexerUnitTestSuite();
-CuSuite* LexerHelpersUnitTestSuite();
-CuSuite* PostFixUnitTestSuite();
-
-
+CuSuite* PostfixTests();
 
 /* FORWARD DECLARED in CuTest.c*/
 /* Ran on every test finishing */
@@ -56,28 +60,30 @@ void _onk_free_test_buffer_hook(struct onk_test_buffers *buf)
 	free(buf->msgbuf);
 }
 
-
-void TestHarness(CuSuite* suite)
-{
-	CuSuiteAddSuite(suite, CuGetSuite());
-	CuSuiteAddSuite(suite, OnkAssertSuite());
-	CuSuiteAddSuite(suite, OnkTokenMaskAssertSuite());
-}
-
 void RunAllTests(void)
 {
+	struct onk_test_buffers buf;
 	CuString *output = CuStringNew();
 	CuSuite* suite = CuSuiteNew();
-	struct onk_test_buffers buf;
 
 	_onk_init_test_buffer_hook(&buf);
 
-	TestHarness(suite);
+	CuSuiteAddSuite(suite, CuGetSuite());
+	CuSuiteAddSuite(suite, CuGetCtxSuite());
 
-	CuSuiteAddSuite(suite, VecTestSuite());
-	CuSuiteAddSuite(suite, LexerUnitTestSuite());
-	CuSuiteAddSuite(suite, LexerHelpersUnitTestSuite());
-	CuSuiteAddSuite(suite, PostFixUnitTestSuite());
+	CuSuiteAddSuite(suite, OnkMaskAssertSuite());
+	CuSuiteAddSuite(suite, OnkAssertTests());
+
+	CuSuiteAddSuite(suite, OnkVecTests());
+	CuSuiteAddSuite(suite, OnkQueueTest());
+	CuSuiteAddSuite(suite, OnkMergeSortTests());
+
+	CuSuiteAddSuite(suite, LexerUnitTests());
+
+	CuSuiteAddSuite(suite, LexerHarnessUBTests());
+	CuSuiteAddSuite(suite, LexerHarnessLogicTests());
+
+	CuSuiteAddSuite(suite, PostfixTests());
 
 	CuSuiteRun(suite, &buf);
 	CuSuiteSummary(suite, output);

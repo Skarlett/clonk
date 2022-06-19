@@ -50,6 +50,7 @@ struct onk_test_buffers {
 
 	/* Initialized/heap Vec<struct Token> */
 	struct onk_vec_t postfix_token;
+
 	/* Initialized/heap Vec<struct onk_token_desc_t> */
 	struct onk_vec_t parser_expect;
 
@@ -136,8 +137,11 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc,
 
 #define MAX_TEST_CASES	1024
 
+/* stateless test */
 #define SUITE_ADD_TEST(SUITE,TEST) CuSuiteAdd(SUITE, CuTestNew(#TEST, CuTestType, TEST))
-#define SUITE_ADD_CLONK_TEST(SUITE,TEST) CuSuiteAdd(SUITE, CuTestNew(#TEST, ClonkTestType, TEST))
+
+/* reuse big buffers if possible */
+#define SUITE_ADD_CTX_TEST(SUITE, TEST) CuSuiteAdd(SUITE, CuTestNew(#TEST, ClonkTestType, TEST))
 
 
 typedef struct

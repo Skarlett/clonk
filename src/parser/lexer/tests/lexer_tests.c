@@ -82,7 +82,7 @@ void lexer_harness(
 #define LexHarness(tc, buf, out, src, answer, flags) \
     lexer_harness((tc), (buf), (out), (src), (answers), (flags), __FILE__, __LINE__)
 
-void lexer_input_output_test(CuTest* tc, struct onk_test_buffers *ptr)
+void __test__io(CuTest* tc, struct onk_test_buffers *ptr)
 {
     struct onk_lexer_output_t lex_output;
     const char * src[] = {
@@ -153,7 +153,7 @@ void lexer_input_output_test(CuTest* tc, struct onk_test_buffers *ptr)
     };
 
 
-    const enum onk_lexicon_t answers[][24] = {
+    const enum onk_lexicon_t answers[][64] = {
         {ONK_WORD_TOKEN, 0},
         {ONK_WORD_TOKEN, 0},
         {ONK_INTEGER_TOKEN, ONK_WORD_TOKEN, 0},
@@ -187,7 +187,7 @@ void lexer_input_output_test(CuTest* tc, struct onk_test_buffers *ptr)
         {ONK_BIT_AND_EQL, 0},
         {ONK_BIT_NOT_EQL, 0},
 
-        {ONK_LT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_GT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_ISEQL_TOKEN, ONK_LT_TOKEN, 0}, {ONK_ISEQL_TOKEN, GT, 0},
+        {ONK_LT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_GT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_ISEQL_TOKEN, ONK_LT_TOKEN, 0}, {ONK_ISEQL_TOKEN, ONK_GT_TOKEN, 0},
         {ONK_GT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_LT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_ISEQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_NOT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0},
         {ONK_ISEQL_TOKEN, ONK_NOT_TOKEN, 0}, {ONK_ADD_TOKEN, ONK_PLUSEQ_TOKEN, 0}, {ONK_SUB_TOKEN, ONK_MINUS_EQL_TOKEN, 0}, {ONK_EQUAL_TOKEN, ONK_ADD_TOKEN, ONK_ADD_TOKEN, 0},
         {ONK_EQUAL_TOKEN, ONK_SUB_TOKEN, ONK_SUB_TOKEN, 0}, {ONK_PLUSEQ_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_MINUS_EQL_TOKEN, ONK_EQUAL_TOKEN, 0}, {ONK_ISEQL_TOKEN, ONK_ADD_TOKEN, 0},
@@ -221,7 +221,8 @@ void lexer_input_output_test(CuTest* tc, struct onk_test_buffers *ptr)
           ONK_EQUAL_TOKEN, ONK_AMPER_TOKEN, ONK_PIPE_TOKEN,
           ONK_COLON_TOKEN, ONK_SEMICOLON_TOKEN,
           ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, ONK_WORD_TOKEN,
-          ONK_COMMA_TOKEN, ONK_TILDE_TOKEN, ONK_BACKSLASH_TOKEN, 0
+          ONK_COMMA_TOKEN, ONK_TILDE_TOKEN, ONK_BACKSLASH_TOKEN,
+          0
         },
 
         {ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, 0},
@@ -232,7 +233,7 @@ void lexer_input_output_test(CuTest* tc, struct onk_test_buffers *ptr)
         {ONK_PARAM_OPEN_TOKEN, ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, 0},
         {ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, ONK_ADD_TOKEN, ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, 0},
         {ONK_PARAM_OPEN_TOKEN, ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, ONK_ADD_TOKEN, ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, ONK_PARAM_CLOSE_TOKEN, 0},
-        0
+        {0},
     };
 
     LexHarness(
@@ -249,21 +250,17 @@ void __test__destroy_comment(CuTest* tc, struct onk_test_buffers *ptr)
     struct onk_token_t *tokens;
     int8_t ret;
 
-    input.src_code = "\"1234";
+    input.src_code = "1234 # a very long comment";
     memcpy(&input.tokens, &ptr->src_tokens, sizeof(struct onk_vec_t));
 
     ret = onk_tokenize(&input, &output);
-    CuAssertTrue(tc, ret == -1);
-
-    onk_tokenize("1234 # a very long comment", tokens, &i, 16, false, NULL);
     CuAssertTrue(tc, ret == 0);
 
     tokens = output.tokens.base;
-
     CuAssertTrue(tc, tokens[0].type == ONK_INTEGER_TOKEN);
     CuAssertTrue(tc, tokens[0].start == 0);
     CuAssertTrue(tc, tokens[0].end == 3);
-    CuAssertTrue(tc, i == 2);
+    //CuAssertTrue(tc, i == 2);
 }
 
 void __test__fails_on_partial_string(CuTest* tc, struct onk_test_buffers *ptr)
@@ -324,9 +321,9 @@ void __test__fails_on_utf(CuTest* tc, struct onk_test_buffers *ptr)
 }
 
 
-CuSuite* LexerUnitTestSuite(void) {
+CuSuite* LexerUnitTests(void) {
     CuSuite* suite = CuSuiteNew();
-    SUITE_ADD_TEST(suite, lexer_input_output_test);
+    SUITE_ADD_TEST(suite, __test__io);
     SUITE_ADD_TEST(suite, __test__destroy_comment);
     SUITE_ADD_TEST(suite, __test__position);
     SUITE_ADD_TEST(suite, __test__fails_on_partial_string);

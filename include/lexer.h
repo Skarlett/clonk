@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
+#include "clonk.h"
 
 #include "clonk.h"
 #include "onkstd/vec.h"
@@ -104,6 +104,7 @@ enum onk_lexicon_t {
     //ONK_ATSYM__TOKEN,
 
     __ONK_MARKER_ILLEGAL_INPUT_END,
+
     /*********************/
     /* multi byte tokens */
     /*********************/
@@ -114,7 +115,11 @@ enum onk_lexicon_t {
 
     ONK_COMMENT_TOKEN,
 
+
     __ONK_MARKER_DEFAULT_EXPECT_START,
+
+    /* from location */
+    ONK_FROM_LOCATION,
 
     __ONK_MARKER_UNIT_START,
     __ONK_MARKER_KEYWORD_DATA_START,
@@ -123,8 +128,6 @@ enum onk_lexicon_t {
     ONK_NULL_TOKEN,
     __ONK_MARKER_KEYWORD_DATA_END,
 
-    /* from location */
-    ONK_FROM_LOCATION,
 
     /*  [NUM, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN    */
     /* // 20_392  */
@@ -390,6 +393,7 @@ static const enum onk_lexicon_t ILLEGAL_TOKENS[] = {
     __ONK_MARKER_TRANSITION_END,
     _ONK_GT_TRANSMISSION_TOKEN,
     _ONK_LT_TRANSMISSION_TOKEN,
+
     _ONK_SUB_TRANSMISSION_TOKEN,
     _ONK_PIPE_TRANSMISSION_TOKEN,
     _ONK_AMPER_TRANSMISSION_TOKEN,
@@ -455,6 +459,8 @@ static const enum onk_lexicon_t ILLEGAL_TOKENS[] = {
     __ONK_MARKER_KEYWORD_DATA_END,
     0
 };
+#define ILLEGAL_TOKENS_LEN 46
+
 /*
     onk_token_ts reference symbols derived from the 
     source code given to the interpreter.
@@ -514,7 +520,6 @@ struct onk_lexer_input_t {
     struct onk_vec_t tokens;
 };
 
-
 /* Output of lexer function */
 struct onk_lexer_output_t {
     const char * src_code;
@@ -565,7 +570,7 @@ bool onk_is_tok_delimiter(enum onk_lexicon_t token);
  * @param token
  * @return enum onk_lexicon_t
  */
-enum onk_lexicon_t invert_brace_tok_ty(enum onk_lexicon_t token);
+enum onk_lexicon_t onk_invert_brace(enum onk_lexicon_t token);
 
 
 /**
@@ -759,7 +764,7 @@ enum onk_lexicon_t onk_invert_brace(enum onk_lexicon_t token);
 uint16_t onk_token_len(struct onk_token_t *tok);
 
 uint16_t onk_tokarr_len(struct onk_token_t *arr);
-uint16_t onk_lexarr_len(struct onk_token_t *arr);
+uint16_t onk_lexarr_len(enum onk_lexicon_t *arr);
 
 int16_t onk_snprint_token(
     char * buf,

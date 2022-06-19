@@ -1,23 +1,30 @@
 #include <stdint.h>
-#include <stdbool.h>
+#include "clonk.h"
 
 
-bool onk_can_add_u16(uint16_t a, uint16_t b)
-{ return UINT16_MAX - a > b; }
+/* bool onk_can_add_u16(uint16_t a, uint16_t b) */
+/* { return UINT16_MAX - a > b; } */
 
 /*
-  Add 2 unsigned 16bit integers within bounds
-  of its MAX & MIN values.
+ * Add 2 unsigned 16bit integers within bounds
+ * of its MAX & MIN values.
 */
+
+#define max(t) (1 << (sizeof((t)) * CHAR_BIT))
+
+#define add_func(a, b) ((a), (b))              \
+  ((max((##T)) - (a) > (b)) ? (a) + (b) : max((##T)))
+
+
 uint16_t onk_add_u16(uint16_t a, uint16_t b, bool * err)
 {
+
   if(UINT16_MAX - a > b)
     return a + b;
 
   *err = true;
   return UINT16_MAX;
 }
-
 
 uint16_t onk_sub_u16(uint16_t a, uint16_t b, bool * err)
 {
@@ -28,7 +35,6 @@ uint16_t onk_sub_u16(uint16_t a, uint16_t b, bool * err)
 
   return a - b;
 }
-
 
 uint16_t onk_sum_u16(const uint16_t * num, uint16_t num_sz, bool * err_max)
 {
@@ -43,5 +49,6 @@ uint16_t onk_sum_u16(const uint16_t * num, uint16_t num_sz, bool * err_max)
       break;
     }
   }
+
   return sum;
 }

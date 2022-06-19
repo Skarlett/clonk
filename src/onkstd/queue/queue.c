@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdbool.h>
-#include "utils/queue.h"
+#include "clonk.h"
+#include "onkstd/queue.h"
 
 void onk_init_queue8(
     struct onk_open_queue_t *queue,

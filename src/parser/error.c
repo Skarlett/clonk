@@ -1,7 +1,7 @@
 #include "clonk.h"
 #include "lexer.h"
 #include "parser.h"
-#include "utils.h"
+#include "private.h"
 #include "predict.h"
 
 /**
@@ -20,6 +20,7 @@ int8_t is_continuable(enum onk_lexicon_t tok) {
     };
     static const uint16_t len = BINOP_LEN + ASNOP_LEN \
         + BRACE_CLOSE_LEN + BRACE_OPEN_LEN; // + _EX_DELIM_LEN;
+
     return onk_lexarr_contains(tok, __BREAK_POINTS_START, len);
 }
 

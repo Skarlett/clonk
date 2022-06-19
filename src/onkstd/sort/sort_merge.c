@@ -53,7 +53,7 @@ void merge(uint16_t *arr, uint16_t l, uint16_t m, uint16_t r)
      }
  }
 
-void onk_sort_u16(uint16_t *arr, uint16_t l, uint16_t r)
+void onk_merge_sort_u16(uint16_t *arr, uint16_t l, uint16_t r)
 {
     if (l < r)
     {
@@ -61,8 +61,8 @@ void onk_sort_u16(uint16_t *arr, uint16_t l, uint16_t r)
         int m = l+(r-l)/2;
 
         // Sort first and second halves
-        onk_sort_u16(arr, l, m);
-        onk_sort_u16(arr, m+1, r);
+        onk_merge_sort_u16(arr, l, m);
+        onk_merge_sort_u16(arr, m+1, r);
 
         merge(arr, l, m, r);
      }

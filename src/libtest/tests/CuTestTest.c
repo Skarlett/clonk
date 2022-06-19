@@ -746,7 +746,7 @@ void TestAssertDblEquals(CuTest* tc)
  *-------------------------------------------------------------------------*/
 
 
-void TestClonkCuTestRun(CuTest* tc, struct onk_test_buffers *ptr)
+void CuTestCtx(CuTest* tc, struct onk_test_buffers *ptr)
 {
 	CuTest tc2;
 	struct onk_test_buffers buf;
@@ -812,10 +812,9 @@ CuSuite* CuGetSuite(void)
 	return suite;
 }
 
-CuSuite* ClonkTestFnSuite(void)
+CuSuite* CuGetCtxSuite(void)
 {
 	CuSuite* suite = CuSuiteNew();
-
-	SUITE_ADD_CLONK_TEST(suite, TestClonkCuTestRun);
+	SUITE_ADD_CTX_TEST(suite, CuTestCtx);
 	return suite;
 }

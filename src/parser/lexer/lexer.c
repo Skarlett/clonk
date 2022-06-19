@@ -412,7 +412,7 @@ int8_t derive_keyword(const char *src_code, struct onk_token_t *t) {
     "return", "for", "while",
     "true", "false",
     "in",
-    "extern", "as",
+    //"extern", "as",
     "if", "else",  "def",
     "import", "from",
     "struct", "impl",
@@ -441,53 +441,52 @@ int8_t derive_keyword(const char *src_code, struct onk_token_t *t) {
 ** for example `-` (MINUS) can turn into many
 ** different compounds `-=`, `-1`.
 */
-enum onk_lexicon_t compose_compound(enum onk_lexicon_t ctok, enum onk_lexicon_t current) {
-  if (ctok == _ONK_SUB_TRANSMISSION_TOKEN)
-  {
-    if (current == ONK_DIGIT_TOKEN)
-      return ONK_INTEGER_TOKEN;
-        
-    else if (current == ONK_EQUAL_TOKEN)
-      return ONK_MINUS_EQL_TOKEN;
+enum onk_lexicon_t compose_compound(
+    enum onk_lexicon_t ctok,
+    enum onk_lexicon_t current
+){
+  switch(ctok) {
+    case _ONK_SUB_TRANSMISSION_TOKEN:
+      if (current == ONK_DIGIT_TOKEN)
+        return ONK_INTEGER_TOKEN;
+      else if(current == ONK_EQUAL_TOKEN)
+        return ONK_MINUS_EQL_TOKEN;
+      break;
+
+    case _ONK_PIPE_TRANSMISSION_TOKEN:
+      if (current == ONK_PIPE_TOKEN)
+        return ONK_OR_TOKEN;
+      else if (current == ONK_EQUAL_TOKEN)
+        return ONK_MINUS_EQL_TOKEN;
+      break;
+
+    case _ONK_AMPER_TRANSMISSION_TOKEN:
+      if (current == ONK_AMPER_TOKEN)
+        return ONK_AND_TOKEN;
+      else if (current == ONK_EQUAL_TOKEN)
+        return ONK_BIT_AND_EQL;
+      break;
+
+    case _ONK_LT_TRANSMISSION_TOKEN:
+      if(current == ONK_LT_TOKEN)
+        return ONK_SHL_TOKEN;
+      else if (current == ONK_EQUAL_TOKEN)
+        return ONK_LT_EQL_TOKEN;
+      break;
+
+    case _ONK_GT_TRANSMISSION_TOKEN:
+      if(current == ONK_GT_TOKEN)
+        return ONK_SHR_TOKEN;
+
+      else if (current == ONK_EQUAL_TOKEN)
+        return ONK_GT_EQL_TOKEN;
+      break;
+
+    case _ONK_DOLLAR_TRANSMISSION_TOKEN:
+      return ONK_HASHMAP_LITERAL_START_TOKEN;
+
+    default: break;
   }
-
-  else if (ctok == _ONK_PIPE_TRANSMISSION_TOKEN){
-    if (current == ONK_PIPE_TOKEN)
-      return ONK_OR_TOKEN;
-
-    else if (current == ONK_EQUAL_TOKEN)
-      return ONK_BIT_OR_EQL;
-  }
-
-  else if (ctok == _ONK_AMPER_TRANSMISSION_TOKEN)
-  {
-    if (current == ONK_AMPER_TOKEN)
-      return ONK_AND_TOKEN;
-
-    else if (current == ONK_EQUAL_TOKEN)
-      return ONK_BIT_AND_EQL;
-  }
-
-  else if (ctok == _ONK_LT_TRANSMISSION_TOKEN)
-  {
-    if(current == ONK_LT_TOKEN)
-      return ONK_SHL_TOKEN;
-
-    else if (current == ONK_EQUAL_TOKEN)
-      return ONK_LT_EQL_TOKEN;
-  }
-
-  else if (ctok == _ONK_GT_TRANSMISSION_TOKEN)
-  {
-    if(current == ONK_GT_TOKEN)
-      return ONK_SHR_TOKEN;
-
-    else if (current == ONK_EQUAL_TOKEN)
-      return ONK_GT_EQL_TOKEN;
-  }
-
-  else if (ctok == _ONK_DOLLAR_TRANSMISSION_TOKEN)
-    return ONK_HASHMAP_LITERAL_START_TOKEN;
 
   return 0;
 }

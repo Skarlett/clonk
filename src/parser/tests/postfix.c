@@ -1,13 +1,10 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-#include "../../src/utils/vec.h"
-#include "../../src/parser/lexer/lexer.h"
-#include "../../src/parser/expr/expr.h"
-#include "../../src/prelude.h"
-#include "../testutils.h"
-#include "../CuTest.h"
-#include "common.h"
+#include "libtest/CuTest.h"
+#include "lexer.h"
+#include "onkstd/vec.h"
+
 
 int8_t into_ref_array(
     struct onk_token_t input[],
@@ -24,13 +21,13 @@ int8_t into_ref_array(
     return 0;
 }
 
-void __test__effectively_empty_group(CuTest* tc)
+void __test__empty_group(CuTest* tc)
 {
     struct onk_token_t tokens[32];
     struct onk_parser_state_tstate;
     struct Expr *ret;
 
-    char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
+    char msg[512];
     uint16_t ntokens=0;
     
     static char * src_code[] = {
@@ -45,13 +42,13 @@ void __test__effectively_empty_group(CuTest* tc)
     };
 
 }
-void __test__you_know_too_much(CuTest* tc)
+void __test__grey_area(CuTest* tc)
 {
     struct onk_token_t tokens[32];
     struct onk_parser_state_tstate;
     struct Expr *ret;
 
-    char msg[__SIM_ORD_PRECEDENSE_MSG_BUF_SZ];
+    char msg[512];
     uint16_t ntokens=0;
    
     static char * src_code[] = {
@@ -105,7 +102,8 @@ void __test__you_know_too_much(CuTest* tc)
 
 
 
-// CuSuite* PostFixUnitTestSuite(void) {
-// 	CuSuite* suite = CuSuiteNew();
-//     return suite;
-// }
+CuSuite* PostfixTests(void) {
+    CuSuite* suite = CuSuiteNew();
+    SUITE_ADD_TEST(suite, __test__grey_area);
+    return suite;
+}

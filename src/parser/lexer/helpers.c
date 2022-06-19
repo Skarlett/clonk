@@ -1,4 +1,4 @@
-#include <stdbool.h>
+#include "clonk.h"
 #include "lexer.h"
 
 bool onk_is_tok_delimiter(enum onk_lexicon_t token) {

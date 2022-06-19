@@ -12,7 +12,33 @@ static enum onk_lexicon_t SUCCEED_MOCK[] =      \
 static const enum onk_lexicon_t FAIL_MOCK[] =   \
         {ONK_WORD_TOKEN, ONK_INTEGER_TOKEN};
 
-void test_mock_tokens(CuTest *tc)
+void mk_toks(struct onk_token_t token[], const enum onk_lexicon_t ty[]) {
+  for (uint16_t i = 0 ;; i++)
+    if (ty[i] == 0)
+      break;
+    else
+      token[i].type = ty[i];
+}
+
+void __test__check_tokens(CuTest* tc) {
+     struct onk_token_t toks[8];
+
+     const static enum onk_lexicon_t check_list[][16] = {
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_DIV_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_ADD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_MUL_TOKEN, ONK_SUB_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
+    };
+
+    for (uint8_t i=0; 6 > i; i++){
+        mk_toks(toks, check_list[i]);
+        onk_assert_tokens(tc, toks, check_list[i], "n/a", "file", 0);
+    }
+}
+
+void __test__mock_tokens(CuTest *tc)
 {
     struct onk_token_t tokens[2];
     enum onk_lexicon_t arr[2] = {ONK_WORD_TOKEN, ONK_ADD_TOKEN};
@@ -22,7 +48,7 @@ void test_mock_tokens(CuTest *tc)
         CuAssertTrue(tc, tokens[i].type == arr[i]);
 }
 
-void test_assert_tokens(CuTest *tc)
+void __test__assert_tokens(CuTest *tc)
 {
     struct onk_test_mask_t kit;
     struct CuTest dummy;
@@ -32,19 +58,19 @@ void test_assert_tokens(CuTest *tc)
     create_mock_tokens(tokens, 2, SUCCEED_MOCK);
 
     ret = onk_assert_tokens(
-        tc, tokens, SUCCEED_MOCK, "N/A", "failed", "NA", 0);
+        tc, tokens, SUCCEED_MOCK, "failed", "NA", 0);
 
     CuAssert(tc, "failed token equality check", ret == 0);
     CuAssertTrue(tc, dummy.failed == 0);
 
     ret = onk_assert_tokens(
-        tc, tokens, FAIL_MOCK, "N/A", "failed", "NA", 0);
+        tc, tokens, FAIL_MOCK, "failed", "NA", 0);
 
     CuAssert(tc, "failed token equality check", ret != 0);
     CuAssertTrue(tc, dummy.failed);
 }
 
-void test_assert_match_tokens(CuTest *tc)
+void __test__assert_match_tokens(CuTest *tc)
 {
     struct onk_test_mask_t kit;
     struct CuTest dummy;
@@ -56,20 +82,20 @@ void test_assert_match_tokens(CuTest *tc)
     onk_desc_add_static_slot(&kit, SUCCEED_MOCK, 2);
 
     ret = onk_assert_match(
-        &dummy, &kit, tokens, 2, 0, "N/A", "failed", 0);
+        &dummy, &kit, tokens, 2, 0, "failed", "NA", 0);
 
     CuAssert(tc, "failed static-match check", ret == 0);
     CuAssertTrue(tc, dummy.failed == 0);
 
     ret = onk_assert_match(
-        &dummy, &kit, tokens, 2, 0, "N/A", "failed", 0);
+        &dummy, &kit, tokens, 2, 0, "failed", "NA", 0);
 
     CuAssert(tc, "failed token equality check", ret != 0);
     CuAssertTrue(tc, dummy.failed);
 }
 
 
-void test_assert_tokenize_stage(CuTest *tc, struct onk_test_buffers *buffers)
+void __test__assert_tokenize_stage(CuTest *tc, struct onk_test_buffers *buffers)
 {
     struct CuTest dummy;
     struct onk_test_mask_t kit;
@@ -88,7 +114,7 @@ void test_assert_tokenize_stage(CuTest *tc, struct onk_test_buffers *buffers)
     CuAssertTrue(tc, lout.tokens.len == 2); // eof?
 }
 
-void test_assert_postfix_stage(CuTest *tc, struct onk_test_buffers *buffers)
+void __test__assert_postfix_stage(CuTest *tc, struct onk_test_buffers *buffers)
 {
     struct CuTest dummy;
     struct onk_test_mask_t kit;
@@ -109,7 +135,8 @@ void test_assert_postfix_stage(CuTest *tc, struct onk_test_buffers *buffers)
 }
 
 
-void test_assert_parse_stage(CuTest *tc, struct onk_test_buffers *buffers)
+// WARNINGS OKAY
+void __test__assert_parse_stage(CuTest *tc)
 {
     CuTest dummy;
     const char * src = "word + word";
@@ -126,19 +153,19 @@ void test_assert_parse_stage(CuTest *tc, struct onk_test_buffers *buffers)
 
     ret = onk_assert_parse_stage(&dummy, &parser, &lexer, 0, "NA", 0);
     CuAssert(tc, "failed parsing stage", ret == -1);
-
 }
 
 
-CuSuite* OnkAssertSuite(void)
+CuSuite* OnkAssertTests(void)
 {
     CuSuite* suite = CuSuiteNew();
-    SUITE_ADD_TEST(suite, test_mock_tokens);
-    SUITE_ADD_TEST(suite, test_assert_match_tokens);
+    SUITE_ADD_TEST(suite, __test__mock_tokens);
+    SUITE_ADD_TEST(suite, __test__assert_match_tokens);
+    SUITE_ADD_TEST(suite, __test__assert_tokens);
 
-    SUITE_ADD_CLONK_TEST(suite, test_assert_tokenize_stage);
-    SUITE_ADD_CLONK_TEST(suite, test_assert_postfix_stage);
-    SUITE_ADD_CLONK_TEST(suite, test_assert_parse_stage);
+    SUITE_ADD_CTX_TEST(suite, __test__assert_tokenize_stage);
+    SUITE_ADD_CTX_TEST(suite, __test__assert_postfix_stage);
+    SUITE_ADD_TEST(suite, __test__assert_parse_stage);
 
     return suite;
 }

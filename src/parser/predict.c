@@ -30,6 +30,16 @@
 #include "private.h"
 #include "predict.h"
 
+const enum onk_lexicon_t UNIT[UNIT_LEN] = {_EX_UNIT};
+const enum onk_lexicon_t BINOP[BINOP_LEN] = {_EX_BIN_OPERATOR};
+const enum onk_lexicon_t ASNOP[ASNOP_LEN] = {_EX_ASN_OPERATOR};
+const enum onk_lexicon_t UNIOP[UNIOP_LEN] = {_EX_UNARY_OPERATOR};
+const enum onk_lexicon_t OPEN_BRACE[BRACE_OPEN_LEN] = {_EX_OPEN_BRACE};
+const enum onk_lexicon_t CLOSE_BRACE[BRACE_CLOSE_LEN] = {_EX_CLOSE_BRACE};
+const enum onk_lexicon_t EXPR[EXPR_LEN] = {_EX_EXPR};
+const enum onk_lexicon_t KWORD_BLOCK[KWORD_BLOCK_LEN];
+const enum onk_lexicon_t NEXT_CLOSE_BRACE[] = { _NEXT_CLOSE_BRACE};
+
 bool is_expecting_data(enum onk_lexicon_t current)
 {
   return onk_is_tok_operator(current)
@@ -277,7 +287,7 @@ bool start_block(
     /*   def sig() { */
     /* while sig() { */
     /*  if(foobar) { */
-    /*           ^^ */
+    /*           ^ ^ */
     ((ophead == onk_defbody_op_token
       || ophead == onk_while_body_op_token
       || ophead == onk_ifbody_op_token)
