@@ -19,6 +19,64 @@ enum Associativity get_assoc(enum onk_lexicon_t token)
   return LASSOC;
 }
 
+bool is_token_unexpected(struct onk_parser_state_t*state)
+{
+  enum onk_lexicon_t current = current_token(state)->type;
+  struct validator_frame_t frame;
+
+  assert(state->nexpect > 0);
+
+  if(_onk_semantic_check(state, current))
+    return true;
+
+  frame.slices = state->exp_slices_buf;
+  frame.islices = state->islices_buf;
+  frame.nslices = 0;
+
+  /* grab frame slices */
+  _onk_semantic_next_frame(&frame, state);
+
+  /* compile into continguent array */
+  state->nexpect = _onk_semantic_compile(
+      state->expect, ONK_PARSE_EXP_SZ, &frame
+  );
+
+  return false;
+}
+
+void init_grp(struct onk_parse_group_t * ghead, enum onk_lexicon_t from)
+{
+  ghead->last_delim = 0;
+  ghead->delimiter_cnt = 0;
+  ghead->expr_cnt = 0;
+
+  ghead->is_short = false;
+  ghead->collapse = false;
+
+  ghead->origin = from;
+  ghead->type = group_type_init(from);
+
+  assert(ghead->type != ONK_UNDEFINED_TOKEN);
+}
+
+struct onk_parse_group_t * new_grp(
+  struct onk_parser_state_t* state,
+  const struct onk_token_t * from
+){
+  struct onk_parse_group_t *ghead;
+  assert(state->set_ctr < state->set_sz);
+
+  ghead = &state->set_stack[state->set_ctr];
+  state->set_ctr += 1;
+
+  /* assumes `OPEN_BRACE/PARAM/BRACKET` is on the operator stack*/
+  ghead->operator_idx = state->operators_ctr - 1;
+  ghead->set_idx = state->set_ctr - 1;
+
+  init_grp(ghead, from);
+  return ghead;
+}
+
 /*
 **********************************************
 ** When an operator is placed in the parser,
@@ -435,7 +493,6 @@ int8_t handle_import(struct onk_parser_state_t*state)
   return 0;
 }
 
-
 /*
 * flush the operator stack
 * pop short blocks
@@ -462,11 +519,69 @@ int8_t handle_delimiter(struct onk_parser_state_t*state)
   if(ghead->type == onk_idx_group_token)
     idx_infer_value(state);
 
-
   if(ghead->is_short)
     pop_short_block(state);
 
   return 0;
+}
+
+/*
+ * Write `_EX_EXPR` into state->expecting
+*/
+void onk_semenatic_init(struct onk_parser_state_t * state)
+{
+  enum onk_lexicon_t default_expected[] = {
+    ONK_WHITESPACE_TOKEN, _EX_EXPR, _EX_KWORD_BLOCK
+  };
+
+  state->nexpect = EXPR_LEN + KWORD_BLOCK_LEN;
+  assert(memcpy(state->expect, default_expected, KWORD_BLOCK_SZ + EXPR_SZ) > 0);
+}
+
+int8_t onk_parser_init(
+  struct onk_parser_state_t *state,
+  //const struct onk_parser_input_t *in,
+  uint16_t *i
+){
+  struct onk_parse_group_t *ghead = &state->set_stack[0];
+
+  onk_semenatic_init(state);
+
+  // Push { into operator stack.
+  assert(op_push(ONK_BRACE_OPEN_TOKEN, 0, 0, state) > 0);
+
+  // Initalize global name space
+  init_grp(ghead, ONK_BRACE_OPEN_TOKEN);
+
+  ghead->operator_idx = 0;
+  ghead->set_idx = 0;
+
+  state->set_ctr = 1;
+  state->set_sz = ONK_STACK_SZ;
+
+  state->operators_ctr = 1;
+  state->operator_stack_sz = ONK_STACK_SZ;
+
+  state->panic = false;
+  state->_i = i;
+
+  //state->src_code = in->src_code;
+  //state->src = in->tokens.base;
+  //state->src_sz = in->tokens.len;
+
+  state->peek_next = 0;
+  state->peek_prev = 0;
+
+  return 0;
+}
+
+
+void onk_parser_init_heap(struct onk_parser_state_t * state)
+{
+  assert(onk_vec_init(&state->pool, 256, sizeof(struct onk_token_t)) == 0);
+  assert(onk_vec_init(&state->debug, 2048, sizeof(void *)) == 0);
+  assert(onk_vec_init(&state->errors, 64, sizeof(struct ParserError)) == 0);
+  assert(onk_vec_init(&state->restoration_stack, 2048, sizeof(struct onk_parser_snapshot_t)) == 0);
 }
 
 int8_t handle_return(struct onk_parser_state_t*state)
@@ -491,109 +606,8 @@ int8_t handle_return(struct onk_parser_state_t*state)
   return 0;
 }
 
-/*
-   This function implements a "fancy" shunting yard parser.
-   returning a vec of pointers, of the source tokens in postfix notation.
 
-   "Fancy" means to include extra features that will be described below.
-   These include the ulities needed to flourish the shunting yard
-   algorithm into a full parser.
 
-   prerequisite know-how:
-     shunting yard parses infix arithmitic notation,
-     and converts it into postfix arithmitic nottation.
-     Infix notation: "1 + 2 + 3"
-     postfix notation: "1 2 + 3 +"
-     postfix notation is much easier to compute using a stack.
-
-   Fancy features:
-    ## Grouping:
-       Grouping occurs when a collection of units or expressions is
-       surrounded in braces and delimated by group's type delimiter.
-       Grouping creates its own tokens where the token type is the following
-
-       ```
-       onk_tuple_group_token,
-       onk_struct_group_token,
-       onk_list_group_token,
-       onk_idx_group_token,
-       onk_map_group_token,
-       onk_code_group_token
-       ```
-       groups store the amount of members in `struct onk_token_t->end`
-       Groups can be defined as empty by marking `end` as 0.
-
-       Example input: [1, 2, 3]; ()
-       Example output: 1 2 3 onk_list_group_token(end=3) onk_tuple_group_token(end=0)
-
-       # Tuple group
-       Example: (a, b)
-       Example output: a b onk_tuple_group_token(2)
-       delimiter: ','
-       Tuples are immutable collections of data
-
-       # onk_struct_group_token
-       Example: Name {a = b}
-       Output: Name (A b =) onk_struct_group_token(1) onk_struct_init_op_token(operator)
-       delimiter: ','
-       Structures define a new type of data,
-       composed of other types.
-
-       # onk_list_group_token
-       Example: [a, b]
-       Output: a b onk_list_group_token(2)
-       delimiter: ','
-
-       dynamically sized array
-
-       # onk_idx_group_token
-       Example: foo[1:2:3]
-       Output: foo (1 2 3 onk_idx_group_token(3)) IndexAccess(operator)
-       delimiter: ':'
-
-       Creates an index selection
-       on the previous expression.
-       The numbers wrapped in braces represent the following
-       parameters.
-
-       ACCESSED [START:END:SKIP]
-
-       The value in these parameters may be skipped,
-       and the value will be inferred from min/max
-       value based on the parameter.
-       START - min(0)
-       END - max(N items)
-       skip - min(0)
-
-       skipped argument example: foo[::2]
-
-       # onk_map_group_token
-       Example: {'a': 2, 'foo': 'bar'}
-       Output: 'a' 2 'foo' 'bar' onk_map_group_token(4),
-       Delimiter: ':' & ','
-
-       HashMap are collections of keys, and data
-       where each key is unique
-
-       # Code block
-       Example: { foo(); bar(); }
-       Output: foo() bar() onk_code_group_token(2)
-       Delimiter: ';'
-       A collection of proceedures
-
-   ## Extended Operator:
-
-      ## `ONK_DOT_TOKEN` operator
-
-      `ONK_DOT_TOKEN` is used to access properities of its parent structure.
-      Inside the parser, `ONK_DOT_TOKEN` is treated as if its an binary operation.
-
-      Exmaple input: abc.foo.last;
-      Example output: abc foo . last .
-
-      ## `onk_apply_op_token` operator
-      `onk_apply_op_token` is used to call function
-*/
 int8_t onk_parse(
   struct onk_parser_input_t *input,
   struct onk_parser_output_t *out
@@ -604,15 +618,18 @@ int8_t onk_parse(
   uint16_t i = 0;
   bool unexpected_token;
 
+  //assert(onk_parser_init(&state, input, &i) == 0);
 
-  assert(onk_parser_init(&state, input, &i) == 0);
+  state.src_code = input->src_code;
+  state.src = input->tokens.base;
+  state.src_sz = input->tokens.len;
 
   for (i = 0; state.src_sz > i; i++)
   {
     current = &state.src[i];
     current_type = state.src[i].type;
 
-    assert(state.operators_ctr > state.operator_stack_sz);
+    assert(state.operator_stack_sz > state.operators_ctr);
     unexpected_token = is_token_unexpected(&state);
 
     /*
@@ -622,8 +639,29 @@ int8_t onk_parse(
       if either state.panic or unexpected_token are true
       we begin unwinding
     */
-    if(state.panic || unexpected_token)
-      handle_unwind(&state, unexpected_token);
+
+    if(state.panic) {
+      printf("paniced on last iter");
+      exit(1);
+      //handle_unwind(&state, unexpected_token);
+    }
+    else if (unexpected_token) {
+      char * ptr = malloc(512);
+
+      printf("got: [%s] expected: \n", onk_ptoken(current->type));
+      
+      onk_snprint_lex_arr(
+        ptr,
+        512,
+        state.expect,
+        state.nexpect
+      );
+      
+      printf("%s\n", ptr);
+      free(ptr);
+      exit(1);
+      //handle_unwind(&state, unexpected_token);
+    }
 
     /*
      * This should only be ran until
@@ -655,21 +693,18 @@ int8_t onk_parse(
     /*
       Places 2 operators on the stack, that are
       popped when an open brace is
-      placed onto the stack
-    */
+      placed onto the stack */
     else if(is_dual_grp_keyword(current_type))
       handle_dual_group(&state);
 
     /* flush operators and
-     * pop an operator (open brace) & grouping
-    */
+     * pop an operator (open brace) & grouping */
     else if (onk_is_tok_close_brace(current_type))
       handle_close_brace(&state);
 
     /* push group modifier & open brace
      * onto the operator stack.
-     * push another grouping
-    */
+     * push another grouping */
     else if (onk_is_tok_open_brace(current_type))
       handle_open_brace(&state);
 

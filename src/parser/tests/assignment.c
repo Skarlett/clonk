@@ -3,7 +3,8 @@
 
 //#include "../../src/parser/error.h"
 
-void __test__parse_simple_asn_expr(CuTest* tc) {
+void __test__parse_simple_asn_expr(CuTest* tc)
+{
     struct onk_token_t tokens[32];
     struct onk_parser_state_t state;
 

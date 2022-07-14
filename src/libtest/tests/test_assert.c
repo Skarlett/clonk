@@ -95,7 +95,7 @@ void __test__assert_match_tokens(CuTest *tc)
 }
 
 
-void __test__assert_tokenize_stage(CuTest *tc, struct onk_test_buffers *buffers)
+void __test__assert_tokenize_stage(CuTest *tc, struct onk_test_state_t *buffers)
 {
     struct CuTest dummy;
     struct onk_test_mask_t kit;
@@ -114,7 +114,7 @@ void __test__assert_tokenize_stage(CuTest *tc, struct onk_test_buffers *buffers)
     CuAssertTrue(tc, lout.tokens.len == 2); // eof?
 }
 
-void __test__assert_postfix_stage(CuTest *tc, struct onk_test_buffers *buffers)
+void __test__assert_postfix_stage(CuTest *tc, struct onk_test_state_t *buffers)
 {
     struct CuTest dummy;
     struct onk_test_mask_t kit;
@@ -163,8 +163,8 @@ CuSuite* OnkAssertTests(void)
     SUITE_ADD_TEST(suite, __test__assert_match_tokens);
     SUITE_ADD_TEST(suite, __test__assert_tokens);
 
-    SUITE_ADD_CTX_TEST(suite, __test__assert_tokenize_stage);
-    SUITE_ADD_CTX_TEST(suite, __test__assert_postfix_stage);
+    SUITE_ADD_STATE_TEST(suite, __test__assert_tokenize_stage);
+    SUITE_ADD_STATE_TEST(suite, __test__assert_postfix_stage);
     SUITE_ADD_TEST(suite, __test__assert_parse_stage);
 
     return suite;

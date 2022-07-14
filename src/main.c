@@ -4,8 +4,10 @@
 #include "lexer.h"
 #include "parser.h"
 
+#include <stdio.h>
+#include <stdint.h>
 
-#define BANNER \
+#define BANNER                                                  \
     "    {__    {__                   {__\r\n"                  \
     " {__   {__ {__                   {__\r\n"                  \
     "{__        {__   {__     {__ {__ {__  {__\r\n"             \
@@ -32,7 +34,6 @@ struct Opts {
     uint8_t print_ast;
     uint8_t print_parser;
     uint8_t print_tokens;
-
 };
 
 void init_opts(struct Opts *opts) {
@@ -74,8 +75,15 @@ void setup_opts(int argc, char *argv[], struct Opts *opts) {
 
 int main(int argc, char* argv[]) {
     struct Opts opts;
-    struct onk_token_t * tokens;
+    uint16_t i = 0;
+    struct onk_lexer_input_t input;
+    struct onk_lexer_output_t token_output;
 
+    struct onk_parser_input_t parser_input;
+    struct onk_parser_output_t parser_output;
+
+    input.src_code = "4 + 4";
+    
     if (argc == 1) {
         print_help(argv[0]);
         return 0;
@@ -83,12 +91,29 @@ int main(int argc, char* argv[]) {
 
     init_opts(&opts);
     setup_opts(argc, argv, &opts);
+    
+    if(onk_tokenize(&input, &token_output) == -1)
+      return -1;
 
+    for (i=0; token_output.tokens.len > i; i++)
+    {
+        printf("[%s] ", onk_ptoken(((struct onk_token_t *)token_output.tokens.base)[i].type));
+    }
+    puts("\n");
 
+    onk_parser_input_from_lexer_output(&token_output, &parser_input, false);
+
+    if(onk_parse(&parser_input, &parser_output) == -1)
+      return -2;
+
+    for (i=0; parser_output.postfix.len > i; i++)
+    {
+        printf("[%s] ", onk_ptoken(((struct onk_token_t **)parser_output.postfix.base)[i]->type));
+    }
+    puts("\n");
+    
     /* if(access(argv[argc-1], F_OK) == 0) */
     /*     return parse(argv[argc-1], &opts); */
-
-
     /* printf("bad arguments\n"); */
     return 1;
 

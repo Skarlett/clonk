@@ -12,6 +12,7 @@
 */
 
 #include <stdio.h>
+#include <stdint.h>
 #include "clonk.h"
 #include "lexer.h"
 #include "onkstd/queue.h"
@@ -23,6 +24,9 @@
 struct LexerStage {
     const char * src_code;
     uint16_t src_code_sz;
+
+    /* struct onk_vec_t<onk_token_t> */
+    struct onk_vec_t tokens;
 
     enum onk_lexicon_t previous_buf[PREV_BUF_SZ];
 
@@ -36,9 +40,7 @@ struct LexerStage {
     uint16_t cmpd_span_size;
     uint16_t cmpd_start_at;
 
-    /* struct onk_vec_t<onk_token_t> *ptr */
-    struct onk_vec_t *tokens;
-
+    
     /* struct onk_vec_t<onk_lexer_error_t> */
     struct onk_vec_t errors;
 
@@ -46,20 +48,21 @@ struct LexerStage {
      * hijacks the compound token until
      * it falls out of pattern
     */
-  enum onk_lexicon_t forcing_next_token;
-  uint16_t force_start;
-  uint16_t force_span;
+    enum onk_lexicon_t forcing_next_token;
+    uint16_t force_start;
+    uint16_t force_span;
 };
 
 void init_lexer_stage(
   struct LexerStage * stage,
-  struct onk_vec_t * tokens,
   const char * src_code,
   const uint16_t * i
 ){
-  stage->tokens = tokens;
+  //stage->tokens = tokens;
   stage->i = i;
   stage->src_code = src_code;
+
+  onk_vec_init(&stage->tokens, 2048, sizeof(struct onk_token_t));
 
   onk_init_queue8(
     &stage->previous,
@@ -77,17 +80,6 @@ void init_lexer_stage(
   stage->cmpd_start_at = 0;
   stage->src_code_sz = 0;
 };
-
-void init_lexer_output(
-  const struct LexerStage *state,
-  struct onk_lexer_output_t *out
-){
-  /* avoid const warnings with (void *) */
-  assert(memcpy((void *)&out->tokens, &state->tokens, sizeof(struct onk_vec_t)) != 0);
-  assert(memcpy((void *)&out->errors, &state->errors, sizeof(struct onk_vec_t)) != 0);
-  out->src_code = state->src_code;
-  out->src_code_sz = state->src_code_sz;
-}
 
 enum onk_lexicon_t onk_tokenize_char(char c) {
   uint8_t i = 0;
@@ -499,10 +491,7 @@ int8_t finalize_compound_token(
   struct onk_lexer_error_t err;
   if (token->type == ONK_STRING_LITERAL_TOKEN)
   {
-
-    /*
-      Error: string is missing a ending quote
-    */
+    /* Error: string is missing a ending quote */
     if (lexed != ONK_DOUBLE_QUOTE_TOKEN) {
       err.type = lex_err_missing_end_quote;
 
@@ -543,17 +532,18 @@ int8_t push_tok(
 {
   enum onk_lexicon_t type = state->current;
   int8_t ret = 0;
-
+  
+  
   if (state->compound != ONK_UNDEFINED_TOKEN)
     type = state->compound;
-
+  
   ret = finalize_compound_token(
     state,
     tok,
     type
   );
 
-  assert(onk_vec_push(state->tokens, tok) != 0);
+  assert(onk_vec_push(&state->tokens, tok) != 0);
   onk_queue8_push(&state->previous, &tok);
 
   if (type == ONK_FROM_TOKEN)
@@ -566,10 +556,10 @@ int8_t push_tok(
   return ret;
 }
 
-
 int8_t continue_forcing(struct LexerStage *state)
 {
-  return state->current == ONK_WORD_TOKEN || state->current == ONK_DOT_TOKEN;
+  return state->current == ONK_WORD_TOKEN 
+    || state->current == ONK_DOT_TOKEN;
 }
 
 int8_t onk_tokenize(
@@ -585,35 +575,32 @@ int8_t onk_tokenize(
 
   init_lexer_stage(
     &state,
-    &in->tokens,
     in->src_code,
     &i
   );
 
   for (i = 0 ;; i++) {
-    memset(&token, 0, sizeof(struct onk_token_t));
-
     if (state.src_code[i] == 0)
       break;
 
     /* Input size check */
-    if (ONK_BUF_SZ > state.src_code_sz)
-      state.src_code_sz += 1;
-
-    else {
+    else if (ONK_BUF_SZ < state.src_code_sz)
+    {
       err.type = lex_err_input_too_big;
       assert(onk_vec_push(&state.errors, &err) != 0);
       return -1;
     }
 
     /* Capture & throw error on non-ascii character streams */
-    if (onk_is_utf_byte(state.src_code[i])) {
+    else if (onk_is_utf_byte(state.src_code[i]))
+    {
       utf_error_flag = i;
       continue;
     }
 
     else if(utf_error_flag > 0)
     {
+      // TODO: wtf is this?
       if (state.src_code[i] == ' '
           || state.src_code[i] == '\t'
           || state.src_code[i] == '\n')
@@ -621,6 +608,7 @@ int8_t onk_tokenize(
         token.start = utf_error_flag;
         token.end = (i || 1) - 1;
         token.type = ONK_UNDEFINED_TOKEN;
+        token.seq = state.tokens.len;
 
         err.type = lex_err_non_ascii_token;
         err.type_data.non_ascii_token = token;
@@ -637,12 +625,14 @@ int8_t onk_tokenize(
     state.current = onk_tokenize_char(state.src_code[i]);
 
     /* create compound token*/
-    if (state.compound == ONK_UNDEFINED_TOKEN && can_upgrade_token(state.current)) {
+    if (state.compound == ONK_UNDEFINED_TOKEN && can_upgrade_token(state.current))
+    {
       set_compound_token(&state.compound, state.current);
       state.cmpd_start_at = i;
       state.cmpd_span_size = 0;
       continue;
     }
+
     else if (state.forcing_next_token != ONK_UNDEFINED_TOKEN && continue_forcing(&state))
     {
       state.force_span += 1;
@@ -650,7 +640,8 @@ int8_t onk_tokenize(
     }
 
     /* continuation of complex token */
-    else if (continue_compound_token(&state)) {
+    else if (continue_compound_token(&state))
+    {
       state.compound = compose_compound(state.compound, state.current);
       state.cmpd_span_size += 1;
       onk_queue8_push(&state.previous, &token);
@@ -658,27 +649,22 @@ int8_t onk_tokenize(
     }
 
     /* completed compound token */
-    else if (state.compound != ONK_UNDEFINED_TOKEN || state.forcing_next_token) {
-      // state._is_repeating = false;
-      /* if (state.compound == ONK_COMMENT_TOKEN) */
-      /* { */
-      /*   state.compound = ONK_UNDEFINED_TOKEN; */
-      /*   continue; */
-      /* } */
-
+    else if (state.compound != ONK_UNDEFINED_TOKEN || state.forcing_next_token)
+    {
       if(state.compound != ONK_UNDEFINED_TOKEN)
       {
         token.start = state.cmpd_start_at;
         token.end = state.cmpd_start_at + state.cmpd_span_size;
         token.type = state.compound;
-        token.seq = state.tokens->len;
+        token.seq = state.tokens.len;
         state.compound = ONK_UNDEFINED_TOKEN;
       }
-      else {
+      else
+      {
         token.start = state.force_start;
         token.end = state.force_start + state.force_span;
         token.type = state.forcing_next_token;
-        token.seq = state.tokens->len;
+        token.seq = state.tokens.len;
 
         state.forcing_next_token = ONK_UNDEFINED_TOKEN;
         state.force_start = 0;
@@ -686,7 +672,6 @@ int8_t onk_tokenize(
       }
 
       push_tok(&state, &token);
-
 
       if (token.type == ONK_STRING_LITERAL_TOKEN)
       {
@@ -700,10 +685,14 @@ int8_t onk_tokenize(
         This allows the token to fall through the entire loop.
         So that its turned into a compound token.
     */
-    if (can_upgrade_token(state.current)) {
+    if (can_upgrade_token(state.current))
+    {
       i -= 1;
       continue;
     }
+
+    else if (state.current == ONK_WHITESPACE_TOKEN)
+      continue;
 
     /*
         this fires for non-compound tokens,
@@ -718,9 +707,9 @@ int8_t onk_tokenize(
       token.start = i;
       token.end = i;
       token.type = state.current;
-      token.seq = state.tokens->len;
+      token.seq = state.tokens.len;
 
-      onk_vec_push(state.tokens, &token);
+      onk_vec_push(&state.tokens, &token);
       state.cmpd_start_at = 0;
     }
   }
@@ -741,7 +730,7 @@ int8_t onk_tokenize(
     token.start = state.cmpd_start_at;
     token.end = state.cmpd_start_at + state.cmpd_span_size;
     token.type = state.compound;
-    token.seq = state.tokens->len;
+    token.seq = state.tokens.len;
 
     if (push_tok(&state, &token) == -1)
       return -1;
@@ -752,10 +741,12 @@ int8_t onk_tokenize(
   token.type = ONK_EOF_TOKEN;
   token.start = i;
   token.end = i;
-  token.seq = state.tokens->len;
-  onk_vec_push(state.tokens, &token);
+  token.seq = state.tokens.len;
+  
+  onk_vec_push(&state.tokens, &token);
 
-  /* setup return values */
-  init_lexer_output(&state, out);
+  out->tokens = state.tokens;
+  out->src_code = in->src_code;
+  out->src_code_sz = i;
   return 0;
 }

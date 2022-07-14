@@ -3,6 +3,8 @@
 
 #include "lexer.h"
 
+#define ONK_PARSE_EXP_SZ 64
+
 struct onk_parser_input_t {
     const char * src_code;
     uint16_t src_code_sz;
@@ -10,6 +12,8 @@ struct onk_parser_input_t {
 
     bool add_glob_scope;
 };
+void onk_parser_input_free(struct onk_parser_input_t *);
+
 
 struct onk_parser_output_t {
     /* Vec<struct onk_token_t *> */
@@ -23,6 +27,8 @@ struct onk_parser_output_t {
 
     bool stage_failed;
 };
+void onk_parser_output_free(struct onk_parser_output_t *);
+
 
 enum onk_parse_err_t {
     parse_err_unexpected_token
@@ -87,6 +93,108 @@ struct ParserError {
   postfix  foo a b c + APPLY(3) bar 1 APPLY(2) .
   pretty-postfix:
            ((foo a (b c +) APPLY(3)) bar 1 APPLY(2) .)
+
+   This function implements a "fancy" shunting yard parser.
+   returning a vec of pointers, of the source tokens in postfix notation.
+
+   "Fancy" means to include extra features that will be described below.
+   These include the ulities needed to flourish the shunting yard
+   algorithm into a full parser.
+
+   prerequisite know-how:
+     shunting yard parses infix arithmitic notation,
+     and converts it into postfix arithmitic nottation.
+     Infix notation: "1 + 2 + 3"
+     postfix notation: "1 2 + 3 +"
+     postfix notation is much easier to compute using a stack.
+
+   Fancy features:
+    ## Grouping:
+       Grouping occurs when a collection of units or expressions is
+       surrounded in braces and delimated by group's type delimiter.
+       Grouping creates its own tokens where the token type is the following
+
+       ```
+       onk_tuple_group_token,
+       onk_struct_group_token,
+       onk_list_group_token,
+       onk_idx_group_token,
+       onk_map_group_token,
+       onk_code_group_token
+       ```
+       groups store the amount of members in `struct onk_token_t->end`
+       Groups can be defined as empty by marking `end` as 0.
+
+       Example input: [1, 2, 3]; ()
+       Example output: 1 2 3 onk_list_group_token(end=3) onk_tuple_group_token(end=0)
+
+       # Tuple group
+       Example: (a, b)
+       Example output: a b onk_tuple_group_token(2)
+       delimiter: ','
+       Tuples are immutable collections of data
+
+       # onk_struct_group_token
+       Example: Name {a = b}
+       Output: Name (A b =) onk_struct_group_token(1) onk_struct_init_op_token(operator)
+       delimiter: ','
+       Structures define a new type of data,
+       composed of other types.
+
+       # onk_list_group_token
+       Example: [a, b]
+       Output: a b onk_list_group_token(2)
+       delimiter: ','
+
+       dynamically sized array
+
+       # onk_idx_group_token
+       Example: foo[1:2:3]
+       Output: foo (1 2 3 onk_idx_group_token(3)) IndexAccess(operator)
+       delimiter: ':'
+
+       Creates an index selection
+       on the previous expression.
+       The numbers wrapped in braces represent the following
+       parameters.
+
+       ACCESSED [START:END:SKIP]
+
+       The value in these parameters may be skipped,
+       and the value will be inferred from min/max
+       value based on the parameter.
+       START - min(0)
+       END - max(N items)
+       skip - min(0)
+
+       skipped argument example: foo[::2]
+
+       # onk_map_group_token
+       Example: {'a': 2, 'foo': 'bar'}
+       Output: 'a' 2 'foo' 'bar' onk_map_group_token(4),
+       Delimiter: ':' & ','
+
+       HashMap are collections of keys, and data
+       where each key is unique
+
+       # Code block
+       Example: { foo(); bar(); }
+       Output: foo() bar() onk_code_group_token(2)
+       Delimiter: ';'
+       A collection of proceedures
+
+   ## Extended Operator:
+
+      ## `ONK_DOT_TOKEN` operator
+
+      `ONK_DOT_TOKEN` is used to access properities of its parent structure.
+      Inside the parser, `ONK_DOT_TOKEN` is treated as if its an binary operation.
+
+      Exmaple input: abc.foo.last;
+      Example output: abc foo . last .
+
+      ## `onk_apply_op_token` operator
+      `onk_apply_op_token` is used to call function
 */
 
 int8_t onk_parse(
@@ -168,7 +276,6 @@ struct onk_parser_snapshot_t {
     const struct onk_parse_group_t * grp;
 };
 
-
 /* used to construct an error */
 struct onk_partial_err_t {
     enum onk_parse_err_t type;
@@ -178,8 +285,15 @@ struct onk_partial_err_t {
     uint16_t nexpected;
 };
 
+#define _ONK_VALIDATOR_REF_SZ 8
+#define _ONK_SEM_CHK_SZ 64
+
+/*
+define current_token(state) (state->src ? &state->src[state->_i] : panic())
+define op_head(state) (state.op ? &state->src[state->_i] : panic())
+*/
 struct onk_parser_state_t {
-    const struct onk_token_t *src;
+    struct onk_token_t *src;
     const char * src_code;
     uint16_t src_sz;
     uint16_t *_i;
@@ -222,17 +336,19 @@ struct onk_parser_state_t {
     /* Vec<struct onk_token_t *> */
     struct onk_vec_t debug;
 
-    /*Vec<struct ParseError>*/
+    /* Vec<struct ParseError> */
     struct onk_vec_t errors;
 
-    enum onk_lexicon_t *expect;
+    enum onk_lexicon_t expect[_ONK_SEM_CHK_SZ];
+    enum onk_lexicon_t  * exp_slices_buf[_ONK_VALIDATOR_REF_SZ];
+
+    uint16_t islices_buf[_ONK_VALIDATOR_REF_SZ];
     uint16_t nexpect;
-    uint16_t expect_capacity;
 
     /*Vec<struct onk_parser_snapshot_t>*/
     struct onk_vec_t restoration_stack;
-    uint16_t restoration_ctr;
 
+    //uint16_t restoration_ctr;
 
     /* whenever panic is set a
      * partial_err is valid, and
@@ -248,12 +364,8 @@ struct onk_parser_state_t {
     bool stage_failed;
 };
 
-
-int8_t onk_parser_init(
-  struct onk_parser_state_t *state,
-  const struct onk_parser_input_t *in,
-  uint16_t *i
-);
+int8_t onk_parser_init(struct onk_parser_state_t *state, uint16_t *i);
+int8_t onk_parser_init_heap(struct onk_parser_state_t *state);
 
 int8_t onk_parser_free(struct onk_parser_state_t*state);
 int8_t onk_parser_reset(struct onk_parser_state_t*state);

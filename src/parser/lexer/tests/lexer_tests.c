@@ -26,7 +26,7 @@ int8_t _filter_cfg(test_flag flags, enum onk_lexicon_t current, uint16_t tokens_
 
 void lexer_harness(
     CuTest *tc,
-    struct onk_test_buffers *ptr,
+    struct onk_test_state_t *ptr,
     struct onk_lexer_output_t *err_output,
     const char* const* src_code,
     enum onk_lexicon_t **answers,
@@ -82,7 +82,7 @@ void lexer_harness(
 #define LexHarness(tc, buf, out, src, answer, flags) \
     lexer_harness((tc), (buf), (out), (src), (answers), (flags), __FILE__, __LINE__)
 
-void __test__io(CuTest* tc, struct onk_test_buffers *ptr)
+void __test__io(CuTest* tc, struct onk_test_state_t *ptr)
 {
     struct onk_lexer_output_t lex_output;
     const char * src[] = {
@@ -243,7 +243,7 @@ void __test__io(CuTest* tc, struct onk_test_buffers *ptr)
 
 }
 
-void __test__destroy_comment(CuTest* tc, struct onk_test_buffers *ptr)
+void __test__destroy_comment(CuTest* tc, struct onk_test_state_t *ptr)
 {
     struct onk_lexer_input_t input;
     struct onk_lexer_output_t output;
@@ -251,7 +251,6 @@ void __test__destroy_comment(CuTest* tc, struct onk_test_buffers *ptr)
     int8_t ret;
 
     input.src_code = "1234 # a very long comment";
-    memcpy(&input.tokens, &ptr->src_tokens, sizeof(struct onk_vec_t));
 
     ret = onk_tokenize(&input, &output);
     CuAssertTrue(tc, ret == 0);
@@ -263,20 +262,19 @@ void __test__destroy_comment(CuTest* tc, struct onk_test_buffers *ptr)
     //CuAssertTrue(tc, i == 2);
 }
 
-void __test__fails_on_partial_string(CuTest* tc, struct onk_test_buffers *ptr)
+void __test__fails_on_partial_string(CuTest* tc, struct onk_test_state_t *ptr)
 {
     struct onk_lexer_input_t input;
     struct onk_lexer_output_t output;
     int8_t ret;
 
     input.src_code = "\"1234";
-    memcpy(&input.tokens, &ptr->src_tokens, sizeof(struct onk_vec_t));
 
     ret = onk_tokenize(&input, &output);
     CuAssertTrue(tc, ret == -1);
 }
 
-void __test__position(CuTest* tc, struct onk_test_buffers *ptr)
+void __test__position(CuTest* tc, struct onk_test_state_t *ptr)
 {
     struct onk_lexer_input_t input;
     struct onk_lexer_output_t output;
@@ -285,7 +283,6 @@ void __test__position(CuTest* tc, struct onk_test_buffers *ptr)
     uint16_t i=0;
 
     input.src_code = "1234 + 4321";
-    memcpy(&input.tokens, &ptr->src_tokens, sizeof(struct onk_vec_t));
 
     ret = onk_tokenize(&input, &output);
     tokens = output.tokens.base;
@@ -306,7 +303,7 @@ void __test__position(CuTest* tc, struct onk_test_buffers *ptr)
     CuAssertTrue(tc, tokens[2].type == ONK_INTEGER_TOKEN);
 }
 
-void __test__fails_on_utf(CuTest* tc, struct onk_test_buffers *ptr)
+void __test__fails_on_utf(CuTest* tc, struct onk_test_state_t *ptr)
 {
     struct onk_lexer_input_t input;
     struct onk_lexer_output_t output;
@@ -314,7 +311,6 @@ void __test__fails_on_utf(CuTest* tc, struct onk_test_buffers *ptr)
     int8_t ret;
 
     input.src_code = buf;
-    memcpy(&input.tokens, &ptr->src_tokens, sizeof(struct onk_vec_t));
 
     ret = onk_tokenize(&input, &output);
     CuAssertTrue(tc, ret == -1);

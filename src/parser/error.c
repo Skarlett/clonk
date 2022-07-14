@@ -125,10 +125,11 @@ void unwind_stacks(struct onk_parser_state_t*state)
         return;
     }
 
+    token = onk_vec_head(&state->debug);
+    
     /* get last good restoration */
     rframe = restoration_head(state);
     head = rframe->output_tok->seq;
-    token = onk_vec_head(&state->debug);
 
     // pop until out matches restoration
     while (state->debug.len > 0 && token->seq > head)

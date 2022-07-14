@@ -7,8 +7,6 @@
 
 #include "libtest/CuTest.h"
 
-void _onk_reset_buffer_hook(struct onk_test_buffers *ptr);
-
 /*-------------------------------------------------------------------------*
  * CuTest
  *-------------------------------------------------------------------------*/
@@ -63,7 +61,17 @@ void CuTestDelete(CuTest *t)
         free(t);
 }
 
-void CuTestRun(CuTest* tc, struct onk_test_buffers *ptr)
+void _reset(struct onk_test_state_t * state) {
+	state->parser_i = 0;
+	onk_parser_reset(&state->parser);
+
+	onk_vec_clear(&state->src_tokens);
+	onk_vec_clear(&state->postfix_token);
+	onk_vec_clear(&state->parser_expect);
+	onk_vec_clear(&state->lexer_expect);
+}
+
+void CuTestRun(CuTest* tc, struct onk_test_state_t *ptr)
 {
 	jmp_buf buf;
 	tc->jumpBuf = &buf;
@@ -74,17 +82,18 @@ void CuTestRun(CuTest* tc, struct onk_test_buffers *ptr)
 		switch (tc->fntype)
 		{
 			case ClonkTestType:
+				_reset(ptr);
 				(tc->func.buffered)(tc, ptr);
 				break;
 			case CuTestType:
 				(tc->func.norm)(tc);
 				break;
-			default:
+		    default:
 				CuFail(tc, "Misconfigured Test");
 				break;
 		}
 	}
-
+	printf("RAN: %s\n", tc->name);
 	tc->jumpBuf = 0;
 }
 

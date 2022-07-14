@@ -4,6 +4,8 @@
  * CuSuite
  *-------------------------------------------------------------------------*/
 
+void _onk_reset_buffer_hook(CuTest *tc, struct onk_test_state_t *ptr);
+
 void CuSuiteInit(CuSuite* testSuite)
 {
     testSuite->count = 0;
@@ -49,14 +51,14 @@ void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2)
     }
 }
 
-void CuSuiteRun(CuSuite* testSuite, struct onk_test_buffers *ptr)
+void CuSuiteRun(CuSuite* testSuite, struct onk_test_state_t *ptr)
 {
     int i;
     for (i = 0 ; i < testSuite->count ; ++i)
     {
         CuTest* testCase = testSuite->list[i];
-        _onk_reset_buffer_hook(ptr);
         CuTestRun(testCase, ptr);
+        _onk_reset_buffer_hook(testCase, ptr);
         if (testCase->failed) { testSuite->failCount += 1; }
     }
 }

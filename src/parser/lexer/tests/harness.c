@@ -441,14 +441,14 @@ void __test__is_tok_unit(CuTest *tc)
     LexRangeHarness(tc, "", answers, onk_is_tok_unit);
 }
 
-void __test__is_tok_keyword(CuTest *tc)
-{
+/* void __test__is_tok_keyword(CuTest *tc) */
+/* { */
     /* enum onk_lexicon_t answers[] = { */
     /*   0 */
     /* }; */
 
     //LexRangeHarness(tc, "", answers, onk_is_tok_keyword);
-}
+/* } */
 
 void __test__is_tok_loopctl(CuTest *tc)
 {
@@ -538,7 +538,7 @@ CuSuite* LexerHarnessLogicTests(void)
     SUITE_ADD_TEST(suite, __test__is_tok_binop);
     SUITE_ADD_TEST(suite, __test__is_tok_asn_op);
 
-    SUITE_ADD_TEST(suite, __test__is_tok_keyword);
+    /* SUITE_ADD_TEST(suite, __test__is_tok_keyword); */
     SUITE_ADD_TEST(suite, __test__is_tok_block_keyword);
     SUITE_ADD_TEST(suite, __test__is_tok_loopctl);
 

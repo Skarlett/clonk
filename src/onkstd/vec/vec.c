@@ -94,12 +94,17 @@ int8_t _resize(struct onk_vec_t *dest)
 
 void * _push(struct onk_vec_t *dest, const void *src)
 {
-    void * head = &dest->base[dest->len];
 
-    assert(memcpy(head, src, dest->type_sz) != 0);
+    void * item = (onk_usize)dest->base + (onk_usize)(dest->len * dest->type_sz);
+
+    assert(memcpy(
+            item,
+            src,
+            dest->type_sz) > 0
+    );
+
     dest->len += 1;
-
-    return head;
+    return item;
 }
 
 /*
@@ -109,7 +114,7 @@ void * _push(struct onk_vec_t *dest, const void *src)
 */
 void * onk_vec_push(struct onk_vec_t *dest, const void *src)
 {
-    if(!can_access(dest))
+    if(can_access(dest) == false)
         return 0;
 
     /* write into buffer */
@@ -123,6 +128,36 @@ void * onk_vec_push(struct onk_vec_t *dest, const void *src)
     /* and then write */
     return _push(dest, src);
 }
+
+
+/*
+
+*/
+void * onk_vec_copy(struct onk_vec_t *dest, const struct onk_vec_t *src)
+{
+    if(can_access(dest) == true || can_access(src) == false)
+        return 0;
+
+    return memcpy(dest, src, sizeof(struct onk_vec_t));
+}
+
+/*
+
+*/
+void * onk_vec_deep_copy(struct onk_vec_t *dest, const struct onk_vec_t *src)
+{
+
+    if (onk_vec_copy(dest, src) == 0)
+        return 0;
+
+    dest->base = malloc(src->type_sz * src->capacity);
+    
+    if(dest->base == 0) 
+      return 0;
+
+    return memcpy(dest->base, src->base, src->type_sz * src->len);
+}
+
 
 /*
 ** Push item into expandable buffer
@@ -199,7 +234,6 @@ void onk_vec_reset(struct onk_vec_t *vec) {
     vec->type_sz = 0;
     vec->clamp = 0;
 }
-
 
 int8_t onk_vec_free(struct onk_vec_t *vec) {
     if(!can_access(vec))

@@ -11,13 +11,13 @@
  * `onk_test_mask_t` as a static option.
 */
 int8_t onk_desc_add_static_slot(
-    struct onk_test_mask_t * mold,
+    struct onk_test_mask_t * test,
     enum onk_lexicon_t *tok,
     uint16_t nitems)
 {
     struct onk_desc_token_t dtok;
 
-    if(mold->sarr > mold->narr)
+    if(test->sarr > test->narr || test->narr == 0)
         return -1;
 
     for(uint16_t i=0; nitems > i; i++)
@@ -28,8 +28,8 @@ int8_t onk_desc_add_static_slot(
         dtok.slot_type = onk_static_slot;
         dtok.data.static_tok = tok[i];
 
-        mold->arr[mold->narr] = dtok;
-        mold->narr += 1;
+        test->arr[test->sarr] = dtok;
+        test->sarr += 1;
     }
 
     return 1;

@@ -10,15 +10,16 @@
 #include <assert.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <stdbool.h>
 
 #define ONK_VERSION "0.0.4"
 // -DINCLUDE_TESTS 1
 #define ONK_INCLUDE_TESTS 0
 
-typedef uint8_t bool;
+//typedef uint8_t bool;
 
-#define true 1
-#define false 0
+//#define true 1
+//#define false 0
 
 // Macro for checking bitness (safer macros borrowed from
 // https://www.fluentcpp.com/2019/05/28/better-macros-better-flags/)
@@ -105,14 +106,13 @@ typedef int16_t onk_isize;
 #define ONK_VEC_INC 256
 #define ONK_VEC_MAX 1 << 14
 
-
 #define ONK_ALLOC(TYPE)  ((TYPE *) malloc(sizeof(TYPE)))
 #define ONK_CALLOC(TYPE, N) ((TYPE *) calloc(sizeof(TYPE), (N)))
 
-#define unimplemented() fputs(stdout, "unimplemented") && exit(1)
+#define unimplemented() fputs(stdout, "unimplemented") && exit(127)
+#define panic() fputs(stdout, "panic") && exit(127)
 
 /* enum onk_datatype { ONK_DATA_STR }; */
-
 /* struct onk_rt_gc {}; */
 /* struct onk_runtime_t { */
 
@@ -138,6 +138,5 @@ typedef int16_t onk_isize;
 /*     char *name); */
 
 /* #define onk_register_func(rt, func) _onk_register_func((rt), (func), #func) */
-
 
 #endif

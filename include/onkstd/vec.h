@@ -1,6 +1,7 @@
 #ifndef _HEADER__VEC__
 #define _HEADER__VEC__
-#include "clonk.h"
+
+#include <stdint.h>
 
 enum onk_vec_state {
   ONK_VEC_UNINIT,
@@ -41,4 +42,6 @@ int8_t onk_vec_pop(struct onk_vec_t *vec, void * dest);
 int8_t onk_vec_free(struct onk_vec_t *vec);
 void onk_vec_clear(struct onk_vec_t *vec);
 
+void * onk_vec_copy(struct onk_vec_t *dest, const struct onk_vec_t *src);
+void * onk_vec_deep_copy(struct onk_vec_t *dest, const struct onk_vec_t *src);
 #endif

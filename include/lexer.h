@@ -5,9 +5,7 @@
 #include <stdint.h>
 #include "clonk.h"
 
-#include "clonk.h"
 #include "onkstd/vec.h"
-
 #define ONK_TOK_CHAR_SIZE 64
 
 enum onk_lexicon_t {
@@ -457,7 +455,8 @@ static const enum onk_lexicon_t ILLEGAL_TOKENS[] = {
 
     __ONK_MARKER_KEYWORD_DATA_START,
     __ONK_MARKER_KEYWORD_DATA_END,
-    0
+    
+    (enum onk_lexicon_t)0
 };
 #define ILLEGAL_TOKENS_LEN 46
 
@@ -515,9 +514,6 @@ struct onk_token_selection_t {
 
 struct onk_lexer_input_t {
     const char *src_code;
-
-    /* initalized or not ? */
-    struct onk_vec_t tokens;
 };
 
 /* Output of lexer function */
@@ -526,10 +522,10 @@ struct onk_lexer_output_t {
     uint16_t src_code_sz;
 
     /* Vec<onk_token_t> */
-    const struct onk_vec_t tokens;
+    struct onk_vec_t tokens;
 
     /* Vec<onk_lexer_error_t> */
-    const struct onk_vec_t errors;
+    struct onk_vec_t errors;
 };
 
 enum onk_lexer_errno {
@@ -762,7 +758,6 @@ bool _onk_is_group(enum onk_lexicon_t tok);
 enum onk_lexicon_t onk_invert_brace(enum onk_lexicon_t token);
 
 uint16_t onk_token_len(struct onk_token_t *tok);
-
 uint16_t onk_tokarr_len(struct onk_token_t *arr);
 uint16_t onk_lexarr_len(enum onk_lexicon_t *arr);
 

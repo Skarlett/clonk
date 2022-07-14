@@ -1,5 +1,6 @@
 #include "clonk.h"
 #include "libtest/CuTest.h"
+
 /********************************/
 /*  Test the function harness   */
 /********************************/
@@ -32,44 +33,47 @@ CuSuite* LexerHarnessLogicTests();
 /*****************/
 CuSuite* PostfixTests();
 
+/* int8_t onk_parser_init( */
+/*   struct onk_parser_state_t *state, */
+/*   uint16_t *i */
+/* ); */
+
+/* int8_t onk_parser_free(struct onk_parser_state_t *state); */
+/* int8_t onk_parser_reset(struct onk_parser_state_t *state); */
+
+
 /* FORWARD DECLARED in CuTest.c*/
 /* Ran on every test finishing */
-void _onk_reset_buffer_hook(struct onk_test_buffers *ptr)
+void _onk_reset_buffer_hook(CuTest *tc, struct onk_test_state_t *ptr)
 {
+	ptr->parser_i = 0;
+	onk_parser_init(&ptr->parser, &ptr->parser_i);
+
 	onk_vec_clear(&ptr->src_tokens);
 	onk_vec_clear(&ptr->postfix_token);
-	ptr->msgbuf[0] = '\0';
+	onk_vec_clear(&ptr->src_tokens);
+	onk_vec_clear(&ptr->postfix_token);
 }
 
 /* FORWARD DECLARED in CuTest.c*/
 /* Ran on every test finishing */
-void _onk_init_test_buffer_hook(struct onk_test_buffers *buf)
+void _onk_init_test_buffer_hook(struct onk_test_state_t *buf)
 {
-	buf->msgbuf = malloc(8192);
-	buf->msg_capacity = 8192;
 	onk_vec_init(&buf->src_tokens, 256, sizeof(struct onk_token_t));
 	onk_vec_init(&buf->postfix_token, 256, sizeof(struct onk_token_t));
 }
 
-/* FORWARD DECLARED in CuTest.c*/
-/* Ran on every test finishing */
-void _onk_free_test_buffer_hook(struct onk_test_buffers *buf)
-{
-	onk_vec_free(&buf->src_tokens);
-	onk_vec_free(&buf->postfix_token);
-	free(buf->msgbuf);
-}
 
 void RunAllTests(void)
 {
-	struct onk_test_buffers buf;
+	struct onk_test_state_t buf;
+
 	CuString *output = CuStringNew();
 	CuSuite* suite = CuSuiteNew();
 
 	_onk_init_test_buffer_hook(&buf);
 
 	CuSuiteAddSuite(suite, CuGetSuite());
-	CuSuiteAddSuite(suite, CuGetCtxSuite());
 
 	CuSuiteAddSuite(suite, OnkMaskAssertSuite());
 	CuSuiteAddSuite(suite, OnkAssertTests());
