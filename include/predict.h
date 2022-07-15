@@ -65,6 +65,8 @@ struct validator_frame_t {
     uint16_t nslices;
     enum onk_lexicon_t delim;
     enum onk_lexicon_t brace;
+    bool set_delim;
+    bool set_brace;
 };
 
 void onk_semenatic_init(struct onk_parser_state_t *state);

@@ -415,7 +415,7 @@ bool use_parameter_mode(enum onk_lexicon_t gmod)
 int8_t apply_group_rules(struct validator_frame_t *validator, struct onk_parser_state_t*state)
 {
   struct onk_parse_group_t *ghead = group_head(state);
-  struct onk_parse_group_t *gmod = group_modifier(state, ghead);
+  struct onk_token_t *gmod = group_modifier(state, ghead);
   
   enum onk_lexicon_t current = current_token(state)->type;
   enum onk_lexicon_t ophead = op_head(state)->type;

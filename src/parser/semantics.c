@@ -70,6 +70,13 @@ uint8_t default_mode(
     ) add_slice(f, SET[i], ISET[i]);
 }
 
+
+const struct onk_token_t * group_ctx(const struct onk_parser_state_t *state)
+{
+  struct onk_parse_group_t *ghead = group_head(state);
+  return group_modifier(state, ghead);
+}
+
 /*
 ** deep clone data into *arr
 */
@@ -225,13 +232,84 @@ bool explicit_block(
 }
 
 
+// x{y=expr, z=expr>}
+int8_t struct_init_mode(
+  struct validator_frame_t *frame,
+  struct onk_parser_state_t *state,
+  enum onk_lexicon_t expected_ophead_brace
+){
+    const struct onk_token_t *ophead = op_head(state);
+    enum onk_lexicon_t current = current_token(state)->type;
+
+    // not actually in context
+    if (ophead->type != expected_ophead_brace)
+      return 2;
+
+    switch(current)
+    {
+        case ONK_WORD_TOKEN:
+            state->expect[0] = ONK_EQUAL_TOKEN;
+            state->nexpect = 2;
+            return 1;
+
+        case ONK_COMMA_TOKEN:
+            state->expect[0] = ONK_WORD_TOKEN;
+            state->nexpect = 1;
+            return 1;
+
+        case ONK_EQUAL_TOKEN:
+            frame->slices[0] = (void*)EXPR;
+            frame->islices[0] = EXPR_LEN;
+            frame->nslices = 1;
+            return 0;
+
+        default:
+            return -1;
+
+    }
+}
+
+// x(y, z<?=expr>)
+int8_t parameter_mode(
+  struct validator_frame_t *frame,
+  struct onk_parser_state_t *state
+){
+    enum onk_lexicon_t current = current_token(state)->type;
+
+    switch(current)
+    {
+      case ONK_WORD_TOKEN:
+        state->expect[0] = ONK_COMMA_TOKEN;
+        state->expect[1] = ONK_PARAM_CLOSE_TOKEN;
+        state->expect[2] = ONK_EQUAL_TOKEN;
+        state->nexpect = 2;
+        return 1;
+
+      case ONK_COMMA_TOKEN:
+        state->expect[0] = ONK_WORD_TOKEN;
+        state->nexpect = 1;
+        return 1;
+
+      case ONK_EQUAL_TOKEN:
+        frame->slices[0] = (void*)EXPR;
+        frame->islices[0] = EXPR_LEN;
+        frame->nslices = 1;
+        return 0;
+
+      default: return -1;
+    }
+}
+
+
 int8_t build_next_frame(struct onk_parser_state_t *state)
 {
   const struct onk_token_t *current = current_token(state);
   const struct onk_token_t *ophead = op_head(state);
+
   struct onk_parse_group_t *ghead = group_head(state);
-  enum onk_lexicon_t gmod = group_modifier(state, ghead);
+  struct onk_token_t *gmod = group_modifier(state, ghead);
   struct validator_frame_t frame;
+  int8_t ctx_flag = 0;
 
   frame.slices = state->exp_slices_buf;
   frame.islices = state->islices_buf;
@@ -239,83 +317,59 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
   frame.delim = 0;
   frame.brace = 0;
 
-  if(gmod)
+  frame.set_delim = true;
+  frame.set_brace = true;
+
+  // def foo(x, y)
+  //         ^
+  if(gmod && ((gmod->type == DefSign && ophead->type == ONK_PARAM_OPEN_TOKEN)
+      || (gmod->type == ONK_STRUCT_TOKEN && ophead->type == ONK_BRACE_OPEN_TOKEN)))
+{
+
+      ctx_flag = parameter_mode(&frame, state);
+
+      frame.brace = onk_invert_brace(gmod->type);
+      frame.delim = ONK_COMMA_TOKEN;
+
+      switch(ctx_flag)
+      {
+        case 0:
+          return 0;
+
+        case 1:
+          state->nexpect = _onk_semantic_compile(
+            state->expect,
+            ONK_PARSE_EXPR_SZ,
+            &frame
+          );
+          return 0;
+
+        default:
+          return -1;
+      }
+  }
+
+  // aaa { x=a, y=b, z=c };
+  else if(gmod && gmod->type == onk_struct_init_op_token
+          && ophead->type == ONK_BRACE_OPEN_TOKEN)
   {
 
-      // def foo(x, y)
-      //         ^
-      if(gmod == DefSign)
-      {
-          frame.brace = onk_invert_brace(gmod);
-          frame.delim = ONK_COMMA_TOKEN;
-          switch(current->type)
-          {
+  }
 
-              case ONK_WORD_TOKEN:
-                state->expect[0] =
-                break;
+  // for(x, y) in X
+  else if (gmod && gmod->type == onk_for_args_op_token
+           && ophead->type == ONK_PARAM_OPEN_TOKEN)
+  {
+        state->expect[0] = ONK_WORD_TOKEN;
+        state->expect[1] = ONK_PARAM_CLOSE_TOKEN;
+        state->nexpect = 2;
+  }
 
-          }
-      }
-
-      else if(gmod == ONK_STRUCT_TOKEN)
-      {
-          frame.brace = onk_invert_brace(gmod);
-          frame.delim = ONK_COMMA_TOKEN;
-          switch(current->type)
-          {
-              /* entry point */
-              case ONK_OPEN_PARAM_TOKEN:
-                break;
-
-
-          }
-      }
-
-      // aaa { x=a, y=b, z=c };
-      else if(gmod == onk_struct_init_op_token)
-      {
-
-      }
-
-      // aaa { x=a, y=b, z=c };
-      else if(gmod == onk_struct_init_op_token)
-      {
-      }
-
-      // for(x, y) in X
-      else if (gmod == onk_for_args_op_token)
-      {
-/* */
-        switch(current->type) {
-           case ONK_WORD_TOKEN;
-
-        }
-        {
-            state->expect[0] = ;
-
-            state->expect[1] = ONK_PARAM_CLOSE_TOKEN;
-            validator->islices[0] = 1;
-            validator->nslices = 1;
-        }
-        else if(current->type == ONK_COMMA_TOKEN)
-        {
-            state->expect[0] = ONK_WORD_TOKEN;
-            state->nexpect = 1;
-        };
-
-
-
-      }
-
-      else if(is_inside_impl_body(state))
-      {
-          state->expect[0] = ONK_DEF_TOKEN;
-          state->nexpect = 1;
-          return 0;
-      }
-
-      panic();
+  else if(is_inside_impl_body(state))
+  {
+        state->expect[0] = ONK_DEF_TOKEN;
+        state->nexpect = 1;
+        return 0;
   }
 
   else if (explicit_block(current->type, ophead->type))
@@ -339,36 +393,37 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
       return 0;
   }
 
-
-  // struct aaa { x, y, z=c }
-  // def foo(x, y, z=c)
-
-
   else if(explicit_expr(current->type))
   {
-    if(gmod == onk_idx_op_token && 2 > ghead->delimiter_cnt)
-      frame.delim = delimiter(state);
+    /* if(gmod->type == onk_idx_op_token && 2 > ghead->delimiter_cnt) */
+    /*   frame.delim = delimiter(state); */
 
-    if(current->type != ONK_BRACKET_OPEN_TOKEN)
-      frame.brace = ONK_BRACKET_CLOSE_TOKEN;
-
+    /* if(current->type != ONK_BRACKET_OPEN_TOKEN) */
+    /*   frame.brace = ONK_BRACKET_CLOSE_TOKEN; */
 
     add_slice(&frame, EXPR);
   }
 
   else panic();
 
-  // ctx - if/while shouldn't contain delimitation
-  if(rm_delim_terminal(frame, gmod))
-  {
 
-  }
+  if (frame.set_delim)
+  {}
+
+  if (frame.set_brace)
+  {}
+
+  // ctx - if/while shouldn't contain delimitation
+  /* if(rm_delim_terminal(frame, gmod)) */
+  /* { */
+
+  /* } */
 
   // ctx - if/while shouldn't contain immediate closing brace
-  if(rm_brace_terminal(frame, gmod->type))
-  {
+  /* if(rm_brace_terminal(frame, gmod->type)) */
+  /* { */
 
-  }
+  /* } */
 
   // Add keywords
   if (ophead->type == ONK_BRACE_OPEN_TOKEN)
@@ -380,22 +435,5 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
   assert(frame.brace != 0);
 
   state->nexpect = _onk_semantic_compile(state->expect, ONK_PARSE_EXP_SZ, &frame);
-}
-
-
-bool is_token_unexpected(struct onk_parser_state_t *state)
-{
-  enum onk_lexicon_t current = current_token(state)->type;
-  struct onk_parse_group_t *ghead = group_head(state);
-  struct onk_token_t *ophead = op_head(state);
-  struct onk_parse_group_t *gmod = group_modifier(state, ghead);
-
-  assert(state->nexpect > 0);
-
-  if (!onk_lexarr_contains(current, state->expect, state->nexpect))
-      return true;
-
-  build_next_frame();
-  return false;
 }
 
