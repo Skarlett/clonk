@@ -38,7 +38,7 @@ bool is_token_unexpected(struct onk_parser_state_t*state)
 
   /* compile into continguent array */
   state->nexpect = _onk_semantic_compile(
-      state->expect, ONK_PARSE_EXP_SZ, &frame
+      state->expect, &frame
   );
 
   return false;

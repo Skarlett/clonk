@@ -139,7 +139,6 @@ uint8_t default_mode(
 */
 uint16_t _onk_semantic_compile(
   enum onk_lexicon_t *arr,
-  uint16_t arr_sz,
   struct validator_frame_t *validator
 )
 {
@@ -254,7 +253,7 @@ void build_next_frame(struct onk_parser_state_t *state)
   }
 
 
-  state->nexpect = _onk_semantic_compile(state->expect, ONK_PARSE_EXP_SZ, &frame);
+  state->nexpect = _onk_semantic_compile(state->expect, &frame);
 }
 
 

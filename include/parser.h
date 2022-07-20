@@ -286,8 +286,7 @@ struct onk_partial_err_t {
 };
 
 #define _ONK_VALIDATOR_REF_SZ 8
-#define _ONK_SEM_CHK_SZ 64
-
+#define _ONK_SEM_CHK_SZ 186
 /*
 define current_token(state) (state->src ? &state->src[state->_i] : panic())
 define op_head(state) (state.op ? &state->src[state->_i] : panic())

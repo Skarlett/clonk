@@ -14,7 +14,7 @@ void compile(struct onk_parser_state_t *parser)
 
     _onk_semantic_next_frame(&frame, parser);
     parser->nexpect = _onk_semantic_compile(
-        parser->expect, ONK_PARSE_EXP_SZ, &frame
+        parser->expect, &frame
     );
 }
 

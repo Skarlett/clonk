@@ -54,7 +54,6 @@ const enum onk_lexicon_t EXP_EXPLICIT_FROM_LOC = ONK_FROM_LOCATION;
 const enum onk_lexicon_t EXP_EXPLICIT_EQL = ONK_EQUAL_TOKEN;
 const enum onk_lexicon_t EXP_EXPLICIT_WHITESPACE = ONK_WHITESPACE_TOKEN;
 
-
 const enum onk_lexicon_t UNIT[UNIT_LEN] = {_EX_UNIT};
 const enum onk_lexicon_t BINOP[BINOP_LEN] = {_EX_BIN_OPERATOR};
 const enum onk_lexicon_t ASNOP[ASNOP_LEN] = {_EX_ASN_OPERATOR};
@@ -253,8 +252,8 @@ int8_t default_expression(
 
   else if(onk_is_tok_close_brace(current))
   {
-    validator->slices[1] = NEXT_CLOSE_BRACE;
-    validator->islices[1] = NEXT_CLOSE_BRACE_LEN;
+    //validator->slices[1] = NEXT_CLOSE_BRACE;
+    //validator->islices[1] = NEXT_CLOSE_BRACE_LEN;
     validator->nslices = 2;
   }
 
@@ -514,24 +513,23 @@ int8_t apply_group_rules(struct validator_frame_t *validator, struct onk_parser_
 
 uint16_t _onk_semantic_compile(
   enum onk_lexicon_t *arr,
-  uint16_t arr_sz,
   struct validator_frame_t *validator
 ){
 
   uint16_t slice_sz = 0;
   uint16_t total = 0;
   onk_usize offset = 0;
-  onk_usize inc = 0;
+  //onk_usize inc = 0;
 
   uint8_t slice_len = 0;
   uint16_t i = 0;
 
-  for (i=0; validator->nslices > i; i++)
+  for (i=0; _ONK_SEM_CHK_SZ > i; i++)
   {
     slice_len = validator->islices[i];
     slice_sz = sizeof(enum onk_lexicon_t) * slice_len;
     
-    if(total + slice_len > arr_sz)
+    if(total + slice_len > _ONK_SEM_CHK_SZ)
       return -1;
 
     total += slice_len;

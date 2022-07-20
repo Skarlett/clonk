@@ -78,7 +78,6 @@ bool _onk_semantic_check(
 
 uint16_t _onk_semantic_compile(
   enum onk_lexicon_t *arr,
-  uint16_t arr_sz,
   struct validator_frame_t *validator
 );
 
