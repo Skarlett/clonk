@@ -281,7 +281,7 @@ enum onk_lexicon_t {
 
     onk_ifcond_op_token,
     onk_ifbody_op_token,
-    DefSign,
+    onk_defsig_op_token,
     onk_defbody_op_token,
 
     onk_for_args_op_token, // ((i, i2 g(2)) forparams) (a b g(2)) forbody

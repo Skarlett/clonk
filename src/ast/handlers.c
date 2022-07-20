@@ -31,7 +31,7 @@ int8_t argc_map(struct onk_token_t *tok)
     return 2;
 
   switch (tok->type) {
-    case DefSign: return 1;
+    case onk_defsig_op_token: return 1;
     case onk_defbody_op_token: return 2;
     case onk_ifcond_op_token: return 1;
     case onk_ifbody_op_token: return 2;
@@ -493,7 +493,7 @@ int parse_postfix_stage(
         mk_null(&ex);
         break;
 
-      case DefSign:
+      case onk_defsig_op_token:
         mk_def_sig(&ex, postfix_stage);
         break;
 

@@ -394,7 +394,7 @@ bool start_parameter_mode(
   enum onk_lexicon_t ophead,
   enum onk_lexicon_t current
 ){
-  return (ophead == DefSign && current == ONK_PARAM_OPEN_TOKEN)
+  return (ophead == onk_defsig_op_token && current == ONK_PARAM_OPEN_TOKEN)
     || ((ophead == ONK_STRUCT_TOKEN
          || ophead == onk_struct_init_op_token)
          && current == ONK_BRACE_OPEN_TOKEN);
@@ -402,7 +402,7 @@ bool start_parameter_mode(
 
 bool use_parameter_mode(enum onk_lexicon_t gmod)
 {
-  return gmod == DefSign
+  return gmod == onk_defsig_op_token
     || gmod == ONK_STRUCT_TOKEN
     || gmod == onk_struct_init_op_token;
 }

@@ -391,7 +391,7 @@ void handle_dual_group(struct onk_parser_state_t*state)
     {onk_for_body_op_token, onk_for_args_op_token, 0},
     {onk_while_body_op_token, onk_while_cond_op_token, 0},
     {onk_ifbody_op_token, onk_ifcond_op_token, 0},
-    {onk_defbody_op_token, DefSign, 0},
+    {onk_defbody_op_token, onk_defsig_op_token, 0},
   };
 
   const enum onk_lexicon_t expected = ONK_PARAM_OPEN_TOKEN;
