@@ -44,6 +44,26 @@ bool is_token_unexpected(struct onk_parser_state_t*state)
   return false;
 }
 
+enum onk_lexicon_t group_type_init(enum onk_lexicon_t brace)
+{
+  switch (brace) {
+    case ONK_PARAM_OPEN_TOKEN:
+      return onk_tuple_group_token;
+
+    case ONK_BRACKET_OPEN_TOKEN:
+      return onk_list_group_token;
+
+    case ONK_BRACE_OPEN_TOKEN:
+      return onk_code_group_token;
+
+    case ONK_HASHMAP_LITERAL_START_TOKEN:
+      return onk_map_group_token;
+
+    default:
+      return ONK_UNDEFINED_TOKEN;
+  }
+}
+
 void init_grp(struct onk_parse_group_t * ghead, enum onk_lexicon_t from)
 {
   ghead->last_delim = 0;
@@ -59,6 +79,7 @@ void init_grp(struct onk_parse_group_t * ghead, enum onk_lexicon_t from)
   assert(ghead->type != ONK_UNDEFINED_TOKEN);
 }
 
+/* assumes `OPEN_BRACE/PARAM/BRACKET` is on the operator stack*/
 struct onk_parse_group_t * new_grp(
   struct onk_parser_state_t* state,
   const struct onk_token_t * from
@@ -69,11 +90,11 @@ struct onk_parse_group_t * new_grp(
   ghead = &state->set_stack[state->set_ctr];
   state->set_ctr += 1;
 
-  /* assumes `OPEN_BRACE/PARAM/BRACKET` is on the operator stack*/
+  /* ASSUMPTION HERE */
   ghead->operator_idx = state->operators_ctr - 1;
   ghead->set_idx = state->set_ctr - 1;
 
-  init_grp(ghead, from);
+  init_grp(ghead, from->type);
   return ghead;
 }
 
@@ -575,7 +596,6 @@ int8_t onk_parser_init(
   return 0;
 }
 
-
 void onk_parser_init_heap(struct onk_parser_state_t * state)
 {
   assert(onk_vec_init(&state->pool, 256, sizeof(struct onk_token_t)) == 0);
@@ -605,8 +625,6 @@ int8_t handle_return(struct onk_parser_state_t*state)
   }
   return 0;
 }
-
-
 
 int8_t onk_parse(
   struct onk_parser_input_t *input,

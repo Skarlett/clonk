@@ -8,7 +8,6 @@ const enum onk_lexicon_t EXPR[] = {_EX_EXPR};
 const enum onk_lexicon_t KWORD_BLOCK[KWORD_BLOCK_LEN] = {_EX_KWORD_BLOCK};
 const enum onk_lexicon_t JMP_OPEN_PARAM[] = {};
 
-
 /* start of static data structure */
 #define ROWS 4
 const enum onk_lexicon_t CATCH_GRP_A[] = {ONK_WORD_TOKEN, ONK_BRACKET_CLOSE_TOKEN, ONK_PARAM_CLOSE_TOKEN};
@@ -58,7 +57,7 @@ int8_t get_precedence_expr(enum onk_lexicon_t unit)
     return -1;
 }
 
-uint8_t default_mode(
+void default_mode(
     struct validator_frame_t *f,
     struct onk_parser_state_t *state,
     enum onk_lexicon_t unit
@@ -69,17 +68,9 @@ uint8_t default_mode(
     ) add_slice(f, SET[i], ISET[i]);
 }
 
-
-const struct onk_token_t * group_ctx(const struct onk_parser_state_t *state)
-{
-  struct onk_parse_group_t *ghead = group_head(state);
-  return group_modifier(state, ghead);
-}
-
 /*
 ** deep clone data into *arr
 */
-
 bool _onk_semantic_check(
   struct onk_parser_state_t *state,
   enum onk_lexicon_t current
@@ -95,8 +86,9 @@ bool _onk_semantic_check(
 
 uint16_t _onk_semantic_compile(
   enum onk_lexicon_t *arr,
-  struct validator_frame_t *validator
+  struct validator_frame_t *frame
 ){
+
   uint16_t slice_sz = 0;
   uint16_t total = 0;
   onk_usize offset = 0;
@@ -104,9 +96,10 @@ uint16_t _onk_semantic_compile(
   uint8_t slice_len = 0;
   uint16_t i = 0;
 
-  for (i=0; validator->nslices > i; i++)
+
+  for (i=0; frame->nslices > i; i++)
   {
-    slice_len = validator->islices[i];
+    slice_len = frame->islices[i];
     slice_sz = sizeof(enum onk_lexicon_t) * slice_len;
 
     assert(total + slice_len > _ONK_SEM_CHK_SZ);
@@ -114,10 +107,16 @@ uint16_t _onk_semantic_compile(
 
     assert(memcpy(
       (onk_usize)arr + offset,
-      validator->slices[i], slice_sz) > 0);
+      frame->slices[i], slice_sz) > 0);
 
     offset += slice_sz;
   }
+
+  if (frame->set_delim)
+    arr[i++] = place_delimiter(state);
+
+  if (frame->set_brace)
+    arr[i++] = onk_invert_brace(ghead->origin->type);
 
   return total;
 }
@@ -175,7 +174,7 @@ bool explicit_expr(enum onk_lexicon_t current)
 
 bool use_parameter_mode(enum onk_lexicon_t gmod)
 {
-  return gmod == DefSign
+  return gmod == onk_defsig_op_token
     || gmod == ONK_STRUCT_TOKEN
     || gmod == onk_struct_init_op_token;
 }
@@ -233,7 +232,6 @@ int8_t struct_init_mode(
   struct validator_frame_t *frame,
   struct onk_parser_state_t *state
 ){
-    //const struct onk_token_t *ophead = op_head(state);
     enum onk_lexicon_t current = current_token(state)->type;
 
     // not actually in context
@@ -242,13 +240,13 @@ int8_t struct_init_mode(
 
     switch(current)
     {
-
         // a {..}
         //   ^
         case ONK_BRACE_OPEN_TOKEN:
             state->expect[0] = ONK_WORD_TOKEN;
             state->expect[1] = ONK_BRACE_CLOSE_TOKEN;
             state->nexpect = 2;
+            return 1;
 
         // a { a = ...}
         //     ^->
@@ -316,9 +314,8 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
 {
   const struct onk_token_t *current = current_token(state);
   const struct onk_token_t *ophead = op_head(state);
-  const struct onk_token_t *gmod = group_modifier(state, ghead);
-
   struct onk_parse_group_t *ghead = group_head(state);
+  const struct onk_token_t *gmod = group_modifier(state, ghead);
 
   struct validator_frame_t frame;
   int8_t ctx_flag = 0;
@@ -334,7 +331,7 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
 
   // def foo(x, y)
   //         ^
-  if(gmod && ((gmod->type == DefSign && ophead->type == ONK_PARAM_OPEN_TOKEN)
+  if(gmod && ((gmod->type == onk_defsig_op_token && ophead->type == ONK_PARAM_OPEN_TOKEN)
       || (gmod->type == ONK_STRUCT_TOKEN && ophead->type == ONK_BRACE_OPEN_TOKEN)))
   {
 
@@ -368,7 +365,7 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
   else if(gmod && gmod->type == onk_struct_init_op_token
           && ophead->type == ONK_BRACE_OPEN_TOKEN)
   {
-      switch(ctx_flag)
+      switch(struct_init_mode(&frame, state))
       {
         default: return -1;
         case 0: return 0;
@@ -382,13 +379,14 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
   }
 
   // for(x, y) in X
-  //     ^
+  //    ^^
   else if (gmod && gmod->type == onk_for_args_op_token
            && ophead->type == ONK_PARAM_OPEN_TOKEN)
   {
         state->expect[0] = ONK_WORD_TOKEN;
         state->expect[1] = ONK_PARAM_CLOSE_TOKEN;
         state->nexpect = 2;
+        return 0;
   }
 
   // impl word { def ... }
@@ -440,35 +438,10 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
 
   else panic();
 
-
-  if (frame.set_delim)
-    frame.delim = place_delimiter(state);
-
-  if (frame.set_brace)
-    frame.brace = onk_invert_brace(ghead->origin->type);
-
-
-
-  // ctx - if/while shouldn't contain delimitation
-  /* if(rm_delim_terminal(frame, gmod)) */
-  /* { */
-
-  /* } */
-
-  // ctx - if/while shouldn't contain immediate closing brace
-  /* if(rm_brace_terminal(frame, gmod->type)) */
-  /* { */
-
-  /* } */
-
   // Add keywords
   if (ophead->type == ONK_BRACE_OPEN_TOKEN)
     add_slice(frame, KWORD_BLOCK, KWORD_BLOCK_LEN);
 
-  frame.brace = onk_invert_brace(ghead->origin->type);
-
-  assert(frame.delim != 0);
-  assert(frame.brace != 0);
 
   state->nexpect = _onk_semantic_compile(state->expect, &frame);
 }

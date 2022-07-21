@@ -128,27 +128,6 @@ const struct onk_token_t * group_modifier(
   return 0;
 }
 
-
-enum onk_lexicon_t group_type_init(enum onk_lexicon_t brace)
-{
-  switch (brace) {
-    case ONK_PARAM_OPEN_TOKEN:
-      return onk_tuple_group_token;
-
-    case ONK_BRACKET_OPEN_TOKEN:
-      return onk_list_group_token;
-
-    case ONK_BRACE_OPEN_TOKEN:
-      return onk_code_group_token;
-
-    case ONK_HASHMAP_LITERAL_START_TOKEN:
-      return onk_map_group_token;
-
-    default:
-      return ONK_UNDEFINED_TOKEN;
-  }
-}
-
 bool is_index_pattern(enum onk_lexicon_t prev) {
   return onk_is_tok_close_brace(prev)
     || prev == ONK_WORD_TOKEN
