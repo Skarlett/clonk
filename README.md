@@ -1,3 +1,13 @@
 # clonk
-[![Build Status](https://travis-ci.com/Skarlett/clonk.svg?branch=master)](https://travis-ci.com/Skarlett/clonk)
+
+Actively in development. Sorry you can't do anything with it at the moment. 
+
+
+
+Make Tests
+```
+make tests
+```
+
+
 
