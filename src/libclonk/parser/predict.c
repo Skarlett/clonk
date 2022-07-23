@@ -511,7 +511,7 @@ int8_t apply_group_rules(struct validator_frame_t *validator, struct onk_parser_
 ** deep clone data into *arr
 */
 
-uint16_t _onk_semantic_compile(
+uint16_t onk_semantic_compile(
   enum onk_lexicon_t *arr,
   struct validator_frame_t *validator
 ){

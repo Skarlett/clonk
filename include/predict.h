@@ -63,11 +63,15 @@ struct validator_frame_t {
     enum onk_lexicon_t ** slices;
     uint16_t * islices;
     uint16_t nslices;
-    enum onk_lexicon_t delim;
-    enum onk_lexicon_t brace;
     bool set_delim;
     bool set_brace;
 };
+
+
+void init_validator_frame(
+    struct validator_frame_t *frame,
+    struct onk_parser_state_t *state
+);
 
 void onk_semenatic_init(struct onk_parser_state_t *state);
 
@@ -76,9 +80,9 @@ bool _onk_semantic_check(
   enum onk_lexicon_t current
 );
 
-uint16_t _onk_semantic_compile(
-  enum onk_lexicon_t *arr,
-  struct validator_frame_t *validator
+uint16_t onk_semantic_compile(
+  struct validator_frame_t *validator,
+  struct onk_parser_state_t *state
 );
 
 void _onk_semantic_next_frame(

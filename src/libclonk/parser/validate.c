@@ -137,7 +137,7 @@ uint8_t default_mode(
 /*
 ** deep clone data into *arr
 */
-uint16_t _onk_semantic_compile(
+uint16_t onk_semantic_compile(
   enum onk_lexicon_t *arr,
   struct validator_frame_t *validator
 )
@@ -253,7 +253,7 @@ void build_next_frame(struct onk_parser_state_t *state)
   }
 
 
-  state->nexpect = _onk_semantic_compile(state->expect, &frame);
+  state->nexpect = onk_semantic_compile(state->expect, &frame);
 }
 
 

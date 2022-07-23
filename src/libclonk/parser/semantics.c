@@ -68,6 +68,17 @@ void default_mode(
     ) add_slice(f, SET[i], ISET[i]);
 }
 
+void init_frame(
+    struct onk_parser_state_t *state,
+    struct validator_frame_t *frame
+){
+    frame->slices = state->exp_slices_buf;
+    frame->islices = state->islices_buf;
+    frame->nslices = 0;
+    frame->set_delim = true;
+    frame->set_brace = true;
+}
+
 /*
 ** deep clone data into *arr
 */
@@ -84,8 +95,8 @@ bool _onk_semantic_check(
   return true;
 }
 
-uint16_t _onk_semantic_compile(
-  enum onk_lexicon_t *arr,
+uint16_t onk_semantic_compile(
+  struct onk_parser_state_t *state,
   struct validator_frame_t *frame
 ){
 
@@ -96,27 +107,25 @@ uint16_t _onk_semantic_compile(
   uint8_t slice_len = 0;
   uint16_t i = 0;
 
-
   for (i=0; frame->nslices > i; i++)
   {
     slice_len = frame->islices[i];
     slice_sz = sizeof(enum onk_lexicon_t) * slice_len;
 
-    assert(total + slice_len > _ONK_SEM_CHK_SZ);
-    total += slice_len;
+    assert(_ONK_SEM_CHK_SZ > total + slice_len);
 
     assert(memcpy(
-      (onk_usize)arr + offset,
+      (onk_usize)state->expect + total,
       frame->slices[i], slice_sz) > 0);
 
-    offset += slice_sz;
+    total += slice_sz;
   }
 
   if (frame->set_delim)
-    arr[i++] = place_delimiter(state);
+    state->expect[total++] = place_delimiter(state);
 
   if (frame->set_brace)
-    arr[i++] = onk_invert_brace(ghead->origin->type);
+    state->expect[total++] = onk_invert_brace(ghead->origin->type);
 
   return total;
 }
@@ -320,24 +329,14 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
   struct validator_frame_t frame;
   int8_t ctx_flag = 0;
 
-  frame.slices = state->exp_slices_buf;
-  frame.islices = state->islices_buf;
-  frame.nslices = 0;
-  frame.delim = 0;
-  frame.brace = 0;
-
-  frame.set_delim = true;
-  frame.set_brace = true;
+  init_validator_frame(&frame, state);
 
   // def foo(x, y)
   //         ^
   if(gmod && ((gmod->type == onk_defsig_op_token && ophead->type == ONK_PARAM_OPEN_TOKEN)
       || (gmod->type == ONK_STRUCT_TOKEN && ophead->type == ONK_BRACE_OPEN_TOKEN)))
   {
-
       ctx_flag = parameter_mode(&frame, state);
-      frame.brace = onk_invert_brace(gmod->type);
-      frame.delim = ONK_COMMA_TOKEN;
 
       if(current->type == ONK_PARAM_OPEN_TOKEN || current->type == ONK_BRACE_OPEN_TOKEN)
       {
@@ -352,7 +351,7 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
         default: return -1;
         case 0: return 0;
         case 1:
-          state->nexpect = _onk_semantic_compile(
+          state->nexpect = onk_semantic_compile(
             state->expect,
             &frame
           );
@@ -369,7 +368,7 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
       {
         default: return -1;
         case 0: return 0;
-        case 1: state->nexpect = _onk_semantic_compile(
+        case 1: state->nexpect = onk_semantic_compile(
             state->expect,
             &frame
           );
@@ -436,13 +435,13 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
     // add_slice(&frame, EXPR);
   }
 
-  else panic();
+  else { printf("reached unknown state"); exit(125); }
 
   // Add keywords
   if (ophead->type == ONK_BRACE_OPEN_TOKEN)
     add_slice(frame, KWORD_BLOCK, KWORD_BLOCK_LEN);
 
 
-  state->nexpect = _onk_semantic_compile(state->expect, &frame);
+  state->nexpect = onk_semantic_compile(state->expect, &frame);
 }
 

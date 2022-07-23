@@ -16,30 +16,22 @@ struct onk_token_t mk_tok(enum onk_lexicon_t token) {
     return ret;
 }
 
-void compile(struct onk_parser_state_t *parser)
+void compile(struct validator_frame_t *frame, struct onk_parser_state_t *parser)
 {
-    struct validator_frame_t frame;
+    _onk_semantic_next_frame(frame, parser);
 
-    _onk_semantic_next_frame(&frame, parser);
-    parser->nexpect = _onk_semantic_compile(
-        parser->expect, &frame
+    parser->nexpect = onk_semantic_compile(
+        parser->expect, frame
     );
 }
 
-void mock_current(struct onk_parser_state_t *parser, enum onk_lexicon_t type) {
+void mock_current(struct onk_parser_state_t *parser, enum onk_lexicon_t type)
+{
     struct onk_token_t token;
     token.type = type;
 
     parser->src = &token;
     parser->src_sz = 1;
-}
-
-void assert_expect(
-    enum onk_lexicon_t *a,
-    enum onk_lexicon_t *b,
-    uint16_t len
-){
-  onk_merge_sort_u16((void *)a, 0, len);
 }
 
 /********************************/
@@ -51,6 +43,8 @@ void assert_expect(
 //      ^
 void __test__semantic_param_after_while(CuTest* tc, struct onk_test_state_t *state)
 {
+    struct validator_frame_t frame;
+
     mock_current(&state->parser, ONK_WHILE_TOKEN);
     compile(&state->parser);
 
@@ -289,9 +283,9 @@ void __test__delim_list(CuTest* tc, struct onk_test_state_t *state)
     state->parser.set_stack[1].origin = &open_brace;
 
     mock_current(&state->parser, ONK_WORD_TOKEN);
-
-
     _onk_semantic_next_frame(&frame, &state->parser);
+
+    compile(&frame);
 }
 
 void __test__delim_tuple(CuTest* tc, struct onk_test_state_t *state)
@@ -300,7 +294,6 @@ void __test__delim_tuple(CuTest* tc, struct onk_test_state_t *state)
     _onk_semantic_next_frame(&frame, &state->parser);
 
  //   mock_current(&state->parser, ONK_INTEGER_TOKEN);
-
 }
 
 void __test__group_tuple(CuTest* tc, struct onk_test_state_t *state)
@@ -324,8 +317,6 @@ void __test__ctx_index_op(CuTest* tc, struct onk_test_state_t *state)
     //mock_current(&state->parser, ONK_INTEGER_TOKEN);
 
 }
-
-
 
 CuSuite * SemanticSuite(void)
 {
