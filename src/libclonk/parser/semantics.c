@@ -9,6 +9,7 @@ const enum onk_lexicon_t KWORD_BLOCK[KWORD_BLOCK_LEN] = {_EX_KWORD_BLOCK};
 const enum onk_lexicon_t JMP_OPEN_PARAM[] = {};
 
 /* start of static data structure */
+/* need bigger brain const here */
 #define ROWS 4
 const enum onk_lexicon_t CATCH_GRP_A[] = {ONK_WORD_TOKEN, ONK_BRACKET_CLOSE_TOKEN, ONK_PARAM_CLOSE_TOKEN};
 const enum onk_lexicon_t CATCH_GRP_B[] = {ONK_STRING_LITERAL_TOKEN};
@@ -50,6 +51,7 @@ const uint8_t ISET[] = {
 // expects unit
 int8_t get_precedence_expr(enum onk_lexicon_t unit)
 {
+
     for(uint8_t i=0; ROWS > i; i++)
         for(uint8_t j=0; ICATCH[i] > j; j++)
             if(CATCH[i][j] == unit)
@@ -57,15 +59,14 @@ int8_t get_precedence_expr(enum onk_lexicon_t unit)
     return -1;
 }
 
-void default_mode(
+void vframe_add_operators(
     struct validator_frame_t *f,
-    struct onk_parser_state_t *state,
-    enum onk_lexicon_t unit
+    int8_t catch
 ){
-    for(int8_t i=get_precedence_expr(unit);
+    for(int8_t i=catch;
         ROWS > i;
         i++
-    ) add_slice(f, SET[i], ISET[i]);
+    ) vframe_add_slice(f, SET[i], ISET[i]);
 }
 
 void init_frame(
@@ -96,13 +97,13 @@ bool _onk_semantic_check(
 }
 
 uint16_t onk_semantic_compile(
-  struct onk_parser_state_t *state,
-  struct validator_frame_t *frame
+  struct validator_frame_t *frame,
+  struct onk_parser_state_t *state
 ){
+  struct onk_parse_group_t *ghead = group_head(state);
 
   uint16_t slice_sz = 0;
   uint16_t total = 0;
-  onk_usize offset = 0;
 
   uint8_t slice_len = 0;
   uint16_t i = 0;
@@ -122,7 +123,7 @@ uint16_t onk_semantic_compile(
   }
 
   if (frame->set_delim)
-    state->expect[total++] = place_delimiter(state);
+    state->expect[total++] = vframe_add_delimiter(state);
 
   if (frame->set_brace)
     state->expect[total++] = onk_invert_brace(ghead->origin->type);
@@ -312,7 +313,7 @@ int8_t parameter_mode(
         return 1;
 
       case ONK_EQUAL_TOKEN:
-        add_slice(frame, EXPR, EXPR_LEN);
+        vframe_add_slice(frame, EXPR, EXPR_LEN);
         return 0;
 
       default: return -1;
@@ -328,6 +329,7 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
 
   struct validator_frame_t frame;
   int8_t ctx_flag = 0;
+  int8_t expr_precedense = get_precedence_expr(current->type);
 
   init_validator_frame(&frame, state);
 
@@ -340,10 +342,10 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
 
       if(current->type == ONK_PARAM_OPEN_TOKEN || current->type == ONK_BRACE_OPEN_TOKEN)
       {
-          state->expect[0] = onk_invert_brace(current->type);
-          state->expect[1] = ONK_WORD_TOKEN;
-          state->nexpect = 2;
-          return 0;
+        state->expect[0] = onk_invert_brace(current->type);
+        state->expect[1] = ONK_WORD_TOKEN;
+        state->nexpect = 2;
+        return 0;
       }
 
       switch(ctx_flag)
@@ -352,10 +354,9 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
         case 0: return 0;
         case 1:
           state->nexpect = onk_semantic_compile(
-            state->expect,
-            &frame
+            &frame,
+            state
           );
-
           return 0;
       }
   }
@@ -369,8 +370,8 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
         default: return -1;
         case 0: return 0;
         case 1: state->nexpect = onk_semantic_compile(
-            state->expect,
-            &frame
+            &frame,
+            state
           );
 
           return 0;
@@ -426,22 +427,31 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
   //   ^-^
   else if(explicit_expr(current->type))
   {
-    /* if(gmod->type == onk_idx_op_token && 2 > ghead->delimiter_cnt) */
-    /*   frame.delim = delimiter(state); */
-
-    /* if(current->type != ONK_BRACKET_OPEN_TOKEN) */
-    /*   frame.brace = ONK_BRACKET_CLOSE_TOKEN; */
-
-    // add_slice(&frame, EXPR);
+      frame.set_delim = false;
+      frame.set_brace = false;
+      vframe_add_slice(&frame, EXPR, EXPR_LEN);
   }
 
-  else { printf("reached unknown state"); exit(125); }
+
+  // word *
+  //   ^  {
+  //   |  [
+  //   |->^ operator
+  //   current
+  else if(expr_precedense != -1)
+      vframe_add_operators(&frame, expr_precedense);
+
+
+  else
+  {
+      printf("reached unknown state");
+      exit(125);
+  }
 
   // Add keywords
   if (ophead->type == ONK_BRACE_OPEN_TOKEN)
-    add_slice(frame, KWORD_BLOCK, KWORD_BLOCK_LEN);
+      vframe_add_slice(&frame, KWORD_BLOCK, KWORD_BLOCK_LEN);
 
-
-  state->nexpect = onk_semantic_compile(state->expect, &frame);
+  state->nexpect = onk_semantic_compile(&frame, state);
 }
 

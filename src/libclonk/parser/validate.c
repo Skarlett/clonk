@@ -112,22 +112,20 @@ uint8_t default_mode(
     /* struct onk_parse_group_t *ghead = group_head(state); */
 
     /* if(onk_lexarr_contains(unit, JMP_EXPR, JMP_EXPR_LEN)) */
-    /*     add_slice(f, EXPR, EXPR_LEN); */
+    /*     vframe_add_slice(f, EXPR, EXPR_LEN); */
 
     for(int8_t i=get_precedence_expr(unit);
         i > 0;
         --i
-    ) add_slice(f, SET[i], ISET[i]);
+    ) vframe_add_slice(f, SET[i], ISET[i]);
 
     // Add keywords
     /* if (ophead->type == ONK_BRACE_OPEN_TOKEN) */
-    /*     add_slice(f, KWORD_BLOCK, KWORD_BLOCK_LEN); */
+    /*     vframe_add_slice(f, KWORD_BLOCK, KWORD_BLOCK_LEN); */
 
     /* f->delim_terminal = place_delimiter(state); */
     /* f->brace_terminal = onk_invert_brace(ghead->origin->type); */
 
-    assert(f->delim_terminal != 0);
-    assert(f->brace_terminal != 0);
 
 
 

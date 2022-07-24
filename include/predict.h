@@ -42,8 +42,10 @@
 #define BRACE_CLOSE_LEN 3
 #define _EX_CLOSE_BRACE ONK_PARAM_CLOSE_TOKEN, ONK_BRACE_CLOSE_TOKEN, ONK_BRACKET_CLOSE_TOKEN
 
-#define _EX_EXPR _EX_OPEN_BRACE, _EX_UNARY_OPERATOR, _EX_UNIT
-#define EXPR_LEN (BRACE_OPEN_LEN + UNIOP_LEN + UNIT_LEN)
+#define _EX_EXPR ONK_PARAM_OPEN_TOKEN, ONK_BRACKET_OPEN_TOKEN, \
+        ONK_HASHMAP_LITERAL_START_TOKEN, _EX_UNARY_OPERATOR, _EX_UNIT
+
+#define EXPR_LEN (3 + UNIOP_LEN + UNIT_LEN)
 #define EXPR_SZ (sizeof(enum onk_lexicon_t) * EXPR_LEN)
 
 #define _EX_KWORD_BLOCK                             \
@@ -54,26 +56,23 @@
 #define KWORD_BLOCK_LEN 8
 #define KWORD_BLOCK_SZ (sizeof(enum onk_lexicon_t) * KWORD_BLOCK_LEN)
 
-/* #define _NEXT_CLOSE_BRACE ONK_DOT_TOKEN, _EX_BIN_OPERATOR, \ */
-/*     ONK_BRACKET_OPEN_TOKEN, ONK_PARAM_OPEN_TOKEN /\*delim*\/ */
-/* #define NEXT_CLOSE_BRACE_LEN (BINOP_LEN + 3) */
-
 #define _ONK_VALIDATOR_SZ 16
 struct validator_frame_t {
-    enum onk_lexicon_t ** slices;
+    enum onk_lexicon_t const** slices;
     uint16_t * islices;
     uint16_t nslices;
     bool set_delim;
     bool set_brace;
 };
 
-
 void init_validator_frame(
     struct validator_frame_t *frame,
     struct onk_parser_state_t *state
 );
 
-void onk_semenatic_init(struct onk_parser_state_t *state);
+void onk_semenatic_init(
+    struct onk_parser_state_t *state
+);
 
 bool _onk_semantic_check(
   struct onk_parser_state_t *state,
@@ -88,6 +87,16 @@ uint16_t onk_semantic_compile(
 void _onk_semantic_next_frame(
   struct validator_frame_t *validator,
   struct onk_parser_state_t *state
+);
+
+void vframe_add_slice(
+  struct validator_frame_t *f,
+  const enum onk_lexicon_t *slice,
+  uint16_t len
+);
+
+enum onk_lexicon_t vframe_add_delimiter(
+  struct onk_parser_state_t * state
 );
 
 #endif
