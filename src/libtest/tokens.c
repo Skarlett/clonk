@@ -11,7 +11,7 @@
  * @param answer: list of answers
 */
 #define MAX_CHECK 512
-static const char * fmt_str = "%s:%u %sn\equality check failed on %u. " \
+static const char * FMT = "%s:%u %sn\equality check failed on %u. " \
     "Expected <%s> got <%s>";
 
 int8_t onk_assert_tokens(
@@ -30,7 +30,7 @@ int8_t onk_assert_tokens(
     {
         if(tokens[i].type != answer[i])
         {
-            snprintf(buf, 512, fmt_str, file, line, msg, i,
+            snprintf(buf, 512, FMT, file, line, msg, i,
                      onk_ptoken(answer[i]), onk_ptoken(tokens[i].type));
             CuFail(tc, buf);
             return -1;
@@ -57,7 +57,7 @@ int8_t onk_assert_tokens_by_ref(
     {
         if(tokens[i]->type != answer[i])
         {
-            snprintf(buf, 512, fmt_str, file, line, msg, i);
+            snprintf(buf, 512, FMT, file, line, msg, i);
             CuFail(tc, buf);
             return -1;
         }
