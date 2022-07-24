@@ -26,7 +26,7 @@ bool is_token_unexpected(struct onk_parser_state_t*state)
 
   assert(state->nexpect > 0);
 
-  if(_onk_semantic_check(state, current))
+  if(onk_semantic_check(state, current))
     return true;
 
   frame.slices = state->exp_slices_buf;
@@ -38,7 +38,7 @@ bool is_token_unexpected(struct onk_parser_state_t*state)
 
   /* compile into continguent array */
   state->nexpect = onk_semantic_compile(
-      state->expect, &frame
+      &frame, state
   );
 
   return false;

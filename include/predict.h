@@ -74,7 +74,7 @@ void onk_semenatic_init(
     struct onk_parser_state_t *state
 );
 
-bool _onk_semantic_check(
+bool onk_semantic_check(
   struct onk_parser_state_t *state,
   enum onk_lexicon_t current
 );
