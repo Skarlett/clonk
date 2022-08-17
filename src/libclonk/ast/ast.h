@@ -153,7 +153,7 @@ struct Literals {
     union {
         isize integer;
         char * string;
-        uint8_t boolean;
+        unsigned char boolean;
     } literal;
 };
 
@@ -235,7 +235,7 @@ struct Expr {
 
     //struct onk_token_t origin;
     // ****
-    uint8_t free;
+    unsigned char free;
 
     union {
         char * symbol;

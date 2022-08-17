@@ -58,7 +58,7 @@
 
 #define _ONK_VALIDATOR_SZ 16
 struct validator_frame_t {
-    enum onk_lexicon_t const** slices;
+    enum onk_lexicon_t ** slices;
     uint16_t * islices;
     uint16_t nslices;
     bool set_delim;
@@ -84,14 +84,14 @@ uint16_t onk_semantic_compile(
   struct onk_parser_state_t *state
 );
 
-void _onk_semantic_next_frame(
+void onk_semantic_next_frame(
   struct validator_frame_t *validator,
   struct onk_parser_state_t *state
 );
 
 void vframe_add_slice(
   struct validator_frame_t *f,
-  const enum onk_lexicon_t *slice,
+  enum onk_lexicon_t *slice,
   uint16_t len
 );
 

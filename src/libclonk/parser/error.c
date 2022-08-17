@@ -2,7 +2,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "private.h"
-#include "predict.h"
+#include "semantics.h"
 
 /**
  * @param tok: comparsion token

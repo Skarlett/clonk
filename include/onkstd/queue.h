@@ -13,10 +13,10 @@ struct onk_open_queue_t {
     void * base;
 
     /* denotes the oldest element in the fifo*/
-    uint8_t tail;
+    unsigned char tail;
 
-    uint8_t size;
-    uint8_t nitems;
+    unsigned char size;
+    unsigned char nitems;
 
     uint16_t item_sz;
 };
@@ -26,7 +26,7 @@ void onk_init_queue8(
     struct onk_open_queue_t *queue,
     void * buffer,
     uint16_t item_sz,
-    uint8_t capacity
+    unsigned char capacity
 );
 
 /**
@@ -47,7 +47,7 @@ void * onk_queue8_tail(const struct onk_open_queue_t *self);
 */
 void * onk_queue8_prev(
     const struct onk_open_queue_t *self,
-    uint8_t i
+    unsigned char i
 );
 
 #endif

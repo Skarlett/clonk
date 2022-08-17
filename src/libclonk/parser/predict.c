@@ -39,7 +39,7 @@
 #include "clonk.h"
 #include "lexer.h"
 #include "private.h"
-#include "predict.h"
+#include "semantics.h"
 
 /**
 Returns COLON|SEMICOLON|COMMA|None (0)
@@ -521,7 +521,7 @@ uint16_t onk_semantic_compile(
   onk_usize offset = 0;
   //onk_usize inc = 0;
 
-  uint8_t slice_len = 0;
+  unsigned char slice_len = 0;
   uint16_t i = 0;
 
   for (i=0; _ONK_SEM_CHK_SZ > i; i++)
@@ -544,7 +544,7 @@ uint16_t onk_semantic_compile(
   return total;
 }
 
-void _onk_semantic_next_frame(
+void onk_semantic_next_frame(
   struct validator_frame_t *validator,
   struct onk_parser_state_t*state
 ){

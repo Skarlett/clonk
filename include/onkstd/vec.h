@@ -10,7 +10,7 @@ enum onk_vec_state {
 
 struct onk_vec_t {
     void *base;
-    uint8_t state;
+    unsigned char state;
     uint16_t type_sz;
     uint16_t capacity;
     uint16_t len;

@@ -19,10 +19,10 @@ void __test__vec_init(CuTest* tc)
 void __test__vec_push(CuTest* tc)
 {
     struct onk_vec_t vec;
-    uint8_t num = 1;
+    unsigned char num = 1;
     char msg[64];
 
-    onk_vec_init(&vec, 4, sizeof(uint8_t));
+    onk_vec_init(&vec, 4, sizeof(unsigned char));
     // push 5 elements into a vec sized 4
     for(int i=0; 5 > i; i++) {
       memset(msg, 0, sizeof(char[64]));

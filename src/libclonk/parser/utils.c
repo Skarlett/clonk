@@ -2,7 +2,7 @@
 #include <string.h>
 #include "clonk.h"
 #include "private.h"
-#include "predict.h"
+#include "semantics.h"
 
 void assert_op_pop_n(const struct onk_parser_state_t*state, uint16_t n)
 {

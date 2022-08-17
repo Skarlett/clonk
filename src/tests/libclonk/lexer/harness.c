@@ -17,7 +17,7 @@ int8_t _onk_range_harness(
     uint16_t generated_sz)
 {
     enum onk_lexicon_t tok;
-    uint8_t answers_ctr = 0, idx=0;
+    unsigned char answers_ctr = 0, idx=0;
 
     if(answers == 0
        || failed_on == 0
@@ -34,7 +34,7 @@ int8_t _onk_range_harness(
         return -5;
 
     /* generate all tokens  */
-    for(tok = __ONK_TOKEN_START; __ONK_TOKEN_END > tok; tok++)
+    for(tok = PH_ONK_TOKEN_START; PH_ONK_TOKEN_END > tok; tok++)
     {
         if(handler(tok))
         {
@@ -173,7 +173,7 @@ void __test__illegal_tokens_length(CuTest *tc) {
     static const char *msg = "the amount of illegal tokens "  \
             "does not match ILLEGAL_TOKEN_LEN";
 
-    for(uint8_t i=0; UINT8_MAX > i; i++)
+    for(unsigned char i=0; UINT8_MAX > i; i++)
     {
         if(ILLEGAL_TOKENS[i] == 0)
         {
@@ -491,7 +491,7 @@ void __test__is_tok_group_ident(CuTest *tc)
       0
     };
 
-    LexRangeHarness(tc, "", answers, _onk_is_group);
+    LexRangeHarness(tc, "", answers, onk_is_group);
 }
 
 void __test__print_tokens(CuTest *tc)
@@ -500,7 +500,7 @@ void __test__print_tokens(CuTest *tc)
     const char * name;
     char msg[256];
 
-    for(enum onk_lexicon_t i=__ONK_TOKEN_START; __ONK_TOKEN_END > i; i++)
+    for(enum onk_lexicon_t i=PH_ONK_TOKEN_START; PH_ONK_TOKEN_END > i; i++)
     {
         name = onk_ptoken(i);
         if(memcmp(name, no_name, 24) != 0)

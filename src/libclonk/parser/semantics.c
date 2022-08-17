@@ -2,7 +2,8 @@
 #include "lexer.h"
 #include "parser.h"
 #include "private.h"
-#include "predict.h"
+#include "semantics.h"
+#include <stdint.h>
 
 const enum onk_lexicon_t EXPR[] = {_EX_EXPR};
 const enum onk_lexicon_t KWORD_BLOCK[KWORD_BLOCK_LEN] = {_EX_KWORD_BLOCK};
@@ -23,7 +24,7 @@ const enum onk_lexicon_t * CATCH[] = {
     CATCH_GRP_D
 };
 
-const uint8_t ICATCH[] = {
+const unsigned char ICATCH[] = {
   3,
   1,
   1,
@@ -41,7 +42,7 @@ const enum onk_lexicon_t * SET[] = {
     SET_GRP_D
 };
 
-const uint8_t ISET[] = {
+const unsigned char ISET[] = {
   ASNOP_LEN,
   1,
   2,
@@ -50,7 +51,7 @@ const uint8_t ISET[] = {
 
 void vframe_add_slice(
     struct validator_frame_t *f,
-    const enum onk_lexicon_t *slice,
+    enum onk_lexicon_t *slice,
     uint16_t len
 ){
     f->slices[f->nslices] = slice;
@@ -102,13 +103,11 @@ enum onk_lexicon_t vframe_add_delimiter(struct onk_parser_state_t * state)
 }
 
 // expects unit
-int8_t get_precedence_expr(enum onk_lexicon_t unit)
-{
-
-    for(uint8_t i=0; ROWS > i; i++)
-        for(uint8_t j=0; ICATCH[i] > j; j++)
+int8_t get_precedence_expr(enum onk_lexicon_t unit) {
+    for(unsigned char i=0; ROWS > i; i++)
+        for(unsigned char j=0; ICATCH[i] > j; j++)
             if(CATCH[i][j] == unit)
-                return i;
+                return (int8_t)i;
     return -1;
 }
 
@@ -158,7 +157,7 @@ uint16_t onk_semantic_compile(
   uint16_t slice_sz = 0;
   uint16_t total = 0;
 
-  uint8_t slice_len = 0;
+  unsigned char slice_len = 0;
   uint16_t i = 0;
 
   for (i=0; frame->nslices > i; i++)
@@ -190,7 +189,7 @@ bool rm_delim_terminal(enum onk_lexicon_t gmod) {
 }
 
 /* `if/while` expects an explicit onk_open_param_token after its occurance */
-int8_t explicit_open_param(enum onk_lexicon_t current)
+bool explicit_open_param(enum onk_lexicon_t current)
 {
   return current == ONK_IF_TOKEN
       || current == ONK_WHILE_TOKEN
@@ -366,7 +365,7 @@ int8_t parameter_mode(
         return 1;
 
       case ONK_EQUAL_TOKEN:
-        vframe_add_slice(frame, EXPR, EXPR_LEN);
+        vframe_add_slice(frame, (enum onk_lexicon_t *)EXPR, EXPR_LEN);
         return 0;
 
       default: return -1;
@@ -489,13 +488,13 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
   {
       frame.set_delim = false;
       frame.set_brace = false;
-      vframe_add_slice(&frame, EXPR, EXPR_LEN);
+      vframe_add_slice(&frame, (enum onk_lexicon_t *)EXPR, EXPR_LEN);
   }
 
   // word *
   //   ^  {
   //   |  [
-  //   |->^ operator (making frame)
+  //   |--^ operator (making frame)
   //   current
   else if(expr_precedense != -1)
       vframe_add_operators(&frame, expr_precedense);
@@ -508,7 +507,7 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
 
   // Add keywords
   if (ophead->type == ONK_BRACE_OPEN_TOKEN)
-      vframe_add_slice(&frame, KWORD_BLOCK, KWORD_BLOCK_LEN);
+      vframe_add_slice(&frame, (enum onk_lexicon_t *)KWORD_BLOCK, KWORD_BLOCK_LEN);
 
   state->nexpect = onk_semantic_compile(&frame, state);
   return 0;

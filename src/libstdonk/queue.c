@@ -8,7 +8,7 @@ void onk_init_queue8(
     struct onk_open_queue_t *queue,
     void * buffer,
     uint16_t item_sz,
-    uint8_t capacity
+    unsigned char capacity
 ){
     queue->base = buffer;
     queue->size = capacity;
@@ -77,7 +77,7 @@ void * onk_queue8_tail(
 */
 void * onk_queue8_step_back(
     const struct onk_open_queue_t *self,
-    uint8_t n
+    unsigned char n
 ){
     uint16_t working_int;
 

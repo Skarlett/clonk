@@ -24,7 +24,7 @@ enum onk_lexicon_t grp_dbg_sym(enum Group_t type)
 int8_t argc_map(struct onk_token_t *tok)
 {
 
-  if (_onk_is_group(tok->type))
+  if (onk_is_group(tok->type))
     return tok->end;
   
   if (onk_is_tok_operator(tok->type))
@@ -87,7 +87,7 @@ int8_t mk_symbol(
   struct onk_token_t *word_tok,
   const char * src_code
 ){
-  uint8_t size = word_tok->end - word_tok->start;
+  unsigned char size = word_tok->end - word_tok->start;
    
   memcpy(&ex->origin, word_tok, sizeof(struct onk_token_t));
   ex->type = SymExprT;
@@ -454,7 +454,7 @@ int parse_postfix_stage(
   struct Expr ex;
   bool add_expr = false;
 
-  uint8_t ret_flag = 0;
+  unsigned char ret_flag = 0;
   uint16_t i = 0;
   uint16_t argc = 0;
 

@@ -2,58 +2,58 @@
 #include "lexer.h"
 
 bool onk_is_tok_delimiter(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_DELIM_START
-        && __ONK_MARKER_DELIM_END > token;
+    return token > PH_ONK_MARKER_DELIM_START
+        && PH_ONK_MARKER_DELIM_END > token;
 }
 
 bool onk_is_tok_brace(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_BRACE_START
-        && __ONK_MARKER_BRACE_END > token;
+    return token > PH_ONK_MARKER_BRACE_START
+        && PH_ONK_MARKER_BRACE_END > token;
 }
 
 bool onk_is_tok_close_brace(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_CLOSE_BRACE_START
-        && __ONK_MARKER_CLOSE_BRACE_END > token;
+    return token > PH_ONK_MARKER_CLOSE_BRACE_START
+        && PH_ONK_MARKER_CLOSE_BRACE_END > token;
 }
 
 bool onk_is_tok_open_brace(enum onk_lexicon_t token) {
-    return (token > __ONK_MARKER_OPEN_BRACE_START
-      && __ONK_MARKER_OPEN_BRACE_END > token);
+    return (token > PH_ONK_MARKER_OPEN_BRACE_START
+      && PH_ONK_MARKER_OPEN_BRACE_END > token);
 }
 
 bool onk_is_tok_unit(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_UNIT_START
-        && __ONK_MARKER_UNIT_END > token;
+    return token > PH_ONK_MARKER_UNIT_START
+        && PH_ONK_MARKER_UNIT_END > token;
 }
 
 bool onk_is_tok_asn_operator(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_ASN_START
-        && __ONK_MARKER_ASN_END > token;
+    return token > PH_ONK_MARKER_ASN_START
+        && PH_ONK_MARKER_ASN_END > token;
 }
 
 bool onk_is_tok_binop(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_BIN_START
-        && __ONK_MARKER_BIN_END > token;
+    return token > PH_ONK_MARKER_BIN_START
+        && PH_ONK_MARKER_BIN_END > token;
 }
 
 bool onk_is_tok_unary_operator(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_UNARY_START
-        && __ONK_MARKER_UNARY_END > token;
+    return token > PH_ONK_MARKER_UNARY_START
+        && PH_ONK_MARKER_UNARY_END > token;
 }
 
 bool onk_is_tok_operator(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_OP_START
-        && __ONK_MARKER_OP_END > token;
+    return token > PH_ONK_MARKER_OP_START
+        && PH_ONK_MARKER_OP_END > token;
 }
 
 bool onk_is_tok_block_keyword(enum onk_lexicon_t token) {
-    return token > __ONK_MARKER_KEYWORD_BLOCK_START
-        && __ONK_MARKER_KEYWORD_BLOCK_END > token;
+    return token > PH_ONK_MARKER_KEYWORD_BLOCK_START
+        && PH_ONK_MARKER_KEYWORD_BLOCK_END > token;
 }
 
 bool onk_is_tok_data_keyword(enum onk_lexicon_t token){
-    return token > __ONK_MARKER_KEYWORD_DATA_START
-        && __ONK_MARKER_KEYWORD_DATA_END > token;
+    return token > PH_ONK_MARKER_KEYWORD_DATA_START
+        && PH_ONK_MARKER_KEYWORD_DATA_END > token;
 }
 
 bool onk_is_tok_keyword(enum onk_lexicon_t token){
@@ -61,41 +61,41 @@ bool onk_is_tok_keyword(enum onk_lexicon_t token){
         || onk_is_tok_data_keyword(token);
 }
 
-bool _onk_do_default_expectation(enum onk_lexicon_t token){
-    return token > __ONK_MARKER_KEYWORD_DATA_START
-        && __ONK_MARKER_KEYWORD_DATA_END > token;
+bool onk_do_default_expectation(enum onk_lexicon_t token){
+    return token > PH_ONK_MARKER_KEYWORD_DATA_START
+        && PH_ONK_MARKER_KEYWORD_DATA_END > token;
 }
 
 bool onk_is_tok_illegal(enum onk_lexicon_t token){
-    return token > __ONK_MARKER_ILLEGAL_INPUT_START
-        && __ONK_MARKER_ILLEGAL_INPUT_END > token;
+    return token > PH_ONK_MARKER_ILLEGAL_INPUT_START
+        && PH_ONK_MARKER_ILLEGAL_INPUT_END > token;
 }
 
 
 /* keywords that can only be used in blocks */
 /* bool onk_is_tok_kword_block(enum onk_lexicon_t token) { */
-/*     return token > __ONK_MARKER_KEYWORD_BLOCK_START */
-/*         && __ONK_MARKER_KEYWORD_BLOCK_END > token; */
+/*     return token > PH_ONK_MARKER_KEYWORD_BLOCK_START */
+/*         && PH_ONK_MARKER_KEYWORD_BLOCK_END > token; */
 /* } */
 
-bool _onk_is_group(enum onk_lexicon_t tok) {
-    return tok > __ONK_MARKER_GROUP_START
-        && __ONK_MARKER_GROUP_END > tok;
+bool onk_is_group(enum onk_lexicon_t tok) {
+    return tok > PH_ONK_MARKER_GROUP_START
+        && PH_ONK_MARKER_GROUP_END > tok;
 }
 
 bool onk_is_tok_group_modifier(enum onk_lexicon_t tok) {
-    return tok > __ONK_MARKER_GROUP_OP_START
-        && __ONK_MARKER_GROUP_OP_END > tok;
+    return tok > PH_ONK_MARKER_GROUP_OP_START
+        && PH_ONK_MARKER_GROUP_OP_END > tok;
 }
 
 bool onk_is_tok_loopctlkw(enum onk_lexicon_t tok) {
-    return tok > __ONK_MARKER_LOOP_CTL_START
-        && __ONK_MARKER_LOOP_CTL_END > tok;
+    return tok > PH_ONK_MARKER_LOOP_CTL_START
+        && PH_ONK_MARKER_LOOP_CTL_END > tok;
 }
 
 bool onk_is_tok_whitespace(enum onk_lexicon_t tok) {
-    return tok > __ONK_MARKER_WHITESPACE_START
-        && __ONK_MARKER_WHITESPACE_END > tok;
+    return tok > PH_ONK_MARKER_WHITESPACE_START
+        && PH_ONK_MARKER_WHITESPACE_END > tok;
 }
 
 bool onk_is_int_tok_negative(const char * source, struct onk_token_t *token) {

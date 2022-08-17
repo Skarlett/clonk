@@ -31,7 +31,7 @@ struct onk_desc_dyn_token_t {
 struct onk_desc_inspect_token_t
 {
     struct onk_token_t token;
-    uint8_t ignore_flags;
+    unsigned char ignore_flags;
 };
 
 struct onk_desc_token_t {
@@ -54,7 +54,7 @@ struct onk_stage_test {
     enum onk_lexicon_t *expected;
 
     uint16_t inspect_arr[ONK_TEST_INSP_SZ];
-    uint8_t ninspect;
+    unsigned char ninspect;
 
     uint16_t nsource;
     uint16_t source_sz;
@@ -81,8 +81,8 @@ struct onk_test_mask_t
     /*size*/
     uint16_t sarr;
 
-    uint8_t ignore_whitespace;
-    uint8_t ignore_global_scope;
+    unsigned char ignore_whitespace;
+    unsigned char ignore_global_scope;
 };
 
 void onk_desc_init(

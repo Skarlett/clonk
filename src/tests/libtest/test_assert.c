@@ -32,7 +32,7 @@ void __test__check_tokens(CuTest* tc) {
         {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
     };
 
-    for (uint8_t i=0; 6 > i; i++){
+    for (unsigned char i=0; 6 > i; i++){
         mk_toks(toks, check_list[i]);
         onk_assert_tokens(tc, toks, check_list[i], "n/a", "file", 0);
     }
@@ -44,7 +44,7 @@ void __test__mock_tokens(CuTest *tc)
     enum onk_lexicon_t arr[2] = {ONK_WORD_TOKEN, ONK_ADD_TOKEN};
 
     create_mock_tokens(tokens, 2, arr);
-    for (uint8_t i=0; 2 > i; i++)
+    for (unsigned char i=0; 2 > i; i++)
         CuAssertTrue(tc, tokens[i].type == arr[i]);
 }
 

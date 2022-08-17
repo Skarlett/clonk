@@ -70,7 +70,7 @@ typedef struct VMRegisters {
     short trace;
     short trace_operand;
 
-    uint8_t trap; // trap for error
+    unsigned char trap; // trap for error
 } VMRegisters;
 
  

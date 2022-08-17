@@ -2,7 +2,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "private.h"
-#include "predict.h"
+#include "semantics.h"
 
 enum Associativity
 {
@@ -34,12 +34,10 @@ bool is_token_unexpected(struct onk_parser_state_t*state)
   frame.nslices = 0;
 
   /* grab frame slices */
-  _onk_semantic_next_frame(&frame, state);
+  onk_semantic_next_frame(&frame, state);
 
   /* compile into continguent array */
-  state->nexpect = onk_semantic_compile(
-      &frame, state
-  );
+  state->nexpect = onk_semantic_compile(&frame, state);
 
   return false;
 }
@@ -64,7 +62,7 @@ enum onk_lexicon_t group_type_init(enum onk_lexicon_t brace)
   }
 }
 
-void init_grp(struct onk_parse_group_t * ghead, enum onk_lexicon_t from)
+void init_grp(struct onk_parse_group_t * ghead, struct onk_token_t * from)
 {
   ghead->last_delim = 0;
   ghead->delimiter_cnt = 0;
@@ -74,7 +72,7 @@ void init_grp(struct onk_parse_group_t * ghead, enum onk_lexicon_t from)
   ghead->collapse = false;
 
   ghead->origin = from;
-  ghead->type = group_type_init(from);
+  ghead->type = group_type_init(from->type);
 
   assert(ghead->type != ONK_UNDEFINED_TOKEN);
 }
@@ -82,7 +80,7 @@ void init_grp(struct onk_parse_group_t * ghead, enum onk_lexicon_t from)
 /* assumes `OPEN_BRACE/PARAM/BRACKET` is on the operator stack*/
 struct onk_parse_group_t * new_grp(
   struct onk_parser_state_t* state,
-  const struct onk_token_t * from
+  struct onk_token_t * from
 ){
   struct onk_parse_group_t *ghead;
   assert(state->set_ctr < state->set_sz);
@@ -94,7 +92,7 @@ struct onk_parse_group_t * new_grp(
   ghead->operator_idx = state->operators_ctr - 1;
   ghead->set_idx = state->set_ctr - 1;
 
-  init_grp(ghead, from->type);
+  init_grp(ghead, from);
   return ghead;
 }
 
@@ -383,7 +381,7 @@ int8_t handle_open_brace(struct onk_parser_state_t*state)
     op_push(modifier, 0, 0, state);
 
   /* look behind & insert group modifier if needed. */
-  if (new_grp(state, current) == 0)
+  if (new_grp(state, (void *)current) == 0)
       return -1;
   
   // Place opening brace on operator stack
@@ -435,7 +433,7 @@ void handle_dual_group(struct onk_parser_state_t*state)
     }
     else
     {
-      ghead = new_grp(state, op_push(ONK_BRACE_OPEN_TOKEN, 0, 0, state));
+      ghead = new_grp(state, (void *)op_push(ONK_BRACE_OPEN_TOKEN, 0, 0, state));
       state->set_ctr += 1;
 
       ghead->type = onk_tuple_group_token;
@@ -499,7 +497,7 @@ int8_t handle_import(struct onk_parser_state_t*state)
   struct onk_parse_group_t *gtop;
   const struct onk_token_t *current = current_token(state);
 
-  gtop = new_grp(state, next_token(state));
+  gtop = new_grp(state, (void *)next_token(state));
   gtop->is_short = true;
 
   /* check tail of output */
@@ -672,7 +670,9 @@ int8_t onk_parse(
         ptr,
         512,
         state.expect,
-        state.nexpect
+
+        //TODO FIXME
+        (short)state.nexpect
       );
       
       printf("%s\n", ptr);

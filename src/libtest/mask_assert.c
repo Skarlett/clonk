@@ -352,7 +352,7 @@ int8_t handle_inspect_slot(
     struct onk_desc_inspect_token_t *insp,
     struct onk_token_t *input)
 {
-    uint8_t flags = 0;
+    unsigned char flags = 0;
     struct onk_token_t *tok;
 
     flags = insp->ignore_flags;
@@ -378,7 +378,7 @@ int8_t match_inspection(
     struct onk_desc_inspect_token_t *insp;
     uint16_t idx = 0;
 
-    for (uint8_t i=0; test->ninspect > i; i++)
+    for (unsigned char i=0; test->ninspect > i; i++)
     {
         idx = test->inspect_arr[i];
         insp = &kit->arr[idx].data.inspect;

@@ -2,7 +2,6 @@
 #define __ONK_PARSER_HEADER__
 #include "lexer.h"
 
-void onk_parser_input_free(struct onk_parser_input_t *);
 struct onk_parser_input_t {
     const char * src_code;
     uint16_t src_code_sz;
@@ -10,8 +9,8 @@ struct onk_parser_input_t {
 
     bool add_glob_scope;
 };
+void onk_parser_input_free(struct onk_parser_input_t *);
 
-void onk_parser_output_free(struct onk_parser_output_t *);
 struct onk_parser_output_t {
     /* Vec<struct onk_token_t *> */
     struct onk_vec_t postfix;
@@ -24,6 +23,7 @@ struct onk_parser_output_t {
 
     bool stage_failed;
 };
+void onk_parser_output_free(struct onk_parser_output_t *);
 
 enum onk_parse_err_t {
     parse_err_unexpected_token
@@ -252,7 +252,7 @@ struct onk_parse_group_t {
     **         ^ After delimiter, check for `else`
     ** else y;
     **/
-    //uint8_t short_block;
+    //unsigned char short_block;
     //enum ShortBlock_t short_type;
 };
 
@@ -341,8 +341,7 @@ struct onk_parser_state_t {
 
     /*Vec<struct onk_parser_snapshot_t>*/
     struct onk_vec_t restoration_stack;
-
-    //uint16_t restoration_ctr;
+    uint16_t restoration_ctr;
 
     /* whenever panic is set a
      * partial_err is valid, and
@@ -359,7 +358,7 @@ struct onk_parser_state_t {
 };
 
 int8_t onk_parser_init(struct onk_parser_state_t *state, uint16_t *i);
-int8_t onk_parser_init_heap(struct onk_parser_state_t *state);
+void onk_parser_init_heap(struct onk_parser_state_t *state);
 
 int8_t onk_parser_free(struct onk_parser_state_t*state);
 int8_t onk_parser_reset(struct onk_parser_state_t*state);

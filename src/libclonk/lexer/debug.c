@@ -4,18 +4,18 @@
 
 int8_t onk_snprint_token_type(
     char * buf,
-    uint16_t max,
+    uint16_t buf_max,
     enum onk_lexicon_t token)
 {
     const char *fmt = "[%s] ";
     const char *ptok = onk_ptoken(token);
 
-    snprintf(buf, max, fmt, ptok);
+    snprintf(buf, buf_max, fmt, ptok);
     return strlen(ptok) + 3;
 }
 
 
-int16_t onk_snprint_token(
+int onk_snprint_token(
     char * buf,
     uint16_t max,
     const struct onk_token_t *token)
@@ -45,7 +45,7 @@ int16_t onk_strlen_lex_arr(
     uint16_t narr
 )
 {
-    uint16_t sum = 0;
+    int16_t sum = 0;
 
     for (uint16_t i=0; narr > i; i++)
         sum += (3 + strlen(onk_ptoken(arr[i])));
@@ -66,10 +66,14 @@ int16_t onk_strlen_tok_arr(
     return sum;
 }
 
-int16_t _onk_snprint_lex_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t token) {
+int16_t _onk_snprint_lex_arr(
+    char * buf,
+    uint16_t nbuf,
+    enum onk_lexicon_t token
+){
     const char * ptoken = 0;
     char working_buf[ONK_TOK_CHAR_SIZE];
-    uint8_t ptoken_len;
+    unsigned char ptoken_len;
 
     ptoken = onk_ptoken(token);
     ptoken_len = strlen(ptoken) + 3;

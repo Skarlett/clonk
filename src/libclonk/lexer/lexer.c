@@ -82,7 +82,7 @@ void init_lexer_stage(
 };
 
 enum onk_lexicon_t onk_tokenize_char(char c) {
-  uint8_t i = 0;
+  unsigned char i = 0;
 
   switch (c) {
   case ' ':
@@ -172,18 +172,18 @@ enum onk_lexicon_t onk_tokenize_char(char c) {
   return ONK_UNDEFINED_TOKEN;
 }
 
-int8_t is_compound_bin_op(enum onk_lexicon_t tok) {
-  return tok > __ONK_MARKER_COMPOUND_BIN_START
-    && __ONK_MARKER_COMPOUND_BIN_END > tok;
+bool is_compound_bin_op(enum onk_lexicon_t tok) {
+  return tok > PH_ONK_MARKER_COMPOUND_BIN_START
+    && PH_ONK_MARKER_COMPOUND_BIN_END > tok;
 }
 
-int8_t can_upgrade_token(enum onk_lexicon_t token) {
-  return (token > __ONK_MARKER_UPGRADE_DATA_START && __ONK_MARKER_UPGRADE_DATA_END > token)
-    || (token > __ONK_MARKER_UPGRADE_OP_START && __ONK_MARKER_UPGRADE_OP_END > token)
-    || (token > __ONK_MARKER_UNARY_START && __ONK_MARKER_UNARY_END > token);
+bool can_upgrade_token(enum onk_lexicon_t token) {
+  return (token > PH_ONK_MARKER_UPGRADE_DATA_START && PH_ONK_MARKER_UPGRADE_DATA_END > token)
+    || (token > PH_ONK_MARKER_UPGRADE_OP_START && PH_ONK_MARKER_UPGRADE_OP_END > token)
+    || (token > PH_ONK_MARKER_UNARY_START && PH_ONK_MARKER_UNARY_END > token);
 }
 
-int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t token) {
+signed char set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t token) {
   switch (token) {
     case ONK_DIGIT_TOKEN:
       *compound_token = ONK_INTEGER_TOKEN;
@@ -214,23 +214,23 @@ int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t
       break;
     
     case ONK_GT_TOKEN:
-      *compound_token = _ONK_GT_TRANSMISSION_TOKEN;
+      *compound_token = PH_ONK_GT_TRANSMISSION_TOKEN;
       break;
 
     case ONK_LT_TOKEN:
-      *compound_token = _ONK_LT_TRANSMISSION_TOKEN;
+      *compound_token = PH_ONK_LT_TRANSMISSION_TOKEN;
       break;
 
     case ONK_SUB_TOKEN:
-      *compound_token = _ONK_SUB_TRANSMISSION_TOKEN;
+      *compound_token = PH_ONK_SUB_TRANSMISSION_TOKEN;
       break;
 
     case ONK_AMPER_TOKEN:
-      *compound_token = _ONK_AMPER_TRANSMISSION_TOKEN;
+      *compound_token = PH_ONK_AMPER_TRANSMISSION_TOKEN;
       break;
 
     case ONK_PIPE_TOKEN:
-      *compound_token = _ONK_PIPE_TRANSMISSION_TOKEN;
+      *compound_token = PH_ONK_PIPE_TRANSMISSION_TOKEN;
       break;
     
     case POUND:
@@ -242,7 +242,7 @@ int8_t set_compound_token(enum onk_lexicon_t *compound_token, enum onk_lexicon_t
       break;
 
     case ONK_DOLLAR_TOKEN:
-      *compound_token = _ONK_DOLLAR_TRANSMISSION_TOKEN;
+      *compound_token = PH_ONK_DOLLAR_TRANSMISSION_TOKEN;
       break;
 
     default:
@@ -261,7 +261,7 @@ uint16_t onk_token_len(struct onk_token_t *tok)
     Returns true if `compound_token`
     should continue consuming tokens
 */
-int8_t continue_compound_token(
+bool continue_compound_token(
   struct LexerStage *state
 ){
   struct onk_token_t * prev;
@@ -303,31 +303,31 @@ int8_t continue_compound_token(
       // ~=
       || (compound_token == ONK_BIT_NOT_EQL && token == ONK_EQUAL_TOKEN && 1 > span_size)
       //  `-=` or `-123`
-      || (compound_token == _ONK_SUB_TRANSMISSION_TOKEN && (token == ONK_DIGIT_TOKEN || (token == ONK_EQUAL_TOKEN && 1 > span_size)))
+      || (compound_token == PH_ONK_SUB_TRANSMISSION_TOKEN && (token == ONK_DIGIT_TOKEN || (token == ONK_EQUAL_TOKEN && 1 > span_size)))
       // `|=`, `|>`, `||`
-      || (compound_token == _ONK_PIPE_TRANSMISSION_TOKEN && (token == ONK_EQUAL_TOKEN || token == ONK_GT_TOKEN || token == ONK_PIPE_TOKEN) && 1 > span_size)
+      || (compound_token == PH_ONK_PIPE_TRANSMISSION_TOKEN && (token == ONK_EQUAL_TOKEN || token == ONK_GT_TOKEN || token == ONK_PIPE_TOKEN) && 1 > span_size)
       // `&=` `&&`
-      || (compound_token == _ONK_AMPER_TRANSMISSION_TOKEN && (token == ONK_AMPER_TOKEN || token == ONK_EQUAL_TOKEN) && 1 > span_size)
+      || (compound_token == PH_ONK_AMPER_TRANSMISSION_TOKEN && (token == ONK_AMPER_TOKEN || token == ONK_EQUAL_TOKEN) && 1 > span_size)
       // `>=` `>>`
-      || (compound_token == _ONK_GT_TRANSMISSION_TOKEN && (token == ONK_GT_TOKEN || token == ONK_EQUAL_TOKEN) && 1 > span_size)
+      || (compound_token == PH_ONK_GT_TRANSMISSION_TOKEN && (token == ONK_GT_TOKEN || token == ONK_EQUAL_TOKEN) && 1 > span_size)
       // `<<` `<=`
-      || (compound_token == _ONK_LT_TRANSMISSION_TOKEN && (token == ONK_LT_TOKEN || token == ONK_EQUAL_TOKEN) && 1 > span_size)
+      || (compound_token == PH_ONK_LT_TRANSMISSION_TOKEN && (token == ONK_LT_TOKEN || token == ONK_EQUAL_TOKEN) && 1 > span_size)
       // ${
-      || (compound_token == _ONK_DOLLAR_TRANSMISSION_TOKEN && token == ONK_BRACE_OPEN_TOKEN && 1 > span_size)
+      || (compound_token == PH_ONK_DOLLAR_TRANSMISSION_TOKEN && token == ONK_BRACE_OPEN_TOKEN && 1 > span_size)
   );
 }
 
 
 bool downgrade_cmpd_gt(enum onk_lexicon_t tok)
 {
-  return tok == _ONK_GT_TRANSMISSION_TOKEN
+  return tok == PH_ONK_GT_TRANSMISSION_TOKEN
     || tok == ONK_SHR_TOKEN
     || tok == ONK_GT_EQL_TOKEN;
 }
 
 bool downgrade_cmpd_lt(enum onk_lexicon_t tok)
 {
-  return tok == _ONK_LT_TRANSMISSION_TOKEN
+  return tok == PH_ONK_LT_TRANSMISSION_TOKEN
     || tok == ONK_SHL_TOKEN
     || tok == ONK_LT_EQL_TOKEN;
 }
@@ -349,7 +349,7 @@ enum onk_lexicon_t invert_operator_token(enum onk_lexicon_t compound_token) {
   case ONK_BIT_NOT_EQL:
     return ONK_TILDE_TOKEN;
 
-  case _ONK_AMPER_TRANSMISSION_TOKEN:
+  case PH_ONK_AMPER_TRANSMISSION_TOKEN:
     return ONK_AMPER_TOKEN;
 
   case ONK_AND_TOKEN:
@@ -357,17 +357,17 @@ enum onk_lexicon_t invert_operator_token(enum onk_lexicon_t compound_token) {
   case ONK_BIT_AND_EQL:
     return ONK_AMPER_TOKEN;
 
-  case _ONK_PIPE_TRANSMISSION_TOKEN:
+  case PH_ONK_PIPE_TRANSMISSION_TOKEN:
     return ONK_PIPE_TOKEN;
   case ONK_BIT_OR_EQL:
     return ONK_PIPE_TOKEN;
   case ONK_OR_TOKEN:
     return ONK_PIPE_TOKEN;
   
-  case _ONK_SUB_TRANSMISSION_TOKEN:
+  case PH_ONK_SUB_TRANSMISSION_TOKEN:
     return ONK_SUB_TOKEN;
 
-  case _ONK_DOLLAR_TRANSMISSION_TOKEN:
+  case PH_ONK_DOLLAR_TRANSMISSION_TOKEN:
     return ONK_DOLLAR_TOKEN;
 
   case ONK_PLUSEQ_TOKEN:
@@ -411,7 +411,7 @@ int8_t derive_keyword(const char *src_code, struct onk_token_t *t) {
     "and", "or", 0
   };
 
-  for (uint8_t i = 0 ;; i++) {
+  for (unsigned char i = 0 ;; i++) {
     if (lexicon[i] == 0)
       break;
     
@@ -434,39 +434,40 @@ int8_t derive_keyword(const char *src_code, struct onk_token_t *t) {
 ** different compounds `-=`, `-1`.
 */
 enum onk_lexicon_t compose_compound(
-    enum onk_lexicon_t ctok,
+    enum onk_lexicon_t compound_tok,
     enum onk_lexicon_t current
 ){
-  switch(ctok) {
-    case _ONK_SUB_TRANSMISSION_TOKEN:
+  switch(compound_tok)
+  {
+    case PH_ONK_SUB_TRANSMISSION_TOKEN:
       if (current == ONK_DIGIT_TOKEN)
         return ONK_INTEGER_TOKEN;
       else if(current == ONK_EQUAL_TOKEN)
         return ONK_MINUS_EQL_TOKEN;
       break;
 
-    case _ONK_PIPE_TRANSMISSION_TOKEN:
+    case PH_ONK_PIPE_TRANSMISSION_TOKEN:
       if (current == ONK_PIPE_TOKEN)
         return ONK_OR_TOKEN;
       else if (current == ONK_EQUAL_TOKEN)
         return ONK_MINUS_EQL_TOKEN;
       break;
 
-    case _ONK_AMPER_TRANSMISSION_TOKEN:
+    case PH_ONK_AMPER_TRANSMISSION_TOKEN:
       if (current == ONK_AMPER_TOKEN)
         return ONK_AND_TOKEN;
       else if (current == ONK_EQUAL_TOKEN)
         return ONK_BIT_AND_EQL;
       break;
 
-    case _ONK_LT_TRANSMISSION_TOKEN:
+    case PH_ONK_LT_TRANSMISSION_TOKEN:
       if(current == ONK_LT_TOKEN)
         return ONK_SHL_TOKEN;
       else if (current == ONK_EQUAL_TOKEN)
         return ONK_LT_EQL_TOKEN;
       break;
 
-    case _ONK_GT_TRANSMISSION_TOKEN:
+    case PH_ONK_GT_TRANSMISSION_TOKEN:
       if(current == ONK_GT_TOKEN)
         return ONK_SHR_TOKEN;
 
@@ -474,7 +475,7 @@ enum onk_lexicon_t compose_compound(
         return ONK_GT_EQL_TOKEN;
       break;
 
-    case _ONK_DOLLAR_TRANSMISSION_TOKEN:
+    case PH_ONK_DOLLAR_TRANSMISSION_TOKEN:
       return ONK_HASHMAP_LITERAL_START_TOKEN;
 
     default: break;
@@ -530,9 +531,8 @@ int8_t push_tok(
   struct LexerStage *state,
   struct onk_token_t *tok)
 {
-  enum onk_lexicon_t type = state->current;
   int8_t ret = 0;
-  
+  enum onk_lexicon_t type = state->current;
   
   if (state->compound != ONK_UNDEFINED_TOKEN)
     type = state->compound;
@@ -556,7 +556,7 @@ int8_t push_tok(
   return ret;
 }
 
-int8_t continue_forcing(struct LexerStage *state)
+bool continue_forcing(struct LexerStage *state)
 {
   return state->current == ONK_WORD_TOKEN 
     || state->current == ONK_DOT_TOKEN;

@@ -2,8 +2,8 @@
 // my very own 1990s retro built interpreter
 #include "clonk.h"
 #include "lexer.h"
-#include "parser.h"
 
+#include "parser.h"
 #include <stdio.h>
 #include <stdint.h>
 
@@ -31,9 +31,9 @@ void print_help(char *name) {
 }
 
 struct Opts {
-    uint8_t print_ast;
-    uint8_t print_parser;
-    uint8_t print_tokens;
+    unsigned char print_ast;
+    unsigned char print_parser;
+    unsigned char print_tokens;
 };
 
 void init_opts(struct Opts *opts) {
@@ -71,7 +71,6 @@ void setup_opts(int argc, char *argv[], struct Opts *opts) {
 
     }
 }
-
 
 int main(int argc, char* argv[]) {
     struct Opts opts;
