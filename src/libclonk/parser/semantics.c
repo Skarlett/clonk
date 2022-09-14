@@ -24,7 +24,7 @@ const enum onk_lexicon_t * CATCH[] = {
     CATCH_GRP_D
 };
 
-const unsigned char ICATCH[] = {
+const uint8_t ICATCH[] = {
   3,
   1,
   1,
@@ -42,7 +42,7 @@ const enum onk_lexicon_t * SET[] = {
     SET_GRP_D
 };
 
-const unsigned char ISET[] = {
+const uint8_t ISET[] = {
   ASNOP_LEN,
   1,
   2,
@@ -104,8 +104,8 @@ enum onk_lexicon_t vframe_add_delimiter(struct onk_parser_state_t * state)
 
 // expects unit
 int8_t get_precedence_expr(enum onk_lexicon_t unit) {
-    for(unsigned char i=0; ROWS > i; i++)
-        for(unsigned char j=0; ICATCH[i] > j; j++)
+    for(uint8_t i=0; ROWS > i; i++)
+        for(uint8_t j=0; ICATCH[i] > j; j++)
             if(CATCH[i][j] == unit)
                 return (int8_t)i;
     return -1;
@@ -157,7 +157,7 @@ uint16_t onk_semantic_compile(
   uint16_t slice_sz = 0;
   uint16_t total = 0;
 
-  unsigned char slice_len = 0;
+  uint8_t slice_len = 0;
   uint16_t i = 0;
 
   for (i=0; frame->nslices > i; i++)

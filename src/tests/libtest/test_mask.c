@@ -35,13 +35,10 @@ void test_static_slot(CuTest *tc)
       ONK_WORD_TOKEN
     };    
     const char *src = "word word";
-
     onk_desc_init(&test, (void *)tokens, 3);
 
     create_mock_tokens(tokens, 3, answer);
-
     onk_desc_add_static_slot(&test, answer, 3);
-
     onk_assert_match(tc, &test, tokens, 3, 0, src, "NA", 0);
 }
 
@@ -60,11 +57,11 @@ void test_whitespace_filter(CuTest *tc)
     onk_assert_match(tc, &test, tokens, 2, 0, src, "NA", 0);
 }
 
-void test_dynamic_slot()
-{
-    onk_desc_add_static_slot(&test, tok, 2);
-    onk_assert_match(tc, &test, tokens, 2, 0, src, "NA", 0);
-}
+/* void test_dynamic_slot() */
+/* { */
+/*     onk_desc_add_static_slot(&test, tok, 2); */
+/*     onk_assert_match(tc, &test, tokens, 2, 0, src, "NA", 0); */
+/* } */
 
 void test_inspect_slot()
 {
@@ -82,7 +79,7 @@ void fail_on_msg_overflow(CuTest *tc, struct onk_test_state_t buffers)
     union TestFn func;
 
     struct onk_test_mask_t test;
-    uint16_t msg_sz, msg_cursor;
+    uint16_t msg_sz=0, msg_cursor=0;
 
     enum onk_lexicon_t tok[] = {
        ONK_WORD_TOKEN,

@@ -62,8 +62,10 @@ enum onk_lexicon_t group_type_init(enum onk_lexicon_t brace)
   }
 }
 
-void init_grp(struct onk_parse_group_t * ghead, struct onk_token_t * from)
-{
+void init_grp(
+  struct onk_parse_group_t * ghead,
+  const struct onk_token_t * from
+){
   ghead->last_delim = 0;
   ghead->delimiter_cnt = 0;
   ghead->expr_cnt = 0;
@@ -80,9 +82,9 @@ void init_grp(struct onk_parse_group_t * ghead, struct onk_token_t * from)
 /* assumes `OPEN_BRACE/PARAM/BRACKET` is on the operator stack*/
 struct onk_parse_group_t * new_grp(
   struct onk_parser_state_t* state,
-  struct onk_token_t * from
+  const struct onk_token_t * from
 ){
-  struct onk_parse_group_t *ghead;
+  struct onk_parse_group_t *ghead = 0;
   assert(state->set_ctr < state->set_sz);
 
   ghead = &state->set_stack[state->set_ctr];
@@ -233,13 +235,14 @@ int8_t pop_group(struct onk_parser_state_t *state, bool do_checks)
 */
 int8_t pop_block_operator(struct onk_parser_state_t*state)
 {
-  const struct onk_token_t *ophead;
+  const struct onk_token_t *ophead = 0;
 
   if(state->operators_ctr > state->operator_stack_sz
      || state->operators_ctr == 0)
      return -1;
 
   ophead = op_head(state);
+
   if (onk_is_tok_group_modifier(ophead->type))
   {
     insert(state, ophead);
@@ -450,9 +453,9 @@ void handle_dual_group(struct onk_parser_state_t*state)
  * if(x) return y;
 */
 void pop_short_block(struct onk_parser_state_t*state) {
-  const struct onk_parse_group_t *ghead;
-  const struct onk_token_t *ophead, *gmod;
-  const struct onk_token_t *next;
+  const struct onk_parse_group_t *ghead = 0;
+  const struct onk_token_t *ophead = 0, *gmod = 0, *next = 0;
+  //const struct onk_token_t *next;
 
   next = next_token(state);
   if (next->type == ONK_ELSE_TOKEN)
@@ -494,7 +497,7 @@ void pop_short_block(struct onk_parser_state_t*state) {
 */
 int8_t handle_import(struct onk_parser_state_t*state)
 {
-  struct onk_parse_group_t *gtop;
+  struct onk_parse_group_t *gtop = 0;
   const struct onk_token_t *current = current_token(state);
 
   gtop = new_grp(state, (void *)next_token(state));
@@ -563,14 +566,16 @@ int8_t onk_parser_init(
   uint16_t *i
 ){
   struct onk_parse_group_t *ghead = &state->set_stack[0];
+  const struct onk_token_t *global_namespace = 0;
 
   onk_semenatic_init(state);
 
   // Push { into operator stack.
-  assert(op_push(ONK_BRACE_OPEN_TOKEN, 0, 0, state) > 0);
+  global_namespace = op_push(ONK_BRACE_OPEN_TOKEN, 0, 0, state);
+  assert(global_namespace > 0);
 
   // Initalize global name space
-  init_grp(ghead, ONK_BRACE_OPEN_TOKEN);
+  init_grp(ghead, (void *)global_namespace);
 
   ghead->operator_idx = 0;
   ghead->set_idx = 0;
@@ -606,8 +611,8 @@ int8_t handle_return(struct onk_parser_state_t*state)
 {
   const struct onk_token_t *current = current_token(state);
   const struct onk_token_t *next = next_token(state);
-  const struct onk_token_t *brace;
-  struct onk_parse_group_t *group;
+  const struct onk_token_t *brace = 0;
+  struct onk_parse_group_t *group = 0;
 
   /* push return onto operator stack */
   state->operator_stack[state->operators_ctr] = current;
@@ -629,10 +634,10 @@ int8_t onk_parse(
   struct onk_parser_output_t *out
 ){
   struct onk_parser_state_t state;
-  const struct onk_token_t *current;
-  enum onk_lexicon_t current_type;
+  const struct onk_token_t *current = 0;
+  enum onk_lexicon_t current_type = ONK_EOF_TOKEN;
   uint16_t i = 0;
-  bool unexpected_token;
+  bool unexpected_token = true;
 
   //assert(onk_parser_init(&state, input, &i) == 0);
 

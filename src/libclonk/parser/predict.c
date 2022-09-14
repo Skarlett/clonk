@@ -521,7 +521,7 @@ uint16_t onk_semantic_compile(
   onk_usize offset = 0;
   //onk_usize inc = 0;
 
-  unsigned char slice_len = 0;
+  uint8_t slice_len = 0;
   uint16_t i = 0;
 
   for (i=0; _ONK_SEM_CHK_SZ > i; i++)

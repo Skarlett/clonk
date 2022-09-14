@@ -145,14 +145,14 @@ void __test__semantic_delim_kw(
         onk_ifcond_op_token,
         onk_while_cond_op_token,
     };
-    const unsigned char GROUP_OPS_LEN = 2;
+    const uint8_t GROUP_OPS_LEN = 2;
 
     state->parser.operator_stack[1] = &gmod;
     state->parser.operator_stack[2] = &open_param;
 
     mock_current(&state->parser, ONK_WORD_TOKEN);
 
-    for (unsigned char i=0; GROUP_OPS_LEN > i; i++)
+    for (uint8_t i=0; GROUP_OPS_LEN > i; i++)
     {
         memset(&gmod, 0, sizeof(struct onk_token_t));
         gmod.type = GROUP_OPS[i];
@@ -187,7 +187,7 @@ void __test__semantic_operator_after_unit(
     struct onk_test_state_t *state
 ){
     char buf[254];
-    const unsigned char set_len = BINOP_LEN \
+    const uint8_t set_len = BINOP_LEN \
       + ASNOP_LEN \
       + DELIM_LEN \
       + UNIOP_LEN \
@@ -203,7 +203,7 @@ void __test__semantic_operator_after_unit(
         ONK_PARAM_OPEN_TOKEN,
     };
 
-    const unsigned char answer_len = UNIT_LEN + UNIOP_LEN + 3;
+    const uint8_t answer_len = UNIT_LEN + UNIOP_LEN + 3;
     const enum onk_lexicon_t answer[] = {
       _EX_UNARY_OPERATOR,
       _EX_UNIT,
@@ -214,7 +214,7 @@ void __test__semantic_operator_after_unit(
 
     onk_merge_sort_u16((void*)answer, 0, answer_len);
 
-    for(unsigned char i=0; set_len > i; i++)
+    for(uint8_t i=0; set_len > i; i++)
     {
         mock_current(&state->parser, set[i]);
         compile(&state->parser);
@@ -233,7 +233,7 @@ void __test__semantic_unit_after_operator(
     CuTest* tc,
     struct onk_test_state_t *state
 ){
-    const unsigned char answer_len = UNIT_LEN + UNIOP_LEN + 3;
+    const uint8_t answer_len = UNIT_LEN + UNIOP_LEN + 3;
     const enum onk_lexicon_t anwser[] = {
       _EX_UNARY_OPERATOR,
       _EX_UNIT,
@@ -242,7 +242,7 @@ void __test__semantic_unit_after_operator(
       ONK_HASHMAP_LITERAL_START_TOKEN
     };
 
-    const unsigned char set_len = BINOP_LEN \
+    const uint8_t set_len = BINOP_LEN \
       + ASNOP_LEN \
       + DELIM_LEN \
       + UNIOP_LEN \
@@ -258,11 +258,11 @@ void __test__semantic_unit_after_operator(
         ONK_PARAM_OPEN_TOKEN,
     };
 
-    for(unsigned char i=0; set_len > i; i++)
+    for(uint8_t i=0; set_len > i; i++)
     {
         mock_current(&state->parser, set[i]);
 
-        for(unsigned char j=0; answer_len > j; j++)
+        for(uint8_t j=0; answer_len > j; j++)
             CuAssertTrue(tc, onk_lexarr_contains(
                 state->parser.expect[j],
                 (void *)anwser,

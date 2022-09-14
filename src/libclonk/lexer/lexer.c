@@ -82,81 +82,82 @@ void init_lexer_stage(
 };
 
 enum onk_lexicon_t onk_tokenize_char(char c) {
-  unsigned char i = 0;
+  uint8_t i = 0;
 
   switch (c) {
-  case ' ':
-    return ONK_WHITESPACE_TOKEN;
-  case '\n':
-  case '\t':
-    return ONK_WHITESPACE_TOKEN;
-  case '\r':
-    return ONK_WHITESPACE_TOKEN;
-  case '/':
-    return ONK_DIV_TOKEN;
-  case '=':
-    return ONK_EQUAL_TOKEN;
-  case '"':
-    return ONK_DOUBLE_QUOTE_TOKEN;
-  case '{':
-    return ONK_BRACE_OPEN_TOKEN;
-  case '}':
-    return ONK_BRACE_CLOSE_TOKEN;
-  case '(':
-    return ONK_PARAM_OPEN_TOKEN;
-  case ')':
-    return ONK_PARAM_CLOSE_TOKEN;
-  case '[':
-    return ONK_BRACKET_OPEN_TOKEN;
-  case ']':
-    return ONK_BRACKET_CLOSE_TOKEN;
-  case ';':
-    return ONK_SEMICOLON_TOKEN;
-  case ',':
-    return ONK_COMMA_TOKEN;
-  case '+':
-    return ONK_ADD_TOKEN;
-  case '-':
-    return ONK_SUB_TOKEN;
-  case '*':
-    return ONK_MUL_TOKEN;
-  case '^':
-    return ONK_POW_TOKEN;
-  case '>':
-    return ONK_GT_TOKEN;
-  case '<':
-    return ONK_LT_TOKEN;
-  case '&':
-    return ONK_AMPER_TOKEN;
-  case '|':
-    return ONK_PIPE_TOKEN;
-  case '%':
-    return ONK_MOD_TOKEN;
-  case '_':
-    return ONK_UNDERSCORE_TOKEN;
-  case ':':
-    return ONK_COLON_TOKEN;
-  case '!':
-    return ONK_NOT_TOKEN;
-  case '#':
-    return POUND;
-  /* case '@': */
-  /*   return ONK_ATSYM__TOKEN; */
-  case '.':
-    return ONK_DOT_TOKEN;
-  case '~':
-    return ONK_TILDE_TOKEN;
-  case '$':
-    return ONK_DOLLAR_TOKEN;
+    case ' ':
+      return ONK_WHITESPACE_TOKEN;
+    case '\n':
+      return ONK_WHITESPACE_TOKEN;
+    case '\t':
+      return ONK_WHITESPACE_TOKEN;
+    case '\r':
+      return ONK_WHITESPACE_TOKEN;
 
-  case '\\':
-    return ONK_BACKSLASH_TOKEN;
-  default:
-    break;
+    case '/':
+      return ONK_DIV_TOKEN;
+    case '=':
+      return ONK_EQUAL_TOKEN;
+    case '"':
+      return ONK_DOUBLE_QUOTE_TOKEN;
+    case '{':
+      return ONK_BRACE_OPEN_TOKEN;
+    case '}':
+      return ONK_BRACE_CLOSE_TOKEN;
+    case '(':
+      return ONK_PARAM_OPEN_TOKEN;
+    case ')':
+      return ONK_PARAM_CLOSE_TOKEN;
+    case '[':
+      return ONK_BRACKET_OPEN_TOKEN;
+    case ']':
+      return ONK_BRACKET_CLOSE_TOKEN;
+    case ';':
+      return ONK_SEMICOLON_TOKEN;
+    case ',':
+      return ONK_COMMA_TOKEN;
+    case '+':
+      return ONK_ADD_TOKEN;
+    case '-':
+      return ONK_SUB_TOKEN;
+    case '*':
+      return ONK_MUL_TOKEN;
+    case '^':
+      return ONK_POW_TOKEN;
+    case '>':
+      return ONK_GT_TOKEN;
+    case '<':
+      return ONK_LT_TOKEN;
+    case '&':
+      return ONK_AMPER_TOKEN;
+    case '|':
+      return ONK_PIPE_TOKEN;
+    case '%':
+      return ONK_MOD_TOKEN;
+    case '_':
+      return ONK_UNDERSCORE_TOKEN;
+    case ':':
+      return ONK_COLON_TOKEN;
+    case '!':
+      return ONK_NOT_TOKEN;
+    case '#':
+      return POUND;
+    /* case '@': */
+    /*   return ONK_ATSYM__TOKEN; */
+    case '.':
+      return ONK_DOT_TOKEN;
+    case '~':
+      return ONK_TILDE_TOKEN;
+    case '$':
+      return ONK_DOLLAR_TOKEN;
+    case '\\':
+      return ONK_BACKSLASH_TOKEN;
+    default:
+      break;
   }
 
   /* £ -> $ */
-  if ((unsigned char)c == 0xa3)
+  if ((uint8_t)c == 0xa3)
     return ONK_DOLLAR_TOKEN;
 
   for (i = 0; strlen(ONK_DIGIT_STR) > i; i++) {
@@ -264,12 +265,11 @@ uint16_t onk_token_len(struct onk_token_t *tok)
 bool continue_compound_token(
   struct LexerStage *state
 ){
-  struct onk_token_t * prev;
+  struct onk_token_t * prev = 0;
   enum onk_lexicon_t compound_token = state->compound,
     token = state->current;
   uint16_t span_size = state->cmpd_span_size;
 
-  prev = 0;
   if (state->previous.nitems > 0)
      prev = onk_queue8_head(&state->previous);
 
@@ -411,7 +411,7 @@ int8_t derive_keyword(const char *src_code, struct onk_token_t *t) {
     "and", "or", 0
   };
 
-  for (unsigned char i = 0 ;; i++) {
+  for (uint8_t i = 0 ;; i++) {
     if (lexicon[i] == 0)
       break;
     
@@ -600,7 +600,6 @@ int8_t onk_tokenize(
 
     else if(utf_error_flag > 0)
     {
-      // TODO: wtf is this?
       if (state.src_code[i] == ' '
           || state.src_code[i] == '\t'
           || state.src_code[i] == '\n')

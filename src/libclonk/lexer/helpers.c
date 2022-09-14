@@ -104,7 +104,7 @@ bool onk_is_int_tok_negative(const char * source, struct onk_token_t *token) {
 }
 
 bool onk_is_utf_byte(char ch) {
-    unsigned char copy = ch;
+    uint8_t copy = ch;
 
     return (copy >= 0x80
         /* accept a cup of tea (£) */

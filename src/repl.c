@@ -31,9 +31,9 @@ void print_help(char *name) {
 }
 
 struct Opts {
-    unsigned char print_ast;
-    unsigned char print_parser;
-    unsigned char print_tokens;
+    uint8_t print_ast;
+    uint8_t print_parser;
+    uint8_t print_tokens;
 };
 
 void init_opts(struct Opts *opts) {
@@ -101,7 +101,6 @@ int main(int argc, char* argv[]) {
     puts("\n");
 
     onk_parser_input_from_lexer_output(&token_output, &parser_input, false);
-
     if(onk_parse(&parser_input, &parser_output) == -1)
       return -2;
 

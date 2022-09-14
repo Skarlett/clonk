@@ -18,7 +18,8 @@ void _onk_free_test_buffer_hook(struct onk_test_state_t *buf);
 
 static void X_CompareAsserts(CuTest* tc, const char *file, int line, const char* message, const char* expected, const char* actual)
 {
-	int mismatch;
+	int mismatch=0;
+
 	if (expected == NULL || actual == NULL) {
 		mismatch = (expected != NULL || actual != NULL);
 	} else {
@@ -109,7 +110,7 @@ void TestCuStringInserts(CuTest* tc)
 void TestCuStringResizes(CuTest* tc)
 {
 	CuString* str = CuStringNew();
-	int i;
+	int i=0;
 	for(i = 0 ; i < STRING_MAX ; ++i)
 	{
 		CuStringAppend(str, "aa");
@@ -206,7 +207,7 @@ void TestCuAssert(CuTest* tc)
 void TestCuAssertPtrEquals_Success(CuTest* tc)
 {
 	CuTest tc2;
-	int x;
+	int x=0;
 	union TestFn func;
 
 	NewTestFn(&func, CuTestType, TestPasses);
@@ -222,7 +223,7 @@ void TestCuAssertPtrEquals_Success(CuTest* tc)
 void TestCuAssertPtrEquals_Failure(CuTest* tc)
 {
 	CuTest tc2;
-	int x;
+	int x=0;
 	int* nullPtr = NULL;
 	char expected_message[STRING_MAX];
 
@@ -242,7 +243,7 @@ void TestCuAssertPtrEquals_Failure(CuTest* tc)
 void TestCuAssertPtrNotNull_Success(CuTest* tc)
 {
 	CuTest tc2;
-	int x;
+	int x=0;
 
 	union TestFn func;
 	NewTestFn(&func, CuTestType, TestPasses);
@@ -415,8 +416,8 @@ void TestCuSuiteDetails_SingleFail(CuTest* tc)
 	CuSuite ts;
 	CuTest tc1, tc2;
 	CuString details;
-	const char* front;
-	const char* back;
+	const char* front = 0;
+	const char* back = 0;
 
 	struct onk_test_state_t buf;
 	union TestFn fail_func, pass_func;
@@ -459,7 +460,7 @@ void TestCuSuiteDetails_SinglePass(CuTest* tc)
 	CuSuite ts;
 	CuTest tc1;
 	CuString details;
-	const char* expected;
+	const char* expected = 0;
 
 	struct onk_test_state_t buf;
 	union TestFn pass_func;
@@ -548,7 +549,7 @@ void TestCuStrCopy(CuTest* tc)
 
 void TestCuStringAppendFormat(CuTest* tc)
 {
-	int i;
+	int i=0;
 	char* text = CuStrAlloc(301);		/* long string */
 	CuString* str = CuStringNew();
 	for (i = 0 ; i < 300 ; ++i)

@@ -1,7 +1,8 @@
 ---
 Checks: '
-bugprone-*,
 clang-analyzer-*,
+cppcoreguidelines-*,
+-cppcoreguidelines-avoid-magic-numbers,
 -bugprone-exception-escape,
 -bugprone-branch-clone
 -bugprone-easily-swappable-parameters

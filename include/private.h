@@ -59,7 +59,7 @@ const struct onk_token_t * op_head(const struct onk_parser_state_t*state);
 const struct onk_token_t * op_push(enum onk_lexicon_t op, uint16_t start, uint16_t end, struct onk_parser_state_t*state);
 const struct onk_token_t * output_head(const struct onk_parser_state_t*state);
 struct onk_parse_group_t * group_head(struct onk_parser_state_t*state);
-struct onk_parse_group_t * new_grp(struct onk_parser_state_t * state, struct onk_token_t * origin);
+struct onk_parse_group_t * new_grp(struct onk_parser_state_t * state, const struct onk_token_t * origin);
 
 bool can_ignore_token(enum onk_lexicon_t tok);
 
@@ -87,7 +87,7 @@ int8_t op_precedence(enum onk_lexicon_t token);
 int8_t finish_idx_access(struct onk_parser_state_t*state);
 void idx_infer_value(struct onk_parser_state_t*state);
 
-void init_grp(struct onk_parse_group_t * ghead, struct onk_token_t *from);
+void init_grp(struct onk_parse_group_t * ghead, const struct onk_token_t *from);
 
 int8_t push_many_ops(
   const enum onk_lexicon_t *ops,

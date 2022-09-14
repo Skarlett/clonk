@@ -2,11 +2,11 @@
 #include <stdio.h>
 #include "lexer.h"
 
-int8_t onk_snprint_token_type(
+uint32_t onk_snprint_token_type(
     char * buf,
     uint16_t buf_max,
-    enum onk_lexicon_t token)
-{
+    enum onk_lexicon_t token
+){
     const char *fmt = "[%s] ";
     const char *ptok = onk_ptoken(token);
 
@@ -14,15 +14,14 @@ int8_t onk_snprint_token_type(
     return strlen(ptok) + 3;
 }
 
-
-int onk_snprint_token(
+int32_t onk_snprint_token(
     char * buf,
     uint16_t max,
-    const struct onk_token_t *token)
-{
+    const struct onk_token_t *token
+){
     const char *fmt = "{ start: %ud; end: %ud; seq: %ud; type: %s (%ud) }";
     const char *ptok = 0;
-    int nbytes = 0;
+    int32_t nbytes = 0;
 
     ptok = onk_ptoken(token->type);
 
@@ -40,12 +39,11 @@ int onk_snprint_token(
     return nbytes;
 }
 
-int16_t onk_strlen_lex_arr(
+uint16_t onk_strlen_lex_arr(
     enum onk_lexicon_t *arr,
     uint16_t narr
-)
-{
-    int16_t sum = 0;
+){
+    uint16_t sum = 0;
 
     for (uint16_t i=0; narr > i; i++)
         sum += (3 + strlen(onk_ptoken(arr[i])));
@@ -53,11 +51,10 @@ int16_t onk_strlen_lex_arr(
     return sum;
 }
 
-int16_t onk_strlen_tok_arr(
+uint16_t onk_strlen_tok_arr(
     struct onk_token_t *arr,
     uint16_t narr
-)
-{
+){
     uint16_t sum = 0;
 
     for (uint16_t i=0; narr > i; i++)
@@ -66,17 +63,14 @@ int16_t onk_strlen_tok_arr(
     return sum;
 }
 
-int16_t _onk_snprint_lex_arr(
+uint32_t onk_snprint_lex_arr_inner(
     char * buf,
     uint16_t nbuf,
     enum onk_lexicon_t token
 ){
-    const char * ptoken = 0;
     char working_buf[ONK_TOK_CHAR_SIZE];
-    unsigned char ptoken_len;
-
-    ptoken = onk_ptoken(token);
-    ptoken_len = strlen(ptoken) + 3;
+    const char * ptoken = onk_ptoken(token);
+    uint32_t ptoken_len = strlen(ptoken) + 3;
 
     if (ptoken_len >= nbuf)
         return -1;
@@ -92,20 +86,20 @@ int16_t _onk_snprint_lex_arr(
     return ptoken_len;
 }
 
-int16_t onk_snprint_lex_arr(
+int32_t onk_snprint_lex_arr(
     char * buf, 
-    uint16_t nbuf,
+    int32_t nbuf,
     enum onk_lexicon_t *arr,
     int16_t narr
 ){
-    uint16_t remaining_bytes = nbuf;
-    int16_t ptok_len = 0;
+    int32_t remaining_bytes = nbuf;
+    int32_t ptok_len = 0;
 
     assert(narr > 0);
 
     for(int16_t i=0; narr > i; i++)
     {
-        ptok_len = _onk_snprint_lex_arr(
+        ptok_len = onk_snprintf_lex_arr_inner(
             buf, remaining_bytes,
             arr[i]);
 
@@ -118,8 +112,12 @@ int16_t onk_snprint_lex_arr(
     return nbuf - remaining_bytes;
 }
 
-int16_t onk_snprint_rlex_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t **arr, int16_t narr)
-{
+int32_t onk_snprint_rlex_arr(
+    char * buf,
+    int32_t nbuf,
+    enum onk_lexicon_t **arr,
+    int16_t narr
+){
     uint16_t remaining_bytes = nbuf;
     int16_t ptok_len = 0;
 
@@ -127,7 +125,7 @@ int16_t onk_snprint_rlex_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t **arr
 
     for(int16_t i=0; narr > i; i++)
     {
-        ptok_len = _onk_snprint_lex_arr(
+        ptok_len = onk_snprintf_lex_arr_inner(
             buf, remaining_bytes,
             *arr[i]);
 
@@ -139,16 +137,19 @@ int16_t onk_snprint_rlex_arr(char * buf, uint16_t nbuf, enum onk_lexicon_t **arr
     return nbuf - remaining_bytes;
 }
 
-int16_t onk_snprint_tokarr_as_lexarr(char * buf, uint16_t nbuf, struct onk_token_t *arr, int16_t narr)
-{
+int32_t onk_snprint_tokarr_as_lexarr(
+    char * buf,
+    int32_t nbuf,
+    struct onk_token_t *arr,
+    int16_t narr
+){
     uint16_t remaining_bytes = nbuf;
     int16_t ptok_len = 0;
     assert(narr > 0);
 
     for(int16_t i=0; narr > i; i++)
     {
-
-        ptok_len = _onk_snprint_lex_arr(
+        ptok_len = onk_snprintf_lex_arr_inner(
             buf, remaining_bytes,
             arr[i].type);
 
@@ -161,8 +162,12 @@ int16_t onk_snprint_tokarr_as_lexarr(char * buf, uint16_t nbuf, struct onk_token
     return nbuf - remaining_bytes;
 }
 
-int16_t onk_snprint_rtokarr_as_lexarr(char * buf, uint16_t nbuf, struct onk_token_t **arr, int16_t narr)
-{
+int32_t onk_snprint_rtokarr_as_lexarr(
+    char * buf,
+    int32_t nbuf,
+    struct onk_token_t **arr,
+    int16_t narr
+){
     uint16_t remaining_bytes = nbuf;
     int16_t ptok_len = 0;
 
@@ -170,8 +175,7 @@ int16_t onk_snprint_rtokarr_as_lexarr(char * buf, uint16_t nbuf, struct onk_toke
 
     for(int16_t i=0; narr > i; i++)
     {
-
-        ptok_len = _onk_snprint_lex_arr(
+        ptok_len = onk_snprintf_lex_arr_inner(
             buf, remaining_bytes,
             arr[i]->type);
 

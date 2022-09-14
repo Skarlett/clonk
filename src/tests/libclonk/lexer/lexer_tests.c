@@ -13,9 +13,9 @@
 #define ignore_eof              4
 #define ignore_comments         8
 
-typedef unsigned char test_flag;
+typedef uint8_t test_flag;
 
-int8_t _filter_cfg(test_flag flags, enum onk_lexicon_t current, uint16_t tokens_len, unsigned char i)
+int8_t _filter_cfg(test_flag flags, enum onk_lexicon_t current, uint16_t tokens_len, uint8_t i)
 {
     if ((flags & ignore_whitespace && onk_is_tok_whitespace(current))
       ||(flags & ignore_eof && current == ONK_EOF_TOKEN)
@@ -30,7 +30,7 @@ void lexer_harness(
     struct onk_lexer_output_t *err_output,
     const char* const* src_code,
     enum onk_lexicon_t **answers,
-    unsigned char flags,
+    uint8_t flags,
     const char * fp,
     uint16_t line
 ){
@@ -44,7 +44,7 @@ void lexer_harness(
            sizeof(struct onk_vec_t));
 
 
-    for (unsigned char set=0; MAX_SETS > set; set++)
+    for (uint8_t set=0; MAX_SETS > set; set++)
     {
         if(src_code[set] == 0 || answers[set] == 0)
           return;

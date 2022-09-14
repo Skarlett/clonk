@@ -17,7 +17,7 @@ int8_t _onk_range_harness(
     uint16_t generated_sz)
 {
     enum onk_lexicon_t tok;
-    unsigned char answers_ctr = 0, idx=0;
+    uint8_t answers_ctr = 0, idx=0;
 
     if(answers == 0
        || failed_on == 0
@@ -173,7 +173,7 @@ void __test__illegal_tokens_length(CuTest *tc) {
     static const char *msg = "the amount of illegal tokens "  \
             "does not match ILLEGAL_TOKEN_LEN";
 
-    for(unsigned char i=0; UINT8_MAX > i; i++)
+    for(uint8_t i=0; UINT8_MAX > i; i++)
     {
         if(ILLEGAL_TOKENS[i] == 0)
         {

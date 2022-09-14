@@ -87,7 +87,7 @@ int8_t mk_symbol(
   struct onk_token_t *word_tok,
   const char * src_code
 ){
-  unsigned char size = word_tok->end - word_tok->start;
+  uint8_t size = word_tok->end - word_tok->start;
    
   memcpy(&ex->origin, word_tok, sizeof(struct onk_token_t));
   ex->type = SymExprT;
@@ -454,7 +454,7 @@ int parse_postfix_stage(
   struct Expr ex;
   bool add_expr = false;
 
-  unsigned char ret_flag = 0;
+  uint8_t ret_flag = 0;
   uint16_t i = 0;
   uint16_t argc = 0;
 

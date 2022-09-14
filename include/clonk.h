@@ -17,7 +17,7 @@
 // -DINCLUDE_TESTS 1
 #define ONK_INCLUDE_TESTS 0
 
-//typedef unsigned char bool;
+//typedef uint8_t bool;
 
 //#define true 1
 //#define false 0

@@ -48,7 +48,7 @@
 /*     switch(dtok->slot_type) */
 /*     { */
 /*         case onk_static_slot: */
-/*             return _onk_snprint_lex_arr( */
+/*             return onk_snprintf_lex_arr_inner( */
 /*                 buf, remaining_bytes, dtok->data.static_tok); */
 
 /*         case onk_dynamic_slot: */

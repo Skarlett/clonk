@@ -39,7 +39,6 @@ enum onk_lexicon_t {
     PH_ONK_DOLLAR_TRANSMISSION_TOKEN,
 
     /*  */
-
     PH_ONK_MARKER_TRANSITION_END,
 
     /**********************/
@@ -585,7 +584,7 @@ enum onk_lexicon_t onk_invert_brace(enum onk_lexicon_t token);
  * @param buffer collection to be searched
  * @return bool
  */
-//unsigned char onk_eq_any_tok(enum onk_lexicon_t cmp, enum onk_lexicon_t *buffer);
+//uint8_t onk_eq_any_tok(enum onk_lexicon_t cmp, enum onk_lexicon_t *buffer);
 
 
 /**
@@ -761,47 +760,58 @@ uint16_t onk_token_len(struct onk_token_t *tok);
 uint16_t onk_tokarr_len(struct onk_token_t *arr);
 uint16_t onk_lexarr_len(enum onk_lexicon_t *arr);
 
-int16_t onk_snprint_token(
+int32_t onk_snprint_token(
     char * buf,
     uint16_t max,
     const struct onk_token_t *token);
 
-int16_t onk_strlen_lex_arr(
+uint16_t onk_strlen_lex_arr(
     enum onk_lexicon_t *arr,
     uint16_t narr
 );
 
-int16_t onk_strlen_tok_arr(
+uint16_t onk_strlen_tok_arr(
     struct onk_token_t *arr,
     uint16_t narr
 );
 
-int16_t onk_snprint_lex_arr(
+/*
+**
+** Debug functions
+**
+*/
+int32_t onk_snprint_lex_arr(
     char * buf,
-    uint16_t nbuf,
+    int32_t nbuf,
     enum onk_lexicon_t *arr,
-    int16_t narr);
+    int16_t narr
+);
 
-int16_t onk_snprint_rlex_arr(
-    char * buf, uint16_t nbuf, enum onk_lexicon_t **arr,
-    int16_t narr);
-
-int16_t onk_snprint_tokarr_as_lexarr(
-    char * buf, uint16_t nbuf,
-    struct onk_token_t *arr, int16_t narr);
-
-int16_t onk_snprint_rtokarr_as_lexarr(
-    char * buf, uint16_t nbuf,
-    struct onk_token_t **arr, int16_t narr);
-
-int16_t _onk_snprint_lex_arr(
+int32_t onk_snprint_rlex_arr(
     char * buf,
-    uint16_t nbuf,
-    enum onk_lexicon_t token);
+    int32_t nbuf,
+    enum onk_lexicon_t **arr,
+    int16_t narr
+);
 
-int8_t onk_snprint_token_type(
+int32_t onk_snprint_tokarr_as_lexarr(
+    char * buf,
+    int32_t nbuf,
+    struct onk_token_t *arr,
+    int16_t narr
+);
+
+int32_t onk_snprint_rtokarr_as_lexarr(
+    char * buf,
+    int32_t nbuf,
+    struct onk_token_t **arr,
+    int16_t narr
+);
+
+uint32_t onk_snprint_token_type(
     char * buf,
     uint16_t max,
-    enum onk_lexicon_t token);
+    enum onk_lexicon_t token
+);
 
 #endif

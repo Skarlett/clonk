@@ -252,7 +252,7 @@ struct onk_parse_group_t {
     **         ^ After delimiter, check for `else`
     ** else y;
     **/
-    //unsigned char short_block;
+    //uint8_t short_block;
     //enum ShortBlock_t short_type;
 };
 
