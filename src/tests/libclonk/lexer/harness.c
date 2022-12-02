@@ -16,7 +16,7 @@ int8_t _onk_range_harness(
     uint16_t *ngenerated,
     uint16_t generated_sz)
 {
-    enum onk_lexicon_t tok;
+    enum onk_lexicon_t tok = 0;
     uint8_t answers_ctr = 0, idx=0;
 
     if(answers == 0
@@ -84,8 +84,8 @@ void onk_range_harness(
     char msg_buf[512];
     char header[128];
     enum onk_lexicon_t generated[MAX_HARNESS];
-    uint16_t ngen;
-    int8_t ret;
+    uint16_t ngen = 0;
+    int8_t ret = 0;
 
     ret = _onk_range_harness(
         answers, handler, &failed_on, generated, &ngen, MAX_HARNESS
@@ -197,7 +197,7 @@ bool test_handle_overflow(enum onk_lexicon_t _)
 void __test__lex_harness_overflow(CuTest *tc)
 {
     uint16_t failed_on = 0, ngenerated = 0;
-    int8_t ret;
+    int8_t ret=0;
 
     enum onk_lexicon_t generated[2];
     enum onk_lexicon_t wrong[] = {ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, 0};
@@ -216,7 +216,7 @@ void __test__lex_harness_overflow(CuTest *tc)
 void __test__lex_harness_empty_arr(CuTest *tc)
 {
     uint16_t failed_on = 0, ngenerated = 0;
-    int8_t ret;
+    int8_t ret=0;
     enum onk_lexicon_t generated[MAX_HARNESS];
     enum onk_lexicon_t answers[] = { 0 };
 
@@ -229,7 +229,7 @@ void __test__lex_harness_empty_arr(CuTest *tc)
 void __test__lex_harness_null_ptr(CuTest *tc)
 {
     uint16_t failed_on = 0, ngenerated = 0;
-    int8_t ret;
+    int8_t ret=0;
     enum onk_lexicon_t generated[MAX_HARNESS];
 
     ret = _onk_range_harness(0, test_handle_overflow, &failed_on,
@@ -247,7 +247,7 @@ bool bad_hook(enum onk_lexicon_t _)
 void __test__lex_harness_bad_hook(CuTest *tc)
 {
     uint16_t failed_on = 0, ngenerated = 0;
-    int8_t ret;
+    int8_t ret=0;
 
     enum onk_lexicon_t generated[2];
     enum onk_lexicon_t wrong[] = {
@@ -273,7 +273,7 @@ bool test_handle_succeed(enum onk_lexicon_t tok)
 
 void __test__lex_harness_succeed(CuTest *tc)
 {
-    int8_t ret;
+    int8_t ret=0;
     uint16_t failed_on = 0, ngenerated = 0;
     enum onk_lexicon_t generated[MAX_HARNESS];
     enum onk_lexicon_t answers[] = {
@@ -293,7 +293,7 @@ void __test__lex_harness_succeed(CuTest *tc)
 void __test__lex_harness_fail(CuTest *tc)
 {
     uint16_t failed_on = 0, ngenerated = 0;
-    int8_t ret;
+    int8_t ret=0;
 
     enum onk_lexicon_t generated[2];
     enum onk_lexicon_t wrong[] = {ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, 0};
@@ -406,10 +406,7 @@ void __test__is_tok_operator(CuTest *tc)
 
 void __test__is_tok_binop(CuTest *tc)
 {
-    enum onk_lexicon_t answers[] = {
-      0
-    };
-
+    enum onk_lexicon_t answers[] = {0};
     LexRangeHarness(tc, "", answers, onk_is_tok_binop);
 }
 
@@ -478,26 +475,20 @@ void __test__is_tok_asn_op(CuTest *tc)
 
 void __test__is_tok_group_modifier(CuTest *tc)
 {
-    enum onk_lexicon_t answers[] = {
-      0
-    };
-
+    enum onk_lexicon_t answers[] = {0};
     LexRangeHarness(tc, "", answers, onk_is_tok_group_modifier);
 }
 
 void __test__is_tok_group_ident(CuTest *tc)
 {
-    enum onk_lexicon_t answers[] = {
-      0
-    };
-
+    enum onk_lexicon_t answers[] = {0};
     LexRangeHarness(tc, "", answers, onk_is_group);
 }
 
 void __test__print_tokens(CuTest *tc)
 {
     static const char * no_name = "ONK_PTOKEN_UNKNOWN_TOKEN";
-    const char * name;
+    const char * name = 0;
     char msg[256];
 
     for(enum onk_lexicon_t i=PH_ONK_TOKEN_START; PH_ONK_TOKEN_END > i; i++)

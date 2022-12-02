@@ -6,11 +6,9 @@
 #include "clonk.h"
 #include "lexer.h"
 #include "parser.h"
-
-#define CUTEST_VERSION  "CuTest 1.5 - clonk derivation"
+#define CUTEST_VERSION  "CuTest 1.5"
 
 /* CuString */
-
 char* CuStrAlloc(int size);
 char* CuStrCopy(const char* old);
 
@@ -41,62 +39,26 @@ void CuStringDelete(CuString* str);
 typedef struct CuTest CuTest;
 typedef void (*CuTestFn)(CuTest *tc);
 
-struct onk_test_state_t {
-	/* Used for mock tests */
-	struct onk_parser_state_t parser;
-	uint16_t parser_i;
-
-
-	/* Initialized/heap Vec<struct Token> */
-	struct onk_vec_t src_tokens;
-
-	/* Initialized/heap Vec<struct Token> */
-	struct onk_vec_t postfix_token;
-
-	/* Initialized/heap Vec<struct onk_token_desc_t> */
-	struct onk_vec_t parser_expect;
-
-	/* Initialized/heap Vec<struct onk_token_desc_t> */
-	struct onk_vec_t lexer_expect;
-};
-
-typedef void (*ClonkTestFn)(CuTest *tc, struct onk_test_state_t *ptr);
-
-union TestFn {
-	CuTestFn norm;
-	ClonkTestFn buffered;
-};
-
-enum CuTestType {
-  ClonkTestType,
-  CuTestType,
-};
-
 struct CuTest
 {
-	enum CuTestType fntype;
-	union TestFn func;
-
 	char* name;
 	int failed;
 	int ran;
 	const char* message;
 	jmp_buf *jumpBuf;
+    CuTestFn func;
 };
 
 void CuTestInit(
 	CuTest* t,
 	const char* name,
-	enum CuTestType type,
-	union TestFn function
+    CuTestFn func
 );
 
-int8_t NewTestFn(union TestFn *dest, enum CuTestType type, void * fn);
-
-CuTest* CuTestNew(const char* name, enum CuTestType type,
+CuTest* CuTestNew(const char* name,
 	void * fn);
 
-void CuTestRun(CuTest* tc, struct onk_test_state_t *ptr);
+void CuTestRun(CuTest* tc);
 void CuTestDelete(CuTest *t);
 
 /* Internal versions of assert functions -- use the public versions */
@@ -137,11 +99,10 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc,
 #define MAX_TEST_CASES	1024
 
 /* stateless test */
-#define SUITE_ADD_TEST(SUITE,TEST) CuSuiteAdd(SUITE, CuTestNew(#TEST, CuTestType, TEST))
+#define SUITE_ADD_TEST(SUITE,TEST) CuSuiteAdd(SUITE, CuTestNew(#TEST, TEST))
 
 /* reuse big buffers if possible */
-/*  */
-#define SUITE_ADD_STATE_TEST(SUITE, TEST) CuSuiteAdd(SUITE, CuTestNew(#TEST, ClonkTestType, TEST))
+#define SUITE_ADD_STATE_TEST(SUITE, TEST) CuSuiteAdd(SUITE, CuTestNew(#TEST, TEST))
 
 typedef struct
 {
@@ -157,7 +118,7 @@ CuSuite* CuSuiteNew(void);
 void CuSuiteDelete(CuSuite *testSuite);
 void CuSuiteAdd(CuSuite* testSuite, CuTest *testCase);
 void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2);
-void CuSuiteRun(CuSuite* testSuite, struct onk_test_state_t *ptr);
+void CuSuiteRun(CuSuite* testSuite);
 void CuSuiteSummary(CuSuite* testSuite, CuString* summary);
 void CuSuiteDetails(CuSuite* testSuite, CuString* details);
 

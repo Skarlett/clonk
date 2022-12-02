@@ -7,6 +7,20 @@
 #include <stdio.h>
 #include <stdint.h>
 
+//#include <libunwind.h>
+/* void show_backtrace (void) { */
+/*   unw_cursor_t cursor; unw_context_t uc; */
+/*   unw_word_t ip, sp; */
+
+/*   unw_getcontext(&uc); */
+/*   unw_init_local(&cursor, &uc); */
+/*   while (unw_step(&cursor) > 0) { */
+/*     unw_get_reg(&cursor, UNW_REG_IP, &ip); */
+/*     unw_get_reg(&cursor, UNW_REG_SP, &sp); */
+/*     printf ("ip = %lx, sp = %lx\n", (long) ip, (long) sp); */
+/*   } */
+/* } */
+
 #define BANNER                                                  \
     "    {__    {__                   {__\r\n"                  \
     " {__   {__ {__                   {__\r\n"                  \
@@ -39,7 +53,7 @@ struct Opts {
 void init_opts(struct Opts *opts) {
     opts->print_ast=0;
     opts->print_tokens=0;
-}
+};
 
 void setup_opts(int argc, char *argv[], struct Opts *opts) {
     int skip = 0;
@@ -50,12 +64,12 @@ void setup_opts(int argc, char *argv[], struct Opts *opts) {
             continue;
         }
 
-        else if (strcmp(argv[i], "-V") == 0) {
+        else if (strncmp(argv[i], "-V", 3) == 0) {
             printf("%s\n", ONK_VERSION);
             exit(0);
         }
 
-        else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+        else if (strncmp(argv[i], "-h", 3) == 0 || strcmp(argv[i], "--help") == 0) {
             print_help(argv[0]);
             printf("\n");
             exit(0);
@@ -68,7 +82,6 @@ void setup_opts(int argc, char *argv[], struct Opts *opts) {
         else if (strcmp(argv[i], "-a") == 0) {
             opts->print_ast=1;
         }
-
     }
 }
 
@@ -78,6 +91,7 @@ int main(int argc, char* argv[]) {
     struct onk_lexer_input_t input;
     struct onk_lexer_output_t token_output;
 
+    struct onk_parser_state_t parser;
     struct onk_parser_input_t parser_input;
     struct onk_parser_output_t parser_output;
 
@@ -90,18 +104,18 @@ int main(int argc, char* argv[]) {
 
     init_opts(&opts);
     setup_opts(argc, argv, &opts);
-    
+
     if(onk_tokenize(&input, &token_output) == -1)
       return -1;
 
     for (i=0; token_output.tokens.len > i; i++)
-    {
-        printf("[%s] ", onk_ptoken(((struct onk_token_t *)token_output.tokens.base)[i].type));
-    }
+    { printf("[%s] ", onk_ptoken(((struct onk_token_t *)token_output.tokens.base)[i].type)); }
     puts("\n");
+    i=0;
 
     onk_parser_input_from_lexer_output(&token_output, &parser_input, false);
-    if(onk_parse(&parser_input, &parser_output) == -1)
+
+    if(onk_rc_parse(&parser_input, &parser_output) == -1)
       return -2;
 
     for (i=0; parser_output.postfix.len > i; i++)
@@ -114,5 +128,4 @@ int main(int argc, char* argv[]) {
     /*     return parse(argv[argc-1], &opts); */
     /* printf("bad arguments\n"); */
     return 1;
-
 }

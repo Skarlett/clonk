@@ -7,7 +7,7 @@
 #include "libtest/masking.h"
 #include "libtest/CuTest.h"
 
-int16_t print_expect_line(
+int32_t print_expect_line(
     CuTest *tc,
     char * buf,
     uint16_t nbuf,
@@ -20,9 +20,9 @@ int16_t print_expect_line(
 
     uint16_t spaces = 0;
     uint16_t underline = 0;
-    uint16_t nwrote;
+    int32_t nwrote = 0;
 
-    char * tail;
+    char * tail = 0;
 
     if(msg == 0)
         msg = "N/A";
@@ -71,7 +71,7 @@ int16_t print_expect_line(
     return nwrote;
 }
 
-int16_t onk_snprint_lex_err(
+int32_t onk_snprint_lex_err(
     CuTest *tc,
     char * buf,
     uint16_t nbuf,
@@ -81,7 +81,7 @@ int16_t onk_snprint_lex_err(
 ){
     uint16_t spaces = 0;
     uint16_t underline = 0;
-    int16_t nwrote;
+    int32_t nwrote = 0;
 
     uint16_t lex_sz =                                               \
         (onk_strlen_tok_arr(test->source, test->nsource) + 1) * sizeof(char);
@@ -91,7 +91,7 @@ int16_t onk_snprint_lex_err(
 
     char * lexicon_buf = malloc(lex_sz);
     char * expected_buf = malloc(expect_sz);
-    char * tail;
+    char * tail = 0;
 
     if(expect_sz + lex_sz > nbuf)
     {
@@ -153,13 +153,13 @@ int16_t onk_snprint_lex_err(
     return nwrote + 1;
 }
 
-int16_t kit_to_test(
+int32_t kit_to_test(
     struct onk_stage_test *test,
     struct onk_test_mask_t *kit,
     uint16_t fmt_i
 ){
 
-    uint16_t i;
+    uint16_t i = 0;
 
     for(i=0; kit->narr > i; i++)
     {
@@ -196,7 +196,6 @@ int16_t kit_to_test(
 int8_t onk_init_test(
     struct onk_stage_test *test,
     struct onk_test_mask_t *kit,
-    const char * src_code,
     struct onk_token_t *source_arr,
     uint16_t nsource,
     enum onk_lexicon_t *expected,
@@ -206,9 +205,8 @@ int8_t onk_init_test(
     uint16_t line
 
 ) {
-    int16_t flag = 0;
+    int32_t flag = 0;
     test->source = source_arr;
-    test->src_code = src_code;
     test->nsource = nsource;
     test->expected = expected;
     test->expected_sz = expected_sz;
@@ -276,9 +274,7 @@ int8_t _assert_narr_eql(
     struct onk_test_mask_t *kit,
     struct onk_stage_test *test
 ){
-    const char *fmt_buf;
-
-    fmt_buf = "nsource doesn't match mask. %s:%u";
+    const char *fmt_buf = "nsource doesn't match mask. %s:%u";
     if (snprintf(buf, nbuf, fmt_buf, test->line, test->fp) > nbuf)
     {
         handle_overflow_msg(tc, buf, nbuf, test->line, test->fp);
@@ -296,16 +292,15 @@ int8_t _assert_narr_eql(
     return 0;
 }
 
-int16_t match_type(
+int32_t match_type(
     CuTest *tc,
     char * buf,
     uint16_t nbuf,
     struct onk_stage_test *test,
     struct onk_test_mask_t *kit
-)
-{
-    const char *msg;
-    int16_t wrote;
+){
+    const char *msg = 0;
+    int32_t wrote = 0;
 
     for(uint16_t i=0; test->nsource > i; i++)
     {
@@ -353,7 +348,7 @@ int8_t handle_inspect_slot(
     struct onk_token_t *input)
 {
     uint8_t flags = 0;
-    struct onk_token_t *tok;
+    struct onk_token_t *tok = 0;
 
     flags = insp->ignore_flags;
     tok = &insp->token;
@@ -375,7 +370,7 @@ int8_t match_inspection(
     char got[128];
     char expected[128];
 
-    struct onk_desc_inspect_token_t *insp;
+    struct onk_desc_inspect_token_t *insp = 0;
     uint16_t idx = 0;
 
     for (uint8_t i=0; test->ninspect > i; i++)
@@ -412,7 +407,6 @@ int8_t onk_assert_match(
     uint16_t ninput,
     uint16_t iter,
 
-    const char * src_code,
     char * filepath,
     uint16_t line
 ){
@@ -422,7 +416,6 @@ int8_t onk_assert_match(
 
     onk_init_test(
         &test, kit,
-        src_code,
         input, ninput,
         expected, 64,
         iter,
@@ -441,7 +434,6 @@ int8_t onk_assert_match(
         return -1;
     }
 
-
     return match_inspection(tc, &test, kit);
 }
 
@@ -454,7 +446,7 @@ int8_t onk_assert_tokenize(
     char * fp,
     uint16_t line
 ){
-    int ret;
+    int ret = 0;
     char buf[512];
 
     ret = onk_tokenize(lexer_input, lexer_output);
@@ -470,7 +462,7 @@ int8_t onk_assert_tokenize(
         tc,
         kit,
         lexer_output->tokens.base,
-        lexer_input->tokens.len,
+        lexer_output->tokens.len,
         iter,
         lexer_input->src_code,
         fp,
@@ -487,11 +479,11 @@ int8_t onk_assert_postfix(
     char * fp,
     uint16_t line
 ){
-    int ret;
+    int ret = 0;
     char buf[512];
 
     snprintf(buf, 512, "Failed parsing stage %s:%u", fp, line);
-    ret = onk_parse(input, output);
+    ret = onk_rc_parse(input, output);
 
     if(ret != 0)
     {
@@ -526,7 +518,7 @@ int8_t onk_assert_parse_stage(
     struct onk_parser_input_t parser_input;
     struct onk_parser_output_t parser_output;
 
-    int8_t ret;
+    int8_t ret = 0;
 
     ret = onk_assert_tokenize(
         tc,

@@ -52,6 +52,7 @@ void test_whitespace_filter(CuTest *tc)
       ONK_WORD_TOKEN
     };
     const char * src = "word word";
+
     onk_desc_init(&test, (void *)tokens, 3);
     onk_desc_add_static_slot(&test, tok, 2);
     onk_assert_match(tc, &test, tokens, 2, 0, src, "NA", 0);
@@ -74,10 +75,8 @@ void notest(CuTest *tc)
 }
 
 #define _OVERFLOW_SZ 255
-void fail_on_msg_overflow(CuTest *tc, struct onk_test_state_t buffers)
+void fail_on_msg_overflow(CuTest *tc)
 {
-    union TestFn func;
-
     struct onk_test_mask_t test;
     uint16_t msg_sz=0, msg_cursor=0;
 
@@ -90,25 +89,11 @@ void fail_on_msg_overflow(CuTest *tc, struct onk_test_state_t buffers)
     struct onk_token_t tokens[3];
     CuTest inner;
 
-    NewTestFn(&func, CuTestType, notest);
-    CuTestInit(&inner, "overflow_test",
-               CuTestType, func);
-
+    CuTestInit(&inner, "overflow_test", notest);
     onk_desc_add_static_slot(&test, tok, 3);
     onk_assert_match(&inner, &test, tokens, 3, 0, "word word", "Test", 0);
-
     CuAssertTrue(tc, inner.failed == 1);
 }
-
-void fail_on_empty_mask(CuTest *tc)
-{
-    CuTest dummy;
-    struct onk_test_mask_t mask;
-
-    //onk_desc_init(&mask, );
-
-}
-
 
 void example(CuTest *tc)
 {
@@ -128,7 +113,7 @@ void example(CuTest *tc)
 
     onk_desc_init(&lexer, (struct onk_desc_token_t *)lex_buf, 12);
     onk_desc_init(&parser, (struct onk_desc_token_t *)parse_buf, 12);
-    onk_vec_init(&tokens, 32, sizeof(struct onk_token_t));
+    onk_vec_new(&tokens, 32, sizeof(struct onk_token_t));
 
     build_test_mold_kit(&parser, &lexer);
     //lexer_input.tokens = tokens;
@@ -149,7 +134,6 @@ CuSuite* OnkMaskAssertSuite(void)
 
     SUITE_ADD_TEST(suite, test_static_slot);
     SUITE_ADD_TEST(suite, test_whitespace_filter);
-    SUITE_ADD_TEST(suite, fail_on_empty_mask);
 
     SUITE_ADD_STATE_TEST(suite, fail_on_msg_overflow);
     return suite;

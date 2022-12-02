@@ -57,7 +57,7 @@ int onk_desc_add_dynamic_slot(
     enum onk_lexicon_t *answers,
     uint16_t nanswers)
 {
-    struct onk_desc_token_t *dtok;
+    struct onk_desc_token_t *dtok=0;
 
     if(kit->sarr > kit->narr)
         return -1;
@@ -79,8 +79,8 @@ int8_t onk_desc_add_static_repeating_slot(
 {
     bool overflow = false;
     struct onk_desc_token_t descriptor;
-    struct onk_desc_token_t *ptr;
-
+    struct onk_desc_token_t *ptr = 0;
+    
     if(onk_add_u16(kit->narr, ntimes, &overflow) >= kit->sarr
        && overflow == 0)
         return -1;
@@ -104,7 +104,7 @@ int8_t onk_desc_add_repeating_slot(
 )
 {
     bool overflow = false;
-    struct onk_desc_token_t *ptr;
+    struct onk_desc_token_t *ptr=0;
 
     if(onk_add_u16(kit->narr, ntimes, &overflow) >= kit->sarr
        && overflow == 0)

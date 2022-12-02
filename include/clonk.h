@@ -36,8 +36,8 @@
 #define SYS_ARCH_IF_64_BIT( x64, x86, x16 ) (x64)
 #define onk_str_to_isize strtoll
 #define onk_str_to_usize strtoull
-#define onk_isize_sz sizeof()
 #define onk_usize_sz sizeof(uint64_t)
+#define onk_ptr_sz sizeof(void *)
 typedef uint64_t onk_usize;
 typedef int64_t onk_isize;
 
@@ -111,6 +111,7 @@ typedef int16_t onk_isize;
 
 #define unimplemented() fputs(stdout, "unimplemented") && exit(127)
 #define panic() fputs(stdout, "panic") && exit(127)
+
 
 /* enum onk_datatype { ONK_DATA_STR }; */
 /* struct onk_rt_gc {}; */

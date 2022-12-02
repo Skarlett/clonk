@@ -544,7 +544,7 @@ uint16_t onk_semantic_compile(
   return total;
 }
 
-void onk_semantic_next_frame(
+void onk_semantic_build_frame(
   struct validator_frame_t *validator,
   struct onk_parser_state_t*state
 ){

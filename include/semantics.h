@@ -84,8 +84,7 @@ uint16_t onk_semantic_compile(
   struct onk_parser_state_t *state
 );
 
-void onk_semantic_next_frame(
-  struct validator_frame_t *validator,
+int8_t onk_semantic_build_frame(
   struct onk_parser_state_t *state
 );
 

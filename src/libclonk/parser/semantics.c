@@ -17,7 +17,7 @@ const enum onk_lexicon_t CATCH_GRP_B[] = {ONK_STRING_LITERAL_TOKEN};
 const enum onk_lexicon_t CATCH_GRP_C[] = {ONK_BRACE_CLOSE_TOKEN};
 const enum onk_lexicon_t CATCH_GRP_D[] = {ONK_TRUE_TOKEN, ONK_FALSE_TOKEN, ONK_INTEGER_TOKEN};
 
-const enum onk_lexicon_t * CATCH[] = {
+const enum onk_lexicon_t * const CATCH[] = {
     CATCH_GRP_A,
     CATCH_GRP_B,
     CATCH_GRP_C,
@@ -35,7 +35,7 @@ const enum onk_lexicon_t SET_GRP_A[] = {_EX_ASN_OPERATOR};
 const enum onk_lexicon_t SET_GRP_B[] = {ONK_DOT_TOKEN};
 const enum onk_lexicon_t SET_GRP_C[] = {ONK_BRACKET_OPEN_TOKEN, ONK_PARAM_OPEN_TOKEN};
 const enum onk_lexicon_t SET_GRP_D[] = {_EX_BIN_OPERATOR};
-const enum onk_lexicon_t * SET[] = {
+const enum onk_lexicon_t * const SET[] = {
     SET_GRP_A,
     SET_GRP_B,
     SET_GRP_C,
@@ -62,7 +62,7 @@ void vframe_add_slice(
 enum onk_lexicon_t vframe_add_delimiter(struct onk_parser_state_t * state)
 {
   struct onk_parse_group_t *ghead = group_head(state);
-  const struct onk_token_t *gmod;
+  const struct onk_token_t *gmod = 0;
   // wtf?
   //const struct onk_token_t *gmod = group_modifier(state, ghead);
 
@@ -118,7 +118,7 @@ void vframe_add_operators(
     for(int8_t i=catch;
         ROWS > i;
         i++
-    ) vframe_add_slice(f, SET[i], ISET[i]);
+    ) vframe_add_slice(f, (void *)SET[i], ISET[i]);
 }
 
 void init_frame(
@@ -166,17 +166,19 @@ uint16_t onk_semantic_compile(
     slice_sz = sizeof(enum onk_lexicon_t) * slice_len;
 
     assert(_ONK_SEM_CHK_SZ > total + slice_len);
-
     assert(memcpy(
-      (onk_usize)state->expect + total,
-      frame->slices[i], slice_sz) > 0);
+      state->expect + total,
+      frame->slices[i], slice_sz
+    ));
 
     total += slice_sz;
   }
 
+  /* Add delimiter to possible tokens  */
   if (frame->set_delim)
     state->expect[total++] = vframe_add_delimiter(state);
 
+  /* Add closing-brace to possible tokens  */
   if (frame->set_brace)
     state->expect[total++] = onk_invert_brace(ghead->origin->type);
 
@@ -288,7 +290,6 @@ bool explicit_block(
         && onk_is_tok_unit(current));
 }
 
-
 // x {y=expr, z=expr}
 int8_t struct_init_mode(
   struct validator_frame_t *frame,
@@ -372,7 +373,7 @@ int8_t parameter_mode(
     }
 }
 
-int8_t build_next_frame(struct onk_parser_state_t *state)
+int8_t onk_semantic_build_frame(struct onk_parser_state_t *state)
 {
   const struct onk_token_t *current = current_token(state);
   const struct onk_token_t *ophead = op_head(state);
@@ -383,7 +384,7 @@ int8_t build_next_frame(struct onk_parser_state_t *state)
   int8_t ctx_flag = 0;
   int8_t expr_precedense = get_precedence_expr(current->type);
 
-  init_validator_frame(&frame, state);
+  init_frame(state, &frame);
 
   if (ophead->type == onk_defsig_op_token)
   {

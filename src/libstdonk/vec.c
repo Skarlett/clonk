@@ -1,41 +1,80 @@
 #include "clonk.h"
 #include "onkstd/vec.h"
 #include "onkstd/int.h"
+#include <stdint.h>
 
 #define VEC_INC_NORM 256
 #define VEC_INC_HUGE 8192
-#define VEC_MAX 1 << 14
+#define VEC_MAX_CAPACITY 1 << 14
 
-int8_t can_access(struct onk_vec_t *vec)
-{ return vec->state == ONK_VEC_READY; }
 
-int8_t onk_vec_init(
+int can_access(const struct onk_vec_t *vec)
+{ return vec->state == onk_vec_mode_alloc_stack || vec->state == onk_vec_mode_alloc_heap; }
+
+
+void onk_vec_init(struct onk_vec_t *vec)
+{
+    vec->type_sz = 0;
+    vec->base = 0;
+    vec->capacity = 0;
+    vec->len = 0;
+    vec->clamp = VEC_MAX_CAPACITY;
+    vec->state = onk_vec_mode_uninit;
+    vec->inc = 0;
+}
+
+void _onk_vec_alloc(
+    struct onk_vec_t *vec,
+    enum onk_vec_mode_t flag,
+    uint16_t capacity,
+    uint16_t type_sz)
+{
+    vec->type_sz = type_sz;
+    vec->capacity = capacity;
+    vec->state = flag;
+}
+
+void onk_vec_alloc_heap(
     struct onk_vec_t *vec,
     uint16_t capacity,
     uint16_t type_sz
 ){
-    vec->type_sz = type_sz;
+    _onk_vec_alloc(vec, capacity, type_sz, onk_vec_mode_alloc_heap);
     vec->base = calloc(capacity, type_sz);
-    vec->capacity = capacity;
-    vec->len = 0;
-    vec->inc = 0;
-    vec->clamp = VEC_MAX;
-    vec->state = ONK_VEC_READY;
-    
-    if (vec->base == 0)
-        return -1;
+}
 
-    return 0;
+void onk_vec_alloc_stk(struct onk_vec_t *vec, void *stack_ptr, uint16_t capacity, uint16_t type_sz)
+{
+    _onk_vec_alloc(vec, capacity, type_sz, onk_vec_mode_alloc_heap);
+    vec->base = stack_ptr;
+}
+
+void onk_vec_new(
+    struct onk_vec_t *vec,
+    uint16_t capacity,
+    uint16_t type_sz
+){
+    onk_vec_init(vec);
+    onk_vec_alloc_heap(vec, capacity, type_sz);
+    assert(vec->base);
+}
+
+void onk_vec_new_stk(
+    struct onk_vec_t *vec,
+    void *stack_ptr,
+    uint16_t capacity,
+    uint16_t type_sz
+){
+    onk_vec_init(vec);
+    onk_vec_alloc_stk(vec, stack_ptr, capacity, type_sz);
 }
 
 /*
-**
 ** returns -3 if marked as unallocated/freed
 **         -2 if `inc` added to `vec->capacity` overflows unsigned 16bit
 **         -1 if `new_capacity >= vec->clamp_at`
 **          0 if realloc returned null-ptr or `errno==ENOMEM`
 **          1 if successful
-**
 */
 int8_t onk_vec_realloc(struct onk_vec_t *vec, uint16_t inc)
 {
@@ -44,12 +83,17 @@ int8_t onk_vec_realloc(struct onk_vec_t *vec, uint16_t inc)
     uint16_t new_capacity = \
         onk_add_u16(vec->capacity, inc, &overflowed);
 
-    /* double free? */
-    if(!can_access(vec))
-        return -3;
+    if(vec->state == onk_vec_mode_alloc_stack)
+    {
+        struct onk_vec_t heap_vec;
+        onk_vec_deep_copy(&heap_vec, vec);
+        return 1;
+    }
+
+    assert(vec->state == onk_vec_mode_alloc_heap);
 
     /* will overflow */
-    else if(overflowed)
+    if(overflowed)
         return -2;
 
     /* limited by clamp */
@@ -75,10 +119,10 @@ int8_t onk_vec_realloc(struct onk_vec_t *vec, uint16_t inc)
     return 1;
 }
 
-
 int8_t _resize(struct onk_vec_t *dest)
 {
-    int8_t ret;
+    int8_t ret = 0;
+
     /* reallocate */
     if(dest->inc > 0)
         ret = onk_vec_realloc(dest, dest->inc);
@@ -94,15 +138,12 @@ int8_t _resize(struct onk_vec_t *dest)
 
 void * _push(struct onk_vec_t *dest, const void *src)
 {
-
-    void * item = (onk_usize)dest->base + (onk_usize)(dest->len * dest->type_sz);
-
+    void * item = dest->base + dest->len * dest->type_sz;
     assert(memcpy(
             item,
             src,
             dest->type_sz) > 0
     );
-
     dest->len += 1;
     return item;
 }
@@ -114,8 +155,8 @@ void * _push(struct onk_vec_t *dest, const void *src)
 */
 void * onk_vec_push(struct onk_vec_t *dest, const void *src)
 {
-    if(can_access(dest) == false)
-        return 0;
+    assert(can_access(dest));
+    assert(src);
 
     /* write into buffer */
     if(dest->capacity > dest->len)
@@ -129,42 +170,35 @@ void * onk_vec_push(struct onk_vec_t *dest, const void *src)
     return _push(dest, src);
 }
 
-
-/*
-
-*/
-void * onk_vec_copy(struct onk_vec_t *dest, const struct onk_vec_t *src)
+void * onk_vec_copy(
+    struct onk_vec_t *dest,
+    const struct onk_vec_t *src)
 {
-    if(can_access(dest) == true || can_access(src) == false)
-        return 0;
-
+    assert(can_access(dest));
+    assert(can_access(src));
     return memcpy(dest, src, sizeof(struct onk_vec_t));
 }
 
-/*
-
-*/
 void * onk_vec_deep_copy(struct onk_vec_t *dest, const struct onk_vec_t *src)
 {
-
+    assert(can_access(dest));
+    assert(can_access(src));
     if (onk_vec_copy(dest, src) == 0)
         return 0;
 
-    dest->base = malloc(src->type_sz * src->capacity);
-    
+    dest->base = calloc(src->capacity, src->type_sz);
+    dest->state = onk_vec_mode_alloc_heap;
     if(dest->base == 0) 
       return 0;
 
     return memcpy(dest->base, src->base, src->type_sz * src->len);
 }
 
-
 /*
 ** Push item into expandable buffer
 ** returns pointer to item in expandable buffer
 ** otherwise returns 0 to indicate error.
 */
-
 /* int8_t onk_vec_extend(struct onk_vec_t *dest, struct onk_vec_t *src) */
 /* { */
 /*     onk_unimplemented(); */
@@ -187,12 +221,11 @@ void * onk_vec_deep_copy(struct onk_vec_t *dest, const struct onk_vec_t *src)
 */
 const void * onk_vec_head(const struct onk_vec_t *vec)
 {
+    assert(can_access(vec));
     if (vec->len > 0)
         return vec->base + vec->type_sz * vec->len - 1;
     return 0;
 }
-
-
 /*
 ** copy last inserted item from expandable buffer
 ** into `dest`, and remove the item from buffer.
@@ -204,45 +237,47 @@ const void * onk_vec_head(const struct onk_vec_t *vec)
 */
 int8_t onk_vec_pop(struct onk_vec_t *vec, void * dest) {
     const void *head = onk_vec_head(vec);
-
-    if (head == 0 || dest == 0)
-        return -1;
-
-    else if (memcpy(dest, head, vec->type_sz) == 0)
-        return -1;
-
+    assert(head != 0 || dest != 0);
+    assert(memcpy(dest, head, vec->type_sz));
     vec->len -= 1;
+
     return 0;
 }
 
-/*
-** clears expandable buffer.
- */
-void onk_vec_clear(struct onk_vec_t *vec)
-{ vec->len = 0; }
+void onk_vec_move(struct onk_vec_t *dest, struct onk_vec_t *src)
+{
+    assert(src->state == onk_vec_mode_uninit);
+    onk_vec_copy(dest, src);
+    src->state = onk_vec_mode_free;
+}
 
-void onk_vec_clamp(struct onk_vec_t *vec, uint16_t max)
-{ vec->clamp = max; }
+void onk_vec_clear(struct onk_vec_t *vec){
+    vec->len = 0;
+}
 
-/*
-** clears expandable buffer.
-**
-** returns -1 if vector not initalized
-*/
-void onk_vec_reset(struct onk_vec_t *vec) {
+void onk_vec_clamp(struct onk_vec_t *vec, uint16_t max){
+    vec->clamp = max;
+}
+
+void onk_vec_reset(struct onk_vec_t *vec){
     vec->len = 0;
     vec->type_sz = 0;
     vec->clamp = 0;
 }
 
-int8_t onk_vec_free(struct onk_vec_t *vec) {
-    if(!can_access(vec))
-        return -1;
-
-    free(vec->base);
+void onk_vec_free(struct onk_vec_t *vec)
+{
+    
+    if (vec->state == onk_vec_mode_alloc_stack)
+      onk_nop;
+    else {
+        assert(can_access(vec));
+        free(vec->base);
+    }
+    
     onk_vec_reset(vec);
-    vec->state = ONK_VEC_UNINIT;
+    vec->state = onk_vec_mode_free;
+    
     vec->base = 0;
     vec->capacity = 0;
-    return 0;
 }

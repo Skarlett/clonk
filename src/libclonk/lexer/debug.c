@@ -2,6 +2,29 @@
 #include <stdio.h>
 #include "lexer.h"
 
+uint32_t onk_snprintf_lex_arr_inner(
+    char * buf,
+    uint16_t nbuf,
+    enum onk_lexicon_t token
+){
+    char working_buf[ONK_TOK_CHAR_SIZE];
+    const char * ptoken = onk_ptoken(token);
+    uint32_t ptoken_len = strlen(ptoken) + 3;
+
+    if (ptoken_len >= nbuf)
+        return -1;
+
+    snprintf(working_buf, ONK_TOK_CHAR_SIZE, "[%s] ", ptoken);
+
+    strncat(
+        buf,
+        working_buf,
+        nbuf
+    );
+
+    return ptoken_len;
+}
+
 uint32_t onk_snprint_token_type(
     char * buf,
     uint16_t buf_max,
@@ -63,37 +86,14 @@ uint16_t onk_strlen_tok_arr(
     return sum;
 }
 
-uint32_t onk_snprint_lex_arr_inner(
-    char * buf,
-    uint16_t nbuf,
-    enum onk_lexicon_t token
-){
-    char working_buf[ONK_TOK_CHAR_SIZE];
-    const char * ptoken = onk_ptoken(token);
-    uint32_t ptoken_len = strlen(ptoken) + 3;
-
-    if (ptoken_len >= nbuf)
-        return -1;
-
-    snprintf(working_buf, ONK_TOK_CHAR_SIZE, "[%s] ", ptoken);
-
-    strncat(
-        buf,
-        working_buf,
-        nbuf
-    );
-
-    return ptoken_len;
-}
-
 int32_t onk_snprint_lex_arr(
     char * buf, 
     int32_t nbuf,
     enum onk_lexicon_t *arr,
     int16_t narr
 ){
-    int32_t remaining_bytes = nbuf;
-    int32_t ptok_len = 0;
+    uint32_t remaining_bytes = nbuf;
+    uint32_t ptok_len = 0;
 
     assert(narr > 0);
 
@@ -109,7 +109,8 @@ int32_t onk_snprint_lex_arr(
         remaining_bytes -= ptok_len;
     }
 
-    return nbuf - remaining_bytes;
+    /*FIXME: Fix bad type conversion - i was lazy*/
+    return (int32_t)(nbuf - remaining_bytes);
 }
 
 int32_t onk_snprint_rlex_arr(
@@ -119,7 +120,7 @@ int32_t onk_snprint_rlex_arr(
     int16_t narr
 ){
     uint16_t remaining_bytes = nbuf;
-    int16_t ptok_len = 0;
+    uint32_t ptok_len = 0;
 
     assert(narr > 0);
 
@@ -127,7 +128,8 @@ int32_t onk_snprint_rlex_arr(
     {
         ptok_len = onk_snprintf_lex_arr_inner(
             buf, remaining_bytes,
-            *arr[i]);
+            *arr[i]
+        );
 
         if(-1 >= ptok_len)
             return -1;
@@ -144,7 +146,7 @@ int32_t onk_snprint_tokarr_as_lexarr(
     int16_t narr
 ){
     uint16_t remaining_bytes = nbuf;
-    int16_t ptok_len = 0;
+    uint32_t ptok_len = 0;
     assert(narr > 0);
 
     for(int16_t i=0; narr > i; i++)
@@ -169,7 +171,7 @@ int32_t onk_snprint_rtokarr_as_lexarr(
     int16_t narr
 ){
     uint16_t remaining_bytes = nbuf;
-    int16_t ptok_len = 0;
+    uint32_t ptok_len = 0;
 
     assert(narr > 0);
 

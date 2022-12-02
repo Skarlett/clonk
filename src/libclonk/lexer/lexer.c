@@ -40,7 +40,6 @@ struct LexerStage {
     uint16_t cmpd_span_size;
     uint16_t cmpd_start_at;
 
-    
     /* struct onk_vec_t<onk_lexer_error_t> */
     struct onk_vec_t errors;
 
@@ -62,7 +61,7 @@ void init_lexer_stage(
   stage->i = i;
   stage->src_code = src_code;
 
-  onk_vec_init(&stage->tokens, 2048, sizeof(struct onk_token_t));
+  onk_vec_new(&stage->tokens, 2048, sizeof(struct onk_token_t));
 
   onk_init_queue8(
     &stage->previous,

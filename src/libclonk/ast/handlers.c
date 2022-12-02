@@ -442,7 +442,7 @@ int inc_stack(struct PostfixStageState *stage, struct Expr *ex)
 
 int init_postfix_stage(struct PostfixStageState *stage) {
     stage->stack_ctr = 0;
-    onk_vec_init(&stage->pool, 2048, sizeof(struct Expr));
+    onk_vec_new(&stage->pool, 2048, sizeof(struct Expr));
 }
 
 int parse_postfix_stage(

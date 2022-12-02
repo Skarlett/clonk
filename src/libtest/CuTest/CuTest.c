@@ -14,43 +14,23 @@
 void CuTestInit(
 	CuTest* t,
 	const char* name,
-	enum CuTestType type,
-	union TestFn function)
+	CuTestFn func)
 {
 	t->name = CuStrCopy(name);
 	t->failed = 0;
 	t->ran = 0;
 	t->message = NULL;
-	t->fntype = type;
-	t->func = function;
 	t->jumpBuf = NULL;
+    t->func = func;
 }
 
-int8_t NewTestFn(union TestFn *dest, enum CuTestType type, void * fn)
-{
-	switch(type)
-	{
-		case CuTestType:
-			dest->norm = fn;
-			break;
-		case ClonkTestType:
-			dest->buffered = fn;
-			break;
 
-		default: return -1;
-	}
-	return 0;
-}
 CuTest* CuTestNew(
 	const char* name,
-	enum CuTestType type,
 	void * fn)
 {
-	union TestFn func;
-	NewTestFn(&func, type, fn);
-
 	CuTest* tc = CU_ALLOC(CuTest);
-	CuTestInit(tc, name, type, func);
+	CuTestInit(tc, name, fn);
 	return tc;
 }
 
@@ -61,17 +41,7 @@ void CuTestDelete(CuTest *t)
         free(t);
 }
 
-void _reset(struct onk_test_state_t * state) {
-	state->parser_i = 0;
-	onk_parser_reset(&state->parser);
-
-	onk_vec_clear(&state->src_tokens);
-	onk_vec_clear(&state->postfix_token);
-	onk_vec_clear(&state->parser_expect);
-	onk_vec_clear(&state->lexer_expect);
-}
-
-void CuTestRun(CuTest* tc, struct onk_test_state_t *ptr)
+void CuTestRun(CuTest* tc)
 {
 	jmp_buf buf;
 	tc->jumpBuf = &buf;
@@ -79,19 +49,7 @@ void CuTestRun(CuTest* tc, struct onk_test_state_t *ptr)
 	if (setjmp(buf) == 0)
 	{
 		tc->ran = 1;
-		switch (tc->fntype)
-		{
-			case ClonkTestType:
-				_reset(ptr);
-				(tc->func.buffered)(tc, ptr);
-				break;
-			case CuTestType:
-				(tc->func.norm)(tc);
-				break;
-		    default:
-				CuFail(tc, "Misconfigured Test");
-				break;
-		}
+		(tc->func)(tc);
 	}
 	printf("RAN: %s\n", tc->name);
 	tc->jumpBuf = 0;

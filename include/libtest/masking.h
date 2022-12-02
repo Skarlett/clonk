@@ -47,18 +47,16 @@ struct onk_desc_token_t {
 #define ONK_TEST_INSP_SZ 64
 
 struct onk_stage_test {
-    const char * src_code;
     const char * fp;
 
     struct onk_token_t *source; // lexed||parsed
-    enum onk_lexicon_t *expected;
+    uint16_t nsource;
+    uint16_t source_sz;
 
     uint16_t inspect_arr[ONK_TEST_INSP_SZ];
     uint8_t ninspect;
 
-    uint16_t nsource;
-    uint16_t source_sz;
-
+    enum onk_lexicon_t *expected;
     uint16_t nexpected;
     uint16_t expected_sz;
 

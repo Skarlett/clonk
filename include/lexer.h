@@ -519,10 +519,8 @@ struct onk_lexer_input_t {
 struct onk_lexer_output_t {
     const char * src_code;
     uint16_t src_code_sz;
-
     /* Vec<onk_token_t> */
     struct onk_vec_t tokens;
-
     /* Vec<onk_lexer_error_t> */
     struct onk_vec_t errors;
 };

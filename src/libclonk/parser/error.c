@@ -67,7 +67,7 @@ bool run_hook(enum onk_lexicon_t current){
 void restoration_hook(struct onk_parser_state_t*state)
 {
     struct onk_parser_snapshot_t rframe;
-    const struct onk_token_t *current = &state->src[*state->_i];
+    const struct onk_token_t *current = &state->tokens[*state->_i];
 
     if (run_hook(current->type))
     {
@@ -82,7 +82,7 @@ void restoration_hook(struct onk_parser_state_t*state)
         /* debug = Vec<struct onk_token_t*> */
         rframe.operator_stack_tok = state->operator_stack[state->operators_ctr];
         rframe.output_tok = onk_vec_head(&state->debug);
-        rframe.current = &state->src[*state->_i];
+        rframe.current = &state->tokens[*state->_i];
 
         onk_vec_push(&state->restoration_stack, &rframe);
     }
@@ -99,9 +99,9 @@ uint16_t recover_cursor(
     if (preloop)
         start += 1;
 
-     for (continue_ctr=start; state->src_sz > continue_ctr; continue_ctr++)
+     for (continue_ctr=start; state->token_len > continue_ctr; continue_ctr++)
      {
-       if (is_continuable(state->src[continue_ctr].type))
+       if (is_continuable(state->tokens[continue_ctr].type))
          return continue_ctr;
      }
 
@@ -159,7 +159,7 @@ void unwind_stacks(struct onk_parser_state_t*state)
 }
 
 void mk_window_union(
-    struct ParserError *err,
+    struct onk_parser_err_t *err,
     struct onk_token_t start,
     struct onk_token_t end
 ){
@@ -169,7 +169,7 @@ void mk_window_union(
 }
 
 void mk_window_scalar(
-    struct ParserError *err,
+    struct onk_parser_err_t *err,
     struct onk_token_t token
 ){
     err->window.type = Scalar;
@@ -177,7 +177,7 @@ void mk_window_scalar(
 }
 
 int8_t mk_window(
-    struct ParserError *err,
+    struct onk_parser_err_t *err,
     struct onk_parser_state_t*state,
     const struct onk_token_t *start,
     uint16_t ctr)
@@ -188,12 +188,12 @@ int8_t mk_window(
     //
     assert(ctr != 0);
 
-    if (ctr == state->src_sz)
+    if (ctr == state->token_len)
         return -1;
 
     else if (ctr - *state->_i > 1)
     {
-        mk_window_union(err, *start, state->src[ctr - 1]);
+        mk_window_union(err, *start, state->tokens[ctr - 1]);
         *state->_i = ctr;
     }
     else
@@ -226,7 +226,7 @@ int8_t handle_unwind(
 ){
     const struct onk_token_t *start;
     struct onk_partial_err_t *perr;
-    struct ParserError err;
+    struct onk_parser_err_t err;
 
     struct UnexpectedTokError unexpected_tok;
     uint16_t continue_ctr = 0;
@@ -236,9 +236,9 @@ int8_t handle_unwind(
     /* all other errors complete the main
     ** loop before panicing
     */
-    start = &state->src[*state->_i - 1];
+    start = &state->tokens[*state->_i - 1];
     if (preloop)
-        start = &state->src[*state->_i];
+        start = &state->tokens[*state->_i];
 
 
     continue_ctr = recover_cursor(state, preloop);
@@ -246,17 +246,14 @@ int8_t handle_unwind(
     unwind_stacks(state);
     mk_window(&err, state, start, continue_ctr);
 
-
     err.error.unexpected_tok = unexpected_tok;
     onk_vec_push(&state->errors, &err);
+    return 0;
 }
 
-
-
 int8_t handle_error(
-    struct onk_parser_state_t*state,
-    struct ParseError *err,
-
+    struct onk_parser_state_t *state,
+    struct onk_parser_err_t *err,
     /* signifies if error
      * happened on the previous loop
      * In the case that this is false,
@@ -267,6 +264,6 @@ int8_t handle_error(
 ) {
 
     //handle_unwind()
-
+    return 0;
 
 }
