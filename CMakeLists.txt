@@ -6,73 +6,85 @@ include_directories(
 )
 
 set(CUTEST
-    src/libtest/CuTest/CuStr.c
-    src/libtest/CuTest/CuTest.c
-    src/libtest/CuTest/suite.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libtest/CuTest/CuStr.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libtest/CuTest/CuTest.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libtest/CuTest/suite.c
 )
 
 set(TESTLIB
-    src/libtest/build_mask.c
-    src/libtest/tokens.c
-    src/libtest/mask_assert.c
-    src/libtest/textutil.c
+    #src/libtest/build_mask.c
+   ${CMAKE_CURRENT_SOURCE_DIR}/src/libtest/tokens.c
+    #src/libtest/mask_assert.c
+   ${CMAKE_CURRENT_SOURCE_DIR}/src/libtest/textutil.c
 )
 
 set(TESTLIB_TEST
-    src/tests/libtest/test_assert.c
-    src/tests/libtest/test_mask.c
-    src/tests/libtest/CuTestTest.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libtest/test_assert.c
+    #src/tests/libtest/test_mask.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libtest/CuTestTest.c
 )
 
 set(ONKSTD
-    src/libstdonk/vec.c
-    src/libstdonk/queue.c
-    src/libstdonk/sort_merge.c
-    src/libstdonk/int.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libstdonk/vec.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libstdonk/queue.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libstdonk/sort_merge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libstdonk/int.c
 )
 
 set(ONKSTD_TEST
-    src/tests/libstdonk/vec.c
-    src/tests/libstdonk/queue.c
-    src/tests/libstdonk/merge_sort.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libstdonk/vec.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libstdonk/queue.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libstdonk/merge_sort.c
 )
 
 set(PARSER
-    src/libclonk/lexer/lexer.c
-    src/libclonk/lexer/helpers.c
-    src/libclonk/lexer/debug.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libclonk/lexer/lexer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libclonk/lexer/helpers.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libclonk/lexer/debug.c
 
-    src/libclonk/parser/error.c
-    src/libclonk/parser/parser.c
-    src/libclonk/parser/semantics.c
-    src/libclonk/parser/semantic_utils.c
-    src/libclonk/parser/utils.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libclonk/parser/error.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libclonk/parser/parser.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libclonk/parser/semantics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libclonk/parser/utils.c
 )
 
 set(PARSER_TEST
-    src/tests/libclonk/lexer/lexer_tests.c
-    src/tests/libclonk/lexer/harness.c
-    src/tests/libclonk/parser/parser.c
-    src/tests/libclonk/parser/semantics.c
-    src/tests/libclonk/parser/predict.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libclonk/lexer/lexer_tests.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libclonk/lexer/harness.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libclonk/parser/parser.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libclonk/parser/semantics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libclonk/parser/predict.c
 )
 
-set(ONKCC
-    "${ONKSTD}"
-    "${PARSER}"
+set(LIBONKCC
+    ${ONKSTD}
+    ${PARSER}
 )
 
-set(ONKCC_TEST
-    "${ONKCC}"
-    "${CUTEST}"
-    "${TESTLIB}"
-    "${TESTLIB_TEST}"
-    "${ONKSTD_TEST}"
-    "${PARSER_TEST}"
+set(LIBONKCC_TEST
+    ${CUTEST}
+
+    ${TESTLIB}
+    ${TESTLIB_TEST}
+
+    ${ONKSTD}
+    ${ONKSTD_TEST}
+
+    ${PARSER}
+    ${PARSER_TEST}
 )
 
-include_directories(include/ )
-# add_executable(cclonk src/main.c "${ONKCC}")
+include_directories(include/)
+add_executable("${PROJECT_NAME}-test" ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/run_tests.c ${LIBONKCC_TEST})
+add_executable("${PROJECT_NAME}-cc" ${CMAKE_CURRENT_SOURCE_DIR}/src/repl.c ${LIBONKCC})
 
-add_executable(cclonk src/repl.c "${ONKCC}")
-add_executable(test src/tests/run_tests.c "${ONKCC_TEST}")
+install(TARGETS "${PROJECT_NAME}-cc")
+
+# target_sources(test,
+#     PRIVATE
+#     "${LIBONKCC_TEST}"
+#     "${LIBONKCC}"
+#     PUBLIC
+#     src/tests/run_tests.c
+#     src/repl.c
+# )
