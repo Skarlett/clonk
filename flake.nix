@@ -17,16 +17,24 @@
       # A Nixpkgs overlay.
       overlay = final: prev: {
         clonk = with final; stdenv.mkDerivation rec {
-          name = "cclonk-${version}";
+          name = "clonk-cc";
           src = ./.;
           nativeBuildInputs = [ cmake libunwind ];
         };
+
+        clonk-test = with final; stdenv.mkDerivation rec {
+          name = "clonk-test";
+          src = ./.;
+          nativeBuildInputs = [ cmake libunwind ];
+        };
+
       };
 
       # Provide some binary packages for selected system types.
       packages = forAllSystems (system:
         {
           inherit (nixpkgsFor.${system}) clonk;
+          inherit (nixpkgsFor.${system}) clonk-test;
         });
 
       # The default package for 'nix build'. This makes sense if the

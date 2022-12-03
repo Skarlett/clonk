@@ -79,6 +79,7 @@ add_executable("${PROJECT_NAME}-test" ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/run_
 add_executable("${PROJECT_NAME}-cc" ${CMAKE_CURRENT_SOURCE_DIR}/src/repl.c ${LIBONKCC})
 
 install(TARGETS "${PROJECT_NAME}-cc")
+install(TARGETS "${PROJECT_NAME}-test")
 
 # target_sources(test,
 #     PRIVATE
