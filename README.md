@@ -15,7 +15,7 @@ cmake .
 make install
 ```
 
-#### Nix package manager
+#### [Nix package manager][1]
 ```sh
 nix run github:skarlett/clonk
 
@@ -23,4 +23,6 @@ nix run github:skarlett/clonk
 nix build github:skarlett/clonk
 ```
 
+
+[1]: https://github.com/NixOS/nixpkgs
 
