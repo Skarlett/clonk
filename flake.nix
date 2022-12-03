@@ -15,27 +15,31 @@
     {
 
       # A Nixpkgs overlay.
-      overlay = final: prev: {
-        clonk = with final; stdenv.mkDerivation rec {
-          name = "clonk-cc";
-          src = ./.;
-          nativeBuildInputs = [ cmake libunwind ];
-        };
+      overlay = final: prev:
+        {
+          clonk = with final; stdenv.mkDerivation
+            {
+              name = "clonk-cc";
+              src = ./.;
+              nativeBuildInputs = [ cmake libunwind ];
+            };
 
-        clonk-test = with final; stdenv.mkDerivation rec {
-          name = "clonk-test";
-          src = ./.;
-          nativeBuildInputs = [ cmake libunwind ];
+          clonk-test = with final; stdenv.mkDerivation
+            {
+              name = "clonk-test";
+              src = ./.;
+              nativeBuildInputs = [ cmake libunwind ];
+            };
         };
-
-      };
 
       # Provide some binary packages for selected system types.
       packages = forAllSystems (system:
         {
-          inherit (nixpkgsFor.${system}) clonk;
+          inherit (nixpkgsFor.${system}) clonk ;
           inherit (nixpkgsFor.${system}) clonk-test;
         });
+
+      devShells = forAllSystems (system: self.packages.${system}.clonk);
 
       # The default package for 'nix build'. This makes sense if the
       # flake provides only one package or there is a clear "main"
