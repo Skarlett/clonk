@@ -6,6 +6,7 @@ cppcoreguidelines-*,
 -bugprone-exception-escape,
 -bugprone-branch-clone
 -bugprone-easily-swappable-parameters
+-cppcoreguidelines-avoid-non-const-global-variables
 '
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*'
