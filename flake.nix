@@ -1,8 +1,8 @@
 {
-  description = "An over-engineered Hello World in C";
+  description = "Clonk! An amature tree walking interpreter from first principles.";
 
   # Nixpkgs / NixOS version to use.
-  inputs.nixpkgs.url = "nixpkgs/nixos-21.05";
+  inputs.nixpkgs.url = "nixpkgs/nixos-22.11";
 
   outputs = { self, nixpkgs }:
     let
@@ -13,37 +13,33 @@
       nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; overlays = [ self.overlay ]; });
     in
     {
-
-      # A Nixpkgs overlay.
-      overlay = final: prev:
+      overlay = final: prev: with final;
+        let
+            dependencies =  [ cmake libunwind gnumake clang ];
+        in
         {
-          clonk = with final; stdenv.mkDerivation
+          clonk =  stdenv.mkDerivation
             {
               name = "clonk-cc";
               src = ./.;
-              nativeBuildInputs = [ cmake libunwind ];
+              nativeBuildInputs = dependencies;
             };
 
-          clonk-test = with final; stdenv.mkDerivation
+          clonk-test = stdenv.mkDerivation
             {
               name = "clonk-test";
               src = ./.;
-              nativeBuildInputs = [ cmake libunwind ];
+              nativeBuildInputs = dependencies;
             };
         };
 
-      # Provide some binary packages for selected system types.
       packages = forAllSystems (system:
         {
-          inherit (nixpkgsFor.${system}) clonk ;
+          inherit (nixpkgsFor.${system}) clonk;
           inherit (nixpkgsFor.${system}) clonk-test;
         });
 
       devShells = forAllSystems (system: self.packages.${system}.clonk);
-
-      # The default package for 'nix build'. This makes sense if the
-      # flake provides only one package or there is a clear "main"
-      # package.
       defaultPackage = forAllSystems (system: self.packages.${system}.clonk);
     };
 }
