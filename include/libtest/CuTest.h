@@ -37,6 +37,7 @@ void CuStringDelete(CuString* str);
 
 /* CuTest */
 typedef struct CuTest CuTest;
+
 typedef void (*CuTestFn)(CuTest *tc);
 
 struct CuTest

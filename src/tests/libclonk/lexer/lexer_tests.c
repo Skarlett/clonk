@@ -28,13 +28,15 @@ void lexer_harness(
     CuTest *tc,
     struct onk_lexer_output_t *err_output,
     const char* const* src_code,
-    enum onk_lexicon_t **answers,
+    enum onk_lexicon_t answers[][32],
     uint8_t flags,
     const char * fp,
     uint16_t line
 ){
     struct onk_lexer_input_t lexer_input;
     struct onk_lexer_output_t output;
+
+
 
     enum onk_lexicon_t current = 0;
     char msg[512];
@@ -51,18 +53,18 @@ void lexer_harness(
                 break;
 
         lexer_input.src_code = src_code[set];
-        lex_ret = onk_tokenize(&lexer_input, err_output);
+        lex_ret = onk_tokenize(&lexer_input, &output);
 
-        CuAssertTrue(tc, err_output->tokens.len == actr);
+        CuAssertTrue(tc, output.tokens.len == actr);
         CuAssertTrue(tc, lex_ret != 0);
 
         /* check every token */
-        for (uint16_t i=0; err_output->tokens.len > i; i++)
+        for (uint16_t i=0; output.tokens.len > i; i++)
         {
             current = ((struct onk_token_t *)
-                       err_output->tokens.base)[i].type;
+                       output.tokens.base)[i].type;
 
-            if(_filter_cfg(flags, current, err_output->tokens.len, i))
+            if(_filter_cfg(flags, current, output.tokens.len, i))
                 continue;
 
             if(current != answers[set][i])
@@ -89,8 +91,8 @@ void __test__io(CuTest* tc)
         "aa",
         "1a"
         "a1",
-        "a_1"
-        "_"
+        "a_1",
+        "_",
         "10",
         "1_0",
         "1",
@@ -150,8 +152,9 @@ void __test__io(CuTest* tc)
         "((1 + 2) + (3 + 4))",   // 12,
         0
     };
-
-    enum onk_lexicon_t answers[][32] = {
+    enum onk_lexicon_t *refanswer = 0;
+    
+    enum onk_lexicon_t answers[78][32] = {
         {ONK_WORD_TOKEN, 0},
         {ONK_WORD_TOKEN, 0},
         {ONK_INTEGER_TOKEN, ONK_WORD_TOKEN, 0},
@@ -248,12 +251,12 @@ void __test__io(CuTest* tc)
         {ONK_PARAM_OPEN_TOKEN, ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, 0},
         {ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, ONK_ADD_TOKEN, ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, 0},
         {ONK_PARAM_OPEN_TOKEN, ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, ONK_ADD_TOKEN, ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, ONK_PARAM_CLOSE_TOKEN, 0},
-        {0},
+        0,
     };
-
-    LexHarness(
-        tc, &lex_output, src, (enum onk_lexicon_t **)answers,
-        ignore_whitespace | ignore_comments | ignore_eof
+    lexer_harness(
+        tc, &lex_output, src, answers,
+        ignore_whitespace | ignore_comments | ignore_eof,
+        __FILE__, __LINE__
     );
 }
 
