@@ -28,7 +28,7 @@ void onk_queue8_push(
 ){
 
     memcpy(
-        &self->base + (self->tail * self->item_sz), item, self->item_sz
+        self->base + self->tail * self->item_sz, item, self->item_sz
     );
 
     /* adjust head */

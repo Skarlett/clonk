@@ -39,13 +39,13 @@ void onk_vec_alloc_heap(
     uint16_t capacity,
     uint16_t type_sz
 ){
-    _onk_vec_alloc(vec, capacity, type_sz, onk_vec_mode_alloc_heap);
+    _onk_vec_alloc(vec, onk_vec_mode_alloc_heap, capacity, type_sz);
     vec->base = calloc(capacity, type_sz);
 }
 
 void onk_vec_alloc_stk(struct onk_vec_t *vec, void *stack_ptr, uint16_t capacity, uint16_t type_sz)
 {
-    _onk_vec_alloc(vec, capacity, type_sz, onk_vec_mode_alloc_heap);
+    _onk_vec_alloc(vec, onk_vec_mode_alloc_stack, capacity, type_sz);
     vec->base = stack_ptr;
 }
 
@@ -86,6 +86,8 @@ int8_t onk_vec_realloc(struct onk_vec_t *vec, uint16_t inc)
     if(vec->state == onk_vec_mode_alloc_stack)
     {
         struct onk_vec_t heap_vec;
+        onk_vec_init(&heap_vec);
+
         onk_vec_deep_copy(&heap_vec, vec);
         return 1;
     }
@@ -174,15 +176,16 @@ void * onk_vec_copy(
     struct onk_vec_t *dest,
     const struct onk_vec_t *src)
 {
-    assert(can_access(dest));
+    assert(dest->state == onk_vec_mode_uninit);
     assert(can_access(src));
     return memcpy(dest, src, sizeof(struct onk_vec_t));
 }
 
 void * onk_vec_deep_copy(struct onk_vec_t *dest, const struct onk_vec_t *src)
 {
-    assert(can_access(dest));
+    assert(dest->state == onk_vec_mode_uninit);
     assert(can_access(src));
+
     if (onk_vec_copy(dest, src) == 0)
         return 0;
 

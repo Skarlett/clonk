@@ -13,11 +13,11 @@
       nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; overlays = [ self.overlay ]; });
     in
     {
-      overlay = final: prev: with final;
+      overlay = final: prev:
         let
-            dependencies =  [ cmake libunwind gnumake clang ];
+            dependencies =  with prev; [ cmake libunwind.dev libunwind gnumake clang ];
         in
-        {
+        with final; {
           clonk =  stdenv.mkDerivation
             {
               name = "clonk-cc";
