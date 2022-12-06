@@ -3,10 +3,10 @@ Checks: '
 clang-analyzer-*,
 cppcoreguidelines-*,
 -cppcoreguidelines-avoid-magic-numbers,
+-cppcoreguidelines-avoid-non-const-global-variables,
 -bugprone-exception-escape,
--bugprone-branch-clone
+-bugprone-branch-clone,
 -bugprone-easily-swappable-parameters
--cppcoreguidelines-avoid-non-const-global-variables
 '
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*'

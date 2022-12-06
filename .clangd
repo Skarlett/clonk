@@ -1,3 +1,4 @@
 CompileFlags: # Tweak the parse settings
   Add: 
     - "--include-directory=include"
+    - "-lunwind"

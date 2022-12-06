@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(clonk)
 
+
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
@@ -61,6 +62,11 @@ set(LIBONKCC
     ${PARSER}
 )
 
+add_library(libclonk ${LIBONKCC})
+add_executable("${PROJECT_NAME}-cc" ${CMAKE_CURRENT_SOURCE_DIR}/src/repl.c)
+target_link_libraries("${PROJECT_NAME}-cc" libclonk)
+
+
 set(LIBONKCC_TEST
     ${CUTEST}
 
@@ -74,18 +80,13 @@ set(LIBONKCC_TEST
     ${PARSER_TEST}
 )
 
-include_directories(include/)
-add_executable("${PROJECT_NAME}-test" ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/run_tests.c ${LIBONKCC_TEST})
-add_executable("${PROJECT_NAME}-cc" ${CMAKE_CURRENT_SOURCE_DIR}/src/repl.c ${LIBONKCC})
+add_library(libclonktest ${LIBONKCC_TEST})
+
+
+#target_link_libraries(libclonktest -lunwind)
+add_executable("${PROJECT_NAME}-test" ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/run_tests.c)
+target_link_libraries("${PROJECT_NAME}-test" libclonk)
+target_link_libraries("${PROJECT_NAME}-test" libclonktest)
 
 install(TARGETS "${PROJECT_NAME}-cc")
 install(TARGETS "${PROJECT_NAME}-test")
-
-# target_sources(test,
-#     PRIVATE
-#     "${LIBONKCC_TEST}"
-#     "${LIBONKCC}"
-#     PUBLIC
-#     src/tests/run_tests.c
-#     src/repl.c
-# )
