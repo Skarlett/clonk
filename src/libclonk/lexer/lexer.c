@@ -18,20 +18,19 @@
 #include "onkstd/queue.h"
 #include "onkstd/vec.h"
 
-#define PREV_BUF_SZ 8
 #define ONK_BUF_SZ 65355
 
 struct LexerStage {
+    // enum onk_lexicon_t previous_buf[PREV_BUF_SZ];
+
+    /* struct OpenQueue<onk_lexicon_t> */
+    //struct onk_open_queue_t previous;
+
     const char * src_code;
     uint16_t src_code_sz;
 
     /* struct onk_vec_t<onk_token_t> */
     struct onk_vec_t tokens;
-
-    enum onk_lexicon_t previous_buf[PREV_BUF_SZ];
-
-    /* struct OpenQueue<onk_lexicon_t> */
-    struct onk_open_queue_t previous;
 
     enum onk_lexicon_t current;
     enum onk_lexicon_t compound;
@@ -62,13 +61,6 @@ void init_lexer_stage(
   stage->src_code = src_code;
 
   onk_vec_new(&stage->tokens, 2048, sizeof(struct onk_token_t));
-
-  onk_init_queue8(
-    &stage->previous,
-    stage->previous_buf,
-    sizeof(struct onk_token_t),
-    PREV_BUF_SZ
-  );
 
   /* stage->_is_repeating = false; */
   stage->current = ONK_UNDEFINED_TOKEN;
@@ -269,8 +261,8 @@ bool continue_compound_token(
     token = state->current;
   uint16_t span_size = state->cmpd_span_size;
 
-  if (state->previous.nitems > 0)
-     prev = onk_queue8_head(&state->previous);
+  if (state->tokens.len > 0)
+     prev = (void*)onk_vec_head(&state->tokens);
 
   return (
       (compound_token == ONK_COMMENT_TOKEN && token != ONK_NEWLINE_TOKEN)
@@ -383,24 +375,27 @@ enum onk_lexicon_t invert_operator_token(enum onk_lexicon_t compound_token) {
 }
 
 int8_t derive_keyword(const char *src_code, struct onk_token_t *t) {
+  uint16_t token_span = 0;
+  uint16_t str_span = 0;
   static enum onk_lexicon_t lexicon[] = {
     //STATIC, CONST,
-    ONK_RETURN_TOKEN,
-    ONK_FOR_TOKEN, ONK_WHILE_TOKEN,
-    // EXTERN, AS,
-    ONK_BREAK_TOKEN,
-    ONK_CONTINUE_TOKEN,
+    ONK_RETURN_TOKEN, ONK_FOR_TOKEN, ONK_WHILE_TOKEN,
+    ONK_BREAK_TOKEN, ONK_CONTINUE_TOKEN,
     ONK_TRUE_TOKEN, ONK_FALSE_TOKEN,
-    ONK_IN_TOKEN, ONK_IF_TOKEN,
-    ONK_ELSE_TOKEN, ONK_DEF_TOKEN,
+    ONK_IN_TOKEN, 
+    // EXTERN, AS,
+    ONK_IF_TOKEN, ONK_ELSE_TOKEN, ONK_DEF_TOKEN,
     ONK_IMPORT_TOKEN, ONK_FROM_TOKEN,
     ONK_STRUCT_TOKEN, ONK_IMPL_TOKEN,
-    ONK_AND_TOKEN, ONK_OR_TOKEN, 0
+    
+    ONK_AND_TOKEN, ONK_OR_TOKEN,
+    0
   };
 
   static char *keywords[] = {
     // "static", "const",
     "return", "for", "while",
+    "break", "continue",
     "true", "false",
     "in",
     //"extern", "as",
@@ -410,13 +405,18 @@ int8_t derive_keyword(const char *src_code, struct onk_token_t *t) {
     "and", "or", 0
   };
 
-  for (uint8_t i = 0 ;; i++) {
+  for (int i = 0 ;; i++) {
     if (lexicon[i] == 0)
       break;
     
-    /* token.end + 1 due to index position */
-    if (strlen(keywords[i]) == ((t->end + 1) - t->start) &&
-        strncmp(src_code + t->start, keywords[i], t->end - t->start) == 0) {
+    token_span = onk_token_len(t);
+    str_span = strlen(keywords[i]);
+    assert(token_span);
+    assert(str_span);
+
+    if (str_span == token_span &&
+        strncmp(src_code + t->start, keywords[i], token_span) == 0)
+    {
       t->type = lexicon[i];
       return 1;
     }
@@ -543,7 +543,7 @@ int8_t push_tok(
   );
 
   assert(onk_vec_push(&state->tokens, tok) != 0);
-  onk_queue8_push(&state->previous, &tok);
+  //onk_queue8_push(&state->previous, &tok);
 
   if (type == ONK_FROM_TOKEN)
   {
@@ -642,7 +642,7 @@ int8_t onk_tokenize(
     {
       state.compound = compose_compound(state.compound, state.current);
       state.cmpd_span_size += 1;
-      onk_queue8_push(&state.previous, &token);
+      //onk_queue8_push(&state.previous, &token);
       continue;
     }
 
