@@ -71,7 +71,6 @@ CuSuite* OnkMergeSortTests();
 /*   Test lexer  */
 /*****************/
 CuSuite* LexerUnitTests();
-CuSuite* LexerHarnessUBTests();
 CuSuite* LexerHarnessLogicTests();
 
 void RunAllTests(void)
@@ -92,7 +91,6 @@ void RunAllTests(void)
     CuSuiteAddSuite(suite, OnkMergeSortTests());
     CuSuiteAddSuite(suite, LexerUnitTests());
 
-    CuSuiteAddSuite(suite, LexerHarnessUBTests());
     CuSuiteAddSuite(suite, LexerHarnessLogicTests());
 
     CuSuiteRun(suite);
