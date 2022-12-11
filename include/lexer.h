@@ -3,195 +3,104 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-
 #include "clonk.h"
 #include "onkstd/vec.h"
-
 #define ONK_TOK_CHAR_SIZE 64
 
 enum onk_lexicon_t {
     PH_ONK_TOKEN_START,
-    /* end of file */
-    ONK_EOF_TOKEN,
-
+    ONK_EOF_TOKEN, /* end of file */
     ONK_UNDEFINED_TOKEN,
-
     PH_ONK_MARKER_ILLEGAL_INPUT_START,
     /********************/
     /* Transition token */
     /********************/
     PH_ONK_MARKER_TRANSITION_START,
-
     PH_ONK_GT_TRANSMISSION_TOKEN,
-
     PH_ONK_LT_TRANSMISSION_TOKEN,
+    PH_ONK_SUB_TRANSMISSION_TOKEN, /* -123 or -= */
 
-    /* -123 or -= */
-    PH_ONK_SUB_TRANSMISSION_TOKEN,
-
-    /* is there no add transition token?! */
-
-    PH_ONK_PIPE_TRANSMISSION_TOKEN,
-    /* may turn into ONK_BIT_OR_EQL or PIPEOP or OR */
-
+    PH_ONK_PIPE_TRANSMISSION_TOKEN, /* may turn into ONK_BIT_OR_EQL or PIPEOP or OR */
     PH_ONK_AMPER_TRANSMISSION_TOKEN,
-
     PH_ONK_DOLLAR_TRANSMISSION_TOKEN,
-
-    /*  */
     PH_ONK_MARKER_TRANSITION_END,
-
     /**********************/
     /* Single byte tokens */
     /**********************/
-
     PH_ONK_MARKER_GROUP_START,
     onk_tuple_group_token, // (x,x)
-
     onk_list_group_token,  // [x,x]
-
     // TODO: produce this
     onk_idx_group_token, // [s:e:sk]
-
     onk_map_group_token,   // {a:x, b:x}
     onk_code_group_token,  // {x; x;} or {x; x}
-
     //TODO: make strict mode in predict.c
     // for structure construction
     // ONK_WORD_TOKEN { ONK_WORD_TOKEN = EXPR, ...};
     onk_struct_group_token,// Name {a=b, y=z};
-
     PH_ONK_MARKER_GROUP_END,
-
     PH_ONK_MARKER_UPGRADE_DATA_START,
-
     PH_ONK_MARKER_UNARY_START,
-    /* ~ */
-    ONK_TILDE_TOKEN,
-
-    /* ! */
-    ONK_NOT_TOKEN,
+    ONK_TILDE_TOKEN, /* ~ */
+    ONK_NOT_TOKEN, /* ! */
     PH_ONK_MARKER_UNARY_END,
-
-    /* " */
-    ONK_DOUBLE_QUOTE_TOKEN,
-
-    /* ' */
-    ONK_SINGLE_QUOTE_TOKEN,
-
-    /* # */
-    POUND,
-
-    /* $  */
-    ONK_DOLLAR_TOKEN,
-
-    /* _ */
-    ONK_UNDERSCORE_TOKEN,
-
-    /* a-zA-Z */
-    ONK_CHAR_TOKEN,
-
-    /* 0-9 single digit */
-    ONK_DIGIT_TOKEN,
+    ONK_DOUBLE_QUOTE_TOKEN, /* " */
+    ONK_SINGLE_QUOTE_TOKEN, /* ' */
+    POUND, /* # */
+    ONK_DOLLAR_TOKEN, /* $ */
+    ONK_UNDERSCORE_TOKEN, /* _ */
+    ONK_CHAR_TOKEN, /* a-zA-Z */
+    ONK_DIGIT_TOKEN, /* 0-9 single digit */
     PH_ONK_MARKER_UPGRADE_DATA_END,
-
-    /* \ */
-    ONK_BACKSLASH_TOKEN,
-
-    /* @ */
-    //ONK_ATSYM__TOKEN,
-
+    ONK_BACKSLASH_TOKEN, /* \ */
     PH_ONK_MARKER_ILLEGAL_INPUT_END,
-
     /*********************/
     /* multi byte tokens */
     /*********************/
-    PH_ONK_MARKER_WHITESPACE_START,
+    PH_ONK_MARKER_WHITESPACE_START, // 35
     ONK_WHITESPACE_TOKEN,
     ONK_NEWLINE_TOKEN,
     PH_ONK_MARKER_WHITESPACE_END,
-
     ONK_COMMENT_TOKEN,
-
-
     PH_ONK_MARKER_DEFAULT_EXPECT_START,
-
-    /* from location */
-    ONK_FROM_LOCATION,
-
+    ONK_FROM_LOCATION, /* from location */
     PH_ONK_MARKER_UNIT_START,
     PH_ONK_MARKER_KEYWORD_DATA_START,
     ONK_TRUE_TOKEN,
     ONK_FALSE_TOKEN,
     ONK_NULL_TOKEN,
     PH_ONK_MARKER_KEYWORD_DATA_END,
-
-    /*  [NUM, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN    */
-    /* // 20_392  */
-    ONK_INTEGER_TOKEN,
-
-    /* [ONK_CHAR_TOKEN, ..] ONK_WHITESPACE_TOKEN|ONK_SEMICOLON_TOKEN */
-    ONK_WORD_TOKEN,
+    ONK_INTEGER_TOKEN, /* // 20_392  */
+    ONK_WORD_TOKEN, /* word */
 
     /* [QUOTE, ... QUOTE] */
-    ONK_STRING_LITERAL_TOKEN,
+    ONK_STRING_LITERAL_TOKEN, // 50
     PH_ONK_MARKER_UNIT_END,
-
     PH_ONK_MARKER_DELIM_START,
-    /* , */
-    ONK_COMMA_TOKEN,
-
-    /* : */
-    ONK_COLON_TOKEN,
-
-    /* ; */
-    ONK_SEMICOLON_TOKEN,
+    ONK_COMMA_TOKEN, /* , */
+    ONK_COLON_TOKEN, /* : */
+    ONK_SEMICOLON_TOKEN, /* ; */
     PH_ONK_MARKER_DELIM_END,
-
     PH_ONK_MARKER_BRACE_START,
     PH_ONK_MARKER_CLOSE_BRACE_START,
-    /* ] */
-    ONK_BRACKET_CLOSE_TOKEN,
-
-    /* } */
-    ONK_BRACE_CLOSE_TOKEN,
-
-    /* ) */
-    ONK_PARAM_CLOSE_TOKEN,
+    ONK_BRACKET_CLOSE_TOKEN, /* ] */
+    ONK_BRACE_CLOSE_TOKEN, /* } */ // 60
+    ONK_PARAM_CLOSE_TOKEN, /* ) */
     PH_ONK_MARKER_CLOSE_BRACE_END,
-
     PH_ONK_MARKER_OPEN_BRACE_START,
-
-    /* ${ */
-    ONK_HASHMAP_LITERAL_START_TOKEN,
-
-    /* [ */
-    ONK_BRACKET_OPEN_TOKEN,
-
-    /* { */
-    ONK_BRACE_OPEN_TOKEN,
-
-    /* ( */
-    ONK_PARAM_OPEN_TOKEN,
+    ONK_HASHMAP_LITERAL_START_TOKEN, /* ${ */
+    ONK_BRACKET_OPEN_TOKEN, /* [ */
+    ONK_BRACE_OPEN_TOKEN, /* { */
+    ONK_PARAM_OPEN_TOKEN, /* ( */
     PH_ONK_MARKER_OPEN_BRACE_END,
     PH_ONK_MARKER_BRACE_END,
-
-    PH_ONK_MARKER_OP_START,
+    PH_ONK_MARKER_OP_START, //70
     PH_ONK_MARKER_BIN_START,
-    /* % */
-    ONK_MOD_TOKEN,
-
-    /* . */
-    ONK_DOT_TOKEN,
-
-    /* * */
-    ONK_MUL_TOKEN,
-
-    /* / */
-    ONK_DIV_TOKEN,
-
-    /* ^ */
-    ONK_POW_TOKEN,
+    ONK_MOD_TOKEN, /* % */
+    ONK_DOT_TOKEN, /* . */
+    ONK_MUL_TOKEN, /* * */
+    ONK_DIV_TOKEN, /* / */
+    ONK_POW_TOKEN, /* ^ */
 
     PH_ONK_MARKER_ASN_START,
     PH_ONK_MARKER_COMPOUND_BIN_START,
@@ -200,7 +109,7 @@ enum onk_lexicon_t {
     ONK_BIT_OR_EQL,
 
     /* &= */
-    ONK_BIT_AND_EQL,
+    ONK_BIT_AND_EQL, // 80
 
     /* ~= */
     ONK_BIT_NOT_EQL,
@@ -227,7 +136,7 @@ enum onk_lexicon_t {
     ONK_PIPE_TOKEN,
 
     /* & */
-    ONK_AMPER_TOKEN,
+    ONK_AMPER_TOKEN, // 90
 
     /* > */
     ONK_GT_TOKEN,
@@ -259,7 +168,7 @@ enum onk_lexicon_t {
     ONK_LT_EQL_TOKEN,
 
     /* == */
-    ONK_ISEQL_TOKEN,
+    ONK_ISEQL_TOKEN, // 100
 
     /* != */
     ONK_NOT_EQL_TOKEN,
@@ -279,7 +188,7 @@ enum onk_lexicon_t {
     onk_struct_init_op_token,
 
     onk_ifcond_op_token,
-    onk_ifbody_op_token,
+    onk_ifbody_op_token, // 110
     onk_defsig_op_token,
     onk_defbody_op_token,
 
@@ -307,7 +216,7 @@ enum onk_lexicon_t {
     ONK_STRUCT_TOKEN,
 
     /* impl A {} */
-    ONK_IMPL_TOKEN,
+    ONK_IMPL_TOKEN, // 120
 
     /* return */
     ONK_RETURN_TOKEN,
@@ -332,7 +241,7 @@ enum onk_lexicon_t {
     ONK_IF_TOKEN,
 
     /* else */
-    ONK_ELSE_TOKEN,
+    ONK_ELSE_TOKEN, // 130
 
     /* def */
     ONK_DEF_TOKEN,
@@ -384,6 +293,9 @@ enum onk_lexicon_t {
 };
 
 static const enum onk_lexicon_t ILLEGAL_TOKENS[] = {
+    PH_ONK_TOKEN_START,
+    PH_ONK_TOKEN_END,
+
     /* transitions */
     PH_ONK_MARKER_ILLEGAL_INPUT_START,
     PH_ONK_MARKER_TRANSITION_START,
@@ -399,8 +311,8 @@ static const enum onk_lexicon_t ILLEGAL_TOKENS[] = {
     PH_ONK_MARKER_ILLEGAL_INPUT_START,
     PH_ONK_MARKER_ILLEGAL_INPUT_END,
 
-    PH_ONK_TOKEN_END,
-    PH_ONK_TOKEN_START,
+    PH_ONK_MARKER_WHITESPACE_START,
+    PH_ONK_MARKER_WHITESPACE_END,
 
     PH_ONK_MARKER_GROUP_START,
     PH_ONK_MARKER_GROUP_END,
@@ -453,11 +365,10 @@ static const enum onk_lexicon_t ILLEGAL_TOKENS[] = {
     PH_ONK_MARKER_LOOP_CTL_END,
 
     PH_ONK_MARKER_KEYWORD_DATA_START,
-    PH_ONK_MARKER_KEYWORD_DATA_END,
-    
-    (enum onk_lexicon_t)0
+    PH_ONK_MARKER_KEYWORD_DATA_END
 };
-#define ILLEGAL_TOKENS_LEN 46
+
+#define ILLEGAL_TOKENS_LEN 49
 
 /*
     onk_token_ts reference symbols derived from the 
@@ -634,8 +545,15 @@ bool onk_is_tok_open_brace(enum onk_lexicon_t token);
 bool onk_is_utf_byte(char ch);
 
 
-uint16_t onk_lexarr_contains(enum onk_lexicon_t type, enum onk_lexicon_t *arr, uint16_t narr);
-uint16_t onk_tokarr_contains(enum onk_lexicon_t type, struct onk_token_t *arr, uint16_t narr);
+
+/**
+ * return -1 if type isn't present in arr, otherwise return the index slot
+ * @param type
+ * @param token
+ * @return -1 | 0-32126
+ */
+int16_t onk_lexarr_contains(enum onk_lexicon_t type, enum onk_lexicon_t *arr, int16_t narr);
+int16_t onk_tokarr_contains(enum onk_lexicon_t type, struct onk_token_t *arr, int16_t narr);
 
 bool onk_is_tok_block_keyword(enum onk_lexicon_t token);
 

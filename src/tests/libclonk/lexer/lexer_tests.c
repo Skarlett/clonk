@@ -36,8 +36,6 @@ void lexer_harness(
     struct onk_lexer_input_t lexer_input;
     struct onk_lexer_output_t output;
 
-
-
     enum onk_lexicon_t current = 0;
     char msg[512];
     uint16_t actr = 0;
@@ -79,9 +77,6 @@ void lexer_harness(
 
     return;
 }
-
-#define LexHarness(tc, out, src, answer, flags) \
-    lexer_harness((tc), (out), (src), (answer), (flags), __FILE__, __LINE__)
 
 void __test__io(CuTest* tc)
 {

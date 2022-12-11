@@ -17,11 +17,9 @@ void __test__queue_push(CuTest* tc) {
     free(vec.base);
 }
 
-
-
 CuSuite* OnkQueueTest(void) {
   CuSuite* suite = CuSuiteNew();
-  SUITE_ADD_TEST(suite, __test__queue_push);
+  // SUITE_ADD_TEST(suite, __test__queue_push);
 
   return suite;
 }

@@ -40,6 +40,7 @@ void __test__vec_free_heap(CuTest* tc)
 void __test__vec_free_stack(CuTest* tc)
 {
     struct onk_vec_t vec;
+    uint8_t buf[4];
 
     onk_vec_init(&vec);
     CuAssertTrue(tc, vec.base == 0);
@@ -47,7 +48,7 @@ void __test__vec_free_stack(CuTest* tc)
     CuAssertTrue(tc, vec.type_sz == 0);
     CuAssertTrue(tc, vec.state == onk_vec_mode_uninit);
 
-    onk_vec_alloc_heap(&vec, 4, sizeof(uint8_t));
+    onk_vec_alloc_stk(&vec, buf, 4, sizeof(uint8_t));
     CuAssertTrue(tc, vec.base != 0);
     CuAssertTrue(tc, vec.capacity == 4);
     CuAssertTrue(tc, vec.type_sz == sizeof(uint8_t));
@@ -113,7 +114,7 @@ void __test__vec_realloc_stack(CuTest* tc)
     vec.inc = 0;
 
     onk_vec_push(&vec, &num);
-
+    
     CuAssertTrue(tc, vec.state == onk_vec_mode_alloc_heap);
     CuAssertTrue(tc, vec.capacity == 8);
     onk_vec_free(&vec);

@@ -213,7 +213,7 @@ bool explicit_word(enum onk_lexicon_t current)
         current,
         (void*)EXPLICIT_WORD,
         EXPLICIT_WORD_LEN
-    );
+    ) > -1;
 }
 
 #define EXPLICIT_EXPR_LEN (3 + BINOP_LEN + ASNOP_LEN + UNIOP_LEN, DELIM_LEN)
@@ -233,7 +233,7 @@ bool explicit_expr(enum onk_lexicon_t current)
         current,
         (void*)EXPLICIT_EXPR,
         EXPLICIT_EXPR_LEN
-    );
+    ) > -1;
 }
 
 bool use_parameter_mode(enum onk_lexicon_t gmod)

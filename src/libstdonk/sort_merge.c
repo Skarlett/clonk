@@ -1,8 +1,9 @@
 #include "clonk.h"
+#include <stdint.h>
 
 void merge(uint16_t *arr, uint16_t l, uint16_t m, uint16_t r)
 {
-    uint16_t i, j, k;
+    uint16_t i=0, j=0, k=0;
     uint16_t n1 = m - l + 1;
     int n2 =  r - m;
 
@@ -66,4 +67,21 @@ void onk_merge_sort_u16(uint16_t *arr, uint16_t l, uint16_t r)
 
         merge(arr, l, m, r);
      }
- }
+}
+
+
+void swap(uint16_t* x, uint16_t* y)
+{
+    uint16_t temp = *x;
+    *x = *y;
+    *y = temp;
+}
+
+void onk_bubble_sort_u16(uint16_t *arr, uint16_t n)
+{
+    uint16_t i = 0, j=0;
+    for (i = 0; i < n - 1; i++)
+        for (j = 0; j < n - i - 1; j++)
+            if (arr[j] > arr[j + 1])
+                swap(&arr[j], &arr[j + 1]);
+}

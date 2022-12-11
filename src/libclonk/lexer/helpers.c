@@ -111,27 +111,26 @@ bool onk_is_utf_byte(char ch) {
         && copy != 0xa3);
 }
 
-uint16_t onk_lexarr_contains(
+int16_t onk_lexarr_contains(
     enum onk_lexicon_t cmp,
     enum onk_lexicon_t *arr,
-    uint16_t narr)
+    int16_t narr)
 {
-  for (uint16_t i=0; narr > i; i++)
-    if(arr[i] == 0) break;
-    else if (arr[i] == cmp)
+  for (int16_t i=0; narr > i; i++)
+    if (arr[i] == cmp)
       return i;
-  return 0;
+  return -1;
 }
 
-uint16_t onk_tokarr_contains(
+int16_t onk_tokarr_contains(
     enum onk_lexicon_t cmp,
     struct onk_token_t *arr,
-    uint16_t narr)
+    int16_t narr)
 {
-  for (uint16_t i=0; narr > i; i++)
+  for (int16_t i=0; narr > i; i++)
     if (arr[i].type == cmp)
       return i;
-  return 0;
+  return -1;
 }
 
 uint16_t onk_tokarr_len(struct onk_token_t *arr)
@@ -149,7 +148,6 @@ uint16_t onk_lexarr_len(enum onk_lexicon_t *arr)
       return i;
   return 0;
 }
-
 
 /*
     Inverts brace characters into their counter parts.
@@ -171,34 +169,40 @@ enum onk_lexicon_t onk_invert_brace(enum onk_lexicon_t token) {
 }
 
 const char * onk_ptoken(enum onk_lexicon_t t) {
-    switch (t) {
+    switch (t)
+    {
         case ONK_INTEGER_TOKEN: return "integer";
         case ONK_WORD_TOKEN: return "word";
         case ONK_CHAR_TOKEN: return "char";
         case ONK_NULL_TOKEN: return "nulltoken";
         case ONK_WHITESPACE_TOKEN: return "whitespace";
+        case ONK_NEWLINE_TOKEN: return "whitespace-newline";
+        case ONK_HASHMAP_LITERAL_START_TOKEN: return "hashmap-brace";
         case ONK_BRACE_OPEN_TOKEN: return "brace_open";
         case ONK_BRACE_CLOSE_TOKEN: return "brace_close";
         case ONK_PARAM_OPEN_TOKEN: return "param_open";
         case ONK_PARAM_CLOSE_TOKEN: return "param_close";
+        case ONK_BRACKET_OPEN_TOKEN: return "bracket_open";
+        case ONK_BRACKET_CLOSE_TOKEN: return "bracket_close";
         case ONK_COMMA_TOKEN: return "comma";
         case ONK_DIGIT_TOKEN: return "digit";
         case ONK_DOUBLE_QUOTE_TOKEN: return "d_quote";
+        case ONK_SINGLE_QUOTE_TOKEN: return "s_quote";
         case ONK_EQUAL_TOKEN: return "eq";
         case ONK_ADD_TOKEN: return "add";
         case ONK_MUL_TOKEN: return "multiply";
         case ONK_DIV_TOKEN: return "divide";
+        case ONK_MOD_TOKEN: return "modolus";
+        case ONK_SUB_TOKEN: return "sub";
+        case ONK_POW_TOKEN: return "exponent";
         case ONK_GT_TOKEN: return "greater than";
         case ONK_LT_TOKEN: return "less than";
         case ONK_NOT_EQL_TOKEN: return "is not eq";
         case ONK_ISEQL_TOKEN: return "is eq";
         case ONK_GT_EQL_TOKEN: return "greater than or eq";
         case ONK_LT_EQL_TOKEN: return "less than or eq";
-        case ONK_POW_TOKEN: return "exponent";
         case ONK_PLUSEQ_TOKEN: return "plus eq";
         case ONK_MINUS_EQL_TOKEN: return "minus eq";
-        case ONK_MOD_TOKEN: return "modolus";
-        case ONK_SUB_TOKEN: return "sub";
         case ONK_COLON_TOKEN: return "colon";
         case ONK_SEMICOLON_TOKEN: return "semi-colon";
         case ONK_STRING_LITERAL_TOKEN: return "str_literal";
@@ -216,19 +220,46 @@ const char * onk_ptoken(enum onk_lexicon_t t) {
         case ONK_UNDERSCORE_TOKEN: return "underscore";
         case ONK_NOT_TOKEN: return "not";
         case POUND: return "pound";
-        case ONK_IF_TOKEN: return "'if";
-        case ONK_ELSE_TOKEN: return "'else'";
-        case ONK_IMPL_TOKEN: return "'impl'";
-        case ONK_DEF_TOKEN: return "'def'";
-        case ONK_RETURN_TOKEN: return "'return'";
+        case ONK_IF_TOKEN: return "if";
+        case ONK_ELSE_TOKEN: return "else";
+        case ONK_IMPL_TOKEN: return "impl";
+        case ONK_DEF_TOKEN: return "def";
+        case ONK_RETURN_TOKEN: return "return";
+        case ONK_FOR_TOKEN: return "for";
+        case ONK_WHILE_TOKEN: return "while";
+        case ONK_BREAK_TOKEN: return "break";
+        case ONK_CONTINUE_TOKEN: return "continue";
+        case ONK_STRUCT_TOKEN: return "struct";
         //case ONK_AS_TOKEN: return "'as'";
         case ONK_IMPORT_TOKEN: return "'import'";
         case ONK_COMMENT_TOKEN: return "comment";
-        case ONK_UNDEFINED_TOKEN: return "undef";
+        case ONK_UNDEFINED_TOKEN: return "undefined";
         case ONK_DOT_TOKEN: return "dot";
-
         case ONK_EOF_TOKEN: return "EOF";
-
-        default: return "ONK_PTOKEN_UNKNOWN_TOKEN";
+        case onk_tuple_group_token: return "tuplegroup";
+        case onk_list_group_token: return "listgroup";
+        case onk_idx_group_token: return "indexgroup";
+        case onk_map_group_token: return "mapgroup";
+        case onk_code_group_token: return "codeblock-group";
+        case onk_struct_group_token: return "structgroup";
+        case ONK_DOLLAR_TOKEN: return "dollar($)";
+        case ONK_BACKSLASH_TOKEN: return "backslash";
+        case ONK_FROM_LOCATION: return "from";
+        case ONK_TRUE_TOKEN: return "true";
+        case ONK_FALSE_TOKEN: return "false";
+        case onk_idx_op_token: return "op_index";
+        case onk_apply_op_token: return "op_apply";
+        case onk_struct_init_op_token: return "op_structinit";
+        case onk_ifcond_op_token: return "op_if_head";
+        case onk_ifbody_op_token: return "op_if_body";
+        case onk_defsig_op_token: return "op_def_head";
+        case onk_defbody_op_token: return "op_def_body";
+        case onk_for_args_op_token: return "op_for_args";
+        case onk_for_body_op_token: return "op_for_body";
+        case onk_while_cond_op_token: return "op_while_head";
+        case onk_while_body_op_token: return "op_while_body";
+        case ONK_IN_TOKEN: return "in";
+        default:
+            return "ONK_PTOKEN_UNKNOWN_TOKEN";
     };
 }

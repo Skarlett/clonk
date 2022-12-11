@@ -29,14 +29,13 @@ int8_t onk_assert_tokens(
 
 
 typedef bool (* handler)(enum onk_lexicon_t);
-void onk_range_harness(
+const char * onk_range_harness(
     CuTest *tc,
-    char * msg,
-    enum onk_lexicon_t *answers,
-    handler handler,
-    const char * handler_name,
     const char * fp,
-    uint16_t line
+    uint16_t line,
+    handler handler,
+    enum onk_lexicon_t *answers,
+    uint16_t answers_len
 );
 
 #define OnkAssertTokens(tc, tokens, answer)                         \
@@ -45,8 +44,8 @@ void onk_range_harness(
 #define OnkAssertTokensMsg(tc, msg, tokens, answer)                     \
     onk_assert_tokens((tc), (tokens), (answer), (msg), __FILE__, __LINE__)
 
-#define LexRangeHarness(tc, msg, answers, handler) \
-    onk_range_harness((tc), (msg), (answers), (handler), (#handler), __FILE__, __LINE__)
+#define LexRangeHarness(tc, handler, answers, len) \
+    _lex_range_harness((tc), __FILE__, __LINE__, (handler), (answers), (len))
 
 /**
  *  Assert tokens match the type found in answer
