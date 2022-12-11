@@ -7,7 +7,7 @@ enum onk_vec_mode_t {
   onk_vec_mode_uninit = 0,
   onk_vec_mode_free   = 1,
   onk_vec_mode_alloc_heap  = 2,
-  onk_vec_mode_alloc_stack = 4
+  onk_vec_mode_alloc_stack = 3
 };
 
 struct onk_vec_t {
@@ -68,4 +68,9 @@ void onk_vec_new_stk(
 
 void * onk_vec_copy(struct onk_vec_t *dest, const struct onk_vec_t *src);
 void * onk_vec_deep_copy(struct onk_vec_t *dest, const struct onk_vec_t *src);
+void onk_vec_deep_copy_resize(
+    struct onk_vec_t *dest,
+    struct onk_vec_t *src
+);
+
 #endif
