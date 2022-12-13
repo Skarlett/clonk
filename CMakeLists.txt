@@ -30,12 +30,14 @@ set(ONKSTD
     ${CMAKE_CURRENT_SOURCE_DIR}/src/libstdonk/queue.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/libstdonk/sort_merge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/libstdonk/int.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libstdonk/linked_list.c
 )
 
 set(ONKSTD_TEST
     ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libstdonk/vec.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libstdonk/queue.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libstdonk/merge_sort.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/libstdonk/llist.c
 )
 
 set(PARSER
@@ -66,7 +68,6 @@ add_library(libclonk ${LIBONKCC})
 add_executable("${PROJECT_NAME}-cc" ${CMAKE_CURRENT_SOURCE_DIR}/src/repl.c)
 target_link_libraries("${PROJECT_NAME}-cc" libclonk)
 
-
 set(LIBONKCC_TEST
     ${CUTEST}
 
@@ -81,7 +82,6 @@ set(LIBONKCC_TEST
 )
 
 add_library(libclonktest ${LIBONKCC_TEST})
-
 
 #target_link_libraries(libclonktest -lunwind)
 add_executable("${PROJECT_NAME}-test" ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/run_tests.c)
