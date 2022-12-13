@@ -20,7 +20,7 @@ void _test_sort(CuTest *tc, FnSort sort_fn, uint16_t line, const char * fp)
 
 void __test__bubble_sort(CuTest *tc)
 {
-    _test_sort(tc, onk_bubble_sort_u16, __LINE__, __FILE__);
+    _test_sort(tc, onk_bubblesort_u16, __LINE__, __FILE__);
 }
 
 /* void __test__mergesort(CuTest *tc) */
