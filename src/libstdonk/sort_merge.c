@@ -1,4 +1,5 @@
 #include "clonk.h"
+#include "lexer.h"
 #include <stdint.h>
 
 void merge(uint16_t *arr, uint16_t l, uint16_t m, uint16_t r)
@@ -69,19 +70,34 @@ void onk_merge_sort_u16(uint16_t *arr, uint16_t l, uint16_t r)
      }
 }
 
-
-void swap(uint16_t* x, uint16_t* y)
+void swap_u16(uint16_t* x, uint16_t* y)
 {
-    uint16_t temp = *x;
+    enum onk_lexicon_t temp = *x;
     *x = *y;
     *y = temp;
 }
-
-void onk_bubble_sort_u16(uint16_t *arr, uint16_t n)
+void onk_bubblesort_u16(uint16_t *arr, uint16_t n)
 {
     uint16_t i = 0, j=0;
     for (i = 0; i < n - 1; i++)
         for (j = 0; j < n - i - 1; j++)
             if (arr[j] > arr[j + 1])
-                swap(&arr[j], &arr[j + 1]);
+                swap_u16(&arr[j], &arr[j + 1]);
 }
+
+
+void swap_lexicon_t(enum onk_lexicon_t* x, enum onk_lexicon_t* y)
+{
+    enum onk_lexicon_t temp = *x;
+    *x = *y;
+    *y = temp;
+}
+void onk_bubblesort_lexarr(enum onk_lexicon_t *arr, uint16_t n)
+{
+    uint16_t i=0, j=0;
+    for (i = 0; i < n - 1; i++)
+        for (j = 0; j < n - i - 1; j++)
+            if (arr[j] > arr[j + 1])
+                swap_lexicon_t(&arr[j], &arr[j + 1]);
+}
+

@@ -64,9 +64,9 @@ CuSuite* OnkAssertTests();
 /*  Test utils  */
 /****************/
 CuSuite* OnkVecTests();
-CuSuite* OnkQueueTest();
+//CuSuite* OnkQueueTest();
 CuSuite* OnkMergeSortTests();
-
+CuSuite* OnkLListTests();
 /*****************/
 /*   Test lexer  */
 /*****************/
@@ -81,13 +81,14 @@ void RunAllTests(void)
     assert(8*22);
 
     CuSuiteAddSuite(suite, CuGetSuite());
-
+    CuSuiteAddSuite(suite, OnkLListTests());
     // FIXME BROKEN
     // CuSuiteAddSuite(suite, OnkMaskAssertSuite());
     // CuSuiteAddSuite(suite, OnkAssertTests());
 
     CuSuiteAddSuite(suite, OnkVecTests());
-    CuSuiteAddSuite(suite, OnkQueueTest());
+    //CuSuiteAddSuite(suite, OnkQueueTest());
+
     CuSuiteAddSuite(suite, OnkMergeSortTests());
     CuSuiteAddSuite(suite, LexerUnitTests());
 

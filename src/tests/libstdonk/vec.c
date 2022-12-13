@@ -34,7 +34,7 @@ void __test__vec_free_heap(CuTest* tc)
     CuAssertTrue(tc, vec.base == 0);
     CuAssertTrue(tc, vec.capacity == 0);
     CuAssertTrue(tc, vec.type_sz == 0);
-    CuAssertTrue(tc, vec.state == onk_vec_mode_free);
+    CuAssertTrue(tc, vec.state == onk_vec_mode_uninit);
 }
 
 void __test__vec_free_stack(CuTest* tc)
@@ -58,7 +58,7 @@ void __test__vec_free_stack(CuTest* tc)
     CuAssertTrue(tc, vec.base == 0);
     CuAssertTrue(tc, vec.capacity == 0);
     CuAssertTrue(tc, vec.type_sz == 0);
-    CuAssertTrue(tc, vec.state == onk_vec_mode_free);
+    CuAssertTrue(tc, vec.state == onk_vec_mode_uninit);
 }
 
 void __test__vec_pushpop_stack(CuTest* tc)

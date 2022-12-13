@@ -175,9 +175,6 @@ enum onk_lexicon_t {
 
     PH_ONK_MARKER_COMPOUND_BIN_END,
 
-    /* in */
-    ONK_IN_TOKEN,
-
     PH_ONK_MARKER_BIN_END,
     PH_ONK_MARKER_GROUP_OP_START,
     onk_idx_op_token,
@@ -211,6 +208,7 @@ enum onk_lexicon_t {
     /* as */
     //AS,
 
+    ONK_IN_TOKEN,
     PH_ONK_MARKER_KEYWORD_BLOCK_START,
     /* struct A {} */
     ONK_STRUCT_TOKEN,
@@ -225,11 +223,8 @@ enum onk_lexicon_t {
     ONK_IMPORT_TOKEN,
 
     PH_ONK_MARKER_LOOP_CTL_START,
-    /* break */
-    ONK_BREAK_TOKEN,
-
-    /* continue */
-    ONK_CONTINUE_TOKEN,
+    ONK_BREAK_TOKEN, /* break */
+    ONK_CONTINUE_TOKEN, /* continue */
     PH_ONK_MARKER_LOOP_CTL_END,
 
     /* from */
@@ -365,10 +360,11 @@ static const enum onk_lexicon_t ILLEGAL_TOKENS[] = {
     PH_ONK_MARKER_LOOP_CTL_END,
 
     PH_ONK_MARKER_KEYWORD_DATA_START,
-    PH_ONK_MARKER_KEYWORD_DATA_END
+    PH_ONK_MARKER_KEYWORD_DATA_END,
+    0
 };
 
-#define ILLEGAL_TOKENS_LEN 49
+#define ILLEGAL_TOKENS_LEN 50
 
 /*
     onk_token_ts reference symbols derived from the 
