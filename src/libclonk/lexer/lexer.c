@@ -49,6 +49,8 @@ struct LexerStage {
     enum onk_lexicon_t forcing_next_token;
     uint16_t force_start;
     uint16_t force_span;
+
+    int8_t stage_failed;
 };
 
 void init_lexer_stage(
@@ -70,6 +72,7 @@ void init_lexer_stage(
   stage->cmpd_span_size = 0;
   stage->cmpd_start_at = 0;
   stage->src_code_sz = 0;
+  stage->stage_failed = 0;
 };
 
 enum onk_lexicon_t onk_tokenize_char(char c) {
@@ -494,15 +497,15 @@ int8_t finalize_compound_token(
     /* Error: string is missing a ending quote */
     if (lexed != ONK_DOUBLE_QUOTE_TOKEN) {
       err.type = lex_err_missing_end_quote;
-
+      state->stage_failed = -1;
       assert(memcpy(
         &err.type_data.bad_str,
         token,
         sizeof(struct onk_token_t))
       );
 
-      /* push error */
-      onk_vec_push(&state->errors, &err);
+      /* push error TODO: */
+      // onk_vec_push(&state->errors, &err);
       return -1;
     }
 
@@ -571,6 +574,7 @@ int8_t onk_tokenize(
   struct LexerStage state;
   struct onk_token_t token;
   struct onk_lexer_error_t err;
+  enum onk_lexicon_t transmission_compound = 0;
 
   init_lexer_stage(
     &state,
@@ -594,6 +598,7 @@ int8_t onk_tokenize(
     else if (onk_is_utf_byte(state.src_code[i]))
     {
       utf_error_flag = i;
+      state.stage_failed = -1;
       continue;
     }
 
@@ -640,7 +645,10 @@ int8_t onk_tokenize(
     /* continuation of complex token */
     else if (continue_compound_token(&state))
     {
-      state.compound = compose_compound(state.compound, state.current);
+
+      transmission_compound = compose_compound(state.compound, state.current);
+      if(transmission_compound)
+        state.compound = transmission_compound;
       state.cmpd_span_size += 1;
       //onk_queue8_push(&state.previous, &token);
       continue;
@@ -735,7 +743,7 @@ int8_t onk_tokenize(
 
     //assert(onk_vec_push(state.tokens, &token) > 0);
   }
-  
+
   token.type = ONK_EOF_TOKEN;
   token.start = i;
   token.end = i;
@@ -746,5 +754,5 @@ int8_t onk_tokenize(
   out->tokens = state.tokens;
   out->src_code = in->src_code;
   out->src_code_sz = i;
-  return 0;
+  return state.stage_failed;
 }

@@ -268,6 +268,7 @@ void __test__destroy_comment(CuTest* tc)
     CuAssertTrue(tc, ret == 0);
 
     tokens = output.tokens.base;
+
     CuAssertTrue(tc, tokens[0].type == ONK_INTEGER_TOKEN);
     CuAssertTrue(tc, tokens[0].start == 0);
     CuAssertTrue(tc, tokens[0].end == 3);
@@ -290,6 +291,8 @@ void __test__position(CuTest* tc)
     struct onk_lexer_input_t input;
     struct onk_lexer_output_t output;
     struct onk_token_t *tokens = 0;
+
+    char mesg[512];
     int8_t ret = 0;
     uint16_t i=0;
 
@@ -298,19 +301,18 @@ void __test__position(CuTest* tc)
     ret = onk_tokenize(&input, &output);
     tokens = output.tokens.base;
 
-    CuAssertTrue(tc, ret == -1);
+    CuAssertTrue(tc, ret == 0);
 
-    CuAssertTrue(tc, i == 4);
-    CuAssertTrue(tc, tokens[0].start == 0);
-    CuAssertTrue(tc, tokens[0].end == 3);
+    CuAssertIntEquals(tc, tokens[0].start, 0);
+    CuAssertIntEquals(tc, tokens[0].end, 3);
     CuAssertTrue(tc, tokens[0].type == ONK_INTEGER_TOKEN);
 
-    CuAssertTrue(tc, tokens[1].start == 5);
-    CuAssertTrue(tc, tokens[1].end == 6);
+    CuAssertIntEquals(tc, tokens[1].start, 5);
+    CuAssertIntEquals(tc, tokens[1].end, 5);
     CuAssertTrue(tc, tokens[1].type == ONK_ADD_TOKEN);
 
-    CuAssertTrue(tc, tokens[2].start == 8);
-    CuAssertTrue(tc, tokens[2].end == 11);
+    CuAssertIntEquals(tc, tokens[2].start, 7);
+    CuAssertIntEquals(tc, tokens[2].end, 10);
     CuAssertTrue(tc, tokens[2].type == ONK_INTEGER_TOKEN);
 }
 
