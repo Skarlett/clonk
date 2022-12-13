@@ -3,15 +3,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "onkstd/llist.h"
 #include "onkstd/merge_sort.h"
 #include "libtest/CuTest.h"
 #include "libtest/assert.h"
 #include "lexer.h"
 
+enum _onk_test_expected_output {
+  _onk_test_exp_answers,
+  _onk_test_exp_generated
+};
+
 const char * error_missing_answers(
     enum onk_lexicon_t *answers,
     uint16_t *missing,
-    uint16_t nmissing
+    uint16_t nmissing,
+    enum _onk_test_expected_output mode
 ){
     const char *prefix="\n------------\nMissing from generated:  \n";
     char * message = malloc(2048);
@@ -26,7 +33,14 @@ const char * error_missing_answers(
     for(uint16_t k=0; nmissing > k; k++)
     {
         memset(tname_buf, 0, 64);
-        tname_len = snprintf(tname_buf, 64, "[%s(answer index: %u)]\n", onk_ptoken(answers[missing[k]]), missing[k]);
+
+        if (mode == _onk_test_exp_generated)
+          tname_len = snprintf(tname_buf, 64, "[%s(answer index: %u)]\n", onk_ptoken(answers[missing[k]]), missing[k]);
+        else if(mode == _onk_test_exp_answers)
+          tname_len = snprintf(tname_buf, 64, "[%s(answer index: %u)]\n", onk_ptoken(missing[k]), k);
+        else
+          assert(false);
+
         assert(tname_len);
         if(message_len + tname_len >= message_sz)
         {
@@ -41,30 +55,8 @@ const char * error_missing_answers(
     return message;
 }
 
-struct _lexrng_linkedlist_node_t
-{
-    struct _lexrng_linkedlist_node_t *next;
-    uint16_t i;
-};
 
-uint16_t error_extra_generated(
-    enum onk_lexicon_t *answers,
-    struct _lexrng_linkedlist_node_t *rootnode,
-    uint16_t *missing
-){
-    struct _lexrng_linkedlist_node_t *stepnode = rootnode;
-    uint16_t nmissing = 0;
-
-    while(stepnode)
-    {
-        missing[nmissing] = answers[stepnode->i];
-        stepnode = stepnode->next;
-        nmissing += 1;
-    }
-
-    return nmissing;
-}
-
+#define HARNESS_SLOTS PH_ONK_TOKEN_END+1
 void _lex_range_harness(
     CuTest *tc,
     const char *file,
@@ -74,20 +66,28 @@ void _lex_range_harness(
     uint16_t answers_len
 ){
     enum onk_lexicon_t tok = 0;
-    enum onk_lexicon_t generated[PH_ONK_TOKEN_END+1];
-    uint16_t missing[PH_ONK_TOKEN_END+1];
+    enum onk_lexicon_t generated[HARNESS_SLOTS];
+    enum onk_lexicon_t clean_generated[HARNESS_SLOTS];
+    struct onk_llist_t popmap[HARNESS_SLOTS];
 
-    uint8_t missing_idx = 0, gen_idx=0;
-    int16_t contains_idx = 0;
+    struct onk_llist_t *popmap_root=0, *popmap_step=0;
+    struct onk_llist_rm_t rmret;
+
+    uint16_t missing[HARNESS_SLOTS];
+    uint16_t missing_idx = 0, popmap_i=0;
+    int16_t contains_idx = 0, gen_idx=0;
 
     CuAssert(tc, "harness called with null pointer, or empty answers", answers_len != 0);
     CuAssert(tc, "harness called with null pointer, or empty answers", answers != 0);
+
+    onk_bubblesort_lexarr(answers, answers_len);
 
     /* generate all tokens  */
     for(tok = PH_ONK_TOKEN_START; PH_ONK_TOKEN_END > tok; tok++)
     {
         if(handler(tok))
         {
+            popmap[gen_idx].i = (uint16_t)tok;
             generated[gen_idx] = tok;
             gen_idx += 1;
         }
@@ -107,8 +107,44 @@ void _lex_range_harness(
             file,
             line,
             NULL,
-            error_missing_answers(answers, missing, missing_idx)
+            error_missing_answers(answers, missing, missing_idx, _onk_test_exp_generated)
         );
+
+    for (uint16_t j=0; gen_idx > j; j++)
+    {
+        popmap[j].next = 0;
+        if (gen_idx - 1 > j)
+            popmap[j].next = &popmap[j+1];
+    }
+
+    popmap_root = &popmap[0];
+    for(uint16_t k=0; ILLEGAL_TOKENS_LEN > k; k++)
+    {
+        rmret = onk_llist_rm(popmap_root, ILLEGAL_TOKENS[k]);
+        popmap_root = rmret.root;
+    }
+
+    popmap_step = popmap_root;
+    while(popmap_step)
+    {
+        clean_generated[popmap_i++] = popmap_step->i;
+
+        if (onk_lexarr_contains(popmap_step->i, answers, (int16_t)answers_len) == -1)
+            missing[missing_idx++] = popmap_step->i;
+
+        if (popmap_step->next)
+            popmap_step = popmap_step->next;
+
+        else break;
+    }
+
+    if(answers_len != popmap_i)
+        CuFail_Line(tc, file, line, "len equality check failed",
+                    error_missing_answers(answers, missing, missing_idx, _onk_test_exp_answers));
+
+    if(memcmp(answers, clean_generated, sizeof(enum onk_lexicon_t) * answers_len) != 0)
+        CuFail_Line(tc, file, line, "memcmp failed",
+                    error_missing_answers(answers, missing, missing_idx, _onk_test_exp_answers));
 }
 
 
@@ -116,21 +152,19 @@ void _lex_range_harness(
 * test foundation *
 ******************/
 void __test__illegal_tokens_length(CuTest *tc) {
-    static const char *msg = "the amount of illegal tokens "  \
-            "does not match ILLEGAL_TOKEN_LEN";
 
-    for(uint8_t i=0; UINT8_MAX > i; i++)
+    char *buf = malloc(256);
+    uint8_t i=0;
+
+    for(i=0; UINT8_MAX > i; i++)
     {
-        if(ILLEGAL_TOKENS[i] == 0)
-        {
-          if(ILLEGAL_TOKENS_LEN == i)
-              return;
-
-          else CuFail(tc, msg);
-        }
+        if(ILLEGAL_TOKENS[i] == 0 && ILLEGAL_TOKENS_LEN == i)
+          return;
     }
+    snprintf(buf, 256, "the amount of illegal tokens got <%u>"    \
+            "does not match ILLEGAL_TOKEN_LEN <%u>", i, ILLEGAL_TOKENS_LEN);
 
-    CuFail(tc, msg);
+    CuFail(tc, buf);
 }
 
 /****************
@@ -149,19 +183,6 @@ bool test_handle_succeed(enum onk_lexicon_t tok)
         || tok == ONK_NULL_TOKEN;
 }
 
-/* void __test__lex_harness_fail(CuTest *tc) */
-/* { */
-/*     uint16_t failed_on = 0, ngenerated = 0; */
-/*     int8_t ret=0; */
-/*     enum onk_lexicon_t generated[2]; */
-/*     enum onk_lexicon_t wrong[] = {ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, 0}; */
-/*     ret = _onk_range_harness( */
-/*         wrong, test_handle_overflow, &failed_on, */
-/*         generated, &ngenerated, 2); */
-/*     CuAssertIntEquals(tc, ret, -1); */
-/*     CuAssertIntEquals(tc, failed_on, 0); */
-/* } */
-
 /********************
 * use lexer harness *
 *********************/
@@ -179,10 +200,11 @@ void __test__is_tok_delimiter(CuTest *tc)
 {
     enum onk_lexicon_t answers[] = {
       ONK_SEMICOLON_TOKEN, ONK_COMMA_TOKEN,
+      ONK_COLON_TOKEN,
       0
     };
 
-    LexRangeHarness(tc, onk_is_tok_delimiter, answers, 2);
+    LexRangeHarness(tc, onk_is_tok_delimiter, answers, 3);
 }
 
 void __test__is_tok_brace(CuTest *tc)
@@ -284,6 +306,26 @@ void __test__is_tok_block_keyword(CuTest *tc)
     );
 }
 
+void __test__is_tok_keyword(CuTest *tc)
+{
+    enum onk_lexicon_t answers[] = {
+      ONK_IF_TOKEN, ONK_ELSE_TOKEN, ONK_DEF_TOKEN,
+      ONK_FOR_TOKEN, ONK_WHILE_TOKEN, ONK_FROM_TOKEN,
+      ONK_BREAK_TOKEN, ONK_CONTINUE_TOKEN, ONK_IMPL_TOKEN,
+      ONK_IMPORT_TOKEN, ONK_RETURN_TOKEN, ONK_STRUCT_TOKEN,
+
+      ONK_IN_TOKEN, ONK_TRUE_TOKEN, ONK_FALSE_TOKEN, ONK_NULL_TOKEN,
+      0
+    };
+
+    LexRangeHarness(
+        tc,
+        onk_is_tok_keyword,
+        answers,
+        16
+    );
+}
+
 void __test__is_tok_unit(CuTest *tc)
 {
     enum onk_lexicon_t answers[] = {
@@ -301,20 +343,6 @@ void __test__is_tok_unit(CuTest *tc)
         onk_is_tok_unit,
         answers,
         6
-    );
-}
-
-void __test__is_tok_keyword(CuTest *tc)
-{
-    enum onk_lexicon_t answers[] = {
-      0
-    };
-
-    LexRangeHarness(
-        tc,
-        onk_is_tok_keyword,
-        answers,
-        0
     );
 }
 
@@ -356,24 +384,45 @@ void __test__is_tok_asn_op(CuTest *tc)
 void __test__is_tok_group_modifier(CuTest *tc)
 {
     enum onk_lexicon_t answers[] = {
-       0,
+      onk_apply_op_token,
+      onk_ifcond_op_token,
+      onk_ifbody_op_token,
+      onk_defsig_op_token,
+      onk_defbody_op_token,
+      onk_for_args_op_token,
+      onk_for_body_op_token,
+      onk_struct_init_op_token,
+      onk_idx_op_token,
+      onk_while_body_op_token,
+      onk_while_cond_op_token,
+      0,
     };
+
     LexRangeHarness(
         tc,
         onk_is_tok_group_modifier,
         answers,
-        0
+        11
    );
 }
 
 void __test__is_tok_group_ident(CuTest *tc)
 {
-    enum onk_lexicon_t answers[] = {0};
+    enum onk_lexicon_t answers[] = {
+      onk_map_group_token,
+      onk_code_group_token,
+      onk_list_group_token,
+      onk_struct_group_token,
+      onk_idx_group_token,
+      onk_tuple_group_token,
+      0
+    };
+
     LexRangeHarness(
         tc,
         onk_is_group,
         answers,
-        0
+        6
    );
 }
 
@@ -401,6 +450,8 @@ void __test__all_tokens_have_ptoken_impl(CuTest *tc)
 CuSuite* LexerHarnessLogicTests(void)
 {
     CuSuite* suite = CuSuiteNew();
+
+    SUITE_ADD_TEST(suite, __test__illegal_tokens_length);
     SUITE_ADD_TEST(suite, __test__all_tokens_have_ptoken_impl);
 
     SUITE_ADD_TEST(suite, __test__is_tok_close_brace);
@@ -410,11 +461,12 @@ CuSuite* LexerHarnessLogicTests(void)
     SUITE_ADD_TEST(suite, __test__is_tok_unary_operator);
     /* SUITE_ADD_TEST(suite, __test__is_tok_binop); */
     SUITE_ADD_TEST(suite, __test__is_tok_asn_op);
-
     SUITE_ADD_TEST(suite, __test__is_tok_keyword);
     SUITE_ADD_TEST(suite, __test__is_tok_block_keyword);
     SUITE_ADD_TEST(suite, __test__is_tok_loopctl);
     SUITE_ADD_TEST(suite, __test__is_tok_delimiter);
     SUITE_ADD_TEST(suite, __test__is_tok_group_ident);
+    SUITE_ADD_TEST(suite, __test__is_tok_group_modifier);
+
     return suite;
 }

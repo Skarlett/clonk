@@ -334,5 +334,6 @@ CuSuite* LexerUnitTests(void)
     SUITE_ADD_TEST(suite, __test__position);
     SUITE_ADD_TEST(suite, __test__fails_on_partial_string);
     SUITE_ADD_TEST(suite, __test__fails_on_utf);
+
     return suite;
 }
