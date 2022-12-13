@@ -57,7 +57,8 @@ bool onk_is_tok_data_keyword(enum onk_lexicon_t token){
 }
 
 bool onk_is_tok_keyword(enum onk_lexicon_t token){
-    return onk_is_tok_block_keyword(token)
+    return token == ONK_IN_TOKEN
+        || onk_is_tok_block_keyword(token)
         || onk_is_tok_data_keyword(token);
 }
 
