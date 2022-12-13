@@ -93,7 +93,7 @@ void _lex_range_harness(
         }
     }
 
-    // add missing tokens (from answers) to the missing buffer
+    /* add missing tokens (from answers) to the missing buffer */
     for (uint16_t i=0; answers_len > i; i++)
     {
         contains_idx = onk_lexarr_contains(answers[i], generated, gen_idx);
@@ -101,6 +101,7 @@ void _lex_range_harness(
             missing[missing_idx++] = i;
     }
 
+    /* print missing tokens which were not found in the answer list */
     if(missing_idx)
         CuFail_Line(
             tc,
@@ -110,6 +111,8 @@ void _lex_range_harness(
             error_missing_answers(answers, missing, missing_idx, _onk_test_exp_generated)
         );
 
+
+    /* initialize linked list */
     for (uint16_t j=0; gen_idx > j; j++)
     {
         popmap[j].next = 0;
@@ -117,6 +120,7 @@ void _lex_range_harness(
             popmap[j].next = &popmap[j+1];
     }
 
+    /* remove all illegal tokens from handler-generation */
     popmap_root = &popmap[0];
     for(uint16_t k=0; ILLEGAL_TOKENS_LEN > k; k++)
     {
@@ -124,11 +128,13 @@ void _lex_range_harness(
         popmap_root = rmret.root;
     }
 
+    /* flatten linked list into an array */
     popmap_step = popmap_root;
     while(popmap_step)
     {
         clean_generated[popmap_i++] = popmap_step->i;
 
+        /* extra generated tokens not included in the answer list will be marked as missing */
         if (onk_lexarr_contains(popmap_step->i, answers, (int16_t)answers_len) == -1)
             missing[missing_idx++] = popmap_step->i;
 
@@ -138,10 +144,12 @@ void _lex_range_harness(
         else break;
     }
 
+    /* assert the answer's length is the same as the generated */
     if(answers_len != popmap_i)
         CuFail_Line(tc, file, line, "len equality check failed",
                     error_missing_answers(answers, missing, missing_idx, _onk_test_exp_answers));
 
+    /* memcmp the flattened & sorted list */
     if(memcmp(answers, clean_generated, sizeof(enum onk_lexicon_t) * answers_len) != 0)
         CuFail_Line(tc, file, line, "memcmp failed",
                     error_missing_answers(answers, missing, missing_idx, _onk_test_exp_answers));
@@ -272,21 +280,6 @@ void __test__is_tok_whitespace(CuTest *tc)
         2
     );
 }
-
-/* void __test__is_tok_operator(CuTest *tc) */
-/* { */
-/*     enum onk_lexicon_t *answers = {0}; */
-/*     LexRangeHarness( */
-/*         tc, "", answers, */
-/*         onk_is_tok_illegal */
-/*     ); */
-/* } */
-
-/* void __test__is_tok_binop(CuTest *tc) */
-/* { */
-/*     enum onk_lexicon_t answers[] = {0}; */
-/*     LexRangeHarness(tc, "", answers, onk_is_tok_binop); */
-/* } */
 
 void __test__is_tok_block_keyword(CuTest *tc)
 {
