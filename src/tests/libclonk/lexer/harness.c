@@ -361,6 +361,49 @@ void __test__is_tok_loopctl(CuTest *tc)
     );
 }
 
+void __test__is_tok_binop(CuTest *tc)
+{
+    enum onk_lexicon_t answers[] = {
+      ONK_BIT_OR_EQL,
+      ONK_BIT_AND_EQL,
+      ONK_BIT_NOT_EQL,
+      ONK_MINUS_EQL_TOKEN,
+      ONK_PLUSEQ_TOKEN,
+
+      ONK_EQUAL_TOKEN,
+      ONK_ADD_TOKEN,
+      ONK_SUB_TOKEN,
+      ONK_MUL_TOKEN,
+      ONK_DIV_TOKEN,
+
+      ONK_POW_TOKEN,
+      ONK_DOT_TOKEN,
+      ONK_GT_TOKEN,
+      ONK_LT_TOKEN,
+      ONK_GT_EQL_TOKEN,
+
+      ONK_MOD_TOKEN,
+      ONK_AND_TOKEN,
+      ONK_SHR_TOKEN,
+      ONK_SHL_TOKEN,
+      ONK_OR_TOKEN,
+
+      ONK_AMPER_TOKEN,
+      ONK_LT_EQL_TOKEN,
+      ONK_ISEQL_TOKEN,
+      ONK_NOT_EQL_TOKEN,
+      ONK_PIPE_TOKEN,
+      0
+    };
+
+    LexRangeHarness(
+        tc,
+        onk_is_tok_binop,
+        answers,
+        25
+    );
+}
+
 void __test__is_tok_asn_op(CuTest *tc)
 {
     enum onk_lexicon_t answers[] = {
@@ -459,7 +502,8 @@ CuSuite* LexerHarnessLogicTests(void)
     SUITE_ADD_TEST(suite, __test__is_tok_brace);
 
     SUITE_ADD_TEST(suite, __test__is_tok_unary_operator);
-    /* SUITE_ADD_TEST(suite, __test__is_tok_binop); */
+    SUITE_ADD_TEST(suite, __test__is_tok_binop);
+
     SUITE_ADD_TEST(suite, __test__is_tok_asn_op);
     SUITE_ADD_TEST(suite, __test__is_tok_keyword);
     SUITE_ADD_TEST(suite, __test__is_tok_block_keyword);
