@@ -692,31 +692,31 @@ uint16_t onk_strlen_tok_arr(
 ** Debug functions
 **
 */
-int32_t onk_snprint_lex_arr(
+int32_t onk_lexarr_strncat(
     char * buf,
     int32_t nbuf,
-    enum onk_lexicon_t *arr,
+    const enum onk_lexicon_t *arr,
     int16_t narr
 );
 
-int32_t onk_snprint_rlex_arr(
+int32_t onk_strncat_rlex_arr(
     char * buf,
     int32_t nbuf,
-    enum onk_lexicon_t **arr,
+    const enum onk_lexicon_t **arr,
     int16_t narr
 );
 
-int32_t onk_snprint_tokarr_as_lexarr(
+int32_t onk_tokarr_strncat_as_lexarr(
     char * buf,
     int32_t nbuf,
-    struct onk_token_t *arr,
+    const struct onk_token_t *arr,
     int16_t narr
 );
 
-int32_t onk_snprint_rtokarr_as_lexarr(
+int32_t onk_strncat_rtokarr_as_lexarr(
     char * buf,
     int32_t nbuf,
-    struct onk_token_t **arr,
+    const struct onk_token_t **arr,
     int16_t narr
 );
 
