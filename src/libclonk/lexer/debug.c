@@ -2,20 +2,19 @@
 #include <stdio.h>
 #include "lexer.h"
 
-uint32_t onk_snprintf_lex_arr_inner(
+uint16_t onk_snprintf_lex_arr_inner(
     char * buf,
     uint16_t nbuf,
     enum onk_lexicon_t token
 ){
     char working_buf[ONK_TOK_CHAR_SIZE];
     const char * ptoken = onk_ptoken(token);
-    uint32_t ptoken_len = strlen(ptoken) + 3;
+    uint16_t ptoken_len = (uint16_t)strlen(ptoken) + 3;
 
     if (ptoken_len >= nbuf)
         return -1;
 
     snprintf(working_buf, ONK_TOK_CHAR_SIZE, "[%s] ", ptoken);
-
     strncat(
         buf,
         working_buf,
@@ -62,7 +61,7 @@ int32_t onk_snprint_token(
     return nbytes;
 }
 
-uint16_t onk_strlen_lex_arr(
+uint16_t onk_lexarr_strlen(
     enum onk_lexicon_t *arr,
     uint16_t narr
 ){
@@ -86,15 +85,15 @@ uint16_t onk_strlen_tok_arr(
     return sum;
 }
 
-int32_t onk_snprint_lex_arr(
-    char * buf, 
-    int32_t nbuf,
-    enum onk_lexicon_t *arr,
-    int16_t narr
-){
-    uint32_t remaining_bytes = nbuf;
-    uint32_t ptok_len = 0;
-
+uint16_t onk_lexarr_strncat(
+    char * buf,
+    uint16_t nbuf,
+    const enum onk_lexicon_t *arr,
+    uint16_t narr
+)
+{
+    uint16_t remaining_bytes = nbuf;
+    uint16_t ptok_len = 0;
     assert(narr > 0);
 
     for(int16_t i=0; narr > i; i++)
@@ -103,25 +102,24 @@ int32_t onk_snprint_lex_arr(
             buf, remaining_bytes,
             arr[i]);
 
-        if(-1 >= ptok_len)
-            return -1;
+        // if(-1 >= ptok_len)
+        //     return -1;
 
         remaining_bytes -= ptok_len;
     }
 
     /*FIXME: Fix bad type conversion - i was lazy*/
-    return (int32_t)(nbuf - remaining_bytes);
+    return (nbuf - remaining_bytes);
 }
 
-int32_t onk_snprint_rlex_arr(
+int32_t onk_strncat_rlex_arr(
     char * buf,
     int32_t nbuf,
-    enum onk_lexicon_t **arr,
+    const enum onk_lexicon_t **arr,
     int16_t narr
 ){
     uint16_t remaining_bytes = nbuf;
     uint32_t ptok_len = 0;
-
     assert(narr > 0);
 
     for(int16_t i=0; narr > i; i++)
@@ -139,10 +137,10 @@ int32_t onk_snprint_rlex_arr(
     return nbuf - remaining_bytes;
 }
 
-int32_t onk_snprint_tokarr_as_lexarr(
+int32_t onk_tokarr_strncat_as_lexarr(
     char * buf,
     int32_t nbuf,
-    struct onk_token_t *arr,
+    const struct onk_token_t *arr,
     int16_t narr
 ){
     uint16_t remaining_bytes = nbuf;
@@ -164,15 +162,14 @@ int32_t onk_snprint_tokarr_as_lexarr(
     return nbuf - remaining_bytes;
 }
 
-int32_t onk_snprint_rtokarr_as_lexarr(
+int32_t onk_strncat_rtokarr_as_lexarr(
     char * buf,
     int32_t nbuf,
-    struct onk_token_t **arr,
+    const struct onk_token_t **arr,
     int16_t narr
 ){
     uint16_t remaining_bytes = nbuf;
     uint32_t ptok_len = 0;
-
     assert(narr > 0);
 
     for(int16_t i=0; narr > i; i++)
