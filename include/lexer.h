@@ -657,9 +657,9 @@ bool onk_is_tok_whitespace(enum onk_lexicon_t tok);
  *
  * @return bool
  */
-bool onk_is_group(enum onk_lexicon_t tok);
+bool onk_is_tok_group(enum onk_lexicon_t tok);
 
-
+bool onk_is_tok_transit(enum onk_lexicon_t tok);
 /*
     Inverts brace characters into their counter parts.
     example

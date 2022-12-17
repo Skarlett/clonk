@@ -79,9 +79,14 @@ bool onk_is_tok_illegal(enum onk_lexicon_t token){
 /*         && PH_ONK_MARKER_KEYWORD_BLOCK_END > token; */
 /* } */
 
-bool onk_is_group(enum onk_lexicon_t tok) {
+bool onk_is_tok_group(enum onk_lexicon_t tok) {
     return tok > PH_ONK_MARKER_GROUP_START
         && PH_ONK_MARKER_GROUP_END > tok;
+}
+
+bool onk_is_tok_transit(enum onk_lexicon_t tok) {
+    return tok > PH_ONK_MARKER_TRANSITION_START
+        && PH_ONK_MARKER_TRANSITION_END > tok;
 }
 
 bool onk_is_tok_group_modifier(enum onk_lexicon_t tok) {
