@@ -12,7 +12,7 @@
 #include <sys/types.h>
 #include <stdbool.h>
 
-#define ONK_VERSION "0.0.5"
+#define ONK_VERSION "0.0.6-prealpha"
 
 // -DINCLUDE_TESTS 1
 #define ONK_INCLUDE_TESTS 0
@@ -109,8 +109,8 @@ typedef int16_t onk_isize;
 #define ONK_ALLOC(TYPE)  ((TYPE *) malloc(sizeof(TYPE)))
 #define ONK_CALLOC(TYPE, N) ((TYPE *) calloc(sizeof(TYPE), (N)))
 
-#define unimplemented() fputs(stdout, "unimplemented") && exit(127)
-#define panic() fputs(stdout, "panic") && exit(127)
+#define onk_unimplemented() fputs(stdout, "unimplemented") && exit(127)
+#define onk_panic() fputs(stdout, "panic") && exit(127)
 
 
 /* enum onk_datatype { ONK_DATA_STR }; */
