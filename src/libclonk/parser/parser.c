@@ -677,7 +677,7 @@ int8_t onk_parse_step(struct onk_parser_state_t *state)
 
       printf("got: [%s] expected: \n", onk_ptoken(current->type));
 
-      onk_snprint_lex_arr(
+      onk_lexarr_strncat(
         ptr,
         512,
         state->expect,

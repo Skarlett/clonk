@@ -456,7 +456,7 @@ void __test__is_tok_group_ident(CuTest *tc)
 
     LexRangeHarness(
         tc,
-        onk_is_group,
+        onk_is_tok_group,
         answers,
         6
    );

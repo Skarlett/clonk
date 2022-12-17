@@ -10,7 +10,6 @@
 /*-------------------------------------------------------------------------*
  * CuTest
  *-------------------------------------------------------------------------*/
-
 void CuTestInit(
 	CuTest* t,
 	const char* name,
@@ -23,7 +22,6 @@ void CuTestInit(
 	t->jumpBuf = NULL;
     t->func = func;
 }
-
 
 CuTest* CuTestNew(
 	const char* name,

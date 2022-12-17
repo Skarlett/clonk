@@ -1,50 +1,44 @@
 #include "clonk.h"
 #include "lexer.h"
 #include "libtest/CuTest.h"
-// #include "libtest/masking.h"
 #include "libtest/assert.h"
 
 #define MOCK_SRC_LEN 9
-
 #define MOCK_SRC "word word"
-#define MOCK_TOKENS_OK {ONK_WORD_TOKEN, ONK_WORD_TOKEN}
-#define MOCK_TOKENS_FAIL {ONK_WORD_TOKEN, ONK_INTEGER_TOKEN}
 
-void mk_toks(struct onk_token_t token[], const enum onk_lexicon_t ty[]) {
-  for (uint16_t i = 0 ;; i++)
-    if (ty[i] == 0)
-      break;
-    else
-      token[i].type = ty[i];
-}
+// void mk_toks(struct onk_token_t token[], const enum onk_lexicon_t ty[]) {
+//   for (uint16_t i = 0 ;; i++)
+//   {
+//     if (ty[i] == 0)
+//       break;
+    
+//     token[i].type = ty[i];
+//     token[i].start = i;
+//     token[i].end = i+1;
+//     token[i].seq = i;
+//   }
+// }
 
-void __test__check_tokens(CuTest* tc) {
-     struct onk_token_t toks[8];
-     const static enum onk_lexicon_t check_list[][16] = {
-        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
-        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
-        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_DIV_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
-        {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_ADD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_MUL_TOKEN, ONK_SUB_TOKEN, 0},
-        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
-        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
-    };
+// void __test__check_tokens(CuTest* tc) {
+//   onk_assert_tokens(tc, toks, check_list[i], "n/a", "file", 0);
+// }
+// void __test__check_tokens(CuTest* tc) {
+//      struct onk_token_t toks[8];
+//      const static enum onk_lexicon_t check_list[][16] = {
+//         {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+//         {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
+//         {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_DIV_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+//         {ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_ADD_TOKEN, ONK_WORD_TOKEN, ONK_WORD_TOKEN, ONK_MUL_TOKEN, ONK_SUB_TOKEN, 0},
+//         {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, 0},
+//         {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, ONK_MUL_TOKEN, ONK_ADD_TOKEN, 0},
+//     };
 
-    for (uint8_t i=0; 6 > i; i++)
-    {
-        mk_toks(toks, check_list[i]);
-        onk_assert_tokens(tc, toks, check_list[i], "n/a", "file", 0);
-    }
-}
-
-void __test__mock_tokens(CuTest *tc)
-{
-    struct onk_token_t tokens[2];
-    enum onk_lexicon_t arr[2] = {ONK_WORD_TOKEN, ONK_ADD_TOKEN};
-
-    create_mock_tokens(tokens, 2, arr);
-    for (uint8_t i=0; 2 > i; i++)
-        CuAssertTrue(tc, tokens[i].type == arr[i]);
-}
+//     for (uint8_t i=0; 6 > i; i++)
+//     {
+//         mk_toks(toks, check_list[i]);
+//         onk_assert_tokens(tc, toks, check_list[i], "n/a", "file", 0);
+//     }
+// }
 
 /* void __test__assert_tokens(CuTest *tc) */
 /* { */
@@ -160,7 +154,7 @@ void __test__mock_tokens(CuTest *tc)
 CuSuite* OnkAssertTests(void)
 {
     CuSuite* suite = CuSuiteNew();
-    SUITE_ADD_TEST(suite, __test__mock_tokens);
+    //SUITE_ADD_TEST(suite, __test__check_tokens);
     /* SUITE_ADD_TEST(suite, __test__assert_match_tokens); */
     /* SUITE_ADD_TEST(suite, __test__assert_tokens); */
 

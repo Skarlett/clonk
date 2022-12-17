@@ -28,7 +28,6 @@ void __test__init_parser(CuTest* tc)
 void __test__reset_parser(CuTest* tc)
 {
     struct onk_parser_state_t p1, p2;
-
     struct onk_parser_input_t parser_in;
     struct onk_parser_output_t parser_out;
 
@@ -38,8 +37,7 @@ void __test__reset_parser(CuTest* tc)
 
     onk_parser_init(&p1, &i);
     onk_parser_init(&p2, &i);
-    assert(onk_tokenize(&lex_in, &lex_out) == 0);
-
+    CuAssertTrue(tc, onk_tokenize(&lex_in, &lex_out) == 0);
     // NOTE: add global scope ???? idk if this does anything atm
     onk_parser_input_from_lexer_output(
         &lex_out,
@@ -52,6 +50,6 @@ CuSuite * ParserSuite(void)
 {
     CuSuite* suite = CuSuiteNew();
     SUITE_ADD_TEST(suite, __test__init_parser);
-
+    SUITE_ADD_TEST(suite, __test__reset_parser);
     return suite;
 }

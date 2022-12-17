@@ -452,7 +452,7 @@ enum onk_lexicon_t compose_compound(
       if (current == ONK_PIPE_TOKEN)
         return ONK_OR_TOKEN;
       else if (current == ONK_EQUAL_TOKEN)
-        return ONK_MINUS_EQL_TOKEN;
+        return ONK_BIT_OR_EQL;
       break;
 
     case PH_ONK_AMPER_TRANSMISSION_TOKEN:
@@ -495,9 +495,11 @@ int8_t finalize_compound_token(
   if (token->type == ONK_STRING_LITERAL_TOKEN)
   {
     /* Error: string is missing a ending quote */
-    if (lexed != ONK_DOUBLE_QUOTE_TOKEN) {
+    if (lexed != ONK_DOUBLE_QUOTE_TOKEN)
+    {
       err.type = lex_err_missing_end_quote;
       state->stage_failed = -1;
+
       assert(memcpy(
         &err.type_data.bad_str,
         token,
@@ -517,12 +519,20 @@ int8_t finalize_compound_token(
 
   /*
   / check if its an operator, and that its lenth is 2
-  / if not - down grade the operator from its complex version
+  / if not - down grade the operator from its compound
+  / version
   */
-  if (onk_token_len(token) < 2 && is_compound_bin_op(token->type)) {
+  else if (onk_token_len(token) < 2 && is_compound_bin_op(token->type))
+  {
     token->type = invert_operator_token(token->type);
 
     /* Error: UNDEFINED/null token when inverted*/
+    assert(token->type != ONK_UNDEFINED_TOKEN);
+  }
+
+  else if (onk_is_tok_transit(token->type))
+  {
+    token->type = invert_operator_token(token->type);
     assert(token->type != ONK_UNDEFINED_TOKEN);
   }
 
@@ -531,11 +541,12 @@ int8_t finalize_compound_token(
 
 int8_t push_tok(
   struct LexerStage *state,
-  struct onk_token_t *tok)
-{
+  struct onk_token_t *tok
+){
   int8_t ret = 0;
-  enum onk_lexicon_t type = state->current;
+  enum onk_lexicon_t type = 0;
   
+  type = state->current;
   if (state->compound != ONK_UNDEFINED_TOKEN)
     type = state->compound;
   
@@ -546,15 +557,14 @@ int8_t push_tok(
   );
 
   assert(onk_vec_push(&state->tokens, tok) != 0);
-  //onk_queue8_push(&state->previous, &tok);
 
   if (type == ONK_FROM_TOKEN)
   {
     assert(UINT16_MAX > *state->i);
-
     state->forcing_next_token = ONK_FROM_LOCATION;
     state->force_start = *state->i + 1;
   }
+
   return ret;
 }
 
@@ -582,7 +592,7 @@ int8_t onk_tokenize(
     &i
   );
 
-  for (i = 0 ;; i++) {
+  for (i = 0 ; UINT16_MAX - 1 > i; i++) {
     if (state.src_code[i] == 0)
       break;
 
@@ -618,7 +628,6 @@ int8_t onk_tokenize(
 
         /* push error */
         onk_vec_push(&state.errors, &err);
-
         utf_error_flag = 0;
       }
 
@@ -642,10 +651,9 @@ int8_t onk_tokenize(
       continue;
     }
 
-    /* continuation of complex token */
+    /* continuation of compound token */
     else if (continue_compound_token(&state))
     {
-
       transmission_compound = compose_compound(state.compound, state.current);
       if(transmission_compound)
         state.compound = transmission_compound;
@@ -656,14 +664,11 @@ int8_t onk_tokenize(
     /* completed compound token */
     else if (state.compound != ONK_UNDEFINED_TOKEN)
     {
-      if(state.compound != ONK_UNDEFINED_TOKEN)
-      {
-        token.start = state.cmpd_start_at;
-        token.end = state.cmpd_start_at + state.cmpd_span_size;
-        token.type = state.compound;
-        token.seq = state.tokens.len;
-        state.compound = ONK_UNDEFINED_TOKEN;
-      }
+      token.start = state.cmpd_start_at;
+      token.end = state.cmpd_start_at + state.cmpd_span_size;
+      token.type = state.compound;
+      token.seq = state.tokens.len;
+      state.compound = ONK_UNDEFINED_TOKEN;
 
       push_tok(&state, &token);
       if (token.type == ONK_STRING_LITERAL_TOKEN)
@@ -696,13 +701,11 @@ int8_t onk_tokenize(
     else if (state.current != ONK_UNDEFINED_TOKEN)
     {
       state.compound = ONK_UNDEFINED_TOKEN;
-
       token.start = i;
       token.end = i;
       token.type = state.current;
       token.seq = state.tokens.len;
-
-      onk_vec_push(&state.tokens, &token);
+      assert(onk_vec_push(&state.tokens, &token));
       state.cmpd_start_at = 0;
     }
   }
@@ -720,26 +723,23 @@ int8_t onk_tokenize(
   */
   if (state.compound != ONK_UNDEFINED_TOKEN)
   {
-    token.start = state.cmpd_start_at;
-    token.end = state.cmpd_start_at + state.cmpd_span_size;
-    token.type = state.compound;
-    token.seq = state.tokens.len;
-
-    if (push_tok(&state, &token) == -1)
-      return -1;
-
-    //assert(onk_vec_push(state.tokens, &token) > 0);
+      token.start = state.cmpd_start_at;
+      token.end = state.cmpd_start_at + state.cmpd_span_size;
+      token.seq = state.tokens.len;
+      token.type = state.compound;
+      if (push_tok(&state, &token) == -1)
+          return -1;
   }
 
   token.type = ONK_EOF_TOKEN;
   token.start = i;
   token.end = i;
   token.seq = state.tokens.len;
-  
-  onk_vec_push(&state.tokens, &token);
 
+  onk_vec_push(&state.tokens, &token);
   out->tokens = state.tokens;
   out->src_code = in->src_code;
   out->src_code_sz = i;
+
   return state.stage_failed;
 }

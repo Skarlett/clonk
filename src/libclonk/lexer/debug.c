@@ -108,7 +108,6 @@ uint16_t onk_lexarr_strncat(
         remaining_bytes -= ptok_len;
     }
 
-    /*FIXME: Fix bad type conversion - i was lazy*/
     return (nbuf - remaining_bytes);
 }
 
