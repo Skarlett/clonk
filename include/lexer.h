@@ -692,11 +692,11 @@ uint16_t onk_strlen_tok_arr(
 ** Debug functions
 **
 */
-int32_t onk_lexarr_strncat(
+uint16_t onk_lexarr_strncat(
     char * buf,
-    int32_t nbuf,
+    uint16_t nbuf,
     const enum onk_lexicon_t *arr,
-    int16_t narr
+    uint16_t narr
 );
 
 int32_t onk_strncat_rlex_arr(

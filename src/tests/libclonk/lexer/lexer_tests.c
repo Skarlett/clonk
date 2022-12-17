@@ -15,100 +15,36 @@
 
 typedef uint8_t test_flag;
 
-int8_t _filter_cfg(test_flag flags, enum onk_lexicon_t current, uint16_t tokens_len, uint8_t i)
-{
-    if ((flags & ignore_whitespace && onk_is_tok_whitespace(current))
-      ||(flags & ignore_eof && current == ONK_EOF_TOKEN)
-      ||(flags & ignore_comments && current == ONK_COMMENT_TOKEN))
-      return 1;
-    return 0;
-}
-
-void lexer_harness(
-    CuTest *tc,
-    struct onk_lexer_output_t *err_output,
-    const char* const* src_code,
-    enum onk_lexicon_t answers[][32],
-    uint8_t flags,
-    const char * fp,
-    uint16_t line
-){
-    struct onk_lexer_input_t lexer_input;
-    struct onk_lexer_output_t output;
-
-    enum onk_lexicon_t current = 0;
-    char msg[512];
-    uint16_t actr = 0;
-    int8_t lex_ret = 0;
-
-    for (uint8_t set=0; MAX_SETS > set; set++)
-    {
-        if(src_code[set] == 0 || answers[set] == 0)
-          return;
-
-        for(uint16_t actr=0; MAX_ANSW_LEN > actr; actr++)
-            if (answers[set][actr] == 0)
-                break;
-
-        lexer_input.src_code = src_code[set];
-        lex_ret = onk_tokenize(&lexer_input, &output);
-
-        CuAssertTrue(tc, output.tokens.len == actr);
-        CuAssertTrue(tc, lex_ret != 0);
-
-        /* check every token */
-        for (uint16_t i=0; output.tokens.len > i; i++)
-        {
-            current = ((struct onk_token_t *)
-                       output.tokens.base)[i].type;
-
-            if(_filter_cfg(flags, current, output.tokens.len, i))
-                continue;
-
-            if(current != answers[set][i])
-            {
-                sprintf(msg, "%s:%u failed on set idx[%d]", fp, line, i);
-                CuFail(tc, msg);
-            }
-        }
-
-        onk_vec_clear(&output.tokens);
-    }
-
-    return;
-}
-
+#define MESSAGE_BUF_SZ 16
 void __test__io(CuTest* tc)
 {
     struct onk_lexer_output_t lex_output;
     const char * src[] = {
         "a",
         "aa",
-        "1a"
+        "1a",
         "a1",
         "a_1",
         "_",
         "10",
         "1_0",
         "1",
-        " 1 ",
+        " 1 ", // 10
+
         "1234",
         "-1234",
         "\"1234\"",
-        "\"12\\\"34\"", // "12\"43"
-        "£",
-        "$",
         "<=",
         ">=",
         "==",
         "!=",
         "+=",
         "-=",
-        "&&",
+        "&&", // 20
         "||",
         ">>",
-        "<<",
-        "|=",
+        "<<", // 23
+        "|=", // 24
         "&=",
         "~=",
         "<==", ">==", "==<", "==>",
@@ -135,7 +71,7 @@ void __test__io(CuTest* tc)
         "while",
         "for",
         "in",
-        "[]{}()!+- ><*/^%=&|:;_ 5a,~\\",
+        "[]{}()!+- ><*/^%=&|:;_ 5a,~\\${",
 
         "1 + 2",
         "(1 + 2)",        // 5
@@ -153,34 +89,30 @@ void __test__io(CuTest* tc)
         {ONK_WORD_TOKEN, 0},
         {ONK_WORD_TOKEN, 0},
         {ONK_INTEGER_TOKEN, ONK_WORD_TOKEN, 0},
+        
         {ONK_WORD_TOKEN, 0},
         {ONK_WORD_TOKEN, 0},
         {ONK_WORD_TOKEN, 0},
+        
         {ONK_INTEGER_TOKEN, 0},
         {ONK_INTEGER_TOKEN, 0},
         {ONK_INTEGER_TOKEN, 0},
+        {ONK_INTEGER_TOKEN, 0}, // 10
         {ONK_INTEGER_TOKEN, 0},
         {ONK_INTEGER_TOKEN, 0},
-        {ONK_INTEGER_TOKEN, 0},
-
         {ONK_STRING_LITERAL_TOKEN, 0},
-        {ONK_STRING_LITERAL_TOKEN, 0},
-
-        {ONK_DOLLAR_TOKEN, 0},
-        {ONK_DOLLAR_TOKEN, 0},
-
         {ONK_LT_EQL_TOKEN, 0},
-        {ONK_GT_EQL_TOKEN, 0},
+        {ONK_GT_EQL_TOKEN, 0}, // 15
         {ONK_ISEQL_TOKEN, 0},
         {ONK_NOT_EQL_TOKEN, 0},
         {ONK_PLUSEQ_TOKEN, 0},
         {ONK_MINUS_EQL_TOKEN, 0},
-        {ONK_AND_TOKEN, 0},
+        {ONK_AND_TOKEN, 0}, // 20
         {ONK_OR_TOKEN, 0},
         {ONK_SHR_TOKEN, 0},
         {ONK_SHL_TOKEN, 0},
         {ONK_BIT_OR_EQL, 0},
-        {ONK_BIT_AND_EQL, 0},
+        {ONK_BIT_AND_EQL, 0}, // 25
         {ONK_BIT_NOT_EQL, 0},
 
         {ONK_LT_EQL_TOKEN, ONK_EQUAL_TOKEN, 0},
@@ -235,6 +167,7 @@ void __test__io(CuTest* tc)
           ONK_COLON_TOKEN, ONK_SEMICOLON_TOKEN,
           ONK_WORD_TOKEN, ONK_INTEGER_TOKEN, ONK_WORD_TOKEN,
           ONK_COMMA_TOKEN, ONK_TILDE_TOKEN, ONK_BACKSLASH_TOKEN,
+          ONK_HASHMAP_LITERAL_START_TOKEN,
           0
         },
 
@@ -248,11 +181,57 @@ void __test__io(CuTest* tc)
         {ONK_PARAM_OPEN_TOKEN, ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, ONK_ADD_TOKEN, ONK_PARAM_OPEN_TOKEN, ONK_INTEGER_TOKEN, ONK_ADD_TOKEN, ONK_INTEGER_TOKEN, ONK_PARAM_CLOSE_TOKEN, ONK_PARAM_CLOSE_TOKEN, 0},
         0,
     };
-    lexer_harness(
-        tc, &lex_output, src, answers,
-        ignore_whitespace | ignore_comments | ignore_eof,
-        __FILE__, __LINE__
+
+    struct onk_lexer_input_t lexer_input;
+    struct onk_lexer_output_t output;
+    
+    enum onk_lexicon_t current = 0;
+    char msg[MESSAGE_BUF_SZ];
+    int msg_offset=0;
+    int8_t lex_ret = 0;
+
+    for (uint8_t set=0; MAX_SETS > set; set++)
+    {
+        if(answers[set] == 0)
+          return;
+
+        lexer_input.src_code = src[set];
+        lex_ret = onk_tokenize(&lexer_input, &output);
+        memset(msg, 0, MESSAGE_BUF_SZ);
+
+        msg_offset=snprintf(msg, MESSAGE_BUF_SZ, "index <%u>", set);
+        OnkAssertTokensMsg(tc, msg, output.tokens.base, answers[set]);
+        
+        CuAssert(tc, msg, lex_ret == 0);
+        onk_vec_clear(&output.tokens);
+    }    
+}
+
+#define mesg_sz 128
+void __test__lexarr_strncat(CuTest *tc)
+{
+    char mesg[mesg_sz];
+    uint16_t offset=0;
+    enum onk_lexicon_t answers[] =
+        {ONK_INTEGER_TOKEN, ONK_INTEGER_TOKEN, 0};
+    static const char *expected = "[integer] [integer]";
+    
+    mesg[0] = 0;
+    offset = onk_lexarr_strncat(
+        mesg,
+        mesg_sz,
+        answers, 2
     );
+
+    CuAssertIntEquals(tc, 0, strncmp(mesg, expected, strlen(expected)-1));
+}
+
+void __test__escape_quotes(CuTest *tc) {
+   CuFail(tc, "unimplemented");
+}
+
+void __test__undefined_lexicon_token(CuTest *tc) {
+   CuFail(tc, "unimplemented");
 }
 
 void __test__destroy_comment(CuTest* tc)
@@ -336,6 +315,9 @@ CuSuite* LexerUnitTests(void)
     SUITE_ADD_TEST(suite, __test__position);
     SUITE_ADD_TEST(suite, __test__fails_on_partial_string);
     SUITE_ADD_TEST(suite, __test__fails_on_utf);
-
+    SUITE_ADD_TEST(suite, __test__fails_on_partial_string);
+    SUITE_ADD_TEST(suite, __test__escape_quotes);
+    SUITE_ADD_TEST(suite, __test__undefined_lexicon_token);
+    SUITE_ADD_TEST(suite, __test__lexarr_strncat);
     return suite;
 }

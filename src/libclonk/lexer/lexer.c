@@ -650,12 +650,11 @@ int8_t onk_tokenize(
       if(transmission_compound)
         state.compound = transmission_compound;
       state.cmpd_span_size += 1;
-      //onk_queue8_push(&state.previous, &token);
       continue;
     }
 
     /* completed compound token */
-    else if (state.compound != ONK_UNDEFINED_TOKEN || state.forcing_next_token)
+    else if (state.compound != ONK_UNDEFINED_TOKEN)
     {
       if(state.compound != ONK_UNDEFINED_TOKEN)
       {
@@ -665,20 +664,8 @@ int8_t onk_tokenize(
         token.seq = state.tokens.len;
         state.compound = ONK_UNDEFINED_TOKEN;
       }
-      else
-      {
-        token.start = state.force_start;
-        token.end = state.force_start + state.force_span;
-        token.type = state.forcing_next_token;
-        token.seq = state.tokens.len;
-
-        state.forcing_next_token = ONK_UNDEFINED_TOKEN;
-        state.force_start = 0;
-        state.force_span = 0;
-      }
 
       push_tok(&state, &token);
-
       if (token.type == ONK_STRING_LITERAL_TOKEN)
       {
         token.end += 1;
