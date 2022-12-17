@@ -21,6 +21,7 @@ void CuTestInit(
 	t->message = NULL;
 	t->jumpBuf = NULL;
     t->func = func;
+    t->assertCount = 0;
 }
 
 CuTest* CuTestNew(
@@ -56,6 +57,7 @@ void CuTestRun(CuTest* tc)
 static void CuFailInternal(CuTest* tc, const char* file, int line, CuString* string)
 {
 	char buf[HUGE_STRING_LEN];
+    ++tc->assertCount;
 
 	sprintf(buf, "%s:%d: ", file, line);
 	CuStringInsert(string, buf, 0);
@@ -81,7 +83,8 @@ void CuFail_Line(CuTest* tc, const char* file, int line, const char* message2, c
 
 void CuAssert_Line(CuTest* tc, const char* file, int line, const char* message, int condition)
 {
-	if (condition) return;
+    ++tc->assertCount;
+    if (condition) return;
 	CuFail_Line(tc, file, line, NULL, message);
 }
 

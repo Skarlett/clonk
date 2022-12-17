@@ -3,6 +3,7 @@
 
 #include <setjmp.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include "clonk.h"
 #include "lexer.h"
 #include "parser.h"
@@ -45,6 +46,7 @@ struct CuTest
 	char* name;
 	int failed;
 	int ran;
+    int assertCount;
 	const char* message;
 	jmp_buf *jumpBuf;
     CuTestFn func;
@@ -110,6 +112,7 @@ typedef struct
 	int count;
 	CuTest* list[MAX_TEST_CASES];
 	int failCount;
+    uint16_t assertCount;
 
 } CuSuite;
 

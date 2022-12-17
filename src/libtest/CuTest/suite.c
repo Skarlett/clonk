@@ -39,7 +39,7 @@ void CuSuiteAdd(CuSuite* testSuite, CuTest *testCase)
 
 void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2)
 {
-    int i;
+    int i = 0;
     for (i = 0 ; i < testSuite2->count ; ++i)
     {
         CuTest* testCase = testSuite2->list[i];
@@ -49,18 +49,19 @@ void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2)
 
 void CuSuiteRun(CuSuite* testSuite)
 {
-    int i;
+    int i = 0;
     for (i = 0 ; i < testSuite->count ; ++i)
     {
         CuTest* testCase = testSuite->list[i];
         CuTestRun(testCase);
+        testSuite->assertCount += testCase->assertCount;
         if (testCase->failed) { testSuite->failCount += 1; }
     }
 }
 
 void CuSuiteSummary(CuSuite* testSuite, CuString* summary)
 {
-    int i;
+    int i = 0;
     for (i = 0 ; i < testSuite->count ; ++i)
     {
         CuTest* testCase = testSuite->list[i];
@@ -71,14 +72,14 @@ void CuSuiteSummary(CuSuite* testSuite, CuString* summary)
 
 void CuSuiteDetails(CuSuite* testSuite, CuString* details)
 {
-    int i;
+    int i = 0;
     int failCount = 0;
 
     if (testSuite->failCount == 0)
     {
         int passCount = testSuite->count - testSuite->failCount;
         const char* testWord = passCount == 1 ? "test" : "tests";
-        CuStringAppendFormat(details, "OK (%d %s)\n", passCount, testWord);
+        CuStringAppendFormat(details, "OK (%d %s) (%u asserts)\n", passCount, testWord, testSuite->assertCount);
     }
     else
     {
@@ -101,5 +102,6 @@ void CuSuiteDetails(CuSuite* testSuite, CuString* details)
 
         CuStringAppendFormat(details, "Runs: %d ",   testSuite->count);
         CuStringAppendFormat(details, "Fails: %d\n",  testSuite->failCount);
+        CuStringAppendFormat(details, "Asserts: %u\n",  testSuite->assertCount);
     }
 }
