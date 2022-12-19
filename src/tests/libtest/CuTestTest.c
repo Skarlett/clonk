@@ -417,7 +417,7 @@ void TestCuSuiteDetails_SinglePass(CuTest* tc)
 	CuAssertTrue(tc, ts.failCount == 0);
 
 	expected =
-		"OK (1 test) (13 asserts)\n";
+		"OK (1 test) (1 asserts)\n";
 
 	CuAssertStrEquals(tc, expected, details.buffer);
 }

@@ -8,32 +8,27 @@ void __test__vec_init(CuTest* tc)
 {
     struct onk_vec_t vec;
     onk_vec_init(&vec);
-    CuAssertTrue(tc, vec.base == 0);
-    CuAssertTrue(tc, vec.capacity == 0);
-    CuAssertTrue(tc, vec.type_sz == 0);
+    CuAssertPtrEquals(tc, 0, vec.base);
+    CuAssertIntEquals(tc, 0, vec.capacity);
+    CuAssertIntEquals(tc, 0, vec.type_sz);
+    CuAssertIntEquals(tc, onk_vec_mode_uninit, vec.state);
 }
-
 
 void __test__vec_free_heap(CuTest* tc)
 {
     struct onk_vec_t vec;
 
     onk_vec_init(&vec);
-    CuAssertTrue(tc, vec.base == 0);
-    CuAssertTrue(tc, vec.capacity == 0);
-    CuAssertTrue(tc, vec.type_sz == 0);
-    CuAssertTrue(tc, vec.state == onk_vec_mode_uninit);
-
-    onk_vec_alloc_heap(&vec, 4, sizeof(uint8_t));
-    CuAssertTrue(tc, vec.base != 0);
-    CuAssertTrue(tc, vec.capacity == 4);
-    CuAssertTrue(tc, vec.type_sz == sizeof(uint8_t));
+    onk_vec_new(&vec, 4, sizeof(uint8_t));
+    CuAssertPtrNotNull(tc, vec.base);
+    CuAssertIntEquals(tc, 4, vec.capacity);
+    CuAssertIntEquals(tc, sizeof(uint8_t), vec.type_sz);
     CuAssertTrue(tc, vec.state == onk_vec_mode_alloc_heap);
 
     onk_vec_free(&vec);
-    CuAssertTrue(tc, vec.base == 0);
-    CuAssertTrue(tc, vec.capacity == 0);
-    CuAssertTrue(tc, vec.type_sz == 0);
+    CuAssertPtrEquals(tc, 0, vec.base);
+    CuAssertIntEquals(tc, 0, vec.capacity);
+    CuAssertIntEquals(tc, 0, vec.type_sz);
     CuAssertTrue(tc, vec.state == onk_vec_mode_uninit);
 }
 
@@ -43,21 +38,16 @@ void __test__vec_free_stack(CuTest* tc)
     uint8_t buf[4];
 
     onk_vec_init(&vec);
-    CuAssertTrue(tc, vec.base == 0);
-    CuAssertTrue(tc, vec.capacity == 0);
-    CuAssertTrue(tc, vec.type_sz == 0);
-    CuAssertTrue(tc, vec.state == onk_vec_mode_uninit);
-
-    onk_vec_alloc_stk(&vec, buf, 4, sizeof(uint8_t));
-    CuAssertTrue(tc, vec.base != 0);
-    CuAssertTrue(tc, vec.capacity == 4);
-    CuAssertTrue(tc, vec.type_sz == sizeof(uint8_t));
+    onk_vec_new_stk(&vec, buf, 4, sizeof(uint8_t));
+    CuAssertPtrNotNull(tc, vec.base);
+    CuAssertIntEquals(tc, 4, vec.capacity);
+    CuAssertIntEquals(tc, sizeof(uint8_t), vec.type_sz);
     CuAssertTrue(tc, vec.state == onk_vec_mode_alloc_stack);
 
     onk_vec_free(&vec);
-    CuAssertTrue(tc, vec.base == 0);
-    CuAssertTrue(tc, vec.capacity == 0);
-    CuAssertTrue(tc, vec.type_sz == 0);
+    CuAssertPtrEquals(tc, 0, vec.base);
+    CuAssertIntEquals(tc, 0, vec.capacity);
+    CuAssertIntEquals(tc, 0, vec.type_sz);
     CuAssertTrue(tc, vec.state == onk_vec_mode_uninit);
 }
 
@@ -65,21 +55,22 @@ void __test__vec_pushpop_stack(CuTest* tc)
 {
     struct onk_vec_t vec;
     uint8_t stack[4];
-    void *ret_ptr = 0;
+    uint8_t *push_ptr = 0, *pop_ptr = 0;
     uint8_t dest = 0, src=12;
 
     onk_vec_new_stk(&vec, stack, 4, sizeof(uint8_t));
-    ret_ptr = onk_vec_push(&vec, &src);
-
-    CuAssertTrue(tc, ret_ptr != 0);
-    CuAssertTrue(tc, vec.len == 1);
-    CuAssertTrue(tc, vec.capacity == 4);
+    
+    push_ptr = (void*)onk_vec_push(&vec, &src);
+    CuAssertPtrEquals(tc, vec.base, push_ptr);
+    CuAssertIntEquals(tc, src, *push_ptr);
+    
+    CuAssertIntEquals(tc, 1, vec.len);
+    CuAssertIntEquals(tc, 4, vec.capacity);
 
     onk_vec_pop(&vec, &dest);
-    CuAssertTrue(tc, vec.len == 0);
-    CuAssertTrue(tc, vec.capacity == 4);
-    CuAssertTrue(tc, dest == src);
-    
+    CuAssertIntEquals(tc, 0, vec.len);
+    CuAssertIntEquals(tc, 4, vec.capacity);
+    CuAssertIntEquals(tc, src, dest);
     onk_vec_free(&vec);
 }
 
@@ -91,7 +82,7 @@ void __test__vec_pushpop_heap(CuTest* tc)
 
     onk_vec_new(&vec, 4, sizeof(uint8_t));
 
-    ret_ptr = onk_vec_push(&vec, &src);
+    ret_ptr = (void*)onk_vec_push(&vec, &src);
     CuAssertTrue(tc, ret_ptr != 0);
     CuAssertTrue(tc, vec.len == 1);
 
@@ -153,6 +144,5 @@ CuSuite* OnkVecTests(void)
     
     SUITE_ADD_TEST(suite, __test__vec_realloc_stack);
     SUITE_ADD_TEST(suite, __test__vec_realloc_heap);
-    
     return suite;
 }

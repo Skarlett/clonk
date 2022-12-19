@@ -15,7 +15,7 @@
     {
       overlay = final: prev:
         let
-            dependencies =  with prev; [ cmake libunwind.dev libunwind gnumake clang ];
+            dependencies =  with prev; [ cmake gnumake clang ];
         in
         with final; {
           clonk =  stdenv.mkDerivation
@@ -25,18 +25,41 @@
               nativeBuildInputs = dependencies;
             };
 
+          clonk-debug =  stdenv.mkDerivation
+            {
+              name = "clonk-debug";
+              src = ./.;
+              nativeBuildInputs = dependencies;
+              dontStrip = true;
+              cmakeBuildType = "Debug";
+            };
+
           clonk-test = stdenv.mkDerivation
             {
               name = "clonk-test";
               src = ./.;
               nativeBuildInputs = dependencies;
+              dontStrip = true;
+              cmakeBuildType = "Debug";
             };
+
+          clonk-test-rls = stdenv.mkDerivation
+            {
+              name = "clonk-test";
+              src = ./.;
+              nativeBuildInputs = dependencies;
+              dontStrip = true;
+              cmakeBuildType = "RelWithDebInfo";
+            };
+
         };
 
       packages = forAllSystems (system:
         {
           inherit (nixpkgsFor.${system}) clonk;
+          inherit (nixpkgsFor.${system}) clonk-debug;
           inherit (nixpkgsFor.${system}) clonk-test;
+          inherit (nixpkgsFor.${system}) clonk-test-rls;
         });
 
       devShells = forAllSystems (system: self.packages.${system}.clonk);

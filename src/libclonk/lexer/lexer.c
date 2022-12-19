@@ -59,7 +59,6 @@ void init_lexer_stage(
   const uint16_t * i
 ){
   //stage->tokens = tokens;
-  stage->i = i;
   stage->src_code = src_code;
 
   onk_vec_new(&stage->tokens, 2048, sizeof(struct onk_token_t));

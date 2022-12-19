@@ -5,6 +5,7 @@
  *-------------------------------------------------------------------------*/
 void CuSuiteInit(CuSuite* testSuite)
 {
+    testSuite->assertCount = 0;
     testSuite->count = 0;
     testSuite->failCount = 0;
     memset(testSuite->list, 0, sizeof(testSuite->list));
@@ -19,7 +20,7 @@ CuSuite* CuSuiteNew(void)
 
 void CuSuiteDelete(CuSuite *testSuite)
 {
-        unsigned int n;
+        unsigned int n = 0;
         for (n=0; n < MAX_TEST_CASES; n++)
         {
                 if (testSuite->list[n])
@@ -50,6 +51,7 @@ void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2)
 void CuSuiteRun(CuSuite* testSuite)
 {
     int i = 0;
+    testSuite->assertCount = 0;
     for (i = 0 ; i < testSuite->count ; ++i)
     {
         CuTest* testCase = testSuite->list[i];

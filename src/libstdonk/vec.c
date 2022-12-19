@@ -24,40 +24,17 @@ void onk_vec_init(struct onk_vec_t *vec)
 void onk_vec_small(struct onk_vec_t *vec)
 { vec->inc = VEC_INC_SMALL; }
 
-void _onk_vec_alloc(
-    struct onk_vec_t *vec,
-    enum onk_vec_mode_t flag,
-    uint16_t capacity,
-    uint16_t type_sz
-){
-    vec->type_sz = type_sz;
-    vec->capacity = capacity;
-    vec->state = flag;
-}
-
-void onk_vec_alloc_heap(
-    struct onk_vec_t *vec,
-    uint16_t capacity,
-    uint16_t type_sz
-){
-    _onk_vec_alloc(vec, onk_vec_mode_alloc_heap, capacity, type_sz);
-    vec->base = calloc(capacity, type_sz);
-}
-
-void onk_vec_alloc_stk(struct onk_vec_t *vec, void *stack_ptr, uint16_t capacity, uint16_t type_sz)
-{
-    _onk_vec_alloc(vec, onk_vec_mode_alloc_stack, capacity, type_sz);
-    vec->base = stack_ptr;
-}
-
 void onk_vec_new(
     struct onk_vec_t *vec,
     uint16_t capacity,
     uint16_t type_sz
 ){
     onk_vec_init(vec);
-    onk_vec_alloc_heap(vec, capacity, type_sz);
-    assert(vec->base);
+    vec->type_sz = type_sz;
+    vec->capacity = capacity;
+    vec->state = onk_vec_mode_alloc_heap;
+    vec->base = calloc(capacity, type_sz);
+    assert(vec->base); 
 }
 
 void onk_vec_new_stk(
@@ -67,7 +44,10 @@ void onk_vec_new_stk(
     uint16_t type_sz
 ){
     onk_vec_init(vec);
-    onk_vec_alloc_stk(vec, stack_ptr, capacity, type_sz);
+    vec->base = stack_ptr;
+    vec->capacity = capacity;
+    vec->type_sz = type_sz;
+    vec->state = onk_vec_mode_alloc_stack;
 }
 
 uint16_t _calc_realloc_slots(struct onk_vec_t *vec)
@@ -140,14 +120,16 @@ int8_t _realloc(struct onk_vec_t *vec)
     return 1;
 }
 
-void * _push(struct onk_vec_t *dest, const void *src)
+const void * _push(struct onk_vec_t *dest, const void *src)
 {
-    void * item = dest->base + dest->len * dest->type_sz;
+    const void *item = onk_vec_head(dest);
+
     assert(memcpy(
-            item,
-            src,
-            dest->type_sz) > 0
-    );
+      item,
+      src,
+      dest->type_sz
+    ));
+
     dest->len += 1;
     return item;
 }
@@ -157,7 +139,7 @@ void * _push(struct onk_vec_t *dest, const void *src)
 ** returns pointer to item in expandable buffer
 ** otherwise returns 0 to indicate error.
 */
-void * onk_vec_push(struct onk_vec_t *dest, const void *src)
+const void * onk_vec_push(struct onk_vec_t *dest, const void *src)
 {
     assert(can_access(dest));
     assert(src);
@@ -247,7 +229,7 @@ const void * onk_vec_head(const struct onk_vec_t *vec)
     assert(can_access(vec));
     if (vec->len > 0)
         return vec->base + vec->type_sz * vec->len - 1;
-    return 0;
+    return vec->base;
 }
 /*
 ** copy last inserted item from expandable buffer
@@ -258,13 +240,20 @@ const void * onk_vec_head(const struct onk_vec_t *vec)
 ** no copy is performed.
 **
 */
-int8_t onk_vec_pop(struct onk_vec_t *vec, void * dest)
+const void * onk_vec_pop(struct onk_vec_t *vec, void * dest)
 {
     const void *head = onk_vec_head(vec);
-    assert(head != 0 || dest != 0);
+    assert(can_access(vec));
+    assert(vec->base);
+    assert(dest);
+
+    if(head == vec->base)
+        return 0;
+
     assert(memcpy(dest, head, vec->type_sz));
     vec->len -= 1;
-    return 0;
+
+    return (void*)head;
 }
 
 void onk_vec_move(struct onk_vec_t *dest, struct onk_vec_t *src)

@@ -50,6 +50,7 @@ void RunAllTests(void)
     CuSuiteDetails(suite, output);
 
     printf("%s\n", output->buffer);
+    printf("version: %s\n", ONK_VERSION);
 }
 
 int main(void)

@@ -40,7 +40,7 @@ int8_t onk_assert_tokens(
     for(answer_len=0; MAX_CHECK > answer_len; answer_len++)
         if(answer[answer_len] == 0)
             break;
-        
+
     if(!answer_len)
       CuFail(tc, "No answers provided");
 
@@ -93,7 +93,7 @@ int8_t onk_assert_tokens(
             return -1;
         }
     }
-
+    ++(tc->assertCount);
     return 1;
 }
 

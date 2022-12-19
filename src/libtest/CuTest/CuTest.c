@@ -50,7 +50,7 @@ void CuTestRun(CuTest* tc)
 		tc->ran = 1;
 		(tc->func)(tc);
 	}
-	printf("RAN: %s\n", tc->name);
+	// printf("RAN: %s\n", tc->name);
 	tc->jumpBuf = 0;
 }
 

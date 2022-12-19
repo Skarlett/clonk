@@ -285,8 +285,8 @@ void __test__position(CuTest* tc)
 
     CuAssertTrue(tc, ret == 0);
 
-    CuAssertIntEquals(tc, tokens[0].start, 0);
-    CuAssertIntEquals(tc, tokens[0].end, 3);
+    CuAssertIntEquals(tc, 0, tokens[0].start);
+    CuAssertIntEquals(tc, 3, tokens[0].end);
     CuAssertTrue(tc, tokens[0].type == ONK_INTEGER_TOKEN);
 
     CuAssertIntEquals(tc, tokens[1].start, 5);
