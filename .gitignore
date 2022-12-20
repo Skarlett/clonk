@@ -145,3 +145,8 @@ ipch/
 
 # Visual Studio Trace Files
 *.e2e
+
+
+# Added by cargo
+
+/target
